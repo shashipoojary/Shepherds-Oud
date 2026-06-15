@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { CustomSelect } from "@/components/ui/custom-select";
 import { StatGrid } from "@/components/ui/stat-grid";
 import { providerDashboard } from "@/lib/content";
+import { recordAction } from "@/lib/client-actions";
 
 export function ProviderDashboardClient() {
   const [beds, setBeds] = useState(providerDashboard.beds);
@@ -20,10 +21,22 @@ export function ProviderDashboardClient() {
     email: "info@woonzorgarchipel.nl"
   });
 
-  function updateInquiry(family: string, status: string) {
+  async function updateInquiry(family: string, status: string) {
     setInquiries((current) => current.map((inquiry) => (inquiry.family === family ? { ...inquiry, status } : inquiry)));
     setSelectedInquiry((current) => (current?.family === family ? { ...current, status } : current));
+    await recordAction({
+      type: "update_inquiry_status",
+      targetType: "inquiry",
+      targetId: family,
+      label: `${family} marked as ${status.toLowerCase()}.`,
+      payload: { family, status }
+    });
     setMessage(`${family} marked as ${status.toLowerCase()}.`);
+  }
+
+  async function saveProviderAction(type: string, label: string, payload: Record<string, unknown>) {
+    await recordAction({ type, targetType: "provider", targetId: providerDashboard.providerName, label, payload });
+    setMessage(label);
   }
 
   return (
@@ -75,7 +88,18 @@ export function ProviderDashboardClient() {
             <Toggle checked={acceptsUrgent} onChange={setAcceptsUrgent} />
           </div>
         </div>
-        <Button size="sm" className="mt-4" onClick={() => setMessage(`Availability saved: ${beds} beds, ${availability}, dementia ${acceptsDementia ? "on" : "off"}, urgent ${acceptsUrgent ? "on" : "off"}.`)}>
+        <Button
+          size="sm"
+          className="mt-4"
+          onClick={() =>
+            saveProviderAction("save_availability", `Availability saved: ${beds} beds, ${availability}, dementia ${acceptsDementia ? "on" : "off"}, urgent ${acceptsUrgent ? "on" : "off"}.`, {
+              beds,
+              availability,
+              acceptsDementia,
+              acceptsUrgent
+            })
+          }
+        >
           Save availability
         </Button>
       </section>
@@ -96,7 +120,7 @@ export function ProviderDashboardClient() {
             <input value={profile.email} onChange={(event) => setProfile((current) => ({ ...current, email: event.target.value }))} className="rounded-lg border border-stone-200 px-3 py-2 outline-sage-600" />
           </label>
         </div>
-        <Button size="sm" className="mt-4" onClick={() => setMessage(`Provider contact saved for ${profile.contactName}.`)}>
+        <Button size="sm" className="mt-4" onClick={() => saveProviderAction("save_provider_contact", `Provider contact saved for ${profile.contactName}.`, profile)}>
           Save profile
         </Button>
       </section>
@@ -146,10 +170,10 @@ export function ProviderDashboardClient() {
               </label>
               <CustomSelect value={selectedInquiry.status} onChange={(status) => updateInquiry(selectedInquiry.family, status)} options={["New inquiry", "Under review", "Accepted", "More info requested", "Declined", "Placed"]} />
               <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
-                <Button size="sm" onClick={() => setMessage(`Call scheduled with ${selectedInquiry.family}.`)}>
+                <Button size="sm" onClick={() => saveProviderAction("schedule_inquiry_call", `Call scheduled with ${selectedInquiry.family}.`, selectedInquiry)}>
                   Schedule call
                 </Button>
-                <Button size="sm" variant="ghost" onClick={() => setMessage(`Note saved for ${selectedInquiry.family}.`)}>
+                <Button size="sm" variant="ghost" onClick={() => saveProviderAction("save_inquiry_note", `Note saved for ${selectedInquiry.family}.`, selectedInquiry)}>
                   Save note
                 </Button>
               </div>

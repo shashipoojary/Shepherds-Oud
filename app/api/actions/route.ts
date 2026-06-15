@@ -1,0 +1,29 @@
+import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
+import { actionSchema } from "@/lib/validation/action";
+
+export async function POST(request: Request) {
+  const body = await request.json();
+  const parsed = actionSchema.safeParse(body);
+
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid action", issues: parsed.error.flatten() }, { status: 400 });
+  }
+
+  if (!process.env.DATABASE_URL) {
+    return NextResponse.json({ id: `demo-${Date.now()}`, mode: "demo", action: parsed.data }, { status: 201 });
+  }
+
+  const { prisma } = await import("@/lib/db");
+  const action = await prisma.actionLog.create({
+    data: {
+      type: parsed.data.type,
+      targetType: parsed.data.targetType,
+      targetId: parsed.data.targetId,
+      label: parsed.data.label,
+      payload: parsed.data.payload ? (parsed.data.payload as Prisma.InputJsonObject) : undefined
+    }
+  });
+
+  return NextResponse.json({ id: action.id, mode: "database" }, { status: 201 });
+}

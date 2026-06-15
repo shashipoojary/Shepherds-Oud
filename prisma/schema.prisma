@@ -73,6 +73,16 @@ model Match {
   provider   Provider @relation(fields: [providerId], references: [id])
 }
 
+model ActionLog {
+  id         String   @id @default(cuid())
+  type       String
+  targetType String
+  targetId   String
+  label      String
+  payload    Json?
+  createdAt  DateTime @default(now())
+}
+
 enum Role {
   FAMILY
   PROVIDER

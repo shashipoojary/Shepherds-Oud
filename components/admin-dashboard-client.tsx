@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { StatGrid } from "@/components/ui/stat-grid";
 import { adminDashboard, providers } from "@/lib/content";
+import { recordAction } from "@/lib/client-actions";
 
 type AdminTab = "families" | "providers" | "inquiries";
 type AdminAction =
@@ -52,7 +53,7 @@ export function AdminDashboardClient() {
 
 function FamiliesTable({ openAction }: { openAction: (action: AdminAction) => void }) {
   return (
-    <table className="w-full min-w-[760px] border-collapse text-left">
+    <table className="w-full min-w-[900px] border-collapse text-left">
       <thead className="bg-cream text-xs uppercase tracking-wide text-neutral-500">
         <tr>
           <th className="px-4 py-3">Family</th>
@@ -90,13 +91,13 @@ function FamiliesTable({ openAction }: { openAction: (action: AdminAction) => vo
 
 function ProvidersTable({ openAction }: { openAction: (action: AdminAction) => void }) {
   return (
-    <table className="w-full min-w-[760px] border-collapse text-left">
+    <table className="w-full min-w-[980px] border-collapse text-left">
       <thead className="bg-cream text-xs uppercase tracking-wide text-neutral-500">
         <tr>
           <th className="px-4 py-3">Provider</th>
           <th className="px-4 py-3">Type</th>
           <th className="px-4 py-3">City</th>
-          <th className="px-4 py-3">Availability</th>
+          <th className="min-w-[170px] px-4 py-3">Availability</th>
           <th className="px-4 py-3">Last updated</th>
           <th className="px-4 py-3">Action</th>
         </tr>
@@ -107,8 +108,8 @@ function ProvidersTable({ openAction }: { openAction: (action: AdminAction) => v
             <td className="px-4 py-3 text-sm font-semibold">{provider.name}</td>
             <td className="px-4 py-3 text-sm text-neutral-600">{provider.type}</td>
             <td className="px-4 py-3 text-sm text-neutral-600">{provider.area}</td>
-            <td className="px-4 py-3">
-              <span className="rounded-full bg-sage-100 px-3 py-1 text-xs font-medium text-sage-700">{provider.availability}</span>
+            <td className="min-w-[170px] px-4 py-3">
+              <span className="inline-flex max-w-full whitespace-nowrap rounded-full bg-sage-100 px-3 py-1 text-xs font-medium text-sage-700">{provider.availability}</span>
             </td>
             <td className="px-4 py-3 text-sm text-neutral-600">Today</td>
             <td className="px-4 py-3">
@@ -125,7 +126,7 @@ function ProvidersTable({ openAction }: { openAction: (action: AdminAction) => v
 
 function InquiriesTable({ openAction }: { openAction: (action: AdminAction) => void }) {
   return (
-    <table className="w-full min-w-[760px] border-collapse text-left">
+    <table className="w-full min-w-[900px] border-collapse text-left">
       <thead className="bg-cream text-xs uppercase tracking-wide text-neutral-500">
         <tr>
           <th className="px-4 py-3">Family</th>
@@ -159,6 +160,11 @@ function InquiriesTable({ openAction }: { openAction: (action: AdminAction) => v
 }
 
 function AdminWorkPanel({ action, close, setMessage }: { action: AdminAction; close: () => void; setMessage: (message: string) => void }) {
+  async function save(type: string, targetType: string, targetId: string, label: string, payload?: Record<string, unknown>) {
+    await recordAction({ type, targetType, targetId, label, payload });
+    setMessage(label);
+  }
+
   if (action.type === "case") {
     const family = action.family;
     return (
@@ -186,13 +192,13 @@ function AdminWorkPanel({ action, close, setMessage }: { action: AdminAction; cl
         <div className="rounded-xl border border-stone-200 p-4">
           <h3 className="font-semibold">Case actions</h3>
           <div className="mt-4 grid gap-2">
-            <Button size="sm" onClick={() => setMessage(`Advisor call scheduled for ${family.name}.`)}>
+            <Button size="sm" onClick={() => save("schedule_call", "family", family.name, `Advisor call scheduled for ${family.name}.`, family)}>
               Schedule advisor call
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => setMessage(`Manual matching started for ${family.name}.`)}>
+            <Button size="sm" variant="ghost" onClick={() => save("manual_match", "family", family.name, `Manual matching started for ${family.name}.`, family)}>
               Match manually
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => setMessage(`${family.name} marked for review.`)}>
+            <Button size="sm" variant="ghost" onClick={() => save("mark_review", "family", family.name, `${family.name} marked for review.`, family)}>
               Mark for review
             </Button>
           </div>
@@ -228,7 +234,7 @@ function AdminWorkPanel({ action, close, setMessage }: { action: AdminAction; cl
             <textarea defaultValue={provider.description} className="min-h-24 rounded-lg border border-stone-200 px-3 py-2 outline-sage-600" />
           </label>
         </div>
-        <Button className="mt-5" size="sm" onClick={() => setMessage(`${provider.name} profile changes saved locally.`)}>
+        <Button className="mt-5" size="sm" onClick={() => save("save_provider_profile", "provider", provider.id, `${provider.name} profile changes saved.`, provider)}>
           Save profile
         </Button>
       </section>
@@ -255,13 +261,13 @@ function AdminWorkPanel({ action, close, setMessage }: { action: AdminAction; cl
           <textarea className="min-h-28 rounded-lg border border-stone-200 px-3 py-2 outline-sage-600" defaultValue={`Check ${inquiry.status.toLowerCase()} with ${inquiry.provider}.`} />
         </label>
         <div className="grid content-start gap-2">
-          <Button size="sm" onClick={() => setMessage(`Follow-up note saved for ${inquiry.family}.`)}>
+          <Button size="sm" onClick={() => save("save_follow_up_note", "inquiry", `${inquiry.family}-${inquiry.provider}`, `Follow-up note saved for ${inquiry.family}.`, inquiry)}>
             Save note
           </Button>
-          <Button size="sm" variant="ghost" onClick={() => setMessage(`Reminder created for ${inquiry.family}.`)}>
+          <Button size="sm" variant="ghost" onClick={() => save("create_reminder", "inquiry", `${inquiry.family}-${inquiry.provider}`, `Reminder created for ${inquiry.family}.`, inquiry)}>
             Create reminder
           </Button>
-          <Button size="sm" variant="ghost" onClick={() => setMessage(`Provider update requested from ${inquiry.provider}.`)}>
+          <Button size="sm" variant="ghost" onClick={() => save("request_provider_update", "provider", inquiry.provider, `Provider update requested from ${inquiry.provider}.`, inquiry)}>
             Ask provider update
           </Button>
         </div>

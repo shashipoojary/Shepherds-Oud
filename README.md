@@ -51,6 +51,7 @@ Production service setup:
 ```bash
 copy .env.example .env.local
 npx prisma migrate dev --name init
+npx prisma generate
 ```
 
 See `REAL_SERVICE_SETUP.md` for database, auth, email, matching, and deployment steps.

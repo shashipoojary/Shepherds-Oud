@@ -61,8 +61,13 @@ Use Resend for transactional email.
 Add to `.env.local`:
 
 ```bash
+NEXT_PUBLIC_APP_URL="http://localhost:3000"
+DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/shepherds_oud?sslmode=require"
+AUTH_SECRET="replace-with-openssl-rand-base64-32"
+AUTH_URL="http://localhost:3000"
 RESEND_API_KEY="re_..."
 ADVISOR_EMAIL="care@shepherdsoud.nl"
+FROM_EMAIL="Shepherds Oud <care@shepherdsoud.nl>"
 ```
 
 Trigger email after intake creation in `app/api/intakes/route.ts`.
@@ -73,7 +78,21 @@ Recommended notifications:
 - care advisor alert
 - provider inquiry alert
 
-## 5. Deployment
+## 6. Buttons And Actions
+
+Admin and provider buttons call:
+
+- `POST /api/actions`
+
+Without `DATABASE_URL`, the endpoint runs in demo mode and returns success. With `DATABASE_URL`, it stores actions in the `ActionLog` table.
+
+Run this after adding or changing the database:
+
+```bash
+npx prisma migrate deploy
+```
+
+## 7. Deployment
 
 Vercel is the simplest deployment target.
 
@@ -83,7 +102,7 @@ Vercel is the simplest deployment target.
 4. Attach Neon/Supabase Postgres.
 5. Run Prisma migration in deployment pipeline or manually before launch.
 
-## 6. Production Matching Logic
+## 8. Production Matching Logic
 
 Start with rule-based scoring:
 
