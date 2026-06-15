@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { intakeSteps } from "@/lib/content";
+import { saveStoredIntake } from "@/lib/client-intake";
 import { Button } from "@/components/ui/button";
 import { CustomSelect } from "@/components/ui/custom-select";
 
@@ -75,9 +76,21 @@ export function IntakeForm() {
       return;
     }
 
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem("shepherds:last-intake", JSON.stringify(payload));
-    }
+    const result = (await response.json()) as { id: string; status: string };
+    saveStoredIntake({
+      id: result.id,
+      contactName: payload.contactName,
+      email: payload.email,
+      phone: payload.phone,
+      relationship: payload.relationship,
+      preferredArea: payload.preferredArea,
+      ageRange: payload.ageRange,
+      careTypes: payload.careTypes,
+      urgency: payload.urgency,
+      budget: payload.budget,
+      status: result.status || "NEW",
+      submittedAt: new Date().toISOString()
+    });
     router.push("/family/success");
   }
 

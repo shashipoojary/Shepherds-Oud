@@ -7,7 +7,6 @@ import { ChevronDown, Loader2, LogOut, UserRound } from "lucide-react";
 import { LoadingLink } from "@/components/loading-link";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
-import { ButtonRow } from "@/components/ui/button-row";
 import type { AppRole } from "@/lib/auth-server";
 
 function dashboardHref(role: AppRole | undefined) {
@@ -60,11 +59,11 @@ export function MobileNavProfile({ onNavigate }: { onNavigate?: () => void }) {
 
   if (!session) {
     return (
-      <Button asChild className="w-full">
-        <Link href="/login" onClick={onNavigate}>
+      <div className="border-b border-stone-200 pb-4">
+        <Link href="/login" onClick={onNavigate} className="text-sm font-medium text-sage-600">
           Sign in
         </Link>
-      </Button>
+      </div>
     );
   }
 
@@ -72,27 +71,18 @@ export function MobileNavProfile({ onNavigate }: { onNavigate?: () => void }) {
   const name = session.user.name || email;
 
   return (
-    <div className="rounded-xl border border-stone-200 bg-cream p-4">
-      <div className="flex items-start gap-3">
-        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-sage-100 text-sage-700">
-          <UserRound className="h-5 w-5" />
-        </span>
-        <div className="min-w-0">
-          <p className="truncate font-semibold text-neutral-900">{name}</p>
-          <p className="mt-0.5 truncate text-sm text-neutral-500">{email}</p>
-          <p className="mt-2 inline-flex rounded-full bg-sage-100 px-2.5 py-1 text-xs font-medium text-sage-700">{roleLabel(role)}</p>
-        </div>
+    <div className="border-b border-stone-200 pb-4">
+      <p className="text-sm font-medium text-neutral-900">{name}</p>
+      <p className="mt-0.5 text-xs text-neutral-500">{email}</p>
+      <p className="mt-1 text-xs text-neutral-400">{roleLabel(role)}</p>
+      <div className="mt-3 flex flex-col gap-2">
+        <LoadingLink href={dashboardHref(role)} onNavigate={onNavigate} className="text-sm text-sage-600">
+          Dashboard
+        </LoadingLink>
+        <button type="button" onClick={signOut} disabled={signingOut} className="text-left text-sm text-neutral-600">
+          {signingOut ? "Signing out..." : "Sign out"}
+        </button>
       </div>
-      <ButtonRow className="mt-4">
-        <Button asChild size="sm" className="w-full">
-          <LoadingLink href={dashboardHref(role)} onNavigate={onNavigate}>
-            Dashboard
-          </LoadingLink>
-        </Button>
-        <Button type="button" size="sm" variant="outline" className="w-full" onClick={signOut} disabled={signingOut}>
-          {signingOut ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sign out"}
-        </Button>
-      </ButtonRow>
     </div>
   );
 }

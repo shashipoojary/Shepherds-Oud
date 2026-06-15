@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import type { ProviderMatch } from "@/lib/types";
 
-function mapProvider(provider: {
+type ProviderRecord = {
   id: string;
   name: string;
   type: string;
@@ -14,15 +14,22 @@ function mapProvider(provider: {
   bedsTotal: number | null;
   bedsOpen: number | null;
   waitlistText: string | null;
-}): ProviderMatch {
+  availabilityStatus: string | null;
+};
+
+export function mapProviderRecord(provider: ProviderRecord, score = 0): ProviderMatch {
   const openBeds = provider.bedsOpen ?? 0;
+  const availability =
+    provider.availabilityStatus ||
+    (provider.bedsOpen != null && provider.bedsOpen > 0 ? "Available now" : provider.waitlistText || "Contact for availability");
+
   return {
     id: provider.id,
     name: provider.name,
     type: provider.type,
     area: provider.area,
-    match: 0,
-    availability: provider.bedsOpen != null && provider.bedsOpen > 0 ? "Available now" : provider.waitlistText || "Contact for availability",
+    match: score,
+    availability,
     action: "Request visit",
     tags: [
       ...provider.services.map((label) => ({ label, type: "service" as const })),
@@ -47,11 +54,11 @@ function mapProvider(provider: {
 
 export async function getProviderMatches(): Promise<ProviderMatch[]> {
   const providers = await prisma.provider.findMany({ orderBy: { createdAt: "desc" } });
-  return providers.map(mapProvider);
+  return providers.map((provider) => mapProviderRecord(provider));
 }
 
 export async function getProviderById(providerId: string) {
   const provider = await prisma.provider.findUnique({ where: { id: providerId } });
   if (!provider) return null;
-  return mapProvider(provider);
+  return mapProviderRecord(provider);
 }

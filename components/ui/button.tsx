@@ -13,8 +13,8 @@ const buttonVariants = cva(
         ghost: "border border-stone-200 bg-white text-neutral-700 hover:bg-sage-100 hover:text-sage-700"
       },
       size: {
-        default: "min-h-11 px-3 sm:px-6 text-[12px] sm:text-[15px] leading-tight tracking-tight",
-        sm: "min-h-9 px-2.5 sm:px-3 text-[11px] sm:text-sm leading-tight"
+        default: "min-h-11 px-4 text-sm leading-snug sm:px-6 sm:text-[15px]",
+        sm: "min-h-10 px-3.5 text-sm leading-snug"
       }
     },
     defaultVariants: {

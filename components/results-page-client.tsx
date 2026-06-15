@@ -1,7 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { getStoredIntake } from "@/lib/client-intake";
+import { IntakeSummaryCard } from "@/components/intake-summary-card";
 import { Button } from "@/components/ui/button";
 import { ButtonRow } from "@/components/ui/button-row";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -9,10 +11,38 @@ import type { ProviderMatch } from "@/lib/types";
 
 const filters = ["All options", "Can contact today", "Memory care", "Care at home"];
 
-export function ResultsPageClient({ providers }: { providers: ProviderMatch[] }) {
+export function ResultsPageClient() {
   const [activeFilter, setActiveFilter] = useState(filters[0]);
   const [message, setMessage] = useState("");
+  const [providers, setProviders] = useState<ProviderMatch[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [intake, setIntake] = useState(getStoredIntake());
   const recommended = providers[0];
+
+  useEffect(() => {
+    const stored = getStoredIntake();
+    setIntake(stored);
+
+    if (!stored) {
+      setLoading(false);
+      return;
+    }
+
+    async function loadMatches() {
+      const current = stored;
+      if (!current) return;
+      try {
+        const response = await fetch(`/api/matches?intakeId=${current.id}`);
+        if (response.ok) {
+          setProviders((await response.json()) as ProviderMatch[]);
+        }
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    void loadMatches();
+  }, []);
 
   const visibleProviders = useMemo(() => {
     if (activeFilter === "All options") return providers;
@@ -22,8 +52,38 @@ export function ResultsPageClient({ providers }: { providers: ProviderMatch[] })
     return providers;
   }, [activeFilter, providers]);
 
-  function handleProviderAction(provider: ProviderMatch) {
-    setMessage(`${provider.action} saved for ${provider.name}. We will help you with the next phone call.`);
+  async function handleProviderAction(provider: ProviderMatch, status: "VISIT_REQUESTED" | "CALLBACK_REQUESTED") {
+    if (provider.matchId) {
+      await fetch(`/api/matches/${provider.matchId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status })
+      });
+    }
+
+    setMessage(
+      status === "VISIT_REQUESTED"
+        ? `Visit request sent for ${provider.name}. A care advisor will follow up.`
+        : `Callback request sent for ${provider.name}.`
+    );
+  }
+
+  if (!intake) {
+    return (
+      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
+        <EmptyState
+          title="Complete your intake first"
+          description="Submit the care intake form so we can prepare matched providers for your family."
+        />
+        <Button asChild className="mt-4">
+          <Link href="/family/intake">Start intake</Link>
+        </Button>
+      </main>
+    );
+  }
+
+  if (loading) {
+    return <main className="mx-auto max-w-6xl px-4 py-10 text-sm text-neutral-500">Loading your matched providers...</main>;
   }
 
   if (!providers.length) {
@@ -32,17 +92,13 @@ export function ResultsPageClient({ providers }: { providers: ProviderMatch[] })
         <Link href="/family/dashboard" className="mb-4 inline-flex text-sm text-neutral-500 hover:text-sage-600">
           Back to dashboard
         </Link>
-        <section className="rounded-2xl bg-white shadow-soft">
+        <IntakeSummaryCard intake={intake} compact />
+        <section className="mt-5 rounded-2xl bg-white shadow-soft">
           <EmptyState
-            title="No matched providers yet"
-            description="Once your intake is reviewed and providers are added to the platform, your recommended options will appear here."
+            title="Matches are being prepared"
+            description="A care advisor is reviewing your intake. Matched providers will appear here once approved."
           />
         </section>
-        <div className="mt-4">
-          <Button asChild>
-            <Link href="/family/intake">Update intake details</Link>
-          </Button>
-        </div>
       </main>
     );
   }
@@ -53,14 +109,14 @@ export function ResultsPageClient({ providers }: { providers: ProviderMatch[] })
         Back to dashboard
       </Link>
 
-      <section className="overflow-hidden rounded-2xl bg-white shadow-soft">
+      <IntakeSummaryCard intake={intake} compact />
+
+      <section className="mt-5 overflow-hidden rounded-2xl bg-white shadow-soft">
         <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_340px]">
           <div className="p-5 sm:p-7">
             <p className="text-xs font-semibold uppercase tracking-wide text-sage-700">Best place to start</p>
             <h1 className="mt-2 text-2xl font-semibold text-neutral-950">{recommended.name}</h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">
-              {recommended.description}
-            </p>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">{recommended.description}</p>
             <div className="mt-5 flex flex-wrap gap-2">
               {recommended.tags.map((tag) => (
                 <span key={tag.label} className="rounded-full bg-sage-100 px-3 py-1 text-xs font-medium text-sage-700">
@@ -75,13 +131,14 @@ export function ResultsPageClient({ providers }: { providers: ProviderMatch[] })
                 <ResultFact key={item} label="Detail" value={item} />
               ))}
               <ResultFact label="Availability" value={recommended.availability} />
+              <ResultFact label="Match score" value={`${recommended.match}%`} />
             </div>
             <ButtonRow className="mt-5">
-              <Button className="w-full" onClick={() => handleProviderAction(recommended)}>
-                Request a visit
+              <Button className="w-full" onClick={() => void handleProviderAction(recommended, "VISIT_REQUESTED")}>
+                Request visit
               </Button>
               <Button asChild variant="ghost" className="w-full">
-                <Link href={`/providers/${recommended.id}`}>Read full details</Link>
+                <Link href={`/providers/${recommended.id}`}>Details</Link>
               </Button>
             </ButtonRow>
           </div>
@@ -121,16 +178,6 @@ export function ResultsPageClient({ providers }: { providers: ProviderMatch[] })
           ))}
         </div>
       </section>
-
-      <div className="mt-6 grid gap-4 rounded-2xl bg-sage-100 p-5 text-sage-800 sm:grid-cols-[1fr_auto] sm:items-center">
-        <div>
-          <h2 className="font-semibold">Want someone to explain the choices?</h2>
-          <p className="mt-1 text-sm">A care advisor can walk through the list with you and help decide who to contact first.</p>
-        </div>
-        <Button size="sm" onClick={() => setMessage("A care advisor callback has been requested.")}>
-          Talk to an advisor
-        </Button>
-      </div>
     </main>
   );
 }
@@ -144,7 +191,13 @@ function ResultFact({ label, value }: { label: string; value: string }) {
   );
 }
 
-function CompareRow({ provider, onAction }: { provider: ProviderMatch; onAction: (provider: ProviderMatch) => void }) {
+function CompareRow({
+  provider,
+  onAction
+}: {
+  provider: ProviderMatch;
+  onAction: (provider: ProviderMatch, status: "VISIT_REQUESTED" | "CALLBACK_REQUESTED") => void;
+}) {
   const fit = provider.match >= 90 ? "Strong fit" : provider.match >= 75 ? "Good backup" : "Worth discussing";
 
   return (
@@ -168,8 +221,8 @@ function CompareRow({ provider, onAction }: { provider: ProviderMatch; onAction:
         <Button asChild size="sm" className="w-full">
           <Link href={`/providers/${provider.id}`}>Details</Link>
         </Button>
-        <Button size="sm" variant="ghost" className="w-full" onClick={() => onAction(provider)}>
-          {provider.action}
+        <Button size="sm" variant="ghost" className="w-full" onClick={() => onAction(provider, "VISIT_REQUESTED")}>
+          Request visit
         </Button>
       </ButtonRow>
     </article>

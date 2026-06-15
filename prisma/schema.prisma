@@ -19,6 +19,9 @@ model User {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
+  linkedProviderId String?   @unique
+  linkedProvider   Provider? @relation(fields: [linkedProviderId], references: [id])
+
   intakes  Intake[]
   sessions Session[]
   accounts Account[]
@@ -94,21 +97,30 @@ model Intake {
 }
 
 model Provider {
-  id           String   @id @default(cuid())
-  name         String
-  type         String
-  area         String
-  description  String
-  languages    String[]
-  services     String[]
-  priceMin     Int?
-  priceMax     Int?
-  bedsTotal    Int?
-  bedsOpen     Int?
-  waitlistText String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                 String   @id @default(cuid())
+  name               String
+  type               String
+  area               String
+  description        String   @default("")
+  languages          String[]
+  services           String[]
+  priceMin           Int?
+  priceMax           Int?
+  bedsTotal          Int?
+  bedsOpen           Int?
+  waitlistText       String?
+  contactName        String?
+  email              String?
+  phone              String?
+  city               String?
+  province           String?
+  website            String?
+  availabilityStatus String?
+  adminNotes         String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
+  user    User?
   matches Match[]
 }
 
@@ -116,6 +128,7 @@ model Match {
   id        String      @id @default(cuid())
   score     Int
   status    MatchStatus @default(SUGGESTED)
+  notes     String?
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
 
@@ -123,6 +136,8 @@ model Match {
   providerId String
   intake     Intake   @relation(fields: [intakeId], references: [id])
   provider   Provider @relation(fields: [providerId], references: [id])
+
+  @@unique([intakeId, providerId])
 }
 
 model ActionLog {
@@ -151,10 +166,13 @@ enum IntakeStatus {
 
 enum MatchStatus {
   SUGGESTED
+  CONTACTED
   VISIT_REQUESTED
   CALLBACK_REQUESTED
   ACCEPTED
   DECLINED
+  PLACED
+  CLOSED
 }
 
 enum WaitlistType {

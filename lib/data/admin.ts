@@ -12,11 +12,20 @@ export async function getAdminDashboardData() {
       select: {
         id: true,
         contactName: true,
+        email: true,
+        phone: true,
+        relationship: true,
         ageRange: true,
         careTypes: true,
         preferredArea: true,
         urgency: true,
-        status: true
+        budget: true,
+        languages: true,
+        additionalNeeds: true,
+        notes: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true
       }
     }),
     prisma.provider.findMany({
@@ -36,8 +45,11 @@ export async function getAdminDashboardData() {
       take: 100,
       select: {
         id: true,
+        intakeId: true,
+        providerId: true,
         score: true,
         status: true,
+        notes: true,
         createdAt: true,
         intake: { select: { contactName: true } },
         provider: { select: { name: true } }
@@ -79,11 +91,21 @@ export async function getAdminDashboardData() {
     families: intakes.map((intake) => ({
       id: intake.id,
       name: intake.contactName,
+      email: intake.email,
+      phone: intake.phone,
+      relationship: intake.relationship,
       context: `For loved one, ${intake.ageRange}`,
       care: intake.careTypes.join(", ") || "Not specified",
       location: intake.preferredArea,
       urgency: intake.urgency,
-      status: intake.status
+      budget: intake.budget,
+      languages: intake.languages,
+      additionalNeeds: intake.additionalNeeds,
+      notes: intake.notes,
+      ageRange: intake.ageRange,
+      status: intake.status,
+      createdAt: intake.createdAt.toLocaleDateString("en-GB"),
+      updatedAt: intake.updatedAt.toLocaleDateString("en-GB")
     })),
     providerList: providers.map((provider) => ({
       id: provider.id,
@@ -95,11 +117,15 @@ export async function getAdminDashboardData() {
     })),
     inquiries: matches.map((match) => ({
       id: match.id,
+      intakeId: match.intakeId,
+      providerId: match.providerId,
       family: match.intake.contactName,
       provider: match.provider.name,
       match: `${match.score}%`,
       date: match.createdAt.toLocaleDateString("en-GB"),
-      status: match.status.replaceAll("_", " ")
+      statusRaw: match.status,
+      status: match.status.replaceAll("_", " "),
+      notes: match.notes
     })),
     waitlist: waitlist.map((entry) => ({
       id: entry.id,

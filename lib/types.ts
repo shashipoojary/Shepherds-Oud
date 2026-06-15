@@ -9,6 +9,8 @@ export type ProviderMatch = {
   type: string;
   area: string;
   match: number;
+  matchId?: string;
+  matchStatus?: string;
   availability: string;
   action: string;
   tags: ProviderTag[];
