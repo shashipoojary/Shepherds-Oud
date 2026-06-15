@@ -1,9 +1,26 @@
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
+import { headers } from "next/headers";
+import { auth } from "@/lib/auth";
 import { sendBrevoEmail } from "@/lib/email/brevo";
+import { getUserRole } from "@/lib/auth-server";
 import { actionSchema } from "@/lib/validation/action";
 
 export async function POST(request: Request) {
+  const session = await auth.api.getSession({
+    headers: await headers()
+  });
+
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const role = getUserRole(session);
+
+  if (role !== "ADMIN" && role !== "PROVIDER") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const body = await request.json();
   const parsed = actionSchema.safeParse(body);
 

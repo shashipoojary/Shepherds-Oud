@@ -1,9 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { Menu, X } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+
+const AuthUserMenu = dynamic(() => import("@/components/auth-user-menu").then((module) => module.AuthUserMenu), {
+  ssr: false
+});
 
 const nav = [
   { label: "Home", href: "/" },
@@ -40,6 +45,7 @@ export function SiteHeader() {
               {item.label}
             </Link>
           ))}
+          <AuthUserMenu />
           <Button asChild size="sm">
             <Link href="/family/intake">Get started</Link>
           </Button>
@@ -55,6 +61,11 @@ export function SiteHeader() {
             <Button asChild size="sm" className="mt-2">
               <Link href="/family/intake" onClick={() => setOpen(false)}>
                 Get started
+              </Link>
+            </Button>
+            <Button asChild size="sm" variant="outline" className="mt-2">
+              <Link href="/login" onClick={() => setOpen(false)}>
+                Sign in
               </Link>
             </Button>
           </nav>
