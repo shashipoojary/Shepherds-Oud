@@ -14,7 +14,7 @@ function errorMessage(code: string | null) {
   }
 
   if (code === "oauth") {
-    return "Google sign-in failed. Check your Google OAuth redirect URI and database connection, then try again.";
+    return "Google sign-in failed. This is usually a database or redirect URI issue. Confirm your Supabase tables exist and the Google redirect URI is https://shepherds-oud.vercel.app/api/auth/callback/google.";
   }
 
   return null;
