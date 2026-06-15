@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { intakeSchema } from "@/lib/validation/intake";
-import { prisma } from "@/lib/db";
 
 export async function POST(request: Request) {
   const body = await request.json();
@@ -14,6 +13,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ id: "demo-intake", status: "received", mode: "demo" }, { status: 201 });
   }
 
+  const { prisma } = await import("@/lib/db");
   const intake = await prisma.intake.create({
     data: parsed.data
   });
