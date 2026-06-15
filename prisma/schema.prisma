@@ -156,3 +156,36 @@ enum MatchStatus {
   ACCEPTED
   DECLINED
 }
+
+enum WaitlistType {
+  FAMILY
+  FACILITY
+}
+
+enum WaitlistStatus {
+  NEW
+  CONTACTED
+  CONVERTED
+  CLOSED
+}
+
+model WaitlistEntry {
+  id           String         @id @default(cuid())
+  type         WaitlistType
+  contactName  String
+  email        String
+  phone        String?
+  city         String?
+  province     String?
+  message      String?
+  relationship String?
+  ageRange     String?
+  careTypes    String[]       @default([])
+  facilityName String?
+  facilityType String?
+  bedsTotal    Int?
+  services     String[]       @default([])
+  status       WaitlistStatus @default(NEW)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+}

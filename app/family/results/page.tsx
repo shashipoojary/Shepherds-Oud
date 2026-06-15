@@ -1,8 +1,10 @@
 import { SiteHeader } from "@/components/site-header";
 import { ResultsPageClient } from "@/components/results-page-client";
-import { providers } from "@/lib/content";
+import { getProviderMatches } from "@/lib/data/providers";
 
-export default function ResultsPage() {
+export default async function ResultsPage() {
+  const providers = await getProviderMatches();
+
   return (
     <>
       <SiteHeader />

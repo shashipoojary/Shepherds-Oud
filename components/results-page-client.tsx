@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import type { ProviderMatch } from "@/lib/types";
 
 const filters = ["All options", "Can contact today", "Memory care", "Care at home"];
@@ -24,6 +25,27 @@ export function ResultsPageClient({ providers }: { providers: ProviderMatch[] })
     setMessage(`${provider.action} saved for ${provider.name}. We will help you with the next phone call.`);
   }
 
+  if (!providers.length) {
+    return (
+      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
+        <Link href="/family/dashboard" className="mb-4 inline-flex text-sm text-neutral-500 hover:text-sage-600">
+          Back to dashboard
+        </Link>
+        <section className="rounded-2xl bg-white shadow-soft">
+          <EmptyState
+            title="No matched providers yet"
+            description="Once your intake is reviewed and providers are added to the platform, your recommended options will appear here."
+          />
+        </section>
+        <div className="mt-4">
+          <Button asChild>
+            <Link href="/family/intake">Update intake details</Link>
+          </Button>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
       <Link href="/family/dashboard" className="mb-4 inline-flex text-sm text-neutral-500 hover:text-sage-600">
@@ -36,7 +58,7 @@ export function ResultsPageClient({ providers }: { providers: ProviderMatch[] })
             <p className="text-xs font-semibold uppercase tracking-wide text-sage-700">Best place to start</p>
             <h1 className="mt-2 text-2xl font-semibold text-neutral-950">{recommended.name}</h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">
-              This option is close to Den Haag Centrum, has beds open, and supports Dutch and Arabic. You can request a visit now, or ask a care advisor to call first.
+              {recommended.description}
             </p>
             <div className="mt-5 flex flex-wrap gap-2">
               {recommended.tags.map((tag) => (
@@ -48,9 +70,10 @@ export function ResultsPageClient({ providers }: { providers: ProviderMatch[] })
           </div>
           <div className="border-t border-stone-200 bg-cream p-5 sm:p-7 lg:border-l lg:border-t-0">
             <div className="grid gap-3 text-sm">
-              <ResultFact label="Distance" value="3.2 km" />
-              <ResultFact label="Monthly cost" value="EUR 2,800-3,600" />
-              <ResultFact label="Availability" value="4 beds open" />
+              {recommended.meta.map((item) => (
+                <ResultFact key={item} label="Detail" value={item} />
+              ))}
+              <ResultFact label="Availability" value={recommended.availability} />
             </div>
             <div className="mt-5 grid gap-2">
               <Button onClick={() => handleProviderAction(recommended)}>Request a visit</Button>

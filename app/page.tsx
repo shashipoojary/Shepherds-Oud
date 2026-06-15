@@ -18,7 +18,7 @@ export default function HomePage() {
             <h1 className="mx-auto mt-5 max-w-[680px] text-[clamp(2rem,4vw,3rem)] font-bold leading-tight tracking-normal text-ink">
               Find the right care for your <span className="text-sage-600">loved one</span>
             </h1>
-            <p className="mx-auto mt-5 max-w-[520px] text-[1.1rem] leading-8 text-neutral-700">{homeContent.intro}</p>
+            <p className="mx-auto mt-5 max-w-[560px] text-[1.1rem] leading-8 text-neutral-700">{homeContent.intro}</p>
             <div className="mt-9 flex flex-wrap justify-center gap-3">
               <Button asChild>
                 <Link href="/family/intake">
@@ -26,18 +26,42 @@ export default function HomePage() {
                 </Link>
               </Button>
               <Button asChild variant="outline">
-                <Link href="/provider">I&apos;m a care provider</Link>
+                <Link href="/register">Join the waitlist</Link>
               </Button>
             </div>
           </div>
         </section>
 
         <section className="bg-white px-6 py-16 lg:px-[max(2rem,calc((100vw-1040px)/2))]">
-          <SectionHeader title="How it works" description="Three simple steps to find the right eldercare option." />
+          <SectionHeader title="How it works" description="Three simple steps to find the right eldercare option anywhere in the Netherlands." />
           <div className="grid gap-5 md:grid-cols-3">
             {homeContent.familySteps.map((step, index) => (
               <StepCard key={step.title} marker={String(index + 1)} title={step.title} text={step.text} />
             ))}
+          </div>
+        </section>
+
+        <section className="bg-cream px-6 py-16 lg:px-[max(2rem,calc((100vw-1040px)/2))]">
+          <SectionHeader title={homeContent.prelaunch.title} description={homeContent.prelaunch.description} />
+          <div className="grid gap-5 md:grid-cols-2">
+            <article className="rounded-2xl bg-white p-6 shadow-soft">
+              <h3 className="text-lg font-semibold">Families and seniors</h3>
+              <p className="mt-2 text-sm leading-6 text-neutral-600">
+                Ideal for Instagram or Facebook campaigns targeting families looking for eldercare support nationwide.
+              </p>
+              <Button asChild className="mt-5">
+                <Link href="/register/family">{homeContent.prelaunch.familyCta}</Link>
+              </Button>
+            </article>
+            <article className="rounded-2xl bg-white p-6 shadow-soft">
+              <h3 className="text-lg font-semibold">Care facilities</h3>
+              <p className="mt-2 text-sm leading-6 text-neutral-600">
+                Let facilities register early and list their property before the full provider dashboard goes live.
+              </p>
+              <Button asChild variant="outline" className="mt-5">
+                <Link href="/register/facility">{homeContent.prelaunch.facilityCta}</Link>
+              </Button>
+            </article>
           </div>
         </section>
 
@@ -47,13 +71,16 @@ export default function HomePage() {
         </section>
 
         <section className="bg-white px-6 py-16 lg:px-[max(2rem,calc((100vw-1040px)/2))]">
-          <SectionHeader title="For care providers" description="Reach families who are a genuine fit for your services." />
+          <SectionHeader title="For care providers" description="Reach families who are a genuine fit for your services across the Netherlands." />
           <div className="grid gap-5 md:grid-cols-3">
             {homeContent.providerSteps.map((step) => (
               <StepCard key={step.title} marker="OK" title={step.title} text={step.text} accent />
             ))}
           </div>
-          <div className="mt-8 flex justify-center">
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
+            <Button asChild variant="outline">
+              <Link href="/register/facility">Join provider waitlist</Link>
+            </Button>
             <Button asChild variant="outline">
               <Link href="/provider">
                 Provider dashboard <ArrowRight className="h-4 w-4" />

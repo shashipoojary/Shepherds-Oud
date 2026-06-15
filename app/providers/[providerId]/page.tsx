@@ -2,10 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SiteHeader } from "@/components/site-header";
 import { ProviderDetailActions } from "@/components/provider-detail-actions";
-import { providers } from "@/lib/content";
+import { getProviderById } from "@/lib/data/providers";
 
-export default function ProviderDetailPage({ params }: { params: { providerId: string } }) {
-  const provider = providers.find((item) => item.id === params.providerId);
+export default async function ProviderDetailPage({ params }: { params: Promise<{ providerId: string }> }) {
+  const { providerId } = await params;
+  const provider = await getProviderById(providerId);
 
   if (!provider) {
     notFound();
@@ -28,30 +29,30 @@ export default function ProviderDetailPage({ params }: { params: { providerId: s
           </header>
           <div className="grid gap-8 p-5 sm:p-7 lg:grid-cols-[minmax(0,1fr)_380px]">
             <div>
-            <p className="leading-7 text-neutral-700">{provider.description}</p>
+              <p className="leading-7 text-neutral-700">{provider.description}</p>
 
-            <section className="mt-8">
-              <h2 className="text-xs font-bold uppercase tracking-wide text-neutral-500">Care services</h2>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {provider.tags.map((tag) => (
-                  <span key={tag.label} className="rounded-full bg-sage-100 px-3 py-1 text-sm font-medium text-sage-700">
-                    {tag.label}
-                  </span>
-                ))}
-              </div>
-            </section>
+              <section className="mt-8">
+                <h2 className="text-xs font-bold uppercase tracking-wide text-neutral-500">Care services</h2>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {provider.tags.map((tag) => (
+                    <span key={tag.label} className="rounded-full bg-sage-100 px-3 py-1 text-sm font-medium text-sage-700">
+                      {tag.label}
+                    </span>
+                  ))}
+                </div>
+              </section>
 
-            <section className="mt-8">
-              <h2 className="text-xs font-bold uppercase tracking-wide text-neutral-500">Key details</h2>
-              <div className="mt-3 grid gap-4 sm:grid-cols-2">
-                {Object.entries(provider.details).map(([label, value]) => (
-                  <div key={label} className="text-sm text-neutral-600">
-                    <strong className="block text-neutral-900">{label}</strong>
-                    {value}
-                  </div>
-                ))}
-              </div>
-            </section>
+              <section className="mt-8">
+                <h2 className="text-xs font-bold uppercase tracking-wide text-neutral-500">Key details</h2>
+                <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                  {Object.entries(provider.details).map(([label, value]) => (
+                    <div key={label} className="text-sm text-neutral-600">
+                      <strong className="block text-neutral-900">{label}</strong>
+                      {value}
+                    </div>
+                  ))}
+                </div>
+              </section>
             </div>
 
             <section className="rounded-xl bg-stone-50 p-5 lg:mt-0">

@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Shepherds Oud",
-  description: "Care matching for families, providers, and admins in the Netherlands."
+  description: "Nationwide eldercare matching for families, providers, and advisors in the Netherlands."
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

@@ -1,7 +1,8 @@
 "use client";
 
-import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useState } from "react";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 function errorMessage(code: string | null) {
@@ -14,18 +15,25 @@ function errorMessage(code: string | null) {
   }
 
   if (code === "oauth") {
-    return "Google sign-in failed. This is usually a database or redirect URI issue. Confirm your Supabase tables exist and the Google redirect URI is https://shepherds-oud.vercel.app/api/auth/callback/google.";
+    return "Google sign-in failed. Confirm your Supabase tables exist and the Google redirect URI is https://shepherds-oud.vercel.app/api/auth/callback/google.";
   }
 
   return null;
 }
 
 export function AuthLoginForm() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") || "/admin";
   const error = searchParams.get("error");
   const message = errorMessage(error);
+  const [loading, setLoading] = useState(false);
   const googleLoginHref = `/login/google?callbackUrl=${encodeURIComponent(callbackUrl)}`;
+
+  function startGoogleSignIn() {
+    setLoading(true);
+    router.push(googleLoginHref);
+  }
 
   return (
     <div className="grid gap-4">
@@ -33,8 +41,15 @@ export function AuthLoginForm() {
         <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{message}</p>
       ) : null}
 
-      <Button asChild className="w-full">
-        <Link href={googleLoginHref}>Continue with Google</Link>
+      <Button type="button" onClick={startGoogleSignIn} disabled={loading} className="w-full">
+        {loading ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Redirecting to Google...
+          </>
+        ) : (
+          "Continue with Google"
+        )}
       </Button>
 
       <p className="text-center text-xs leading-5 text-neutral-500">
