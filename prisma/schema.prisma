@@ -1,0 +1,96 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  role      Role     @default(FAMILY)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  intakes Intake[]
+}
+
+model Intake {
+  id              String       @id @default(cuid())
+  contactName     String
+  email           String
+  phone           String
+  relationship    String
+  preferredArea   String
+  ageRange        String
+  careTypes       String[]
+  urgency         String
+  budget          String?
+  languages       String[]
+  additionalNeeds String[]
+  notes           String?
+  status          IntakeStatus @default(NEW)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  userId  String?
+  user    User?   @relation(fields: [userId], references: [id])
+  matches Match[]
+}
+
+model Provider {
+  id           String   @id @default(cuid())
+  name         String
+  type         String
+  area         String
+  description  String
+  languages    String[]
+  services     String[]
+  priceMin     Int?
+  priceMax     Int?
+  bedsTotal    Int?
+  bedsOpen     Int      @default(0)
+  waitlistText String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  matches Match[]
+}
+
+model Match {
+  id         String      @id @default(cuid())
+  score      Int
+  status     MatchStatus @default(SUGGESTED)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  intakeId   String
+  providerId String
+  intake     Intake   @relation(fields: [intakeId], references: [id])
+  provider   Provider @relation(fields: [providerId], references: [id])
+}
+
+enum Role {
+  FAMILY
+  PROVIDER
+  ADMIN
+}
+
+enum IntakeStatus {
+  NEW
+  MATCHED
+  REVIEW
+  PLACED
+  CLOSED
+}
+
+enum MatchStatus {
+  SUGGESTED
+  VISIT_REQUESTED
+  CALLBACK_REQUESTED
+  ACCEPTED
+  DECLINED
+}

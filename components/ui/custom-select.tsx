@@ -1,0 +1,64 @@
+"use client";
+
+import { Check, ChevronDown } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { cn } from "@/lib/utils";
+
+type CustomSelectProps = {
+  label?: string;
+  value: string;
+  placeholder?: string;
+  options: readonly string[];
+  onChange: (value: string) => void;
+  className?: string;
+};
+
+export function CustomSelect({ label, value, placeholder = "Select...", options, onChange, className }: CustomSelectProps) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function close(event: MouseEvent) {
+      if (!ref.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, []);
+
+  return (
+    <div ref={ref} className={cn("relative", className)}>
+      {label ? <span className="mb-1.5 block text-sm font-medium text-neutral-900">{label}</span> : null}
+      <button
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        className="flex min-h-11 w-full items-center justify-between gap-3 rounded-lg border-[1.5px] border-stone-200 bg-white px-3.5 py-2.5 text-left text-[15px] text-neutral-900 transition hover:border-sage-600 focus:border-sage-600 focus:outline-none"
+        aria-expanded={open}
+      >
+        <span className={value ? "text-neutral-900" : "text-neutral-400"}>{value || placeholder}</span>
+        <ChevronDown className={cn("h-4 w-4 shrink-0 text-neutral-400 transition", open && "rotate-180 text-sage-600")} />
+      </button>
+
+      {open ? (
+        <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-30 overflow-hidden rounded-lg border border-stone-200 bg-white shadow-panel">
+          {options.map((option) => (
+            <button
+              key={option}
+              type="button"
+              onClick={() => {
+                onChange(option);
+                setOpen(false);
+              }}
+              className="flex min-h-10 w-full items-center justify-between gap-3 px-3.5 py-2 text-left text-sm text-neutral-700 transition hover:bg-sage-100 hover:text-sage-700"
+            >
+              <span>{option}</span>
+              {value === option ? <Check className="h-4 w-4 text-sage-600" /> : null}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
