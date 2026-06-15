@@ -56,6 +56,7 @@ Set:
 ```bash
 BETTER_AUTH_SECRET="replace-with-openssl-rand-base64-32"
 BETTER_AUTH_URL="https://your-vercel-domain.vercel.app"
+BETTER_AUTH_API_KEY="copy-from-better-auth-dash"
 GOOGLE_CLIENT_ID="..."
 GOOGLE_CLIENT_SECRET="..."
 ```
@@ -63,6 +64,13 @@ GOOGLE_CLIENT_SECRET="..."
 The auth route is:
 
 - `/api/auth/[...all]`
+
+For Better Auth Dash, connect your app with:
+
+- Base URL: `https://your-vercel-domain.vercel.app`
+- Base Path: `/api/auth`
+
+If Dash asks for ownership verification, copy the API key from Dash into `BETTER_AUTH_API_KEY`, then redeploy.
 
 Roles exist in Prisma:
 
@@ -88,6 +96,7 @@ DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/shepherds_oud?sslmode=require
 DIRECT_URL="postgresql://USER:PASSWORD@HOST:5432/shepherds_oud?sslmode=require"
 BETTER_AUTH_SECRET="replace-with-openssl-rand-base64-32"
 BETTER_AUTH_URL="http://localhost:3000"
+BETTER_AUTH_API_KEY="copy-from-better-auth-dash"
 BREVO_API_KEY="xkeysib_..."
 ADVISOR_EMAIL="care@shepherdsoud.nl"
 BREVO_FROM_EMAIL="care@shepherdsoud.nl"

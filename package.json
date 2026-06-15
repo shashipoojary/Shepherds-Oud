@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@better-auth/infra": "^0.2.14",
     "@prisma/client": "^5.22.0",
     "@radix-ui/react-slot": "^1.1.1",
     "@supabase/supabase-js": "^2.108.2",
@@ -22,7 +23,7 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "tailwind-merge": "^2.5.5",
-    "zod": "^3.24.1"
+    "zod": "^4.1.12"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

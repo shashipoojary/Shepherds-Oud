@@ -26,6 +26,8 @@ The original target stack mentioned Next.js 14. npm currently reports security a
 - `/provider` provider dashboard
 - `/admin` admin dashboard
 - `/api/intakes` backend intake API route
+- `/api/auth/[...all]` Better Auth route
+- `/api/actions` admin/provider action logging route
 
 ## Development
 

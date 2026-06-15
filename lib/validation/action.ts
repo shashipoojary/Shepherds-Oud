@@ -5,7 +5,7 @@ export const actionSchema = z.object({
   targetType: z.string().min(1),
   targetId: z.string().min(1),
   label: z.string().min(1),
-  payload: z.record(z.unknown()).optional()
+  payload: z.record(z.string(), z.unknown()).optional()
 });
 
 export type ActionInput = z.infer<typeof actionSchema>;

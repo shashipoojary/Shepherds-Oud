@@ -1,5 +1,6 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
+import { dash } from "@better-auth/infra";
 import { prisma } from "@/lib/db";
 
 export const auth = betterAuth({
@@ -17,5 +18,10 @@ export const auth = betterAuth({
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || ""
     }
   },
-  trustedOrigins: [process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"]
+  trustedOrigins: [process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"],
+  plugins: [
+    dash({
+      apiKey: process.env.BETTER_AUTH_API_KEY
+    })
+  ]
 });
