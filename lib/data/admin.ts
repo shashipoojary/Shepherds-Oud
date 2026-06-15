@@ -55,8 +55,16 @@ export async function getAdminDashboardData() {
         phone: true,
         city: true,
         province: true,
+        message: true,
+        relationship: true,
+        ageRange: true,
+        careTypes: true,
+        facilityType: true,
+        bedsTotal: true,
+        services: true,
         status: true,
-        createdAt: true
+        createdAt: true,
+        updatedAt: true
       }
     })
   ]);
@@ -96,12 +104,24 @@ export async function getAdminDashboardData() {
     waitlist: waitlist.map((entry) => ({
       id: entry.id,
       type: entry.type,
+      contactName: entry.contactName,
       name: entry.type === "FACILITY" ? entry.facilityName || entry.contactName : entry.contactName,
       email: entry.email,
-      phone: entry.phone || "—",
+      phone: entry.phone || null,
+      city: entry.city,
+      province: entry.province,
+      message: entry.message,
+      relationship: entry.relationship,
+      ageRange: entry.ageRange,
+      careTypes: entry.careTypes,
+      facilityName: entry.facilityName,
+      facilityType: entry.facilityType,
+      bedsTotal: entry.bedsTotal,
+      services: entry.services,
       location: [entry.city, entry.province].filter(Boolean).join(", ") || "—",
       status: entry.status,
-      createdAt: entry.createdAt.toLocaleDateString("en-GB")
+      createdAt: entry.createdAt.toLocaleDateString("en-GB"),
+      updatedAt: entry.updatedAt.toLocaleDateString("en-GB")
     }))
   };
 }

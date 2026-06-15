@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
+import { ButtonLabel } from "@/components/ui/button-label";
 import { ButtonRow } from "@/components/ui/button-row";
 
 export default async function RegisterSuccessPage({ searchParams }: { searchParams: Promise<{ type?: string }> }) {
@@ -24,7 +25,9 @@ export default async function RegisterSuccessPage({ searchParams }: { searchPara
               <Link href="/">Back to home</Link>
             </Button>
             <Button asChild variant="outline" className="w-full">
-              <Link href="/family/intake">Start a care intake</Link>
+              <Link href="/family/intake">
+                <ButtonLabel short="Care intake">Start a care intake</ButtonLabel>
+              </Link>
             </Button>
           </ButtonRow>
         </section>

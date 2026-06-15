@@ -12,16 +12,17 @@ function mapProvider(provider: {
   priceMin: number | null;
   priceMax: number | null;
   bedsTotal: number | null;
-  bedsOpen: number;
+  bedsOpen: number | null;
   waitlistText: string | null;
 }): ProviderMatch {
+  const openBeds = provider.bedsOpen ?? 0;
   return {
     id: provider.id,
     name: provider.name,
     type: provider.type,
     area: provider.area,
     match: 0,
-    availability: provider.bedsOpen > 0 ? "Available now" : provider.waitlistText || "Contact for availability",
+    availability: provider.bedsOpen != null && provider.bedsOpen > 0 ? "Available now" : provider.waitlistText || "Contact for availability",
     action: "Request visit",
     tags: [
       ...provider.services.map((label) => ({ label, type: "service" as const })),
@@ -29,12 +30,12 @@ function mapProvider(provider: {
     ],
     meta: [
       provider.priceMin && provider.priceMax ? `EUR ${provider.priceMin}-${provider.priceMax}/mo` : "Price on request",
-      provider.bedsOpen > 0 ? `${provider.bedsOpen} beds open` : ""
+      provider.bedsOpen != null && provider.bedsOpen > 0 ? `${provider.bedsOpen} beds open` : ""
     ].filter(Boolean),
     description: provider.description,
     details: {
       Area: provider.area,
-      ...(provider.bedsTotal ? { "Beds available": `${provider.bedsOpen} of ${provider.bedsTotal}` } : {}),
+      ...(provider.bedsTotal && provider.bedsOpen != null ? { "Beds available": `${openBeds} of ${provider.bedsTotal}` } : {}),
       ...(provider.waitlistText ? { Waitlist: provider.waitlistText } : {}),
       ...(provider.priceMin && provider.priceMax
         ? { "Price range": `EUR ${provider.priceMin} - EUR ${provider.priceMax} per month` }

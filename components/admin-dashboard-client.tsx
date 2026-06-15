@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { DetailList, SlidePanel } from "@/components/ui/slide-panel";
 import { StatGrid } from "@/components/ui/stat-grid";
 import type { AdminDashboardData } from "@/lib/data/admin";
 import { recordAction } from "@/lib/client-actions";
@@ -144,7 +145,7 @@ function ProvidersTable({
             <td className="px-4 py-3 text-sm text-neutral-600">{provider.type}</td>
             <td className="px-4 py-3 text-sm text-neutral-600">{provider.area}</td>
             <td className="px-4 py-3 text-sm text-neutral-600">
-              {provider.bedsOpen ?? 0}
+              {provider.bedsOpen ?? "—"}
               {provider.bedsTotal ? ` / ${provider.bedsTotal}` : ""}
             </td>
           </tr>
@@ -198,6 +199,7 @@ function WaitlistTable({
 }) {
   const [entries, setEntries] = useState(initialEntries);
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [selected, setSelected] = useState<WaitlistEntry | null>(null);
 
   async function markContacted(id: string, name: string) {
     setPendingId(id);
@@ -212,7 +214,10 @@ function WaitlistTable({
         throw new Error("Could not update waitlist entry.");
       }
 
-      setEntries((current) => current.map((entry) => (entry.id === id ? { ...entry, status: "CONTACTED" } : entry)));
+      setEntries((current) =>
+        current.map((entry) => (entry.id === id ? { ...entry, status: "CONTACTED" as const } : entry))
+      );
+      setSelected((current) => (current?.id === id ? { ...current, status: "CONTACTED" } : current));
 
       await recordAction({
         type: "waitlist_contacted",
@@ -231,53 +236,156 @@ function WaitlistTable({
   }
 
   return (
-    <table className="w-full min-w-[980px] border-collapse text-left">
-      <thead className="bg-cream text-xs uppercase tracking-wide text-neutral-500">
-        <tr>
-          <th className="px-4 py-3">Type</th>
-          <th className="px-4 py-3">Name</th>
-          <th className="px-4 py-3">Email</th>
-          <th className="px-4 py-3">Location</th>
-          <th className="px-4 py-3">Registered</th>
-          <th className="px-4 py-3">Status</th>
-          <th className="px-4 py-3">Action</th>
-        </tr>
-      </thead>
-      <tbody className="divide-y divide-stone-200">
-        {entries.map((entry) => {
-          const isContacted = entry.status === "CONTACTED";
-          const isPending = pendingId === entry.id;
+    <>
+      <table className="w-full min-w-[980px] border-collapse text-left">
+        <thead className="bg-cream text-xs uppercase tracking-wide text-neutral-500">
+          <tr>
+            <th className="px-4 py-3">Type</th>
+            <th className="px-4 py-3">Name</th>
+            <th className="px-4 py-3">Email</th>
+            <th className="px-4 py-3">Location</th>
+            <th className="px-4 py-3">Registered</th>
+            <th className="px-4 py-3">Status</th>
+            <th className="px-4 py-3">Actions</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-stone-200">
+          {entries.map((entry) => {
+            const isContacted = entry.status === "CONTACTED";
+            const isPending = pendingId === entry.id;
 
-          return (
-            <tr key={entry.id} className="hover:bg-cream">
-              <td className="px-4 py-3 text-sm text-neutral-600">{entry.type}</td>
-              <td className="px-4 py-3 text-sm font-semibold">{entry.name}</td>
-              <td className="px-4 py-3 text-sm text-neutral-600">{entry.email}</td>
-              <td className="px-4 py-3 text-sm text-neutral-600">{entry.location}</td>
-              <td className="px-4 py-3 text-sm text-neutral-600">{entry.createdAt}</td>
-              <td className="px-4 py-3">
-                <span
-                  className={`rounded-full px-3 py-1 text-xs font-medium ${
-                    isContacted ? "bg-sage-600 text-white" : "bg-amber-100 text-amber-800"
-                  }`}
-                >
-                  {entry.status}
-                </span>
-              </td>
-              <td className="px-4 py-3">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  disabled={isContacted || isPending}
-                  onClick={() => markContacted(entry.id, entry.name)}
-                >
-                  {isPending ? "Saving..." : isContacted ? "Contacted" : "Mark contacted"}
-                </Button>
-              </td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
+            return (
+              <tr key={entry.id} className="cursor-pointer hover:bg-cream" onClick={() => setSelected(entry)}>
+                <td className="px-4 py-3 text-sm text-neutral-600">{entry.type}</td>
+                <td className="px-4 py-3 text-sm font-semibold">{entry.name}</td>
+                <td className="px-4 py-3 text-sm text-neutral-600">{entry.email}</td>
+                <td className="px-4 py-3 text-sm text-neutral-600">{entry.location}</td>
+                <td className="px-4 py-3 text-sm text-neutral-600">{entry.createdAt}</td>
+                <td className="px-4 py-3">
+                  <span
+                    className={`rounded-full px-3 py-1 text-xs font-medium ${
+                      isContacted ? "bg-sage-600 text-white" : "bg-amber-100 text-amber-800"
+                    }`}
+                  >
+                    {entry.status}
+                  </span>
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-1">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setSelected(entry);
+                      }}
+                    >
+                      View
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      disabled={isContacted || isPending}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        void markContacted(entry.id, entry.name);
+                      }}
+                    >
+                      {isPending ? "Saving..." : isContacted ? "Contacted" : "Mark contacted"}
+                    </Button>
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+
+      <WaitlistDetailPanel
+        entry={selected}
+        onClose={() => setSelected(null)}
+        onMarkContacted={markContacted}
+        pendingId={pendingId}
+      />
+    </>
+  );
+}
+
+function WaitlistDetailPanel({
+  entry,
+  onClose,
+  onMarkContacted,
+  pendingId
+}: {
+  entry: WaitlistEntry | null;
+  onClose: () => void;
+  onMarkContacted: (id: string, name: string) => Promise<void>;
+  pendingId: string | null;
+}) {
+  const isContacted = entry?.status === "CONTACTED";
+  const isPending = entry ? pendingId === entry.id : false;
+
+  const familyDetails = entry
+    ? [
+        { label: "Type", value: entry.type },
+        { label: "Contact name", value: entry.contactName },
+        { label: "Email", value: entry.email },
+        { label: "Phone", value: entry.phone },
+        { label: "City", value: entry.city },
+        { label: "Province", value: entry.province },
+        { label: "Relationship", value: entry.relationship },
+        { label: "Age range", value: entry.ageRange },
+        { label: "Care types", value: entry.careTypes?.length ? entry.careTypes.join(", ") : null },
+        { label: "Message", value: entry.message },
+        { label: "Status", value: entry.status },
+        { label: "Registered", value: entry.createdAt },
+        { label: "Last updated", value: entry.updatedAt }
+      ]
+    : [];
+
+  const facilityDetails = entry
+    ? [
+        { label: "Type", value: entry.type },
+        { label: "Facility name", value: entry.facilityName },
+        { label: "Contact name", value: entry.contactName },
+        { label: "Email", value: entry.email },
+        { label: "Phone", value: entry.phone },
+        { label: "City", value: entry.city },
+        { label: "Province", value: entry.province },
+        { label: "Facility type", value: entry.facilityType },
+        { label: "Total beds", value: entry.bedsTotal },
+        { label: "Services", value: entry.services?.length ? entry.services.join(", ") : null },
+        { label: "Message", value: entry.message },
+        { label: "Status", value: entry.status },
+        { label: "Registered", value: entry.createdAt },
+        { label: "Last updated", value: entry.updatedAt }
+      ]
+    : [];
+
+  return (
+    <SlidePanel
+      open={Boolean(entry)}
+      onClose={onClose}
+      title={entry?.name || "Waitlist entry"}
+      subtitle={entry ? `${entry.type} registration` : undefined}
+    >
+      {entry ? (
+        <>
+          <DetailList items={entry.type === "FACILITY" ? facilityDetails : familyDetails} />
+          <div className="mt-6 grid grid-cols-2 gap-3">
+            <Button variant="outline" className="w-full" onClick={onClose}>
+              Close
+            </Button>
+            <Button
+              className="w-full"
+              disabled={isContacted || isPending}
+              onClick={() => void onMarkContacted(entry.id, entry.name)}
+            >
+              {isPending ? "Saving..." : isContacted ? "Contacted" : "Mark contacted"}
+            </Button>
+          </div>
+        </>
+      ) : null}
+    </SlidePanel>
   );
 }

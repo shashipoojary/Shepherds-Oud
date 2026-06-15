@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Provider" ALTER COLUMN "bedsOpen" DROP NOT NULL;
+ALTER TABLE "Provider" ALTER COLUMN "bedsOpen" DROP DEFAULT;

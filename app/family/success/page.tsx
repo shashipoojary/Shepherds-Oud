@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
+import { ButtonLabel } from "@/components/ui/button-label";
 import { ButtonRow } from "@/components/ui/button-row";
 
 export default function SuccessPage() {
@@ -16,10 +17,14 @@ export default function SuccessPage() {
           </p>
           <ButtonRow className="mt-7">
             <Button asChild className="w-full">
-              <Link href="/family/results">View matched providers</Link>
+              <Link href="/family/results">
+                <ButtonLabel short="Matches">View matched providers</ButtonLabel>
+              </Link>
             </Button>
             <Button asChild variant="ghost" className="w-full">
-              <Link href="/family/dashboard">View my dashboard</Link>
+              <Link href="/family/dashboard">
+                <ButtonLabel short="Dashboard">View my dashboard</ButtonLabel>
+              </Link>
             </Button>
           </ButtonRow>
         </section>

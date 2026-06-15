@@ -104,7 +104,7 @@ model Provider {
   priceMin     Int?
   priceMax     Int?
   bedsTotal    Int?
-  bedsOpen     Int      @default(0)
+  bedsOpen     Int?
   waitlistText String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
+import { ButtonLabel } from "@/components/ui/button-label";
 import { ButtonRow } from "@/components/ui/button-row";
 import { EmptyState } from "@/components/ui/empty-state";
 
@@ -17,10 +18,14 @@ export default function FamilyDashboardPage() {
           </p>
           <ButtonRow className="mt-5 max-w-lg">
             <Button asChild className="w-full">
-              <Link href="/family/intake">Start or update intake</Link>
+              <Link href="/family/intake">
+                <ButtonLabel short="Intake">Start or update intake</ButtonLabel>
+              </Link>
             </Button>
             <Button asChild variant="ghost" className="w-full">
-              <Link href="/family/results">View matched providers</Link>
+              <Link href="/family/results">
+                <ButtonLabel short="Matches">View matched providers</ButtonLabel>
+              </Link>
             </Button>
           </ButtonRow>
         </header>

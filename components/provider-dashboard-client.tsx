@@ -8,10 +8,13 @@ import { StatGrid } from "@/components/ui/stat-grid";
 import { recordAction } from "@/lib/client-actions";
 
 export function ProviderDashboardClient() {
-  const [beds, setBeds] = useState(0);
+  const [bedsInput, setBedsInput] = useState("");
   const [availability, setAvailability] = useState("Not set");
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
+
+  const bedsValue = bedsInput.trim() === "" ? null : Number(bedsInput);
+  const bedsDisplay = bedsValue === null || Number.isNaN(bedsValue) ? "—" : String(bedsValue);
 
   useEffect(() => {
     if (!message) return;
@@ -20,6 +23,11 @@ export function ProviderDashboardClient() {
   }, [message]);
 
   async function saveAvailability() {
+    if (bedsInput.trim() !== "" && (Number.isNaN(bedsValue) || bedsValue! < 0)) {
+      setMessage("Enter a valid number of beds, or leave the field empty.");
+      return;
+    }
+
     setSaving(true);
     try {
       await recordAction({
@@ -27,7 +35,7 @@ export function ProviderDashboardClient() {
         targetType: "provider",
         targetId: "self",
         label: "Availability settings saved.",
-        payload: { beds, availability }
+        payload: { beds: bedsValue, availability }
       });
       setMessage("Availability settings saved.");
     } catch {
@@ -51,7 +59,7 @@ export function ProviderDashboardClient() {
 
       <StatGrid
         stats={[
-          [String(beds), "Available beds"],
+          [bedsDisplay, "Available beds"],
           ["0", "New inquiries"],
           [availability, "Availability status"],
           ["—", "Active listings"]
@@ -66,15 +74,16 @@ export function ProviderDashboardClient() {
 
         <section className="rounded-xl bg-white p-5 shadow-soft">
           <h2 className="font-semibold">Availability</h2>
-          <p className="mt-2 text-sm text-neutral-600">Update your open beds and availability status.</p>
+          <p className="mt-2 text-sm text-neutral-600">Update your open beds and availability status. Leave beds empty if not set yet.</p>
           <form className="mt-4 grid gap-4" onSubmit={handleSubmit}>
             <label className="grid gap-2 text-sm font-medium">
               Available beds
               <input
                 type="number"
                 min="0"
-                value={beds}
-                onChange={(event) => setBeds(Number(event.target.value))}
+                value={bedsInput}
+                placeholder="Not set"
+                onChange={(event) => setBedsInput(event.target.value)}
                 className="rounded-lg border border-stone-200 px-3 py-2 outline-sage-600"
               />
             </label>
