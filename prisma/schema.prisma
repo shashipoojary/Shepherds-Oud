@@ -1,24 +1,25 @@
+
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
+  id            String   @id @default(cuid())
+  email         String   @unique
   name          String?
-  emailVerified Boolean   @default(false)
+  emailVerified Boolean  @default(false)
   image         String?
-  role          Role      @default(FAMILY)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  role          Role     @default(FAMILY)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  intakes Intake[]
+  intakes  Intake[]
   sessions Session[]
   accounts Account[]
 }
@@ -34,6 +35,8 @@ model Session {
 
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model Account {
@@ -52,6 +55,8 @@ model Account {
 
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model Verification {
@@ -61,6 +66,8 @@ model Verification {
   expiresAt  DateTime
   createdAt  DateTime? @default(now())
   updatedAt  DateTime? @updatedAt
+
+  @@index([identifier])
 }
 
 model Intake {
@@ -106,11 +113,11 @@ model Provider {
 }
 
 model Match {
-  id         String      @id @default(cuid())
-  score      Int
-  status     MatchStatus @default(SUGGESTED)
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
+  id        String      @id @default(cuid())
+  score     Int
+  status    MatchStatus @default(SUGGESTED)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
 
   intakeId   String
   providerId String
