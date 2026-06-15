@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { CustomSelect } from "@/components/ui/custom-select";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -11,16 +11,35 @@ export function ProviderDashboardClient() {
   const [beds, setBeds] = useState(0);
   const [availability, setAvailability] = useState("Not set");
   const [message, setMessage] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!message) return;
+    const timer = window.setTimeout(() => setMessage(""), 4000);
+    return () => window.clearTimeout(timer);
+  }, [message]);
 
   async function saveAvailability() {
-    await recordAction({
-      type: "update_availability",
-      targetType: "provider",
-      targetId: "self",
-      label: "Availability settings saved.",
-      payload: { beds, availability }
-    });
-    setMessage("Availability settings saved.");
+    setSaving(true);
+    try {
+      await recordAction({
+        type: "update_availability",
+        targetType: "provider",
+        targetId: "self",
+        label: "Availability settings saved.",
+        payload: { beds, availability }
+      });
+      setMessage("Availability settings saved.");
+    } catch {
+      setMessage("Could not save availability. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    void saveAvailability();
   }
 
   return (
@@ -48,7 +67,7 @@ export function ProviderDashboardClient() {
         <section className="rounded-xl bg-white p-5 shadow-soft">
           <h2 className="font-semibold">Availability</h2>
           <p className="mt-2 text-sm text-neutral-600">Update your open beds and availability status.</p>
-          <div className="mt-4 grid gap-4">
+          <form className="mt-4 grid gap-4" onSubmit={handleSubmit}>
             <label className="grid gap-2 text-sm font-medium">
               Available beds
               <input
@@ -67,10 +86,10 @@ export function ProviderDashboardClient() {
                 options={["Not set", "Available now", "Waitlist", "Fully occupied"]}
               />
             </label>
-            <Button size="sm" onClick={saveAvailability}>
-              Save availability
+            <Button type="submit" size="sm" disabled={saving}>
+              {saving ? "Saving..." : "Save availability"}
             </Button>
-          </div>
+          </form>
           {message ? <p className="mt-4 rounded-lg bg-sage-100 p-3 text-sm text-sage-700">{message}</p> : null}
         </section>
       </div>

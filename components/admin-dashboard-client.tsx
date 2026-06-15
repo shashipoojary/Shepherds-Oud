@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StatGrid } from "@/components/ui/stat-grid";
@@ -8,10 +8,17 @@ import type { AdminDashboardData } from "@/lib/data/admin";
 import { recordAction } from "@/lib/client-actions";
 
 type AdminTab = "families" | "providers" | "inquiries" | "waitlist";
+type WaitlistEntry = AdminDashboardData["waitlist"][number];
 
 export function AdminDashboardClient({ data }: { data: AdminDashboardData }) {
   const [tab, setTab] = useState<AdminTab>("families");
   const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    if (!message) return;
+    const timer = window.setTimeout(() => setMessage(""), 4000);
+    return () => window.clearTimeout(timer);
+  }, [message]);
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -183,21 +190,44 @@ function InquiriesTable({
 }
 
 function WaitlistTable({
-  entries,
+  entries: initialEntries,
   setMessage
 }: {
-  entries: AdminDashboardData["waitlist"];
+  entries: WaitlistEntry[];
   setMessage: (message: string) => void;
 }) {
+  const [entries, setEntries] = useState(initialEntries);
+  const [pendingId, setPendingId] = useState<string | null>(null);
+
   async function markContacted(id: string, name: string) {
-    await recordAction({
-      type: "waitlist_contacted",
-      targetType: "waitlist",
-      targetId: id,
-      label: `Marked ${name} as contacted.`,
-      payload: { id, name }
-    });
-    setMessage(`Marked ${name} as contacted.`);
+    setPendingId(id);
+    try {
+      const response = await fetch(`/api/waitlist/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "CONTACTED" })
+      });
+
+      if (!response.ok) {
+        throw new Error("Could not update waitlist entry.");
+      }
+
+      setEntries((current) => current.map((entry) => (entry.id === id ? { ...entry, status: "CONTACTED" } : entry)));
+
+      await recordAction({
+        type: "waitlist_contacted",
+        targetType: "waitlist",
+        targetId: id,
+        label: `Marked ${name} as contacted.`,
+        payload: { id, name }
+      });
+
+      setMessage(`${name} marked as contacted. Status updated in the waitlist.`);
+    } catch {
+      setMessage(`Could not mark ${name} as contacted. Please try again.`);
+    } finally {
+      setPendingId(null);
+    }
   }
 
   return (
@@ -209,24 +239,44 @@ function WaitlistTable({
           <th className="px-4 py-3">Email</th>
           <th className="px-4 py-3">Location</th>
           <th className="px-4 py-3">Registered</th>
+          <th className="px-4 py-3">Status</th>
           <th className="px-4 py-3">Action</th>
         </tr>
       </thead>
       <tbody className="divide-y divide-stone-200">
-        {entries.map((entry) => (
-          <tr key={entry.id} className="hover:bg-cream">
-            <td className="px-4 py-3 text-sm text-neutral-600">{entry.type}</td>
-            <td className="px-4 py-3 text-sm font-semibold">{entry.name}</td>
-            <td className="px-4 py-3 text-sm text-neutral-600">{entry.email}</td>
-            <td className="px-4 py-3 text-sm text-neutral-600">{entry.location}</td>
-            <td className="px-4 py-3 text-sm text-neutral-600">{entry.createdAt}</td>
-            <td className="px-4 py-3">
-              <Button size="sm" variant="ghost" onClick={() => markContacted(entry.id, entry.name)}>
-                Mark contacted
-              </Button>
-            </td>
-          </tr>
-        ))}
+        {entries.map((entry) => {
+          const isContacted = entry.status === "CONTACTED";
+          const isPending = pendingId === entry.id;
+
+          return (
+            <tr key={entry.id} className="hover:bg-cream">
+              <td className="px-4 py-3 text-sm text-neutral-600">{entry.type}</td>
+              <td className="px-4 py-3 text-sm font-semibold">{entry.name}</td>
+              <td className="px-4 py-3 text-sm text-neutral-600">{entry.email}</td>
+              <td className="px-4 py-3 text-sm text-neutral-600">{entry.location}</td>
+              <td className="px-4 py-3 text-sm text-neutral-600">{entry.createdAt}</td>
+              <td className="px-4 py-3">
+                <span
+                  className={`rounded-full px-3 py-1 text-xs font-medium ${
+                    isContacted ? "bg-sage-600 text-white" : "bg-amber-100 text-amber-800"
+                  }`}
+                >
+                  {entry.status}
+                </span>
+              </td>
+              <td className="px-4 py-3">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  disabled={isContacted || isPending}
+                  onClick={() => markContacted(entry.id, entry.name)}
+                >
+                  {isPending ? "Saving..." : isContacted ? "Contacted" : "Mark contacted"}
+                </Button>
+              </td>
+            </tr>
+          );
+        })}
       </tbody>
     </table>
   );

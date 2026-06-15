@@ -4,8 +4,10 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronDown, Loader2, LogOut, UserRound } from "lucide-react";
+import { LoadingLink } from "@/components/loading-link";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
+import { ButtonRow } from "@/components/ui/button-row";
 import type { AppRole } from "@/lib/auth-server";
 
 function dashboardHref(role: AppRole | undefined) {
@@ -24,6 +26,76 @@ type AuthUserMenuProps = {
   variant?: "desktop" | "mobile";
   onNavigate?: () => void;
 };
+
+export function MobileNavProfile({ onNavigate }: { onNavigate?: () => void }) {
+  const router = useRouter();
+  const [signingOut, setSigningOut] = useState(false);
+  const { data: session, isPending } = authClient.useSession();
+  const role = session?.user.role as AppRole | undefined;
+
+  async function signOut() {
+    setSigningOut(true);
+    await authClient.signOut({
+      fetchOptions: {
+        onSuccess: () => {
+          onNavigate?.();
+          router.push("/");
+          router.refresh();
+        }
+      }
+    });
+    setSigningOut(false);
+  }
+
+  if (isPending) {
+    return (
+      <div className="rounded-xl border border-stone-200 bg-cream p-4">
+        <span className="inline-flex items-center gap-2 text-sm text-neutral-500">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading account...
+        </span>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return (
+      <Button asChild className="w-full">
+        <Link href="/login" onClick={onNavigate}>
+          Sign in
+        </Link>
+      </Button>
+    );
+  }
+
+  const email = session.user.email;
+  const name = session.user.name || email;
+
+  return (
+    <div className="rounded-xl border border-stone-200 bg-cream p-4">
+      <div className="flex items-start gap-3">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-sage-100 text-sage-700">
+          <UserRound className="h-5 w-5" />
+        </span>
+        <div className="min-w-0">
+          <p className="truncate font-semibold text-neutral-900">{name}</p>
+          <p className="mt-0.5 truncate text-sm text-neutral-500">{email}</p>
+          <p className="mt-2 inline-flex rounded-full bg-sage-100 px-2.5 py-1 text-xs font-medium text-sage-700">{roleLabel(role)}</p>
+        </div>
+      </div>
+      <ButtonRow className="mt-4">
+        <Button asChild size="sm" className="w-full">
+          <LoadingLink href={dashboardHref(role)} onNavigate={onNavigate}>
+            Dashboard
+          </LoadingLink>
+        </Button>
+        <Button type="button" size="sm" variant="outline" className="w-full" onClick={signOut} disabled={signingOut}>
+          {signingOut ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sign out"}
+        </Button>
+      </ButtonRow>
+    </div>
+  );
+}
 
 export function AuthUserMenu({ variant = "desktop", onNavigate }: AuthUserMenuProps) {
   const router = useRouter();
@@ -60,7 +132,7 @@ export function AuthUserMenu({ variant = "desktop", onNavigate }: AuthUserMenuPr
 
   if (isPending) {
     return (
-      <span className={`inline-flex items-center gap-2 text-sm text-neutral-500 ${variant === "desktop" ? "hidden md:inline-flex" : ""}`}>
+      <span className="inline-flex items-center gap-2 text-sm text-neutral-500">
         <Loader2 className="h-4 w-4 animate-spin" />
         Loading...
       </span>
@@ -68,18 +140,8 @@ export function AuthUserMenu({ variant = "desktop", onNavigate }: AuthUserMenuPr
   }
 
   if (!session) {
-    if (variant === "mobile") {
-      return (
-        <Button asChild size="sm" variant="outline" className="mt-2">
-          <Link href="/login" onClick={onNavigate}>
-            Sign in
-          </Link>
-        </Button>
-      );
-    }
-
     return (
-      <Button asChild size="sm" variant="outline" className="hidden md:inline-flex">
+      <Button asChild size="sm" variant="outline">
         <Link href="/login">Sign in</Link>
       </Button>
     );
@@ -87,13 +149,9 @@ export function AuthUserMenu({ variant = "desktop", onNavigate }: AuthUserMenuPr
 
   const email = session.user.email;
   const name = session.user.name || email;
-  const panelClass =
-    variant === "mobile"
-      ? "mt-2 rounded-xl border border-stone-200 bg-white p-3 shadow-soft"
-      : "absolute right-0 top-[calc(100%+0.5rem)] z-30 min-w-[260px] rounded-xl border border-stone-200 bg-white p-3 shadow-soft";
 
   return (
-    <div ref={menuRef} className={variant === "desktop" ? "relative hidden md:block" : "block md:hidden"}>
+    <div ref={menuRef} className="relative">
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
@@ -104,27 +162,27 @@ export function AuthUserMenu({ variant = "desktop", onNavigate }: AuthUserMenuPr
         <span className="grid h-8 w-8 place-items-center rounded-full bg-sage-100 text-sage-700">
           <UserRound className="h-4 w-4" />
         </span>
-        {variant === "desktop" ? <ChevronDown className="h-4 w-4 text-neutral-500" /> : null}
+        <ChevronDown className="h-4 w-4 text-neutral-500" />
       </button>
 
       {open ? (
-        <div className={panelClass}>
+        <div className="absolute right-0 top-[calc(100%+0.5rem)] z-30 min-w-[260px] rounded-xl border border-stone-200 bg-white p-3 shadow-soft">
           <div className="border-b border-stone-100 pb-3">
             <p className="font-semibold text-neutral-900">{name}</p>
             <p className="mt-1 break-all text-sm text-neutral-500">{email}</p>
             <p className="mt-2 inline-flex rounded-full bg-sage-100 px-2.5 py-1 text-xs font-medium text-sage-700">{roleLabel(role)}</p>
           </div>
           <div className="grid gap-1 pt-3">
-            <Link
+            <LoadingLink
               href={dashboardHref(role)}
-              onClick={() => {
+              onNavigate={() => {
                 setOpen(false);
                 onNavigate?.();
               }}
               className="rounded-lg px-3 py-2 text-sm text-neutral-700 hover:bg-sage-50"
             >
               Open dashboard
-            </Link>
+            </LoadingLink>
             <button
               type="button"
               onClick={signOut}
@@ -161,7 +219,7 @@ export function AuthHeaderActions({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <>
       <AuthUserMenu variant="desktop" onNavigate={onNavigate} />
-      <GetStartedButton onNavigate={onNavigate} className="hidden md:inline-flex" />
+      <GetStartedButton onNavigate={onNavigate} />
     </>
   );
 }

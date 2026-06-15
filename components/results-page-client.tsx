@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { ButtonRow } from "@/components/ui/button-row";
 import { EmptyState } from "@/components/ui/empty-state";
 import type { ProviderMatch } from "@/lib/types";
 
@@ -75,12 +76,14 @@ export function ResultsPageClient({ providers }: { providers: ProviderMatch[] })
               ))}
               <ResultFact label="Availability" value={recommended.availability} />
             </div>
-            <div className="mt-5 grid gap-2">
-              <Button onClick={() => handleProviderAction(recommended)}>Request a visit</Button>
-              <Button asChild variant="ghost">
+            <ButtonRow className="mt-5">
+              <Button className="w-full" onClick={() => handleProviderAction(recommended)}>
+                Request a visit
+              </Button>
+              <Button asChild variant="ghost" className="w-full">
                 <Link href={`/providers/${recommended.id}`}>Read full details</Link>
               </Button>
-            </div>
+            </ButtonRow>
           </div>
         </div>
       </section>
@@ -161,14 +164,14 @@ function CompareRow({ provider, onAction }: { provider: ProviderMatch; onAction:
           ))}
         </div>
       </div>
-      <div className="flex flex-wrap gap-2 md:grid">
-        <Button asChild size="sm">
+      <ButtonRow>
+        <Button asChild size="sm" className="w-full">
           <Link href={`/providers/${provider.id}`}>Details</Link>
         </Button>
-        <Button size="sm" variant="ghost" onClick={() => onAction(provider)}>
+        <Button size="sm" variant="ghost" className="w-full" onClick={() => onAction(provider)}>
           {provider.action}
         </Button>
-      </div>
+      </ButtonRow>
     </article>
   );
 }

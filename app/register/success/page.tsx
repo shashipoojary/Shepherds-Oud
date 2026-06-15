@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
+import { ButtonRow } from "@/components/ui/button-row";
 
 export default async function RegisterSuccessPage({ searchParams }: { searchParams: Promise<{ type?: string }> }) {
   const params = await searchParams;
@@ -18,14 +19,14 @@ export default async function RegisterSuccessPage({ searchParams }: { searchPara
               ? "Thank you for registering your care facility. We will contact you when provider onboarding opens."
               : "Thank you for registering. We will contact you as soon as Shepherds Oud is ready to support your family."}
           </p>
-          <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <Button asChild>
+          <ButtonRow className="mt-8">
+            <Button asChild className="w-full">
               <Link href="/">Back to home</Link>
             </Button>
-            <Button asChild variant="outline">
+            <Button asChild variant="outline" className="w-full">
               <Link href="/family/intake">Start a care intake</Link>
             </Button>
-          </div>
+          </ButtonRow>
         </section>
       </main>
     </>

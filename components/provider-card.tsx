@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { ButtonRow } from "@/components/ui/button-row";
 import type { ProviderMatch } from "@/lib/types";
 
 export function ProviderCard({ provider, onAction }: { provider: ProviderMatch; onAction?: (provider: ProviderMatch) => void }) {
@@ -29,14 +30,14 @@ export function ProviderCard({ provider, onAction }: { provider: ProviderMatch; 
           ))}
         </div>
       </div>
-      <div className="flex flex-wrap gap-2 md:col-span-2 xl:col-span-1 xl:flex-col">
-        <Button asChild size="sm">
+      <ButtonRow className="md:col-span-2 xl:col-span-1">
+        <Button asChild size="sm" className="w-full">
           <Link href={`/providers/${provider.id}`}>View details</Link>
         </Button>
-        <Button size="sm" variant="ghost" onClick={() => onAction?.(provider)}>
+        <Button size="sm" variant="ghost" className="w-full" onClick={() => onAction?.(provider)}>
           {provider.action}
         </Button>
-      </div>
+      </ButtonRow>
     </article>
   );
 }

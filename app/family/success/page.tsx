@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
+import { ButtonRow } from "@/components/ui/button-row";
 
 export default function SuccessPage() {
   return (
@@ -13,14 +14,14 @@ export default function SuccessPage() {
           <p className="mt-3 text-[15px] leading-7 text-neutral-700">
             Thank you. Your intake has been received. A care advisor will review your details and follow up with matched providers across the Netherlands.
           </p>
-          <div className="mt-7 grid gap-3">
-            <Button asChild>
+          <ButtonRow className="mt-7">
+            <Button asChild className="w-full">
               <Link href="/family/results">View matched providers</Link>
             </Button>
-            <Button asChild variant="ghost">
+            <Button asChild variant="ghost" className="w-full">
               <Link href="/family/dashboard">View my dashboard</Link>
             </Button>
-          </div>
+          </ButtonRow>
         </section>
       </main>
     </>

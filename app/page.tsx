@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
+import { ButtonRow } from "@/components/ui/button-row";
 import { SectionHeader } from "@/components/ui/section-header";
 import { homeContent } from "@/lib/content";
 
@@ -19,16 +20,16 @@ export default function HomePage() {
               Find the right care for your <span className="text-sage-600">loved one</span>
             </h1>
             <p className="mx-auto mt-5 max-w-[560px] text-[1.1rem] leading-8 text-neutral-700">{homeContent.intro}</p>
-            <div className="mt-9 flex flex-wrap justify-center gap-3">
-              <Button asChild>
+            <ButtonRow className="mx-auto mt-9 max-w-md">
+              <Button asChild className="w-full">
                 <Link href="/family/intake">
                   Find care <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
-              <Button asChild variant="outline">
+              <Button asChild variant="outline" className="w-full">
                 <Link href="/register">Join the waitlist</Link>
               </Button>
-            </div>
+            </ButtonRow>
           </div>
         </section>
 
@@ -77,16 +78,16 @@ export default function HomePage() {
               <StepCard key={step.title} marker="OK" title={step.title} text={step.text} accent />
             ))}
           </div>
-          <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <Button asChild variant="outline">
+          <ButtonRow className="mx-auto mt-8 max-w-lg">
+            <Button asChild variant="outline" className="w-full">
               <Link href="/register/facility">Join provider waitlist</Link>
             </Button>
-            <Button asChild variant="outline">
+            <Button asChild variant="outline" className="w-full">
               <Link href="/provider">
                 Provider dashboard <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
-          </div>
+          </ButtonRow>
         </section>
       </main>
     </>

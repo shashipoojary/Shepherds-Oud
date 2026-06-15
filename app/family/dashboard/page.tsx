@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
+import { ButtonRow } from "@/components/ui/button-row";
 import { EmptyState } from "@/components/ui/empty-state";
 
 export default function FamilyDashboardPage() {
@@ -14,14 +15,14 @@ export default function FamilyDashboardPage() {
           <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">
             Once your intake is reviewed and providers are matched, your progress and recommended options will appear here.
           </p>
-          <div className="mt-5 flex flex-wrap gap-2">
-            <Button asChild>
+          <ButtonRow className="mt-5 max-w-lg">
+            <Button asChild className="w-full">
               <Link href="/family/intake">Start or update intake</Link>
             </Button>
-            <Button asChild variant="ghost">
+            <Button asChild variant="ghost" className="w-full">
               <Link href="/family/results">View matched providers</Link>
             </Button>
-          </div>
+          </ButtonRow>
         </header>
 
         <section className="mt-5 rounded-2xl bg-white shadow-soft">
