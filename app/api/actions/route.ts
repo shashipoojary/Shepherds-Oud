@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
+import { sendBrevoEmail } from "@/lib/email/brevo";
 import { actionSchema } from "@/lib/validation/action";
 
 export async function POST(request: Request) {
@@ -11,6 +12,7 @@ export async function POST(request: Request) {
   }
 
   if (!process.env.DATABASE_URL) {
+    await notifyAction(parsed.data.label);
     return NextResponse.json({ id: `demo-${Date.now()}`, mode: "demo", action: parsed.data }, { status: 201 });
   }
 
@@ -25,5 +27,22 @@ export async function POST(request: Request) {
     }
   });
 
+  await notifyAction(parsed.data.label);
+
   return NextResponse.json({ id: action.id, mode: "database" }, { status: 201 });
+}
+
+async function notifyAction(label: string) {
+  const advisorEmail = process.env.ADVISOR_EMAIL;
+
+  if (!advisorEmail) {
+    return;
+  }
+
+  await sendBrevoEmail({
+    to: [{ email: advisorEmail, name: "Shepherds Oud advisor" }],
+    subject: "Shepherds Oud action recorded",
+    htmlContent: `<p>${label}</p>`,
+    textContent: label
+  });
 }

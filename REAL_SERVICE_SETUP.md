@@ -1,14 +1,14 @@
-# Connecting Shepherds Oud To Real Services
+# Connecting Shepherds Oud To The Production Stack
 
-This app is ready to move from mock data to real services in small steps.
+The chosen stack is Vercel, Supabase, Better Auth, Brevo, and Tailwind CSS.
 
 ## 1. Database
 
-Use Neon, Supabase, Railway, or any managed PostgreSQL provider.
+Use Supabase PostgreSQL.
 
 1. Create a PostgreSQL database.
 2. Copy `.env.example` to `.env.local`.
-3. Set `DATABASE_URL`.
+3. Set `DATABASE_URL` and `DIRECT_URL`.
 4. Run:
 
 ```bash
@@ -23,7 +23,20 @@ The first real endpoint is already wired:
 - writes to the `Intake` table when `DATABASE_URL` exists
 - falls back to demo mode when no database is configured
 
-## 2. Replace Mock Reads
+## 2. Supabase Storage
+
+Create a private Supabase Storage bucket named `documents`, then set:
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL="https://PROJECT_REF.supabase.co"
+NEXT_PUBLIC_SUPABASE_ANON_KEY="..."
+SUPABASE_SERVICE_ROLE_KEY="..."
+SUPABASE_STORAGE_BUCKET="documents"
+```
+
+Server helpers live in `lib/supabase.ts`.
+
+## 3. Replace Mock Reads
 
 Current demo screens read from `lib/content.ts`.
 
@@ -34,15 +47,24 @@ Replace these with Prisma reads:
 - provider dashboard: `prisma.provider.update` for availability
 - admin dashboard: `prisma.intake.findMany`, `prisma.provider.findMany`, `prisma.match.findMany`
 
-## 3. Authentication
+## 4. Authentication
 
-Recommended options:
+This repo uses Better Auth.
 
-- Clerk for fastest production setup
-- Supabase Auth if using Supabase Postgres
-- Auth.js if you want full control inside Next.js
+Set:
 
-Roles already exist in Prisma:
+```bash
+BETTER_AUTH_SECRET="replace-with-openssl-rand-base64-32"
+BETTER_AUTH_URL="https://your-vercel-domain.vercel.app"
+GOOGLE_CLIENT_ID="..."
+GOOGLE_CLIENT_SECRET="..."
+```
+
+The auth route is:
+
+- `/api/auth/[...all]`
+
+Roles exist in Prisma:
 
 - `FAMILY`
 - `PROVIDER`
@@ -54,23 +76,25 @@ Protect these route groups once auth is added:
 - `/provider`
 - `/admin`
 
-## 4. Email Notifications
+## 5. Email Notifications
 
-Use Resend for transactional email.
+Use Brevo for transactional email.
 
 Add to `.env.local`:
 
 ```bash
 NEXT_PUBLIC_APP_URL="http://localhost:3000"
 DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/shepherds_oud?sslmode=require"
-AUTH_SECRET="replace-with-openssl-rand-base64-32"
-AUTH_URL="http://localhost:3000"
-RESEND_API_KEY="re_..."
+DIRECT_URL="postgresql://USER:PASSWORD@HOST:5432/shepherds_oud?sslmode=require"
+BETTER_AUTH_SECRET="replace-with-openssl-rand-base64-32"
+BETTER_AUTH_URL="http://localhost:3000"
+BREVO_API_KEY="xkeysib_..."
 ADVISOR_EMAIL="care@shepherdsoud.nl"
-FROM_EMAIL="Shepherds Oud <care@shepherdsoud.nl>"
+BREVO_FROM_EMAIL="care@shepherdsoud.nl"
+BREVO_FROM_NAME="Shepherds Oud"
 ```
 
-Trigger email after intake creation in `app/api/intakes/route.ts`.
+Emails are triggered after intake creation in `app/api/intakes/route.ts` and after admin/provider actions in `app/api/actions/route.ts`.
 
 Recommended notifications:
 
@@ -92,14 +116,14 @@ Run this after adding or changing the database:
 npx prisma migrate deploy
 ```
 
-## 7. Deployment
+## 7. Deployment On Vercel
 
 Vercel is the simplest deployment target.
 
 1. Push repo to GitHub.
 2. Import project into Vercel.
-3. Add environment variables.
-4. Attach Neon/Supabase Postgres.
+3. Add the environment variables from `.env.example`.
+4. Attach Supabase Postgres.
 5. Run Prisma migration in deployment pipeline or manually before launch.
 
 ## 8. Production Matching Logic

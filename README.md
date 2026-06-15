@@ -11,8 +11,9 @@ The original target stack mentioned Next.js 14. npm currently reports security a
 - Tailwind CSS
 - TypeScript
 - Prisma
-- PostgreSQL
-- Auth.js, Clerk, or Supabase Auth when authentication is implemented
+- Supabase PostgreSQL and Storage
+- Better Auth
+- Brevo transactional email
 - Zod
 
 ## App Areas
