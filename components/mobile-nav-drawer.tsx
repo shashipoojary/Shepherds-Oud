@@ -11,10 +11,11 @@ type MobileNavDrawerProps = {
   onClose: () => void;
   nav: Array<{ label: string; href: string }>;
   profile: React.ReactNode;
+  staffLinks?: React.ReactNode;
   footer: React.ReactNode;
 };
 
-export function MobileNavDrawer({ open, onClose, nav, profile, footer }: MobileNavDrawerProps) {
+export function MobileNavDrawer({ open, onClose, nav, profile, staffLinks, footer }: MobileNavDrawerProps) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -62,16 +63,17 @@ export function MobileNavDrawer({ open, onClose, nav, profile, footer }: MobileN
           <div className="mt-6 border-t border-[var(--card-border)] pt-5">
             <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-[1px] text-brand-amber">Menu</p>
             <div className="grid gap-1">
-            {nav.map((item) => (
-              <LoadingLink
-                key={item.href}
-                href={item.href}
-                onNavigate={onClose}
-                className="rounded-xl px-4 py-3.5 text-[15px] font-medium text-ink hover:bg-brand-cream hover:text-brand-amber"
-              >
-                {item.label}
-              </LoadingLink>
-            ))}
+              {nav.map((item) => (
+                <LoadingLink
+                  key={item.href}
+                  href={item.href}
+                  onNavigate={onClose}
+                  className="rounded-xl px-4 py-3.5 text-[15px] font-medium text-ink hover:bg-brand-cream hover:text-brand-amber"
+                >
+                  {item.label}
+                </LoadingLink>
+              ))}
+              {staffLinks}
             </div>
           </div>
 
