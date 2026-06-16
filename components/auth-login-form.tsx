@@ -4,10 +4,13 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { PROVIDER_DASHBOARD_PATH } from "@/lib/auth-routes";
 
-function errorMessage(code: string | null) {
+function errorMessage(code: string | null, isProvider: boolean) {
   if (code === "unauthorized") {
-    return "This page is for a different account type. Admins use ADMIN_EMAILS; care facilities use PROVIDER_EMAILS in Vercel. Contact your Shepherds Oud administrator.";
+    return isProvider
+      ? "You need a care facility account for this page. Use List your facility to sign in with Google."
+      : "This page is for administrators only. Use your approved admin Google account.";
   }
 
   if (code === "oauth-config") {
@@ -21,15 +24,20 @@ function errorMessage(code: string | null) {
   return null;
 }
 
-export function AuthLoginForm() {
+type AuthLoginFormProps = {
+  intent?: "provider" | "admin";
+};
+
+export function AuthLoginForm({ intent }: AuthLoginFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const requestedDestination = searchParams.get("callbackUrl");
+  const requestedDestination = intent === "provider" ? PROVIDER_DASHBOARD_PATH : searchParams.get("callbackUrl");
+  const isProvider = intent === "provider" || requestedDestination?.startsWith(PROVIDER_DASHBOARD_PATH);
   const callbackUrl = requestedDestination
     ? `/login/continue?callbackUrl=${encodeURIComponent(requestedDestination)}`
     : "/login/continue";
   const error = searchParams.get("error");
-  const message = errorMessage(error);
+  const message = errorMessage(error, Boolean(isProvider));
   const [loading, setLoading] = useState(false);
   const googleLoginHref = `/login/google?callbackUrl=${encodeURIComponent(callbackUrl)}`;
 
@@ -56,7 +64,9 @@ export function AuthLoginForm() {
       </Button>
 
       <p className="text-center text-xs leading-5 text-neutral-500">
-        One Google sign-in for all staff. Your email decides your role: admin advisors see the admin panel; care facilities see the provider dashboard.
+        {isProvider
+          ? "Any care home, assisted living, or home care agency can sign in with Google to list services. No approval email list required."
+          : "Administrator access is limited to approved team accounts configured in ADMIN_EMAILS."}
       </p>
     </div>
   );

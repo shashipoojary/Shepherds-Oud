@@ -1,5 +1,8 @@
 import type { AppRole } from "@/lib/auth-server";
 
+export const PROVIDER_LOGIN_PATH = "/provider/login";
+export const PROVIDER_DASHBOARD_PATH = "/provider";
+
 export function dashboardHref(role: AppRole | undefined) {
   if (role === "ADMIN") return "/admin";
   if (role === "PROVIDER") return "/provider";
@@ -33,24 +36,25 @@ export function postLoginHref(role: AppRole | undefined, requestedCallback?: str
 
 type NavItem = { label: string; href: string };
 
-const publicNav: NavItem[] = [
+export const publicNavItems: NavItem[] = [
   { label: "Home", href: "/" },
   { label: "Find care", href: "/family/intake" },
-  { label: "Join waitlist", href: "/register" }
+  { label: "Join waitlist", href: "/register" },
+  { label: "List your facility", href: PROVIDER_LOGIN_PATH }
 ];
 
 export function navItemsForRole(role: AppRole | undefined, signedIn: boolean): NavItem[] {
   if (!signedIn) {
-    return publicNav;
+    return publicNavItems;
   }
 
   if (role === "ADMIN") {
-    return [...publicNav, { label: "Admin", href: "/admin" }];
+    return [...publicNavItems, { label: "Admin", href: "/admin" }];
   }
 
   if (role === "PROVIDER") {
-    return [...publicNav, { label: "Provider dashboard", href: "/provider" }];
+    return [...publicNavItems, { label: "Provider dashboard", href: "/provider" }];
   }
 
-  return [...publicNav, { label: "My dashboard", href: "/family/dashboard" }];
+  return [...publicNavItems, { label: "My dashboard", href: "/family/dashboard" }];
 }

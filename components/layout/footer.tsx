@@ -1,14 +1,14 @@
 import Link from "next/link";
 import { BrandLogo } from "@/components/brand-logo";
 import { brand } from "@/lib/brand";
+import { PROVIDER_LOGIN_PATH } from "@/lib/auth-routes";
 
 const links = [
   { label: "Home", href: "/" },
   { label: "Find care", href: "/family/intake" },
   { label: "Join waitlist", href: "/register" },
   { label: "Family registration", href: "/register/family" },
-  { label: "Facility registration", href: "/register/facility" },
-  { label: "Provider dashboard", href: "/provider" }
+  { label: "List your facility", href: PROVIDER_LOGIN_PATH }
 ];
 
 export function Footer() {

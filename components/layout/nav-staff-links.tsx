@@ -2,10 +2,10 @@
 
 import { authClient } from "@/lib/auth-client";
 import type { AppRole } from "@/lib/auth-server";
-import { navItemsForRole } from "@/lib/auth-routes";
+import { navItemsForRole, PROVIDER_LOGIN_PATH, publicNavItems } from "@/lib/auth-routes";
 import { LoadingLink } from "@/components/loading-link";
 
-const publicHrefs = new Set(["/", "/family/intake", "/register"]);
+const publicHrefs = new Set(publicNavItems.map((item) => item.href));
 
 export function StaffNavLinks({
   variant = "desktop",

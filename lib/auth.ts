@@ -23,11 +23,8 @@ function resolveRole(email: string | undefined) {
     return "ADMIN";
   }
 
-  if (parseEmailList(process.env.PROVIDER_EMAILS).includes(normalized)) {
-    return "PROVIDER";
-  }
-
-  return "FAMILY";
+  // Open provider onboarding: any care facility Google account (non-admin) is a provider.
+  return "PROVIDER";
 }
 
 export const auth = betterAuth({

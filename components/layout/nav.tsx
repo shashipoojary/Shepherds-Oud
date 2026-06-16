@@ -21,11 +21,7 @@ const StaffNavLinks = dynamic(() => import("@/components/layout/nav-staff-links"
   ssr: false
 });
 
-const publicNav = [
-  { label: "Home", href: "/" },
-  { label: "Find care", href: "/family/intake" },
-  { label: "Join waitlist", href: "/register" }
-];
+import { publicNavItems } from "@/lib/auth-routes";
 
 export function Nav() {
   const [open, setOpen] = useState(false);
@@ -57,7 +53,7 @@ export function Nav() {
               <Menu className="h-5 w-5" />
             </button>
             <nav className="hidden items-center gap-6 md:flex lg:gap-8" aria-label="Primary navigation">
-              {publicNav.map((item) => (
+              {publicNavItems.map((item) => (
                 <LoadingLink
                   key={item.href}
                   href={item.href}
@@ -79,7 +75,7 @@ export function Nav() {
       <MobileNavDrawer
         open={open}
         onClose={closeMenu}
-        nav={publicNav}
+        nav={publicNavItems}
         profile={<MobileNavProfile onNavigate={closeMenu} />}
         staffLinks={<StaffNavLinks variant="mobile" onNavigate={closeMenu} />}
         footer={
