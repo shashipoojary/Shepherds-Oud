@@ -4,17 +4,20 @@ import type { ButtonHTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 rounded-[10px] font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage-600 disabled:pointer-events-none disabled:opacity-50",
+  "inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-amber disabled:pointer-events-none disabled:opacity-50",
   {
     variants: {
       variant: {
-        default: "bg-sage-600 text-white hover:bg-sage-700",
-        outline: "border border-sage-600 bg-transparent text-sage-600 hover:bg-sage-100",
-        ghost: "border border-stone-200 bg-white text-neutral-700 hover:bg-sage-100 hover:text-sage-700"
+        default: "bg-brand-amber text-white hover:bg-brand-amber-mid",
+        primary: "bg-brand-amber text-white hover:bg-brand-amber-mid",
+        outline: "border border-brand-amber bg-transparent text-brand-amber hover:bg-brand-amber/10",
+        ghost: "border-0 bg-transparent text-ink hover:bg-brand-cream"
       },
       size: {
-        default: "min-h-11 px-4 text-sm leading-snug sm:px-6 sm:text-[15px]",
-        sm: "min-h-10 px-3.5 text-sm leading-snug"
+        sm: "min-h-9 px-3 py-1.5 text-sm",
+        default: "min-h-11 px-5 py-2.5 text-sm sm:text-[15px]",
+        md: "min-h-11 px-5 py-2.5 text-sm sm:text-[15px]",
+        lg: "min-h-12 px-7 py-3.5 text-base"
       }
     },
     defaultVariants: {

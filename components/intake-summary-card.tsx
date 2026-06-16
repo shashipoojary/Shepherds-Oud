@@ -13,11 +13,11 @@ export function IntakeSummaryCard({ intake, compact = false }: { intake: StoredI
     <article className={`rounded-2xl border border-stone-200 bg-white shadow-soft ${compact ? "p-4" : "p-5 sm:p-6"}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-sage-700">Your care request</p>
+          <p className="section-label">Your care request</p>
           <h2 className="mt-1 text-lg font-semibold text-ink">{intake.contactName}</h2>
           <p className="mt-1 text-sm text-neutral-500">Reference {intake.id.slice(0, 8).toUpperCase()}</p>
         </div>
-        <span className="rounded-full bg-sage-100 px-3 py-1 text-xs font-semibold text-sage-700">{status}</span>
+        <span className="rounded bg-brand-green-pale/50 px-3 py-1 text-xs font-semibold text-brand-green-dark">{status}</span>
       </div>
 
       <dl className={`mt-4 grid gap-3 text-sm ${compact ? "sm:grid-cols-2" : "sm:grid-cols-2 lg:grid-cols-4"}`}>

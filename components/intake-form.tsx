@@ -5,7 +5,9 @@ import { useRouter } from "next/navigation";
 import { intakeSteps } from "@/lib/content";
 import { saveStoredIntake } from "@/lib/client-intake";
 import { Button } from "@/components/ui/button";
+import { Chip } from "@/components/ui/chip";
 import { CustomSelect } from "@/components/ui/custom-select";
+import { ProgressBar } from "@/components/ui/progress-bar";
 
 type Field = (typeof intakeSteps)[number]["fields"][number];
 type FormState = Record<string, string | string[]>;
@@ -95,16 +97,25 @@ export function IntakeForm() {
   }
 
   return (
-    <section className="mx-auto grid max-w-7xl overflow-hidden rounded-2xl bg-white shadow-panel lg:grid-cols-[380px_minmax(0,1fr)]">
-      <header className="bg-sage-600 px-8 py-7 text-white">
-        <h1 className="text-[1.3rem] font-semibold">Tell us about your situation</h1>
-        <p className="mt-1 text-[13px] text-white/80">This takes about 5 minutes. We&apos;ll use this to find the best care options for your family.</p>
-        <div className="mt-4 h-1 overflow-hidden rounded-full bg-white/30">
-          <div className="h-full rounded-full bg-white transition-all" style={{ width: `${progress}%` }} />
+    <section className="mx-auto grid max-w-7xl overflow-hidden rounded-card bg-white shadow-panel lg:grid-cols-[380px_minmax(0,1fr)]">
+      <header className="bg-brand-green-dark px-8 py-7 text-white">
+        <h1 className="font-brand text-[1.3rem] font-semibold">Tell us about your situation</h1>
+        <p className="mt-1 text-[13px] leading-relaxed text-white/80">This takes about 5 minutes. We&apos;ll use this to find the best care options for your family.</p>
+        <div className="mt-4">
+          <ProgressBar value={progress} trackClassName="bg-white/25" />
         </div>
         <div className="mt-8 hidden space-y-4 text-sm text-white/75 lg:block">
           {intakeSteps.map((item, index) => (
-            <div key={item.title} className={index === stepIndex ? "font-semibold text-white" : ""}>
+            <div
+              key={item.title}
+              className={
+                index === stepIndex
+                  ? "font-semibold text-brand-amber"
+                  : index < stepIndex
+                    ? "text-brand-green-pale"
+                    : ""
+              }
+            >
               {index + 1}. {item.title}
             </div>
           ))}
@@ -112,17 +123,26 @@ export function IntakeForm() {
       </header>
 
       <div className="px-5 py-6 sm:px-8 lg:px-10 lg:py-9">
-        <p className="mb-5 text-[11px] font-semibold uppercase tracking-[0.5px] text-neutral-500">
-          Step {stepIndex + 1} of {intakeSteps.length} - {step.title}
+        <p className="section-label mb-5">
+          Step {stepIndex + 1} of {intakeSteps.length} — {step.title}
         </p>
         <div className="grid gap-x-5 md:grid-cols-2">{step.fields.map((field) => renderField(field, form, setValue, toggleChip))}</div>
 
-        {status ? <p className="mt-4 rounded-lg bg-sage-100 p-3 text-sm text-sage-700">{status}</p> : null}
+        {status ? <p className="mt-4 rounded-lg bg-brand-green-pale/30 p-3 text-sm text-brand-green-dark">{status}</p> : null}
 
-        <div className="mt-7 flex flex-col gap-4 border-t border-stone-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex gap-1.5">
+        <div className="mt-7 flex flex-col gap-4 border-t border-[var(--card-border)] pt-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex gap-2">
             {intakeSteps.map((item, index) => (
-              <span key={item.title} className={`h-2 w-2 rounded-full ${index <= stepIndex ? "bg-sage-600" : "bg-stone-300"}`} />
+              <span
+                key={item.title}
+                className={`h-2.5 w-2.5 rounded-full border ${
+                  index === stepIndex
+                    ? "border-brand-amber bg-brand-amber"
+                    : index < stepIndex
+                      ? "border-brand-green-light bg-brand-green-light"
+                      : "border-[var(--chip-border)] bg-transparent"
+                }`}
+              />
             ))}
           </div>
           <div className="flex gap-2">
@@ -132,11 +152,11 @@ export function IntakeForm() {
               </Button>
             )}
             {isFinal ? (
-              <Button type="button" size="sm" onClick={submit}>
+              <Button type="button" className="min-w-[140px]" onClick={submit}>
                 Submit
               </Button>
             ) : (
-              <Button type="button" size="sm" disabled={!canContinue} onClick={() => setStepIndex((value) => value + 1)}>
+              <Button type="button" disabled={!canContinue} onClick={() => setStepIndex((value) => value + 1)}>
                 Next step
               </Button>
             )}
@@ -148,11 +168,12 @@ export function IntakeForm() {
 }
 
 function renderField(field: Field, form: FormState, setValue: (label: string, value: string) => void, toggleChip: (label: string, option: string) => void) {
-  const baseInput = "w-full rounded-lg border-[1.5px] border-stone-200 bg-white px-3.5 py-2.5 text-[15px] text-neutral-900 outline-none transition focus:border-sage-600";
+  const baseInput =
+    "w-full rounded-lg border-[1.5px] border-[var(--card-border)] bg-white px-3.5 py-2.5 text-body text-ink outline-none transition focus:border-brand-amber";
 
   if (field.type === "notice") {
     return (
-      <div key={field.text} className="rounded-[10px] bg-sage-100 p-4 text-[13px] text-sage-700 md:col-span-2">
+      <div key={field.text} className="rounded-lg bg-brand-green-pale/25 p-4 text-[13px] text-brand-green-dark md:col-span-2">
         {field.text}
       </div>
     );
@@ -175,16 +196,9 @@ function renderField(field: Field, form: FormState, setValue: (label: string, va
           {field.options.map((option) => {
             const isSelected = selected.includes(option);
             return (
-              <button
-                key={option}
-                type="button"
-                onClick={() => toggleChip(field.label, option)}
-                className={`rounded-full border-[1.5px] px-4 py-2 text-sm transition ${
-                  isSelected ? "border-sage-600 bg-sage-100 font-medium text-sage-700" : "border-stone-200 bg-white text-neutral-600 hover:border-sage-600 hover:text-sage-600"
-                }`}
-              >
+              <Chip key={option} selected={isSelected} onClick={() => toggleChip(field.label, option)}>
                 {option}
-              </button>
+              </Chip>
             );
           })}
         </div>

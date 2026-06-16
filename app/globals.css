@@ -4,6 +4,30 @@
 
 :root {
   color-scheme: light;
+
+  --brand-amber: #c07a4a;
+  --brand-amber-mid: #a86235;
+  --brand-amber-dark: #8b4e25;
+
+  --brand-green-dark: #404d3c;
+  --brand-green-mid: #6c7c5c;
+  --brand-green-light: #8d9c6b;
+  --brand-green-pale: #b5c18b;
+
+  --brand-beige-dark: #a08090;
+  --brand-beige-mid: #b09aa8;
+  --brand-beige-light: #d8c1c8;
+
+  --brand-cream: #f7f4f0;
+  --brand-service-pale: #eaf0e4;
+  --brand-white: #ffffff;
+  --brand-ink: #2a2a2a;
+
+  --chip-selected-bg: #fdf4ee;
+  --chip-border: #dddddd;
+  --chip-text: #666666;
+  --progress-track: #eeeeee;
+  --card-border: #ebebeb;
 }
 
 html {
@@ -11,7 +35,7 @@ html {
 }
 
 body {
-  @apply min-h-screen bg-cream text-ink antialiased;
+  @apply min-h-screen bg-brand-cream font-body text-[0.9375rem] leading-[1.7] text-ink antialiased;
 }
 
 button,
@@ -19,4 +43,14 @@ input,
 select,
 textarea {
   font: inherit;
+}
+
+@layer components {
+  .section-label {
+    @apply text-[11px] font-semibold uppercase tracking-[1px] text-brand-amber;
+  }
+
+  .brand-heading {
+    @apply font-brand font-semibold uppercase tracking-[0.06em];
+  }
 }

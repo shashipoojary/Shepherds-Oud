@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
+import { BrandLogo } from "@/components/brand-logo";
 import { LoadingLink } from "@/components/loading-link";
 
 type MobileNavDrawerProps = {
@@ -43,11 +44,8 @@ export function MobileNavDrawer({ open, onClose, nav, profile, footer }: MobileN
         className="fixed inset-y-0 right-0 z-[201] flex w-[min(100%,340px)] flex-col bg-white shadow-[-8px_0_32px_rgba(0,0,0,0.12)] md:hidden"
         aria-label="Mobile navigation"
       >
-        <div className="flex items-center justify-between border-b border-stone-200 bg-sage-600 px-5 py-4 text-white">
-          <div className="flex items-center gap-2">
-            <span className="grid h-8 w-8 place-items-center rounded-full bg-white/15 text-sm">🌿</span>
-            <p className="font-semibold">Shepherds Oud</p>
-          </div>
+        <div className="flex items-center justify-between border-b border-brand-green-mid bg-brand-green-dark px-5 py-4 text-white">
+          <BrandLogo compact tone="light" href="/" onClick={onClose} />
           <button
             type="button"
             className="grid h-9 w-9 place-items-center rounded-lg bg-white/15 text-white hover:bg-white/25"
@@ -67,7 +65,7 @@ export function MobileNavDrawer({ open, onClose, nav, profile, footer }: MobileN
                 key={item.href}
                 href={item.href}
                 onNavigate={onClose}
-                className="rounded-xl px-4 py-3.5 text-[15px] font-medium text-neutral-800 hover:bg-sage-50 hover:text-sage-700"
+                className="rounded-xl px-4 py-3.5 text-[15px] font-medium text-ink hover:bg-brand-cream hover:text-brand-amber"
               >
                 {item.label}
               </LoadingLink>

@@ -60,7 +60,7 @@ export function MobileNavProfile({ onNavigate }: { onNavigate?: () => void }) {
   if (!session) {
     return (
       <div className="border-b border-stone-200 pb-4">
-        <Link href="/login" onClick={onNavigate} className="text-sm font-medium text-sage-600">
+        <Link href="/login" onClick={onNavigate} className="text-sm font-medium text-brand-amber">
           Sign in
         </Link>
       </div>
@@ -76,7 +76,7 @@ export function MobileNavProfile({ onNavigate }: { onNavigate?: () => void }) {
       <p className="mt-0.5 text-xs text-neutral-500">{email}</p>
       <p className="mt-1 text-xs text-neutral-400">{roleLabel(role)}</p>
       <div className="mt-3 flex flex-col gap-2">
-        <LoadingLink href={dashboardHref(role)} onNavigate={onNavigate} className="text-sm text-sage-600">
+        <LoadingLink href={dashboardHref(role)} onNavigate={onNavigate} className="text-sm text-brand-amber">
           Dashboard
         </LoadingLink>
         <button type="button" onClick={signOut} disabled={signingOut} className="text-left text-sm text-neutral-600">
@@ -206,10 +206,5 @@ export function GetStartedButton({ onNavigate, className = "" }: { onNavigate?: 
 }
 
 export function AuthHeaderActions({ onNavigate }: { onNavigate?: () => void }) {
-  return (
-    <>
-      <AuthUserMenu variant="desktop" onNavigate={onNavigate} />
-      <GetStartedButton onNavigate={onNavigate} />
-    </>
-  );
+  return <AuthUserMenu variant="desktop" onNavigate={onNavigate} />;
 }

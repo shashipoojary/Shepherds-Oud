@@ -45,7 +45,7 @@ export function FamilyDashboardClient() {
   return (
     <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
       <header className="rounded-2xl bg-white p-5 shadow-soft sm:p-7">
-        <p className="text-xs font-semibold uppercase tracking-wide text-sage-700">Family dashboard</p>
+        <p className="section-label">Family dashboard</p>
         <h1 className="mt-2 text-2xl font-semibold">Your care journey</h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">
           You do not need an account to follow your request. After submitting the intake form, your case card appears here on this device.

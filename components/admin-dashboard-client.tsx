@@ -48,14 +48,14 @@ export function AdminDashboardClient({ data }: { data: AdminDashboardData }) {
           <button
             key={item}
             onClick={() => setTab(item)}
-            className={`min-w-fit flex-1 rounded-lg px-4 py-2 text-sm transition sm:flex-none ${tab === item ? "bg-sage-600 text-white" : "text-neutral-600 hover:bg-sage-100 hover:text-sage-700"}`}
+            className={`min-w-fit flex-1 rounded-lg px-4 py-2 text-sm transition sm:flex-none ${tab === item ? "bg-brand-amber text-white" : "text-ink/70 hover:bg-brand-cream hover:text-brand-amber"}`}
           >
             {item === "waitlist" ? "Waitlist" : item[0].toUpperCase() + item.slice(1)}
           </button>
         ))}
       </div>
 
-      {message ? <div className="mt-4 rounded-[10px] bg-sage-100 px-5 py-4 text-sm text-sage-700">{message}</div> : null}
+      {message ? <div className="mt-4 rounded-lg bg-brand-green-pale/30 px-5 py-4 text-sm text-brand-green-dark">{message}</div> : null}
 
       <div className="mt-6 overflow-hidden rounded-xl bg-white shadow-soft">
         <div className="overflow-x-auto">

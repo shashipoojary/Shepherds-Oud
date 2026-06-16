@@ -355,7 +355,7 @@ export function ProviderDashboardClient() {
             </Button>
           </div>
         </form>
-        {message ? <p className="mt-4 rounded-lg bg-sage-100 p-3 text-sm text-sage-700">{message}</p> : null}
+        {message ? <p className="mt-4 rounded-lg bg-brand-green-pale/30 p-3 text-sm text-brand-green-dark">{message}</p> : null}
       </section>
     </main>
   );
@@ -394,7 +394,7 @@ function ChipField({
               key={option}
               type="button"
               onClick={() => onToggle(option)}
-              className={`rounded-full px-3 py-2 text-sm transition ${active ? "bg-sage-600 text-white" : "bg-stone-100 text-neutral-700 hover:bg-sage-100"}`}
+              className={`rounded-full px-3 py-2 text-sm transition ${active ? "bg-brand-amber text-white" : "bg-brand-cream text-ink/70 hover:bg-brand-beige-light/50"}`}
             >
               {option}
             </button>

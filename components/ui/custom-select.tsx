@@ -34,11 +34,11 @@ export function CustomSelect({ label, value, placeholder = "Select...", options,
       <button
         type="button"
         onClick={() => setOpen((current) => !current)}
-        className="flex min-h-11 w-full items-center justify-between gap-3 rounded-lg border-[1.5px] border-stone-200 bg-white px-3.5 py-2.5 text-left text-[15px] text-neutral-900 transition hover:border-sage-600 focus:border-sage-600 focus:outline-none"
+        className="flex min-h-11 w-full items-center justify-between gap-3 rounded-lg border-[1.5px] border-[var(--card-border)] bg-white px-3.5 py-2.5 text-left text-body text-ink transition hover:border-brand-amber focus:border-brand-amber focus:outline-none"
         aria-expanded={open}
       >
         <span className={value ? "text-neutral-900" : "text-neutral-400"}>{value || placeholder}</span>
-        <ChevronDown className={cn("h-4 w-4 shrink-0 text-neutral-400 transition", open && "rotate-180 text-sage-600")} />
+        <ChevronDown className={cn("h-4 w-4 shrink-0 text-ink/40 transition", open && "rotate-180 text-brand-amber")} />
       </button>
 
       {open ? (
@@ -51,10 +51,10 @@ export function CustomSelect({ label, value, placeholder = "Select...", options,
                 onChange(option);
                 setOpen(false);
               }}
-              className="flex min-h-10 w-full items-center justify-between gap-3 px-3.5 py-2 text-left text-sm text-neutral-700 transition hover:bg-sage-100 hover:text-sage-700"
+              className="flex min-h-10 w-full items-center justify-between gap-3 px-3.5 py-2 text-left text-sm text-ink/80 transition hover:bg-brand-cream hover:text-brand-amber"
             >
               <span>{option}</span>
-              {value === option ? <Check className="h-4 w-4 text-sage-600" /> : null}
+              {value === option ? <Check className="h-4 w-4 text-brand-amber" /> : null}
             </button>
           ))}
         </div>

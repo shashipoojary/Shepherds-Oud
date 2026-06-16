@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SiteHeader } from "@/components/site-header";
 import { ProviderDetailActions } from "@/components/provider-detail-actions";
+import { availabilityBadgeVariant, Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 import { getProviderById } from "@/lib/data/providers";
 
 export default async function ProviderDetailPage({ params }: { params: Promise<{ providerId: string }> }) {
@@ -16,38 +18,40 @@ export default async function ProviderDetailPage({ params }: { params: Promise<{
     <>
       <SiteHeader />
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-        <Link href="/family/results" className="text-sm text-neutral-500 hover:text-sage-600">
+        <Link href="/family/results" className="text-sm text-ink/60 hover:text-brand-amber">
           Back to results
         </Link>
-        <article className="mt-5 overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-panel">
-          <header className="bg-gradient-to-br from-sage-600 to-[#52b788] p-8 text-white">
-            <h1 className="text-2xl font-bold">{provider.name}</h1>
+        <article className="mt-5 overflow-hidden rounded-card border border-[var(--card-border)] bg-white shadow-panel">
+          <header className="bg-brand-green-dark p-8 text-white">
+            <h1 className="font-brand text-h2 font-bold">{provider.name}</h1>
             <p className="mt-1 text-sm text-white/80">
               {provider.type} - {provider.area}
             </p>
-            <span className="mt-4 inline-flex rounded-full bg-white/20 px-3 py-1 text-sm font-semibold">{provider.availability}</span>
+            <Badge variant={availabilityBadgeVariant(provider.availability)} className="mt-4">
+              {provider.availability}
+            </Badge>
           </header>
           <div className="grid gap-8 p-5 sm:p-7 lg:grid-cols-[minmax(0,1fr)_380px]">
             <div>
-              <p className="leading-7 text-neutral-700">{provider.description}</p>
+              <p className="leading-[1.7] text-ink/80">{provider.description}</p>
 
               <section className="mt-8">
-                <h2 className="text-xs font-bold uppercase tracking-wide text-neutral-500">Care services</h2>
+                <h2 className="section-label">Care services</h2>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {provider.tags.map((tag) => (
-                    <span key={tag.label} className="rounded-full bg-sage-100 px-3 py-1 text-sm font-medium text-sage-700">
+                    <Badge key={tag.label} variant="service">
                       {tag.label}
-                    </span>
+                    </Badge>
                   ))}
                 </div>
               </section>
 
               <section className="mt-8">
-                <h2 className="text-xs font-bold uppercase tracking-wide text-neutral-500">Key details</h2>
+                <h2 className="section-label">Key details</h2>
                 <div className="mt-3 grid gap-4 sm:grid-cols-2">
                   {Object.entries(provider.details).map(([label, value]) => (
-                    <div key={label} className="text-sm text-neutral-600">
-                      <strong className="block text-neutral-900">{label}</strong>
+                    <div key={label} className="text-body text-ink/75">
+                      <strong className="block text-ink">{label}</strong>
                       {value}
                     </div>
                   ))}
@@ -55,13 +59,15 @@ export default async function ProviderDetailPage({ params }: { params: Promise<{
               </section>
             </div>
 
-            <section className="rounded-xl bg-stone-50 p-5 lg:mt-0">
-              <h2 className="text-xs font-bold uppercase tracking-wide text-neutral-500">Contact & next steps</h2>
-              <div className="mt-3 grid gap-2 rounded-lg bg-sage-100 p-5 text-sm text-sage-800">
-                {provider.contact.map((line) => (
-                  <div key={line}>{line}</div>
-                ))}
-              </div>
+            <section className="rounded-card bg-brand-cream p-5 lg:mt-0">
+              <h2 className="section-label">Contact & next steps</h2>
+              <Card className="mt-3 border-0 bg-brand-green-pale/20 p-5 shadow-none">
+                <div className="grid gap-2 text-body text-brand-green-dark">
+                  {provider.contact.map((line) => (
+                    <div key={line}>{line}</div>
+                  ))}
+                </div>
+              </Card>
               <ProviderDetailActions providerName={provider.name} />
             </section>
           </div>

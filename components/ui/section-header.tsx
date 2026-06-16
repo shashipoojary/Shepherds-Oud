@@ -1,8 +1,9 @@
-export function SectionHeader({ title, description }: { title: string; description: string }) {
+export function SectionHeader({ title, description, label }: { title: string; description: string; label?: string }) {
   return (
     <header className="mx-auto mb-9 max-w-2xl text-center">
-      <h2 className="text-2xl font-semibold">{title}</h2>
-      <p className="mt-2 text-neutral-600">{description}</p>
+      {label ? <p className="section-label mb-2">{label}</p> : null}
+      <h2 className="font-brand text-h2 font-semibold text-ink">{title}</h2>
+      <p className="mt-2 text-body text-ink/80">{description}</p>
     </header>
   );
 }
