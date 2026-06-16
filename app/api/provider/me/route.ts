@@ -7,7 +7,7 @@ async function assertProviderAccess() {
   const session = await getServerSession();
   if (!session) return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
   const role = getUserRole(session);
-  if (role !== "PROVIDER" && role !== "ADMIN") {
+  if (role !== "PROVIDER") {
     return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
   }
   return { session };
@@ -46,7 +46,12 @@ export async function PATCH(request: Request) {
     const parsed = providerProfileSchema.safeParse(body);
 
     if (!parsed.success) {
-      return NextResponse.json({ error: "Invalid profile data.", issues: parsed.error.flatten() }, { status: 400 });
+      const fieldErrors = parsed.error.flatten().fieldErrors;
+      const firstFieldError = Object.values(fieldErrors).flat()[0];
+      return NextResponse.json(
+        { error: firstFieldError || "Invalid profile data.", issues: parsed.error.flatten() },
+        { status: 400 }
+      );
     }
 
     const provider = await upsertProviderForUser(auth.session.user.id, auth.session.user.email, parsed.data);

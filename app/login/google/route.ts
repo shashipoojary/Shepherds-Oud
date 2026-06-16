@@ -6,9 +6,12 @@ export const runtime = "nodejs";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const callbackURL = searchParams.get("callbackUrl") || "/admin";
+  const requestedDestination = searchParams.get("callbackUrl");
+  const callbackURL = requestedDestination
+    ? `/login/continue?callbackUrl=${encodeURIComponent(requestedDestination)}`
+    : "/login/continue";
   const loginUrl = new URL("/login", request.url);
-  loginUrl.searchParams.set("callbackUrl", callbackURL);
+  loginUrl.searchParams.set("callbackUrl", requestedDestination || "/login/continue");
 
   if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
     loginUrl.searchParams.set("error", "oauth-config");

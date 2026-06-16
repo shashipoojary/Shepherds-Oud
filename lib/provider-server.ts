@@ -74,3 +74,20 @@ export async function getProviderInquiries(providerId: string) {
     }
   });
 }
+
+export async function getProviderDashboardData(userId: string) {
+  const provider = await getUserLinkedProvider(userId);
+  const inquiries = provider ? await getProviderInquiries(provider.id) : [];
+
+  return {
+    provider,
+    inquiries: inquiries.map((match) => ({
+      id: match.id,
+      score: match.score,
+      status: match.status,
+      notes: match.notes,
+      createdAt: match.createdAt.toISOString(),
+      intake: match.intake
+    }))
+  };
+}

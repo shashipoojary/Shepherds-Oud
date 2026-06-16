@@ -8,18 +8,7 @@ import { LoadingLink } from "@/components/loading-link";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import type { AppRole } from "@/lib/auth-server";
-
-function dashboardHref(role: AppRole | undefined) {
-  if (role === "ADMIN") return "/admin";
-  if (role === "PROVIDER") return "/provider";
-  return "/family/dashboard";
-}
-
-function roleLabel(role: AppRole | undefined) {
-  if (role === "ADMIN") return "Administrator";
-  if (role === "PROVIDER") return "Care provider";
-  return "Family account";
-}
+import { dashboardHref, roleLabel } from "@/lib/auth-routes";
 
 type AuthUserMenuProps = {
   variant?: "desktop" | "mobile";
@@ -48,9 +37,9 @@ export function MobileNavProfile({ onNavigate }: { onNavigate?: () => void }) {
 
   if (isPending) {
     return (
-      <div className="rounded-xl border border-stone-200 bg-cream p-4">
-        <span className="inline-flex items-center gap-2 text-sm text-neutral-500">
-          <Loader2 className="h-4 w-4 animate-spin" />
+      <div className="rounded-card border border-[var(--card-border)] bg-brand-cream p-4">
+        <span className="inline-flex items-center gap-2 text-sm text-ink/60">
+          <Loader2 className="h-4 w-4 animate-spin text-brand-amber" />
           Loading account...
         </span>
       </div>
@@ -59,29 +48,46 @@ export function MobileNavProfile({ onNavigate }: { onNavigate?: () => void }) {
 
   if (!session) {
     return (
-      <div className="border-b border-stone-200 pb-4">
-        <Link href="/login" onClick={onNavigate} className="text-sm font-medium text-brand-amber">
-          Sign in
-        </Link>
+      <div className="rounded-card border border-[var(--card-border)] bg-brand-cream p-4">
+        <p className="text-sm font-medium text-ink">Your account</p>
+        <p className="mt-1 text-xs leading-relaxed text-ink/60">Sign in to access your dashboard and manage your facility profile.</p>
+        <Button asChild className="mt-4 w-full" size="sm">
+          <Link href="/login" onClick={onNavigate}>
+            Sign in
+          </Link>
+        </Button>
       </div>
     );
   }
 
   const email = session.user.email;
-  const name = session.user.name || email;
+  const name = session.user.name || email?.split("@")[0] || "Account";
 
   return (
-    <div className="border-b border-stone-200 pb-4">
-      <p className="text-sm font-medium text-neutral-900">{name}</p>
-      <p className="mt-0.5 text-xs text-neutral-500">{email}</p>
-      <p className="mt-1 text-xs text-neutral-400">{roleLabel(role)}</p>
-      <div className="mt-3 flex flex-col gap-2">
-        <LoadingLink href={dashboardHref(role)} onNavigate={onNavigate} className="text-sm text-brand-amber">
-          Dashboard
-        </LoadingLink>
-        <button type="button" onClick={signOut} disabled={signingOut} className="text-left text-sm text-neutral-600">
+    <div className="rounded-card border border-[var(--card-border)] bg-brand-cream p-4">
+      <div className="flex items-start gap-3">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-brand-green-pale/50 text-brand-green-dark">
+          <UserRound className="h-5 w-5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-semibold text-ink">{name}</p>
+          <p className="mt-0.5 truncate text-xs text-ink/60">{email}</p>
+          <span className="mt-2 inline-flex rounded bg-brand-green-pale/40 px-2.5 py-1 text-[11px] font-semibold text-brand-green-dark">
+            {roleLabel(role)}
+          </span>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-2">
+        <Button asChild variant="outline" size="sm" className="w-full justify-center">
+          <LoadingLink href={dashboardHref(role)} onNavigate={onNavigate}>
+            Open dashboard
+          </LoadingLink>
+        </Button>
+        <Button type="button" variant="ghost" size="sm" className="w-full justify-center" onClick={signOut} disabled={signingOut}>
+          {signingOut ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
           {signingOut ? "Signing out..." : "Sign out"}
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -131,7 +137,7 @@ export function AuthUserMenu({ variant = "desktop", onNavigate }: AuthUserMenuPr
 
   if (!session) {
     return (
-      <Button asChild size="sm" variant="outline">
+      <Button asChild size="sm" variant="outline" className="border-white/35 text-white hover:bg-white/10">
         <Link href="/login">Sign in</Link>
       </Button>
     );
@@ -145,14 +151,14 @@ export function AuthUserMenu({ variant = "desktop", onNavigate }: AuthUserMenuPr
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
-        className="inline-flex min-h-10 items-center gap-2 rounded-full border border-stone-200 bg-white px-2 py-1.5 text-sm text-neutral-700 hover:bg-sage-50"
+        className="inline-flex min-h-10 items-center gap-2 rounded-full border border-white/25 bg-white/10 px-2 py-1.5 text-sm text-white hover:bg-white/15"
         aria-expanded={open}
         aria-label="Open profile menu"
       >
-        <span className="grid h-8 w-8 place-items-center rounded-full bg-sage-100 text-sage-700">
+        <span className="grid h-8 w-8 place-items-center rounded-full bg-brand-green-light/30 text-white">
           <UserRound className="h-4 w-4" />
         </span>
-        <ChevronDown className="h-4 w-4 text-neutral-500" />
+        <ChevronDown className="h-4 w-4 text-white/70" />
       </button>
 
       {open ? (
@@ -160,7 +166,7 @@ export function AuthUserMenu({ variant = "desktop", onNavigate }: AuthUserMenuPr
           <div className="border-b border-stone-100 pb-3">
             <p className="font-semibold text-neutral-900">{name}</p>
             <p className="mt-1 break-all text-sm text-neutral-500">{email}</p>
-            <p className="mt-2 inline-flex rounded-full bg-sage-100 px-2.5 py-1 text-xs font-medium text-sage-700">{roleLabel(role)}</p>
+            <p className="mt-2 inline-flex rounded bg-brand-green-pale/40 px-2.5 py-1 text-xs font-medium text-brand-green-dark">{roleLabel(role)}</p>
           </div>
           <div className="grid gap-1 pt-3">
             <LoadingLink
@@ -169,7 +175,7 @@ export function AuthUserMenu({ variant = "desktop", onNavigate }: AuthUserMenuPr
                 setOpen(false);
                 onNavigate?.();
               }}
-              className="rounded-lg px-3 py-2 text-sm text-neutral-700 hover:bg-sage-50"
+              className="rounded-lg px-3 py-2 text-sm text-ink hover:bg-brand-cream hover:text-brand-amber"
             >
               Open dashboard
             </LoadingLink>
@@ -177,7 +183,7 @@ export function AuthUserMenu({ variant = "desktop", onNavigate }: AuthUserMenuPr
               type="button"
               onClick={signOut}
               disabled={signingOut}
-              className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-neutral-700 hover:bg-sage-50 disabled:opacity-60"
+              className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-ink hover:bg-brand-cream hover:text-brand-amber disabled:opacity-60"
             >
               {signingOut ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
               {signingOut ? "Signing out..." : "Sign out"}

@@ -59,7 +59,9 @@ export function MobileNavDrawer({ open, onClose, nav, profile, footer }: MobileN
         <div className="flex-1 overflow-y-auto px-4 py-5">
           {profile}
 
-          <div className="mt-5 grid gap-1">
+          <div className="mt-6 border-t border-[var(--card-border)] pt-5">
+            <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-[1px] text-brand-amber">Menu</p>
+            <div className="grid gap-1">
             {nav.map((item) => (
               <LoadingLink
                 key={item.href}
@@ -70,9 +72,10 @@ export function MobileNavDrawer({ open, onClose, nav, profile, footer }: MobileN
                 {item.label}
               </LoadingLink>
             ))}
+            </div>
           </div>
 
-          <div className="mt-5">{footer}</div>
+          <div className="mt-6 border-t border-[var(--card-border)] pt-5">{footer}</div>
         </div>
       </nav>
     </>,

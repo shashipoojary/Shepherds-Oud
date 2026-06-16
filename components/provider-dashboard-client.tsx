@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Chip } from "@/components/ui/chip";
 import { CustomSelect } from "@/components/ui/custom-select";
+import { DashboardSkeleton } from "@/components/ui/dashboard-skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StatGrid } from "@/components/ui/stat-grid";
 import { careTypeOptions, dutchProvinces, facilityTypes } from "@/lib/content";
@@ -60,6 +62,11 @@ type FormState = {
   languages: string[];
 };
 
+type DashboardData = {
+  provider: ProviderRecord | null;
+  inquiries: Inquiry[];
+};
+
 const emptyForm: FormState = {
   name: "",
   type: facilityTypes[0],
@@ -75,6 +82,8 @@ const emptyForm: FormState = {
   services: [],
   languages: []
 };
+
+const availabilityOptions = ["Not set", "Available now", "Limited availability", "Waitlist", "Fully occupied"] as const;
 
 function toForm(provider: ProviderRecord | null): FormState {
   if (!provider) return emptyForm;
@@ -95,34 +104,67 @@ function toForm(provider: ProviderRecord | null): FormState {
   };
 }
 
-export function ProviderDashboardClient() {
-  const [form, setForm] = useState<FormState>(emptyForm);
-  const [inquiries, setInquiries] = useState<Inquiry[]>([]);
-  const [loading, setLoading] = useState(true);
+function parseOptionalInt(value: string): number | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const parsed = Number(trimmed);
+  if (!Number.isFinite(parsed) || parsed < 0) return null;
+  return Math.trunc(parsed);
+}
+
+async function readApiError(response: Response) {
+  try {
+    const data = (await response.json()) as { error?: string; issues?: { fieldErrors?: Record<string, string[]> } };
+    const fieldErrors = data.issues?.fieldErrors;
+    if (fieldErrors) {
+      const first = Object.values(fieldErrors).flat()[0];
+      if (first) return first;
+    }
+    return data.error || "Request failed.";
+  } catch {
+    return "Request failed.";
+  }
+}
+
+export function ProviderDashboardClient({ initialData }: { initialData?: DashboardData }) {
+  const [form, setForm] = useState<FormState>(() => toForm(initialData?.provider ?? null));
+  const [inquiries, setInquiries] = useState<Inquiry[]>(initialData?.inquiries ?? []);
+  const [loading, setLoading] = useState(!initialData);
   const [message, setMessage] = useState("");
+  const [messageTone, setMessageTone] = useState<"success" | "error">("success");
   const [saving, setSaving] = useState(false);
   const [pendingInquiryId, setPendingInquiryId] = useState<string | null>(null);
+  const [providerId, setProviderId] = useState<string | null>(initialData?.provider?.id ?? null);
 
   useEffect(() => {
+    if (initialData) return;
+
     async function load() {
       try {
         const response = await fetch("/api/provider/me");
         if (response.ok) {
-          const data = (await response.json()) as { provider: ProviderRecord | null; inquiries: Inquiry[] };
+          const data = (await response.json()) as DashboardData;
           setForm(toForm(data.provider));
           setInquiries(data.inquiries);
+          setProviderId(data.provider?.id ?? null);
+        } else {
+          setMessageTone("error");
+          setMessage(await readApiError(response));
         }
+      } catch {
+        setMessageTone("error");
+        setMessage("Could not load provider dashboard.");
       } finally {
         setLoading(false);
       }
     }
 
     void load();
-  }, []);
+  }, [initialData]);
 
   useEffect(() => {
     if (!message) return;
-    const timer = window.setTimeout(() => setMessage(""), 4000);
+    const timer = window.setTimeout(() => setMessage(""), 5000);
     return () => window.clearTimeout(timer);
   }, [message]);
 
@@ -141,22 +183,30 @@ export function ProviderDashboardClient() {
   }
 
   async function saveProfile() {
+    if (form.name.trim().length < 2) {
+      setMessageTone("error");
+      setMessage("Facility name must be at least 2 characters.");
+      return;
+    }
+
     setSaving(true);
+    setMessage("");
+
     try {
       const response = await fetch("/api/provider/me", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: form.name,
+          name: form.name.trim(),
           type: form.type,
-          contactName: form.contactName,
-          email: form.email,
-          phone: form.phone,
-          city: form.city,
+          contactName: form.contactName.trim() || undefined,
+          email: form.email.trim() || undefined,
+          phone: form.phone.trim() || undefined,
+          city: form.city.trim() || undefined,
           province: form.province,
-          description: form.description,
-          bedsTotal: form.bedsTotal.trim() === "" ? null : Number(form.bedsTotal),
-          bedsOpen: form.bedsOpen.trim() === "" ? null : Number(form.bedsOpen),
+          description: form.description.trim() || undefined,
+          bedsTotal: parseOptionalInt(form.bedsTotal),
+          bedsOpen: parseOptionalInt(form.bedsOpen),
           availabilityStatus: form.availabilityStatus,
           waitlistText: form.availabilityStatus === "Waitlist" ? "Waitlist open" : null,
           services: form.services,
@@ -165,21 +215,31 @@ export function ProviderDashboardClient() {
       });
 
       if (!response.ok) {
-        throw new Error("Save failed");
+        setMessageTone("error");
+        setMessage(await readApiError(response));
+        return;
       }
 
       const provider = (await response.json()) as ProviderRecord;
       setForm(toForm(provider));
-      await recordAction({
-        type: "update_provider_profile",
-        targetType: "provider",
-        targetId: provider.id,
-        label: "Provider profile saved to database.",
-        payload: { providerId: provider.id }
-      });
+      setProviderId(provider.id);
+      setMessageTone("success");
       setMessage("Facility profile saved.");
+
+      try {
+        await recordAction({
+          type: "update_provider_profile",
+          targetType: "provider",
+          targetId: provider.id,
+          label: "Provider profile saved to database.",
+          payload: { providerId: provider.id }
+        });
+      } catch {
+        // Profile save succeeded; action log is non-blocking.
+      }
     } catch {
-      setMessage("Could not save profile. Please try again.");
+      setMessageTone("error");
+      setMessage("Could not save profile. Please check your connection and try again.");
     } finally {
       setSaving(false);
     }
@@ -195,12 +255,16 @@ export function ProviderDashboardClient() {
       });
 
       if (!response.ok) {
-        throw new Error("Update failed");
+        setMessageTone("error");
+        setMessage(await readApiError(response));
+        return;
       }
 
       setInquiries((current) => current.map((item) => (item.id === id ? { ...item, status } : item)));
+      setMessageTone("success");
       setMessage("Inquiry status updated.");
     } catch {
+      setMessageTone("error");
       setMessage("Could not update inquiry.");
     } finally {
       setPendingInquiryId(null);
@@ -211,15 +275,31 @@ export function ProviderDashboardClient() {
   const bedsDisplay = form.bedsOpen.trim() === "" ? "—" : form.bedsOpen;
 
   if (loading) {
-    return <main className="mx-auto max-w-7xl px-4 py-8 text-sm text-neutral-500">Loading provider dashboard...</main>;
+    return <DashboardSkeleton title="provider dashboard" />;
   }
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <header className="mb-6">
-        <h1 className="text-[1.3rem] font-semibold">Provider dashboard</h1>
-        <p className="text-sm text-neutral-500">Save your facility profile to the database and manage matched family inquiries.</p>
+        <p className="section-label">Provider dashboard</p>
+        <h1 className="mt-1 text-h2 font-semibold text-ink">Manage your facility</h1>
+        <p className="mt-2 text-body text-ink/70">
+          {providerId
+            ? "Update your profile, availability, and respond to matched family inquiries."
+            : "Complete your facility profile below — your first save creates your provider record and links it to your login."}
+        </p>
       </header>
+
+      {message ? (
+        <div
+          className={`mb-5 rounded-lg px-4 py-3 text-sm ${
+            messageTone === "success" ? "bg-brand-green-pale/30 text-brand-green-dark" : "bg-brand-beige-light/50 text-brand-amber-dark"
+          }`}
+          role="status"
+        >
+          {message}
+        </div>
+      ) : null}
 
       <StatGrid
         stats={[
@@ -231,56 +311,68 @@ export function ProviderDashboardClient() {
       />
 
       <div className="mt-5 grid gap-5 xl:grid-cols-[1fr_420px]">
-        <section className="rounded-xl bg-white p-5 shadow-soft">
-          <h2 className="font-semibold">Family inquiries</h2>
+        <section className="rounded-card border border-[var(--card-border)] bg-white p-5 shadow-soft">
+          <h2 className="font-semibold text-ink">Family inquiries</h2>
+          <p className="mt-1 text-sm text-ink/60">Respond to families matched to your facility by a care advisor.</p>
           {inquiries.length ? (
             <div className="mt-4 grid gap-3">
-              {inquiries.map((inquiry) => (
-                <article key={inquiry.id} className="rounded-xl border border-stone-200 p-4">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <p className="font-semibold text-ink">{inquiry.intake.contactName}</p>
-                      <p className="mt-1 text-sm text-neutral-600">
-                        {inquiry.intake.preferredArea} · {inquiry.intake.careTypes.join(", ")}
-                      </p>
-                      <p className="mt-1 text-sm text-neutral-500">
-                        Urgency: {inquiry.intake.urgency} · Age: {inquiry.intake.ageRange}
-                      </p>
+              {inquiries.map((inquiry) => {
+                const isNew = ["SUGGESTED", "VISIT_REQUESTED", "CALLBACK_REQUESTED"].includes(inquiry.status);
+                return (
+                  <article
+                    key={inquiry.id}
+                    className={`rounded-card border p-4 ${isNew ? "border-brand-amber/40 bg-brand-amber/5" : "border-[var(--card-border)]"}`}
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p className="font-semibold text-ink">{inquiry.intake.contactName}</p>
+                        <p className="mt-1 text-sm text-ink/70">
+                          {inquiry.intake.preferredArea} · {inquiry.intake.careTypes.join(", ")}
+                        </p>
+                        <p className="mt-1 text-sm text-ink/55">
+                          Urgency: {inquiry.intake.urgency} · Age: {inquiry.intake.ageRange}
+                        </p>
+                        <p className="mt-2 text-sm text-ink/70">
+                          {inquiry.intake.phone} · {inquiry.intake.email}
+                        </p>
+                      </div>
+                      <span className="rounded bg-brand-green-pale/40 px-3 py-1 text-xs font-semibold text-brand-green-dark">
+                        {inquiry.score}% match · {inquiry.status.replaceAll("_", " ")}
+                      </span>
                     </div>
-                    <span className="rounded-full bg-sage-100 px-3 py-1 text-xs font-medium text-sage-700">
-                      {inquiry.score}% match · {inquiry.status.replaceAll("_", " ")}
-                    </span>
-                  </div>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {inquiry.status === "SUGGESTED" || inquiry.status === "VISIT_REQUESTED" || inquiry.status === "CALLBACK_REQUESTED" ? (
-                      <Button size="sm" disabled={pendingInquiryId === inquiry.id} onClick={() => void updateInquiry(inquiry.id, "CONTACTED")}>
-                        Mark contacted
-                      </Button>
-                    ) : null}
-                    {inquiry.status !== "ACCEPTED" && inquiry.status !== "DECLINED" && inquiry.status !== "CLOSED" ? (
-                      <>
-                        <Button size="sm" variant="ghost" disabled={pendingInquiryId === inquiry.id} onClick={() => void updateInquiry(inquiry.id, "ACCEPTED")}>
-                          Accept
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {isNew ? (
+                        <Button size="sm" disabled={pendingInquiryId === inquiry.id} onClick={() => void updateInquiry(inquiry.id, "CONTACTED")}>
+                          Mark contacted
                         </Button>
-                        <Button size="sm" variant="ghost" disabled={pendingInquiryId === inquiry.id} onClick={() => void updateInquiry(inquiry.id, "DECLINED")}>
-                          Decline
-                        </Button>
-                      </>
-                    ) : null}
-                  </div>
-                </article>
-              ))}
+                      ) : null}
+                      {inquiry.status !== "ACCEPTED" && inquiry.status !== "DECLINED" && inquiry.status !== "CLOSED" ? (
+                        <>
+                          <Button size="sm" disabled={pendingInquiryId === inquiry.id} onClick={() => void updateInquiry(inquiry.id, "ACCEPTED")}>
+                            Accept
+                          </Button>
+                          <Button size="sm" variant="outline" disabled={pendingInquiryId === inquiry.id} onClick={() => void updateInquiry(inquiry.id, "DECLINED")}>
+                            Decline
+                          </Button>
+                        </>
+                      ) : null}
+                    </div>
+                  </article>
+                );
+              })}
             </div>
           ) : (
-            <EmptyState title="No inquiries yet" description="When an admin matches a family to your facility, the inquiry will appear here." />
+            <div className="mt-4">
+              <EmptyState title="No inquiries yet" description="When an admin matches a family to your facility, the inquiry will appear here." />
+            </div>
           )}
         </section>
 
-        <section className="rounded-xl bg-white p-5 shadow-soft">
-          <h2 className="font-semibold">Availability</h2>
-          <p className="mt-2 text-sm text-neutral-600">Saved together with your facility profile.</p>
+        <section className="rounded-card border border-[var(--card-border)] bg-white p-5 shadow-soft">
+          <h2 className="font-semibold text-ink">Availability</h2>
+          <p className="mt-1 text-sm text-ink/60">Saved together with your facility profile.</p>
           <div className="mt-4 grid gap-4">
-            <label className="grid gap-2 text-sm font-medium">
+            <label className="grid gap-2 text-sm font-medium text-ink">
               Available beds
               <input
                 type="number"
@@ -288,24 +380,23 @@ export function ProviderDashboardClient() {
                 value={form.bedsOpen}
                 placeholder="Not set"
                 onChange={(event) => updateForm("bedsOpen", event.target.value)}
-                className="rounded-lg border border-stone-200 px-3 py-2 outline-sage-600"
+                className={inputClass}
               />
             </label>
-            <label className="grid gap-2 text-sm font-medium">
+            <label className="grid gap-2 text-sm font-medium text-ink">
               Availability status
-              <CustomSelect
-                value={form.availabilityStatus}
-                onChange={(value) => updateForm("availabilityStatus", value)}
-                options={["Not set", "Available now", "Limited availability", "Waitlist", "Fully occupied"]}
-              />
+              <CustomSelect value={form.availabilityStatus} onChange={(value) => updateForm("availabilityStatus", value)} options={availabilityOptions} />
             </label>
+            <Button type="button" disabled={saving} onClick={() => void saveProfile()}>
+              {saving ? "Saving..." : "Save availability"}
+            </Button>
           </div>
         </section>
       </div>
 
-      <section className="mt-5 rounded-xl bg-white p-5 shadow-soft">
-        <h2 className="font-semibold">Facility profile</h2>
-        <p className="mt-2 text-sm text-neutral-600">First save creates your provider record and links it to your login.</p>
+      <section className="mt-5 rounded-card border border-[var(--card-border)] bg-white p-5 shadow-soft">
+        <h2 className="font-semibold text-ink">Facility profile</h2>
+        <p className="mt-1 text-sm text-ink/60">This information helps families understand what your facility offers.</p>
 
         <form
           className="mt-5 grid gap-4 md:grid-cols-2"
@@ -314,8 +405,8 @@ export function ProviderDashboardClient() {
             void saveProfile();
           }}
         >
-          <Field label="Facility name">
-            <input value={form.name} onChange={(e) => updateForm("name", e.target.value)} className={inputClass} required />
+          <Field label="Facility name *">
+            <input value={form.name} onChange={(e) => updateForm("name", e.target.value)} className={inputClass} required minLength={2} />
           </Field>
           <Field label="Facility type">
             <CustomSelect value={form.type} onChange={(value) => updateForm("type", value)} options={facilityTypes} />
@@ -324,7 +415,7 @@ export function ProviderDashboardClient() {
             <input value={form.contactName} onChange={(e) => updateForm("contactName", e.target.value)} className={inputClass} />
           </Field>
           <Field label="Email">
-            <input type="email" value={form.email} onChange={(e) => updateForm("email", e.target.value)} className={inputClass} />
+            <input type="email" value={form.email} onChange={(e) => updateForm("email", e.target.value)} className={inputClass} placeholder="contact@facility.nl" />
           </Field>
           <Field label="Phone">
             <input value={form.phone} onChange={(e) => updateForm("phone", e.target.value)} className={inputClass} placeholder="+31 6 ..." />
@@ -333,14 +424,14 @@ export function ProviderDashboardClient() {
             <input type="number" min="0" value={form.bedsTotal} onChange={(e) => updateForm("bedsTotal", e.target.value)} className={inputClass} placeholder="Optional" />
           </Field>
           <Field label="City">
-            <input value={form.city} onChange={(e) => updateForm("city", e.target.value)} className={inputClass} />
+            <input value={form.city} onChange={(e) => updateForm("city", e.target.value)} className={inputClass} placeholder="e.g. Utrecht" />
           </Field>
           <Field label="Province">
             <CustomSelect value={form.province} onChange={(value) => updateForm("province", value)} options={dutchProvinces} />
           </Field>
           <div className="md:col-span-2">
             <Field label="Facility description">
-              <textarea value={form.description} onChange={(e) => updateForm("description", e.target.value)} className={`${inputClass} min-h-24`} />
+              <textarea value={form.description} onChange={(e) => updateForm("description", e.target.value)} className={`${inputClass} min-h-24`} placeholder="Describe your care approach, environment, and specialties." />
             </Field>
           </div>
           <div className="md:col-span-2">
@@ -350,22 +441,22 @@ export function ProviderDashboardClient() {
             <ChipField label="Languages spoken" options={["Dutch", "English", "Arabic", "Turkish", "German", "French"]} selected={form.languages} onToggle={(value) => toggleList("languages", value)} />
           </div>
           <div className="md:col-span-2">
-            <Button type="submit" disabled={saving}>
-              {saving ? "Saving..." : "Save facility profile"}
+            <Button type="submit" disabled={saving} className="min-w-[180px]">
+              {saving ? "Saving..." : providerId ? "Save facility profile" : "Create facility profile"}
             </Button>
           </div>
         </form>
-        {message ? <p className="mt-4 rounded-lg bg-brand-green-pale/30 p-3 text-sm text-brand-green-dark">{message}</p> : null}
       </section>
     </main>
   );
 }
 
-const inputClass = "w-full rounded-lg border border-stone-200 px-3 py-2 text-sm outline-sage-600";
+const inputClass =
+  "w-full rounded-lg border border-[var(--card-border)] px-3 py-2.5 text-sm text-ink outline-none transition focus:border-brand-amber";
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <label className="grid gap-2 text-sm font-medium">
+    <label className="grid gap-2 text-sm font-medium text-ink">
       {label}
       {children}
     </label>
@@ -385,21 +476,13 @@ function ChipField({
 }) {
   return (
     <div className="grid gap-2">
-      <span className="text-sm font-medium">{label}</span>
+      <span className="text-sm font-medium text-ink">{label}</span>
       <div className="flex flex-wrap gap-2">
-        {options.map((option) => {
-          const active = selected.includes(option);
-          return (
-            <button
-              key={option}
-              type="button"
-              onClick={() => onToggle(option)}
-              className={`rounded-full px-3 py-2 text-sm transition ${active ? "bg-brand-amber text-white" : "bg-brand-cream text-ink/70 hover:bg-brand-beige-light/50"}`}
-            >
-              {option}
-            </button>
-          );
-        })}
+        {options.map((option) => (
+          <Chip key={option} selected={selected.includes(option)} onClick={() => onToggle(option)}>
+            {option}
+          </Chip>
+        ))}
       </div>
     </div>
   );

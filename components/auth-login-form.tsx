@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 
 function errorMessage(code: string | null) {
   if (code === "unauthorized") {
-    return "Your account is signed in, but it does not have access to that page yet. Ask an admin to add your email to ADMIN_EMAILS in Vercel.";
+    return "This page is for a different account type. Admins use ADMIN_EMAILS; care facilities use PROVIDER_EMAILS in Vercel. Contact your Shepherds Oud administrator.";
   }
 
   if (code === "oauth-config") {
@@ -24,7 +24,10 @@ function errorMessage(code: string | null) {
 export function AuthLoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") || "/admin";
+  const requestedDestination = searchParams.get("callbackUrl");
+  const callbackUrl = requestedDestination
+    ? `/login/continue?callbackUrl=${encodeURIComponent(requestedDestination)}`
+    : "/login/continue";
   const error = searchParams.get("error");
   const message = errorMessage(error);
   const [loading, setLoading] = useState(false);
@@ -53,7 +56,7 @@ export function AuthLoginForm() {
       </Button>
 
       <p className="text-center text-xs leading-5 text-neutral-500">
-        Admin and provider access is limited to approved Google accounts.
+        One Google sign-in for all staff. Your email decides your role: admin advisors see the admin panel; care facilities see the provider dashboard.
       </p>
     </div>
   );
