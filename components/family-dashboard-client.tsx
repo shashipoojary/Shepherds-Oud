@@ -7,6 +7,7 @@ import { IntakeSummaryCard } from "@/components/intake-summary-card";
 import { Button } from "@/components/ui/button";
 import { ButtonRow } from "@/components/ui/button-row";
 import { EmptyState } from "@/components/ui/empty-state";
+import { FamilyDashboardSkeleton } from "@/components/ui/results-skeleton";
 
 export function FamilyDashboardClient() {
   const [intake, setIntake] = useState<StoredIntake | null>(null);
@@ -25,8 +26,8 @@ export function FamilyDashboardClient() {
       try {
         const response = await fetch(`/api/intakes/${current.id}`);
         if (response.ok) {
-          const data = (await response.json()) as { status: string };
-          const updated: StoredIntake = { ...current, status: data.status };
+          const data = (await response.json()) as { status: string; matchCount?: number };
+          const updated: StoredIntake = { ...current, status: data.status, matchCount: data.matchCount ?? 0 };
           saveStoredIntake(updated);
           setIntake(updated);
         } else {
@@ -42,13 +43,17 @@ export function FamilyDashboardClient() {
     void refreshStatus();
   }, []);
 
+  if (loading) {
+    return <FamilyDashboardSkeleton />;
+  }
+
   return (
     <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
       <header className="rounded-2xl bg-white p-5 shadow-soft sm:p-7">
         <p className="section-label">Family dashboard</p>
         <h1 className="mt-2 text-2xl font-semibold">Your care journey</h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">
-          You do not need an account to follow your request. After submitting the intake form, your case card appears here on this device.
+          You do not need an account to follow your request. After submitting the intake form, your case card appears here on this device. Use the same phone or computer to view matches later.
         </p>
         <ButtonRow className="mt-5 max-w-lg">
           <Button asChild className="w-full">
@@ -61,10 +66,18 @@ export function FamilyDashboardClient() {
       </header>
 
       <section className="mt-5">
-        {loading ? (
-          <div className="rounded-2xl bg-white p-8 text-sm text-neutral-500 shadow-soft">Loading your request...</div>
-        ) : intake ? (
-          <IntakeSummaryCard intake={intake} />
+        {intake ? (
+          <>
+            <IntakeSummaryCard intake={intake} />
+            {typeof intake.matchCount === "number" && intake.matchCount > 0 ? (
+              <div className="mt-4 rounded-2xl border border-brand-green-pale bg-brand-green-pale/20 px-5 py-4 text-sm text-brand-green-dark">
+                {intake.matchCount} matched provider{intake.matchCount === 1 ? "" : "s"} ready to review.{" "}
+                <Link href="/family/results" className="font-semibold underline underline-offset-2">
+                  View matches
+                </Link>
+              </div>
+            ) : null}
+          </>
         ) : (
           <div className="rounded-2xl bg-white shadow-soft">
             <EmptyState

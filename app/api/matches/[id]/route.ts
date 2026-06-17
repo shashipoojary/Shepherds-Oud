@@ -4,13 +4,12 @@ import { getServerSession, getUserRole } from "@/lib/auth-server";
 import { getUserLinkedProvider } from "@/lib/provider-server";
 import { updateMatchSchema } from "@/lib/validation/match";
 
+const guestFamilyStatuses = ["VISIT_REQUESTED", "CALLBACK_REQUESTED"] as const;
+const providerStatuses = ["CONTACTED", "ACCEPTED", "DECLINED"] as const;
+
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getServerSession();
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const { id } = await params;
     const body = await request.json();
     const parsed = updateMatchSchema.safeParse(body);
@@ -28,16 +27,30 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       return NextResponse.json({ error: "Match not found." }, { status: 404 });
     }
 
-    const role = getUserRole(session);
+    const { status, notes, intakeId } = parsed.data;
 
-    if (role === "PROVIDER") {
-      const linked = await getUserLinkedProvider(session.user.id);
-      if (!linked || linked.id !== existing.providerId) {
+    if (!session) {
+      if (!intakeId) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+      if (!guestFamilyStatuses.includes(status as (typeof guestFamilyStatuses)[number])) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
-    } else if (role !== "ADMIN") {
-      const familyStatuses = ["VISIT_REQUESTED", "CALLBACK_REQUESTED"] as const;
-      if (!familyStatuses.includes(parsed.data.status as (typeof familyStatuses)[number])) {
+      if (existing.intakeId !== intakeId) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+    } else {
+      const role = getUserRole(session);
+
+      if (role === "PROVIDER") {
+        const linked = await getUserLinkedProvider(session.user.id);
+        if (!linked || linked.id !== existing.providerId) {
+          return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        }
+        if (!providerStatuses.includes(status as (typeof providerStatuses)[number])) {
+          return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        }
+      } else if (role !== "ADMIN") {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
     }
@@ -45,8 +58,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const match = await prisma.match.update({
       where: { id },
       data: {
-        status: parsed.data.status,
-        ...(parsed.data.notes !== undefined ? { notes: parsed.data.notes } : {})
+        status,
+        ...(notes !== undefined ? { notes } : {})
       }
     });
 

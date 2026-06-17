@@ -8,6 +8,7 @@ import { DashboardSkeleton } from "@/components/ui/dashboard-skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StatGrid } from "@/components/ui/stat-grid";
 import { careTypeOptions, dutchProvinces, facilityTypes } from "@/lib/content";
+import { providerInquiryActionMessage, providerInquiryStatusLabel } from "@/lib/match-status";
 import { recordAction } from "@/lib/client-actions";
 
 type ProviderRecord = {
@@ -99,8 +100,8 @@ function toForm(provider: ProviderRecord | null): FormState {
     bedsTotal: provider.bedsTotal?.toString() || "",
     bedsOpen: provider.bedsOpen?.toString() || "",
     availabilityStatus: provider.availabilityStatus || "Not set",
-    services: provider.services,
-    languages: provider.languages
+    services: provider.services ?? [],
+    languages: provider.languages ?? []
   };
 }
 
@@ -134,6 +135,8 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
   const [messageTone, setMessageTone] = useState<"success" | "error">("success");
   const [saving, setSaving] = useState(false);
   const [pendingInquiryId, setPendingInquiryId] = useState<string | null>(null);
+  const [pendingAction, setPendingAction] = useState<string | null>(null);
+  const [inquiryFeedback, setInquiryFeedback] = useState<Record<string, string>>({});
   const [providerId, setProviderId] = useState<string | null>(initialData?.provider?.id ?? null);
 
   useEffect(() => {
@@ -207,7 +210,7 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
           description: form.description.trim() || undefined,
           bedsTotal: parseOptionalInt(form.bedsTotal),
           bedsOpen: parseOptionalInt(form.bedsOpen),
-          availabilityStatus: form.availabilityStatus,
+          availabilityStatus: form.availabilityStatus === "Not set" ? undefined : form.availabilityStatus,
           waitlistText: form.availabilityStatus === "Waitlist" ? "Waitlist open" : undefined,
           services: form.services,
           languages: form.languages
@@ -245,8 +248,16 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
     }
   }
 
-  async function updateInquiry(id: string, status: string) {
+  async function updateInquiry(id: string, status: string, familyName: string) {
+    const actionKey = `${id}:${status}`;
     setPendingInquiryId(id);
+    setPendingAction(actionKey);
+    setInquiryFeedback((current) => {
+      const next = { ...current };
+      delete next[id];
+      return next;
+    });
+
     try {
       const response = await fetch(`/api/matches/${id}`, {
         method: "PATCH",
@@ -257,17 +268,22 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
       if (!response.ok) {
         setMessageTone("error");
         setMessage(await readApiError(response));
+        setInquiryFeedback((current) => ({ ...current, [id]: "Could not update this inquiry. Please try again." }));
         return;
       }
 
       setInquiries((current) => current.map((item) => (item.id === id ? { ...item, status } : item)));
+      const feedback = providerInquiryActionMessage(status, familyName);
+      setInquiryFeedback((current) => ({ ...current, [id]: feedback }));
       setMessageTone("success");
-      setMessage("Inquiry status updated.");
+      setMessage(feedback);
     } catch {
       setMessageTone("error");
       setMessage("Could not update inquiry.");
+      setInquiryFeedback((current) => ({ ...current, [id]: "Could not update this inquiry. Please try again." }));
     } finally {
       setPendingInquiryId(null);
+      setPendingAction(null);
     }
   }
 
@@ -313,15 +329,22 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
       <div className="mt-5 grid gap-5 xl:grid-cols-[1fr_420px]">
         <section className="rounded-card border border-[var(--card-border)] bg-white p-5 shadow-soft">
           <h2 className="font-semibold text-ink">Family inquiries</h2>
-          <p className="mt-1 text-sm text-ink/60">Respond to families matched to your facility by a care advisor.</p>
+          <p className="mt-1 text-sm text-ink/60">
+            Respond to families matched to your facility. Accepting tells the family you are interested; declining removes the match from their results.
+          </p>
           {inquiries.length ? (
             <div className="mt-4 grid gap-3">
               {inquiries.map((inquiry) => {
                 const isNew = ["SUGGESTED", "VISIT_REQUESTED", "CALLBACK_REQUESTED"].includes(inquiry.status);
+                const isAccepted = inquiry.status === "ACCEPTED";
+                const isDeclined = inquiry.status === "DECLINED" || inquiry.status === "CLOSED";
+                const isPending = pendingInquiryId === inquiry.id;
+                const cardFeedback = inquiryFeedback[inquiry.id];
+
                 return (
                   <article
                     key={inquiry.id}
-                    className={`rounded-card border p-4 ${isNew ? "border-brand-amber/40 bg-brand-amber/5" : "border-[var(--card-border)]"}`}
+                    className={`rounded-card border p-4 ${isNew ? "border-brand-amber/40 bg-brand-amber/5" : isAccepted ? "border-brand-green-pale bg-brand-green-pale/15" : isDeclined ? "border-stone-200 bg-stone-50" : "border-[var(--card-border)]"}`}
                   >
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
@@ -336,25 +359,64 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
                           {inquiry.intake.phone} · {inquiry.intake.email}
                         </p>
                       </div>
-                      <span className="rounded bg-brand-green-pale/40 px-3 py-1 text-xs font-semibold text-brand-green-dark">
-                        {inquiry.score}% match · {inquiry.status.replaceAll("_", " ")}
+                      <span
+                        className={`rounded px-3 py-1 text-xs font-semibold ${
+                          isAccepted
+                            ? "bg-brand-green-pale/60 text-brand-green-dark"
+                            : isDeclined
+                              ? "bg-stone-200 text-neutral-600"
+                              : "bg-brand-green-pale/40 text-brand-green-dark"
+                        }`}
+                      >
+                        {inquiry.score}% match · {providerInquiryStatusLabel(inquiry.status)}
                       </span>
                     </div>
+
+                    {cardFeedback ? (
+                      <p className="mt-3 rounded-lg bg-white/80 px-3 py-2 text-sm text-brand-green-dark" role="status">
+                        {cardFeedback}
+                      </p>
+                    ) : null}
+
                     <div className="mt-4 flex flex-wrap gap-2">
-                      {isNew ? (
-                        <Button size="sm" disabled={pendingInquiryId === inquiry.id} onClick={() => void updateInquiry(inquiry.id, "CONTACTED")}>
-                          Mark contacted
+                      {isNew && !isAccepted && !isDeclined ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={isPending}
+                          onClick={() => void updateInquiry(inquiry.id, "CONTACTED", inquiry.intake.contactName)}
+                        >
+                          {pendingAction === `${inquiry.id}:CONTACTED` ? "Saving..." : inquiry.status === "CONTACTED" ? "Contacted" : "Mark contacted"}
                         </Button>
                       ) : null}
-                      {inquiry.status !== "ACCEPTED" && inquiry.status !== "DECLINED" && inquiry.status !== "CLOSED" ? (
+                      {!isAccepted && !isDeclined ? (
                         <>
-                          <Button size="sm" disabled={pendingInquiryId === inquiry.id} onClick={() => void updateInquiry(inquiry.id, "ACCEPTED")}>
-                            Accept
+                          <Button
+                            size="sm"
+                            disabled={isPending}
+                            onClick={() => void updateInquiry(inquiry.id, "ACCEPTED", inquiry.intake.contactName)}
+                          >
+                            {pendingAction === `${inquiry.id}:ACCEPTED` ? "Accepting..." : "Accept inquiry"}
                           </Button>
-                          <Button size="sm" variant="outline" disabled={pendingInquiryId === inquiry.id} onClick={() => void updateInquiry(inquiry.id, "DECLINED")}>
-                            Decline
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={isPending}
+                            onClick={() => void updateInquiry(inquiry.id, "DECLINED", inquiry.intake.contactName)}
+                          >
+                            {pendingAction === `${inquiry.id}:DECLINED` ? "Declining..." : "Decline"}
                           </Button>
                         </>
+                      ) : null}
+                      {isAccepted ? (
+                        <Button size="sm" disabled className="bg-brand-green-pale/50 text-brand-green-dark">
+                          Accepted
+                        </Button>
+                      ) : null}
+                      {isDeclined ? (
+                        <Button size="sm" variant="outline" disabled>
+                          Declined
+                        </Button>
                       ) : null}
                     </div>
                   </article>

@@ -18,5 +18,6 @@ export const updateMatchSchema = z.object({
     "PLACED",
     "CLOSED"
   ]),
-  notes: z.string().optional()
+  notes: z.string().optional(),
+  intakeId: z.string().min(1).optional()
 });

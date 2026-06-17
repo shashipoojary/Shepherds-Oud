@@ -378,30 +378,121 @@ function ProvidersTable({
   providers: AdminDashboardData["providerList"];
   setMessage: (message: string) => void;
 }) {
+  const [selected, setSelected] = useState<AdminDashboardData["providerList"][number] | null>(null);
+
   return (
-    <table className="w-full min-w-[900px] border-collapse text-left">
-      <thead className="bg-cream text-xs uppercase tracking-wide text-neutral-500">
-        <tr>
-          <th className="px-4 py-3">Provider</th>
-          <th className="px-4 py-3">Type</th>
-          <th className="px-4 py-3">Area</th>
-          <th className="px-4 py-3">Beds open</th>
-        </tr>
-      </thead>
-      <tbody className="divide-y divide-stone-200">
-        {providers.map((provider) => (
-          <tr key={provider.id} className="hover:bg-cream">
-            <td className="px-4 py-3 text-sm font-semibold">{provider.name}</td>
-            <td className="px-4 py-3 text-sm text-neutral-600">{provider.type}</td>
-            <td className="px-4 py-3 text-sm text-neutral-600">{provider.area}</td>
-            <td className="px-4 py-3 text-sm text-neutral-600">
-              {provider.bedsOpen ?? "—"}
-              {provider.bedsTotal ? ` / ${provider.bedsTotal}` : ""}
-            </td>
+    <>
+      <table className="w-full min-w-[900px] border-collapse text-left">
+        <thead className="bg-cream text-xs uppercase tracking-wide text-neutral-500">
+          <tr>
+            <th className="px-4 py-3">Provider</th>
+            <th className="px-4 py-3">Type</th>
+            <th className="px-4 py-3">Area</th>
+            <th className="px-4 py-3">Beds open</th>
+            <th className="px-4 py-3">Actions</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody className="divide-y divide-stone-200">
+          {providers.map((provider) => (
+            <tr key={provider.id} className="cursor-pointer hover:bg-cream" onClick={() => setSelected(provider)}>
+              <td className="px-4 py-3 text-sm font-semibold">{provider.name}</td>
+              <td className="px-4 py-3 text-sm text-neutral-600">{provider.type}</td>
+              <td className="px-4 py-3 text-sm text-neutral-600">{provider.area}</td>
+              <td className="px-4 py-3 text-sm text-neutral-600">
+                {provider.bedsOpen ?? "—"}
+                {provider.bedsTotal ? ` / ${provider.bedsTotal}` : ""}
+              </td>
+              <td className="px-4 py-3">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setSelected(provider);
+                  }}
+                >
+                  View
+                </Button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <ProviderDetailPanel provider={selected} onClose={() => setSelected(null)} setMessage={setMessage} />
+    </>
+  );
+}
+
+function ProviderDetailPanel({
+  provider,
+  onClose,
+  setMessage
+}: {
+  provider: AdminDashboardData["providerList"][number] | null;
+  onClose: () => void;
+  setMessage: (message: string) => void;
+}) {
+  const details = provider
+    ? [
+        { label: "Facility name", value: provider.name },
+        { label: "Type", value: provider.type },
+        { label: "Area", value: provider.area },
+        { label: "City", value: provider.city },
+        { label: "Province", value: provider.province },
+        { label: "Contact name", value: provider.contactName },
+        { label: "Email", value: provider.email },
+        { label: "Phone", value: provider.phone },
+        { label: "Website", value: provider.website },
+        {
+          label: "Beds",
+          value:
+            provider.bedsOpen != null || provider.bedsTotal != null
+              ? `${provider.bedsOpen ?? "—"} open / ${provider.bedsTotal ?? "—"} total`
+              : null
+        },
+        { label: "Availability", value: provider.availabilityStatus },
+        { label: "Waitlist", value: provider.waitlistText },
+        {
+          label: "Price range",
+          value:
+            provider.priceMin != null && provider.priceMax != null
+              ? `EUR ${provider.priceMin} - EUR ${provider.priceMax} per month`
+              : null
+        },
+        { label: "Services", value: provider.services?.length ? provider.services.join(", ") : null },
+        { label: "Languages", value: provider.languages?.length ? provider.languages.join(", ") : null },
+        { label: "Description", value: provider.description },
+        { label: "Added", value: provider.createdAt },
+        { label: "Last updated", value: provider.updatedAt }
+      ]
+    : [];
+
+  return (
+    <SlidePanel open={Boolean(provider)} onClose={onClose} title={provider?.name || "Provider"} subtitle="Facility profile">
+      {provider ? (
+        <>
+          <DetailList items={details} />
+          <div className="mt-6 flex flex-wrap gap-2">
+            <Button asChild size="sm" variant="ghost">
+              <a href={`/providers/${provider.id}`} target="_blank" rel="noreferrer">
+                Open public profile
+              </a>
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                void navigator.clipboard.writeText(provider.id);
+                setMessage(`Copied provider ID for ${provider.name}.`);
+              }}
+            >
+              Copy provider ID
+            </Button>
+          </div>
+        </>
+      ) : null}
+    </SlidePanel>
   );
 }
 

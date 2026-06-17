@@ -41,6 +41,12 @@ export function IntakeSummaryCard({ intake, compact = false }: { intake: StoredI
 
       <p className="mt-4 text-sm leading-6 text-neutral-600">{hint}</p>
 
+      {typeof intake.matchCount === "number" && intake.matchCount > 0 ? (
+        <p className="mt-3 text-sm font-medium text-brand-green-dark">
+          {intake.matchCount} provider match{intake.matchCount === 1 ? "" : "es"} ready to view.
+        </p>
+      ) : null}
+
       {!compact ? (
         <div className="mt-5 flex flex-wrap gap-3">
           <Button asChild size="sm">

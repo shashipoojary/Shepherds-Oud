@@ -61,7 +61,8 @@ export async function POST(request: Request) {
       },
       update: {
         score,
-        notes: notes || null
+        notes: notes || null,
+        status: "SUGGESTED"
       }
     });
 

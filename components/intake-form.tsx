@@ -1,9 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { intakeSteps } from "@/lib/content";
-import { saveStoredIntake } from "@/lib/client-intake";
+import {
+  getIntakeDraft,
+  getStoredIntake,
+  saveIntakeDraft,
+  saveStoredIntake,
+  storedIntakeToForm
+} from "@/lib/client-intake";
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
 import { CustomSelect } from "@/components/ui/custom-select";
@@ -18,14 +24,34 @@ const keyFor = (label: string) =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "");
 
+function buildInitialForm(): FormState {
+  const draft = getIntakeDraft();
+  if (draft && Object.keys(draft).length) return draft;
+
+  const stored = getStoredIntake();
+  if (stored) return storedIntakeToForm(stored);
+
+  return {};
+}
+
 export function IntakeForm() {
   const router = useRouter();
   const [stepIndex, setStepIndex] = useState(0);
   const [form, setForm] = useState<FormState>({});
   const [status, setStatus] = useState<string>("");
+  const [submitting, setSubmitting] = useState(false);
   const step = intakeSteps[stepIndex];
   const isFinal = stepIndex === intakeSteps.length - 1;
   const progress = ((stepIndex + 1) / intakeSteps.length) * 100;
+
+  useEffect(() => {
+    setForm(buildInitialForm());
+  }, []);
+
+  useEffect(() => {
+    if (!Object.keys(form).length) return;
+    saveIntakeDraft(form);
+  }, [form]);
 
   const canContinue = useMemo(() => {
     const required = step.fields.filter((field) => field.type !== "notice" && field.type !== "textarea");
@@ -51,21 +77,31 @@ export function IntakeForm() {
   }
 
   async function submit() {
-    setStatus("Submitting intake...");
+    setSubmitting(true);
+    setStatus("");
+
     const payload = {
-      contactName: String(form["your-name"] || "Maria van den Berg"),
-      email: String(form["email-address"] || "maria@example.nl"),
-      phone: String(form["phone-number"] || "+31 6 00000000"),
-      relationship: String(form["your-relationship-to-the-senior"] || "Child"),
-      preferredArea: String(form["preferred-city-or-area"] || "Den Haag"),
-      ageRange: String(form["age-range"] || "80-89"),
-      careTypes: asArray(form["type-of-care-needed"], ["Assisted living"]),
-      urgency: String(form["how-urgent-is-the-care-need"] || "Within 1 month"),
-      budget: String(form["monthly-budget-range"] || "EUR 2,500 - EUR 4,000"),
-      languages: asArray(form["preferred-languages"], ["Dutch", "Arabic"]),
-      additionalNeeds: asArray(form["additional-needs"], ["Mobility support"]),
-      notes: String(form["anything-else-we-should-know"] || "")
+      contactName: String(form["your-name"] || "").trim(),
+      email: String(form["email-address"] || "").trim(),
+      phone: String(form["phone-number"] || "").trim(),
+      relationship: String(form["your-relationship-to-the-senior"] || "").trim(),
+      preferredArea: String(form["preferred-city-or-province"] || "").trim(),
+      ageRange: String(form["age-range"] || "").trim(),
+      careTypes: asArray(form["type-of-care-needed"]),
+      urgency: String(form["how-urgent-is-the-care-need"] || "").trim(),
+      budget: String(form["monthly-budget-range"] || "").trim(),
+      languages: asArray(form["preferred-languages"]),
+      additionalNeeds: asArray(form["additional-needs"]),
+      notes: String(form["anything-else-we-should-know"] || "").trim()
     };
+
+    if (!payload.contactName || !payload.email || !payload.preferredArea || !payload.ageRange || !payload.careTypes.length || !payload.urgency) {
+      setStatus("Please complete all required steps before submitting.");
+      setSubmitting(false);
+      return;
+    }
+
+    setStatus("Submitting intake...");
 
     const response = await fetch("/api/intakes", {
       method: "POST",
@@ -75,6 +111,7 @@ export function IntakeForm() {
 
     if (!response.ok) {
       setStatus("Please complete the highlighted details and try again.");
+      setSubmitting(false);
       return;
     }
 
@@ -90,7 +127,11 @@ export function IntakeForm() {
       careTypes: payload.careTypes,
       urgency: payload.urgency,
       budget: payload.budget,
+      languages: payload.languages,
+      additionalNeeds: payload.additionalNeeds,
+      notes: payload.notes,
       status: result.status || "NEW",
+      matchCount: 0,
       submittedAt: new Date().toISOString()
     });
     router.push("/family/success");
@@ -152,8 +193,8 @@ export function IntakeForm() {
               </Button>
             )}
             {isFinal ? (
-              <Button type="button" className="min-w-[140px]" onClick={submit}>
-                Submit
+              <Button type="button" className="min-w-[140px]" disabled={submitting} onClick={submit}>
+                {submitting ? "Submitting..." : "Submit"}
               </Button>
             ) : (
               <Button type="button" disabled={!canContinue} onClick={() => setStepIndex((value) => value + 1)}>
@@ -223,8 +264,8 @@ function renderField(field: Field, form: FormState, setValue: (label: string, va
   );
 }
 
-function asArray(value: FormState[string], fallback: string[] = []) {
+function asArray(value: FormState[string]) {
   if (Array.isArray(value)) return value;
   if (typeof value === "string" && value) return [value];
-  return fallback;
+  return [];
 }

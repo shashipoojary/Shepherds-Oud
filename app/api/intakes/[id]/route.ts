@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { countVisibleMatchesForIntake } from "@/lib/data/matches";
 import { requireRole } from "@/lib/auth-server";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -13,7 +14,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       preferredArea: "Netherlands",
       careTypes: ["Assisted living"],
       urgency: "Within 1 month",
-      ageRange: "80-89"
+      ageRange: "80-89",
+      matchCount: 0
     });
   }
 
@@ -35,7 +37,9 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Intake not found." }, { status: 404 });
   }
 
-  return NextResponse.json(intake);
+  const matchCount = await countVisibleMatchesForIntake(id);
+
+  return NextResponse.json({ ...intake, matchCount });
 }
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
