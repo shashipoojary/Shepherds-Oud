@@ -1,13 +1,10 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import Link from "next/link";
 import { Menu } from "lucide-react";
 import { useEffect, useState } from "react";
 import { BrandLogo } from "@/components/brand-logo";
-import { LoadingLink } from "@/components/loading-link";
 import { MobileNavDrawer } from "@/components/mobile-nav-drawer";
-import { Button } from "@/components/ui/button";
 
 const AuthHeaderActions = dynamic(() => import("@/components/auth-user-menu").then((module) => module.AuthHeaderActions), {
   ssr: false
@@ -17,11 +14,9 @@ const MobileNavProfile = dynamic(() => import("@/components/auth-user-menu").the
   ssr: false
 });
 
-const StaffNavLinks = dynamic(() => import("@/components/layout/nav-staff-links").then((module) => module.StaffNavLinks), {
+const RoleAwareNav = dynamic(() => import("@/components/layout/nav-links").then((module) => module.RoleAwareNav), {
   ssr: false
 });
-
-import { publicNavItems } from "@/lib/auth-routes";
 
 export function Nav() {
   const [open, setOpen] = useState(false);
@@ -45,28 +40,16 @@ export function Nav() {
             <BrandLogo compact tone="light" href="/" onClick={closeMenu} />
             <button
               type="button"
-              className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-white/20 bg-white/10 text-white md:hidden"
+              className="grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-white/20 bg-white/10 text-white md:hidden"
               onClick={() => setOpen(true)}
               aria-expanded={open}
-              aria-label="Open navigation menu"
+              aria-label="Open menu"
             >
-              <Menu className="h-5 w-5" />
+              <Menu className="h-6 w-6" aria-hidden />
             </button>
-            <nav className="hidden items-center gap-6 md:flex lg:gap-8" aria-label="Primary navigation">
-              {publicNavItems.map((item) => (
-                <LoadingLink
-                  key={item.href}
-                  href={item.href}
-                  className="border-b-2 border-transparent py-1 text-sm text-white/85 transition hover:border-brand-amber hover:text-white"
-                >
-                  {item.label}
-                </LoadingLink>
-              ))}
-              <StaffNavLinks variant="desktop" />
+            <nav className="hidden items-center gap-5 md:flex lg:gap-7" aria-label="Main menu">
+              <RoleAwareNav variant="desktop" />
               <AuthHeaderActions />
-              <Button asChild size="sm" className="shrink-0">
-                <Link href="/family/intake">Find care</Link>
-              </Button>
             </nav>
           </div>
         </div>
@@ -75,16 +58,8 @@ export function Nav() {
       <MobileNavDrawer
         open={open}
         onClose={closeMenu}
-        nav={publicNavItems}
         profile={<MobileNavProfile onNavigate={closeMenu} />}
-        staffLinks={<StaffNavLinks variant="mobile" onNavigate={closeMenu} />}
-        footer={
-          <Button asChild className="w-full">
-            <Link href="/family/intake" onClick={closeMenu}>
-              Find care
-            </Link>
-          </Button>
-        }
+        menu={<RoleAwareNav variant="mobile" onNavigate={closeMenu} />}
       />
     </>
   );

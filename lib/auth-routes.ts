@@ -34,27 +34,34 @@ export function postLoginHref(role: AppRole | undefined, requestedCallback?: str
   return requestedCallback;
 }
 
-type NavItem = { label: string; href: string };
+export type NavItem = { label: string; href: string };
 
-export const publicNavItems: NavItem[] = [
-  { label: "Home", href: "/" },
-  { label: "Find care", href: "/family/intake" },
-  { label: "Join waitlist", href: "/register" },
-  { label: "List your facility", href: PROVIDER_LOGIN_PATH }
-];
+/** Base links shown to everyone — kept short and clear for seniors. */
+export function buildNavItems(role?: AppRole, signedIn = false): NavItem[] {
+  const items: NavItem[] = [
+    { label: "Home", href: "/" },
+    { label: "Find care", href: "/family/intake" },
+    { label: "Join waitlist", href: "/register" }
+  ];
 
-export function navItemsForRole(role: AppRole | undefined, signedIn: boolean): NavItem[] {
   if (!signedIn) {
-    return publicNavItems;
-  }
-
-  if (role === "ADMIN") {
-    return [...publicNavItems, { label: "Admin", href: "/admin" }];
+    items.push({ label: "For facilities", href: "/register/facility" });
+    return items;
   }
 
   if (role === "PROVIDER") {
-    return [...publicNavItems, { label: "Provider dashboard", href: "/provider" }];
+    items.push({ label: "My facility", href: PROVIDER_DASHBOARD_PATH });
+  } else if (role === "ADMIN") {
+    items.push({ label: "Admin", href: "/admin" });
   }
 
-  return [...publicNavItems, { label: "My dashboard", href: "/family/dashboard" }];
+  return items;
+}
+
+/** @deprecated Use buildNavItems instead */
+export const publicNavItems = buildNavItems();
+
+/** @deprecated Use buildNavItems instead */
+export function navItemsForRole(role: AppRole | undefined, signedIn: boolean): NavItem[] {
+  return buildNavItems(role, signedIn);
 }

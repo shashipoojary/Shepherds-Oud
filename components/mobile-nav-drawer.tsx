@@ -4,18 +4,15 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { BrandLogo } from "@/components/brand-logo";
-import { LoadingLink } from "@/components/loading-link";
 
 type MobileNavDrawerProps = {
   open: boolean;
   onClose: () => void;
-  nav: Array<{ label: string; href: string }>;
   profile: React.ReactNode;
-  staffLinks?: React.ReactNode;
-  footer: React.ReactNode;
+  menu: React.ReactNode;
 };
 
-export function MobileNavDrawer({ open, onClose, nav, profile, staffLinks, footer }: MobileNavDrawerProps) {
+export function MobileNavDrawer({ open, onClose, profile, menu }: MobileNavDrawerProps) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -39,17 +36,17 @@ export function MobileNavDrawer({ open, onClose, nav, profile, staffLinks, foote
         type="button"
         className="fixed inset-0 z-[200] bg-ink/50 backdrop-blur-[2px] md:hidden"
         onClick={onClose}
-        aria-label="Close navigation menu"
+        aria-label="Close menu"
       />
-      <nav
+      <aside
         className="fixed inset-y-0 right-0 z-[201] flex w-[min(100%,340px)] flex-col bg-white shadow-[-8px_0_32px_rgba(0,0,0,0.12)] md:hidden"
-        aria-label="Mobile navigation"
+        aria-label="Mobile menu"
       >
         <div className="flex items-center justify-between border-b border-brand-green-mid bg-brand-green-dark px-5 py-4 text-white">
           <BrandLogo compact tone="light" href="/" onClick={onClose} />
           <button
             type="button"
-            className="grid h-9 w-9 place-items-center rounded-lg bg-white/15 text-white hover:bg-white/25"
+            className="grid h-10 w-10 place-items-center rounded-lg bg-white/15 text-white hover:bg-white/25"
             onClick={onClose}
             aria-label="Close menu"
           >
@@ -61,25 +58,11 @@ export function MobileNavDrawer({ open, onClose, nav, profile, staffLinks, foote
           {profile}
 
           <div className="mt-6 border-t border-[var(--card-border)] pt-5">
-            <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-[1px] text-brand-amber">Menu</p>
-            <div className="grid gap-1">
-              {nav.map((item) => (
-                <LoadingLink
-                  key={item.href}
-                  href={item.href}
-                  onNavigate={onClose}
-                  className="rounded-xl px-4 py-3.5 text-[15px] font-medium text-ink hover:bg-brand-cream hover:text-brand-amber"
-                >
-                  {item.label}
-                </LoadingLink>
-              ))}
-              {staffLinks}
-            </div>
+            <p className="mb-3 px-1 text-sm font-semibold text-ink">Menu</p>
+            {menu}
           </div>
-
-          <div className="mt-6 border-t border-[var(--card-border)] pt-5">{footer}</div>
         </div>
-      </nav>
+      </aside>
     </>,
     document.body
   );

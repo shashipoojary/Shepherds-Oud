@@ -208,7 +208,7 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
           bedsTotal: parseOptionalInt(form.bedsTotal),
           bedsOpen: parseOptionalInt(form.bedsOpen),
           availabilityStatus: form.availabilityStatus,
-          waitlistText: form.availabilityStatus === "Waitlist" ? "Waitlist open" : null,
+          waitlistText: form.availabilityStatus === "Waitlist" ? "Waitlist open" : undefined,
           services: form.services,
           languages: form.languages
         })

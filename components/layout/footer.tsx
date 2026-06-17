@@ -1,14 +1,12 @@
 import Link from "next/link";
 import { BrandLogo } from "@/components/brand-logo";
 import { brand } from "@/lib/brand";
-import { PROVIDER_LOGIN_PATH } from "@/lib/auth-routes";
 
 const links = [
   { label: "Home", href: "/" },
   { label: "Find care", href: "/family/intake" },
   { label: "Join waitlist", href: "/register" },
-  { label: "Family registration", href: "/register/family" },
-  { label: "List your facility", href: PROVIDER_LOGIN_PATH }
+  { label: "Register a facility", href: "/register/facility" }
 ];
 
 export function Footer() {
@@ -27,9 +25,9 @@ export function Footer() {
             </a>
           </div>
 
-          <nav className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3" aria-label="Footer navigation">
+          <nav className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-2" aria-label="Footer navigation">
             {links.map((link) => (
-              <Link key={link.href} href={link.href} className="text-sm text-white/75 hover:text-brand-amber">
+              <Link key={link.href} href={link.href} className="text-sm leading-relaxed text-white/80 hover:text-brand-amber">
                 {link.label}
               </Link>
             ))}

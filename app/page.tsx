@@ -8,7 +8,6 @@ import { ButtonRow } from "@/components/ui/button-row";
 import { Card } from "@/components/ui/card";
 import { SectionHeader } from "@/components/ui/section-header";
 import { brand } from "@/lib/brand";
-import { PROVIDER_LOGIN_PATH } from "@/lib/auth-routes";
 import { homeContent } from "@/lib/content";
 
 const providerSteps = [
@@ -60,9 +59,9 @@ export default function HomePage() {
             <AudienceCard
               icon={<Home className="h-5 w-5" />}
               title="For care facilities"
-              text="List your facility, update availability, and receive enquiries from matched families."
-              href={PROVIDER_LOGIN_PATH}
-              cta="List your facility"
+              text="Register your facility interest and we will contact you when onboarding opens in your area."
+              href="/register/facility"
+              cta="Register your facility"
             />
             <AudienceCard
               icon={<ClipboardList className="h-5 w-5" />}
@@ -100,12 +99,9 @@ export default function HomePage() {
               <p className="section-label">Care facilities</p>
               <h3 className="mt-2 text-h3 font-semibold">Want to list your facility?</h3>
               <p className="mt-2 text-body text-ink/75">
-                Sign in with Google to list your services, set availability, and receive matched family enquiries.
+                We are preparing for launch. Register your facility now and we will reach out when you can list your services.
               </p>
-              <Button asChild className="mt-5">
-                <Link href={PROVIDER_LOGIN_PATH}>List your facility</Link>
-              </Button>
-              <Button asChild variant="outline" className="mt-3 w-full">
+              <Button asChild className="mt-5 w-full">
                 <Link href="/register/facility">{homeContent.prelaunch.facilityCta}</Link>
               </Button>
             </Card>
@@ -124,19 +120,14 @@ export default function HomePage() {
               <ProviderStepCard key={step.title} icon={step.icon} title={step.title} text={step.text} />
             ))}
           </div>
-          <ButtonRow className="mx-auto mt-8 max-w-lg">
+          <div className="mx-auto mt-8 max-w-md">
             <Button asChild className="w-full">
-              <Link href={PROVIDER_LOGIN_PATH} className="inline-flex items-center justify-center gap-1.5">
-                List your facility
+              <Link href="/register/facility" className="inline-flex items-center justify-center gap-1.5">
+                Register your care facility
                 <ArrowRight className="h-3.5 w-3.5 shrink-0" />
               </Link>
             </Button>
-            <Button asChild variant="outline" className="w-full">
-              <Link href="/register/facility" className="inline-flex items-center justify-center">
-                <ButtonLabel short="Join waitlist">Join provider waitlist</ButtonLabel>
-              </Link>
-            </Button>
-          </ButtonRow>
+          </div>
         </section>
       </main>
       <SiteFooter />
