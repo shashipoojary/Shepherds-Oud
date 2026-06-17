@@ -88,12 +88,6 @@ function IntakeFormContent() {
   }
 
   async function submit() {
-    if (!isUpdateMode && existingIntake) {
-      setStatus("You already have a saved request. Use “Update your existing request” from your dashboard.");
-      setSubmitting(false);
-      return;
-    }
-
     if (isUpdateMode && !existingIntake) {
       setStatus("No saved request found on this device. Start a new intake instead.");
       return;
@@ -214,7 +208,7 @@ function IntakeFormContent() {
             <Link href="/family/intake?update=1" className="font-semibold text-brand-amber underline underline-offset-2">
               Update your existing request
             </Link>{" "}
-            to change your details. This form stays blank so you do not accidentally edit old data.
+            to edit it, or complete this blank form to submit a new one.
           </div>
         ) : null}
 

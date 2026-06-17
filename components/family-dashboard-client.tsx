@@ -61,6 +61,9 @@ export function FamilyDashboardClient() {
               <Button asChild className="w-full">
                 <Link href="/family/intake?update=1">Update your request</Link>
               </Button>
+              <Button asChild variant="outline" className="w-full">
+                <Link href="/family/intake">Start new request</Link>
+              </Button>
               <Button asChild variant="ghost" className="w-full">
                 <Link href="/family/results">View matches</Link>
               </Button>
