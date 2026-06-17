@@ -90,7 +90,7 @@ export function FamilyDashboardClient() {
         {intake ? (
           <>
             <IntakeSummaryCard intake={intake} />
-            <FamilyActiveMatches key={`${intake.id}-${intake.matchCount}-${refreshing}`} intakeId={intake.id} />
+            <FamilyActiveMatches key={`${intake.id}-${intake.matchCount}`} intakeId={intake.id} />
           </>
         ) : (
           <div className="rounded-2xl bg-white shadow-soft">

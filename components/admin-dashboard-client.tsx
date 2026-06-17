@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { AdminResetDataButton } from "@/components/admin-reset-data-button";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { IconActionButton } from "@/components/ui/icon-action-button";
 import { RefreshButton } from "@/components/ui/refresh-button";
@@ -347,8 +348,23 @@ function FamilyDetailPanel({
   const [score, setScore] = useState("85");
   const [matchNotes, setMatchNotes] = useState("");
   const [creatingMatch, setCreatingMatch] = useState(false);
+  const [pendingAction, setPendingAction] = useState<IntakeStatus | null>(null);
+  const [confirmCloseCase, setConfirmCloseCase] = useState(false);
 
   const isPending = family ? pendingId === family.id : false;
+
+  async function handleCaseAction(status: IntakeStatus) {
+    if (!family) return;
+    setPendingAction(status);
+    try {
+      await onUpdateStatus(family.id, status, family.name);
+    } finally {
+      setPendingAction(null);
+      if (status === "CLOSED") {
+        setConfirmCloseCase(false);
+      }
+    }
+  }
 
   async function createMatch() {
     if (!family || !providerId) return;
@@ -512,9 +528,15 @@ function FamilyDetailPanel({
                       size="sm"
                       variant={action.status === "CLOSED" ? "outline" : "default"}
                       disabled={isPending}
-                      onClick={() => void onUpdateStatus(family.id, action.status, family.name)}
+                      onClick={() => {
+                        if (action.status === "CLOSED") {
+                          setConfirmCloseCase(true);
+                          return;
+                        }
+                        void handleCaseAction(action.status);
+                      }}
                     >
-                      {isPending ? "Saving..." : action.label}
+                      {isPending && pendingAction === action.status ? "Saving..." : action.label}
                     </Button>
                     <p className="mt-1.5 text-xs leading-5 text-neutral-500">{action.description}</p>
                   </div>
@@ -524,6 +546,16 @@ function FamilyDetailPanel({
           </div>
         </div>
       ) : null}
+      <ConfirmDialog
+        open={confirmCloseCase}
+        tone="danger"
+        pending={isPending && pendingAction === "CLOSED"}
+        title="Close this case?"
+        description="Only close the case when the family is no longer active or has been helped elsewhere."
+        confirmLabel="Close case"
+        onCancel={() => setConfirmCloseCase(false)}
+        onConfirm={() => void handleCaseAction("CLOSED")}
+      />
     </SlidePanel>
   );
 }
@@ -707,7 +739,9 @@ function InquiriesTable({
 }) {
   const [rows, setRows] = useState(inquiries);
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [pendingActionKey, setPendingActionKey] = useState<string | null>(null);
   const [selected, setSelected] = useState<InquiryEntry | null>(null);
+  const [confirmClose, setConfirmClose] = useState<InquiryEntry | null>(null);
 
   useEffect(() => {
     setRows(inquiries);
@@ -724,6 +758,7 @@ function InquiriesTable({
   const followUpCount = rows.filter((item) => isAdminActionNeeded(item.statusRaw)).length;
 
   async function updateMatchStatus(id: string, status: MatchStatus) {
+    setPendingActionKey(`${id}:${status}`);
     setPendingId(id);
     try {
       const response = await fetch(`/api/matches/${id}`, {
@@ -767,6 +802,7 @@ function InquiriesTable({
       setMessage(error instanceof Error ? error.message : "Could not update inquiry.");
     } finally {
       setPendingId(null);
+      setPendingActionKey(null);
     }
   }
 
@@ -820,7 +856,7 @@ function InquiriesTable({
                       <IconActionButton
                         label={adminInquiryActionMeta("CONTACTED").label}
                         icon={CalendarCheck}
-                        loading={isPending}
+                        loading={pendingActionKey === `${inquiry.id}:CONTACTED`}
                         disabled={isPending}
                         onClick={() => void updateMatchStatus(inquiry.id, "CONTACTED")}
                       />
@@ -829,7 +865,7 @@ function InquiriesTable({
                       <IconActionButton
                         label={adminInquiryActionMeta("PLACED").label}
                         icon={Building2}
-                        loading={isPending}
+                        loading={pendingActionKey === `${inquiry.id}:PLACED`}
                         disabled={isPending}
                         onClick={() => void updateMatchStatus(inquiry.id, "PLACED")}
                       />
@@ -838,9 +874,9 @@ function InquiriesTable({
                       <IconActionButton
                         label={adminInquiryActionMeta("CLOSED").label}
                         icon={X}
-                        loading={isPending}
+                        loading={pendingActionKey === `${inquiry.id}:CLOSED`}
                         disabled={isPending}
-                        onClick={() => void updateMatchStatus(inquiry.id, "CLOSED")}
+                        onClick={() => setConfirmClose(inquiry)}
                       />
                     ) : null}
                     <IconActionButton label="Open details" icon={ArrowUpRight} onClick={() => setSelected(inquiry)} />
@@ -855,8 +891,23 @@ function InquiriesTable({
       <InquiryDetailPanel
         inquiry={selected}
         pendingId={pendingId}
+        pendingActionKey={pendingActionKey}
         onClose={() => setSelected(null)}
         onUpdateStatus={updateMatchStatus}
+      />
+      <ConfirmDialog
+        open={Boolean(confirmClose)}
+        tone="danger"
+        pending={Boolean(confirmClose && pendingId === confirmClose.id)}
+        title="Close this inquiry?"
+        description="Use this when no further follow-up is needed. Closed inquiries stay in records but are no longer active."
+        confirmLabel="Close inquiry"
+        onCancel={() => setConfirmClose(null)}
+        onConfirm={() => {
+          if (!confirmClose) return;
+          void updateMatchStatus(confirmClose.id, "CLOSED");
+          setConfirmClose(null);
+        }}
       />
     </>
   );
@@ -865,15 +916,18 @@ function InquiriesTable({
 function InquiryDetailPanel({
   inquiry,
   pendingId,
+  pendingActionKey,
   onClose,
   onUpdateStatus
 }: {
   inquiry: InquiryEntry | null;
   pendingId: string | null;
+  pendingActionKey: string | null;
   onClose: () => void;
   onUpdateStatus: (id: string, status: MatchStatus) => Promise<void>;
 }) {
   const isPending = inquiry ? pendingId === inquiry.id : false;
+  const [confirmClose, setConfirmClose] = useState(false);
   const hint = inquiry ? adminInquiryHint(inquiry.statusRaw) : "";
 
   const details = inquiry
@@ -940,27 +994,41 @@ function InquiryDetailPanel({
               inquiry.statusRaw === "ACCEPTED") && (
               <PanelSection step={4} title={adminInquiryActionMeta("CONTACTED").label} description={adminInquiryActionMeta("CONTACTED").description}>
                 <Button size="sm" disabled={isPending} onClick={() => void onUpdateStatus(inquiry.id, "CONTACTED")}>
-                  {isPending ? "Saving..." : "Confirm"}
+                  {pendingActionKey === `${inquiry.id}:CONTACTED` ? "Saving..." : "Confirm"}
                 </Button>
               </PanelSection>
             )}
             {inquiry.statusRaw !== "PLACED" && inquiry.statusRaw !== "CLOSED" ? (
               <PanelSection step={5} title={adminInquiryActionMeta("PLACED").label} description={adminInquiryActionMeta("PLACED").description}>
                 <Button size="sm" variant="outline" disabled={isPending} onClick={() => void onUpdateStatus(inquiry.id, "PLACED")}>
-                  {isPending ? "Saving..." : "Confirm"}
+                  {pendingActionKey === `${inquiry.id}:PLACED` ? "Saving..." : "Confirm"}
                 </Button>
               </PanelSection>
             ) : null}
             {inquiry.statusRaw !== "CLOSED" ? (
               <PanelSection step={6} title={adminInquiryActionMeta("CLOSED").label} description={adminInquiryActionMeta("CLOSED").description}>
-                <Button size="sm" variant="outline" disabled={isPending} onClick={() => void onUpdateStatus(inquiry.id, "CLOSED")}>
-                  {isPending ? "Saving..." : "Confirm"}
+                <Button size="sm" variant="outline" disabled={isPending} onClick={() => setConfirmClose(true)}>
+                  {pendingActionKey === `${inquiry.id}:CLOSED` ? "Saving..." : "Confirm"}
                 </Button>
               </PanelSection>
             ) : null}
           </div>
         </div>
       ) : null}
+      <ConfirmDialog
+        open={confirmClose}
+        tone="danger"
+        pending={Boolean(inquiry && pendingActionKey === `${inquiry.id}:CLOSED`)}
+        title="Close this inquiry?"
+        description="This removes the inquiry from active follow-up. Keep it open if coordination is still in progress."
+        confirmLabel="Close inquiry"
+        onCancel={() => setConfirmClose(false)}
+        onConfirm={() => {
+          if (!inquiry) return;
+          void onUpdateStatus(inquiry.id, "CLOSED");
+          setConfirmClose(false);
+        }}
+      />
     </SlidePanel>
   );
 }

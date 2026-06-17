@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Chip } from "@/components/ui/chip";
 import { CustomSelect } from "@/components/ui/custom-select";
 import { DashboardSkeleton } from "@/components/ui/dashboard-skeleton";
@@ -150,6 +151,7 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
   const [inquiryFeedback, setInquiryFeedback] = useState<Record<string, string>>({});
   const [providerId, setProviderId] = useState<string | null>(initialData?.provider?.id ?? null);
   const [refreshing, setRefreshing] = useState(false);
+  const [confirmDecline, setConfirmDecline] = useState<{ id: string; familyName: string } | null>(null);
 
   async function refreshDashboard() {
     setRefreshing(true);
@@ -464,7 +466,7 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
                             size="sm"
                             variant="outline"
                             disabled={isPending}
-                            onClick={() => void updateInquiry(inquiry.id, "DECLINED", inquiry.intake.contactName)}
+                            onClick={() => setConfirmDecline({ id: inquiry.id, familyName: inquiry.intake.contactName })}
                           >
                             {pendingAction === `${inquiry.id}:DECLINED` ? "Declining..." : "Decline"}
                           </Button>
@@ -572,6 +574,20 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
           </div>
         </form>
       </section>
+      <ConfirmDialog
+        open={Boolean(confirmDecline)}
+        tone="danger"
+        pending={Boolean(confirmDecline && pendingAction === `${confirmDecline.id}:DECLINED`)}
+        title="Decline this inquiry?"
+        description="The family will no longer see this provider on their shortlist for this request."
+        confirmLabel="Decline inquiry"
+        onCancel={() => setConfirmDecline(null)}
+        onConfirm={() => {
+          if (!confirmDecline) return;
+          void updateInquiry(confirmDecline.id, "DECLINED", confirmDecline.familyName);
+          setConfirmDecline(null);
+        }}
+      />
     </main>
   );
 }

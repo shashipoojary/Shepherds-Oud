@@ -6,19 +6,16 @@ import { Loader2, Trash2 } from "lucide-react";
 import { clearStoredIntake } from "@/lib/client-intake";
 import { clearSavedProviders } from "@/lib/client-favourites";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 export function AdminResetDataButton() {
   const router = useRouter();
   const [pending, setPending] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmText, setConfirmText] = useState("");
 
   async function handleReset() {
-    const confirmed = window.confirm(
-      "This will permanently delete all intakes, matches, providers, waitlist sign-ups, and activity logs.\n\nAdmin logins are kept. This cannot be undone."
-    );
-    if (!confirmed) return;
-
-    const typed = window.prompt('Type RESET to confirm wiping all test data.');
-    if (typed !== "RESET") return;
+    if (confirmText.trim().toUpperCase() !== "RESET") return;
 
     setPending(true);
 
@@ -33,12 +30,13 @@ export function AdminResetDataButton() {
       clearStoredIntake();
       clearSavedProviders();
       router.refresh();
-      window.alert("All test data wiped. The dashboard is now empty.");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Could not reset data.";
-      window.alert(message);
+      console.error(message);
     } finally {
       setPending(false);
+      setConfirmOpen(false);
+      setConfirmText("");
     }
   }
 
@@ -49,7 +47,7 @@ export function AdminResetDataButton() {
         variant="outline"
         size="sm"
         disabled={pending}
-        onClick={() => void handleReset()}
+        onClick={() => setConfirmOpen(true)}
         className="border-brand-amber/40 text-brand-amber-dark hover:bg-brand-amber/10"
       >
         {pending ? (
@@ -64,6 +62,32 @@ export function AdminResetDataButton() {
           </>
         )}
       </Button>
+      <ConfirmDialog
+        open={confirmOpen}
+        pending={pending}
+        confirmDisabled={confirmText.trim().toUpperCase() !== "RESET"}
+        tone="danger"
+        title="Reset all test data?"
+        description="This permanently deletes intakes, matches, providers, waitlist sign-ups, and activity logs. Admin logins are kept."
+        confirmLabel="Reset data"
+        cancelLabel="Cancel"
+        onCancel={() => {
+          if (pending) return;
+          setConfirmOpen(false);
+          setConfirmText("");
+        }}
+        onConfirm={() => void handleReset()}
+      >
+        <label className="block text-sm text-ink/75">
+          Type <span className="font-semibold text-ink">RESET</span> to enable the reset button:
+          <input
+            value={confirmText}
+            onChange={(event) => setConfirmText(event.target.value)}
+            disabled={pending}
+            className="mt-2 w-full rounded-lg border border-stone-200 px-3 py-2 text-sm outline-brand-amber"
+          />
+        </label>
+      </ConfirmDialog>
     </div>
   );
 }

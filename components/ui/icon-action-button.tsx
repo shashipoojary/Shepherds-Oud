@@ -39,8 +39,8 @@ export function IconActionButton({
       <span
         role="tooltip"
         className={cn(
-          "pointer-events-none absolute bottom-[calc(100%+4px)] left-1/2 z-30 hidden -translate-x-1/2 whitespace-nowrap sm:block",
-          "rounded border border-stone-200 bg-white px-2 py-0.5 text-[11px] font-medium text-neutral-700 opacity-0 shadow-sm transition-opacity",
+          "pointer-events-none absolute top-[calc(100%+6px)] right-0 z-30 hidden whitespace-nowrap sm:block",
+          "rounded-md border border-brand-amber/30 bg-brand-cream px-2.5 py-1 text-[11px] font-medium text-brand-amber-dark opacity-0 shadow-sm transition-opacity",
           "group-hover:opacity-100 group-focus-visible:opacity-100"
         )}
       >
