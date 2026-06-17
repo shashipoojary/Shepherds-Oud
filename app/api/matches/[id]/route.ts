@@ -4,9 +4,16 @@ import { getServerSession, getUserRole } from "@/lib/auth-server";
 import { getUserLinkedProvider } from "@/lib/provider-server";
 import { updateMatchSchema } from "@/lib/validation/match";
 import { familyRequestNote } from "@/lib/match-status";
+import {
+  appendMatchNotes,
+  canTransitionMatchStatus,
+  matchStatusChangeNote,
+  type MatchActor,
+  type MatchStatus
+} from "@/lib/match-transitions";
 
 const guestFamilyStatuses = ["VISIT_REQUESTED", "CALLBACK_REQUESTED"] as const;
-const providerStatuses = ["CONTACTED", "ACCEPTED", "DECLINED"] as const;
+const providerStatuses = ["ACCEPTED", "DECLINED"] as const;
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -29,7 +36,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     }
 
     const { status, notes, intakeId } = parsed.data;
+    const currentStatus = existing.status as MatchStatus;
+    const nextStatus = status as MatchStatus;
     const isFamilyAction = guestFamilyStatuses.includes(status as (typeof guestFamilyStatuses)[number]);
+    let actor: MatchActor;
 
     if (isFamilyAction) {
       if (!intakeId) {
@@ -38,6 +48,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       if (existing.intakeId !== intakeId) {
         return NextResponse.json({ error: "This match does not belong to your care request." }, { status: 403 });
       }
+      actor = "family";
     } else if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     } else {
@@ -51,23 +62,33 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         if (!providerStatuses.includes(status as (typeof providerStatuses)[number])) {
           return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
-      } else if (role !== "ADMIN") {
+        actor = "provider";
+      } else if (role === "ADMIN") {
+        actor = "admin";
+      } else {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
     }
 
+    if (!canTransitionMatchStatus(currentStatus, nextStatus, actor)) {
+      return NextResponse.json(
+        { error: `Cannot change inquiry status from ${currentStatus} to ${nextStatus}.` },
+        { status: 400 }
+      );
+    }
+
+    const autoNote = isFamilyAction
+      ? familyRequestNote(status as "VISIT_REQUESTED" | "CALLBACK_REQUESTED")
+      : matchStatusChangeNote(actor, nextStatus);
+
     const match = await prisma.match.update({
       where: { id },
       data: {
-        status,
+        status: nextStatus,
         ...(notes !== undefined
           ? { notes }
-          : isFamilyAction
-            ? {
-                notes: [existing.notes, familyRequestNote(status as "VISIT_REQUESTED" | "CALLBACK_REQUESTED")]
-                  .filter(Boolean)
-                  .join("\n")
-              }
+          : autoNote
+            ? { notes: appendMatchNotes(existing.notes, autoNote) }
             : {})
       }
     });

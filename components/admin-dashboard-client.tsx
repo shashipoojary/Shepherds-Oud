@@ -1,15 +1,33 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  ArrowUpRight,
+  Building2,
+  CalendarCheck,
+  ClipboardList,
+  Mail,
+  X
+} from "lucide-react";
 import { AdminResetDataButton } from "@/components/admin-reset-data-button";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { IconActionButton } from "@/components/ui/icon-action-button";
 import { RefreshButton } from "@/components/ui/refresh-button";
 import { DetailList, PanelSection, SlidePanel, StatusPill } from "@/components/ui/slide-panel";
 import { StatGrid } from "@/components/ui/stat-grid";
 import type { AdminDashboardData } from "@/lib/data/admin";
 import { recordAction } from "@/lib/client-actions";
 import { cn } from "@/lib/utils";
+import {
+  countUnseenFamilies,
+  countUnseenInquiries,
+  countUnseenProviders,
+  countUnseenWaitlist,
+  getTabSeenAt,
+  initTabSeenFromData,
+  markTabSeen
+} from "@/lib/client-admin-seen";
 import {
   adminInquiryActionMeta,
   adminInquiryHint,
@@ -36,41 +54,44 @@ type MatchStatus =
   | "PLACED"
   | "CLOSED";
 
-function AdminTableAction({
-  children,
-  onClick,
-  disabled,
-  primary
-}: {
-  children: React.ReactNode;
-  onClick: () => void;
-  disabled?: boolean;
-  primary?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={onClick}
-      className={cn(
-        "rounded-md px-2 py-1 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
-        primary ? "bg-brand-amber text-white hover:bg-brand-amber-mid" : "text-neutral-600 hover:bg-stone-100 hover:text-ink"
-      )}
-    >
-      {children}
-    </button>
-  );
-}
-
 export function AdminDashboardClient({ data: initialData }: { data: AdminDashboardData }) {
   const [data, setData] = useState(initialData);
   const [tab, setTab] = useState<AdminTab>("families");
   const [message, setMessage] = useState("");
   const [refreshing, setRefreshing] = useState(false);
+  const [tabSeenAt, setTabSeenAt] = useState(getTabSeenAt);
+  const initializedSeen = useRef(false);
 
   useEffect(() => {
     setData(initialData);
   }, [initialData]);
+
+  useEffect(() => {
+    initTabSeenFromData(initialData);
+    if (!initializedSeen.current) {
+      initializedSeen.current = true;
+      setTabSeenAt(markTabSeen("families"));
+    }
+  }, [initialData]);
+
+  useEffect(() => {
+    const seen = markTabSeen(tab);
+    setTabSeenAt(seen);
+  }, [tab]);
+
+  const tabBadges = useMemo(
+    () => ({
+      families: countUnseenFamilies(data.families, tabSeenAt.families),
+      providers: countUnseenProviders(data.providerList, tabSeenAt.providers),
+      inquiries: countUnseenInquiries(data.inquiries, tabSeenAt.inquiries),
+      waitlist: countUnseenWaitlist(data.waitlist, tabSeenAt.waitlist)
+    }),
+    [data, tabSeenAt]
+  );
+
+  function selectTab(next: AdminTab) {
+    setTab(next);
+  }
 
   useEffect(() => {
     if (!message) return;
@@ -113,15 +134,31 @@ export function AdminDashboardClient({ data: initialData }: { data: AdminDashboa
       <StatGrid stats={data.stats} />
 
       <div className="mt-6 flex w-full gap-1 overflow-x-auto rounded-[10px] bg-white p-1 shadow-soft sm:inline-flex sm:w-auto">
-        {(["families", "providers", "inquiries", "waitlist"] as const).map((item) => (
-          <button
-            key={item}
-            onClick={() => setTab(item)}
-            className={`min-w-fit flex-1 rounded-lg px-4 py-2 text-sm transition sm:flex-none ${tab === item ? "bg-brand-amber text-white" : "text-ink/70 hover:bg-brand-cream hover:text-brand-amber"}`}
-          >
-            {item === "waitlist" ? "Waitlist" : item[0].toUpperCase() + item.slice(1)}
-          </button>
-        ))}
+        {(["families", "providers", "inquiries", "waitlist"] as const).map((item) => {
+          const label = item === "waitlist" ? "Waitlist" : item[0].toUpperCase() + item.slice(1);
+          const badge = tabBadges[item];
+          const isActive = tab === item;
+
+          return (
+            <button
+              key={item}
+              onClick={() => selectTab(item)}
+              className={cn(
+                "relative min-w-fit flex-1 rounded-lg px-4 py-2 text-sm transition sm:flex-none",
+                isActive ? "bg-brand-amber text-white" : "text-ink/70 hover:bg-brand-cream hover:text-brand-amber"
+              )}
+            >
+              <span className="inline-flex items-center gap-2">
+                {label}
+                {badge > 0 && !isActive ? (
+                  <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-amber px-1.5 text-[10px] font-bold leading-none text-white">
+                    {badge > 9 ? "9+" : badge}
+                  </span>
+                ) : null}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {message ? <div className="mt-4 rounded-lg bg-brand-green-pale/30 px-5 py-4 text-sm text-brand-green-dark">{message}</div> : null}
@@ -256,21 +293,19 @@ function FamiliesTable({
                   <span className="rounded-full bg-sage-100 px-3 py-1 text-xs font-medium text-sage-700">{family.status}</span>
                 </td>
                 <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}>
-                  {family.status === "NEW" ? (
-                    <Button
-                      size="xs"
-                      variant="outline"
-                      disabled={isPending}
-                      title={reviewMeta.description}
-                      onClick={() => void updateStatus(family.id, "REVIEW", family.name)}
-                    >
-                      {isPending ? "..." : reviewMeta.label}
-                    </Button>
-                  ) : (
-                    <Button size="xs" variant="outline" onClick={() => setSelected(family)}>
-                      Details
-                    </Button>
-                  )}
+                  <div className="flex items-center gap-1">
+                    {family.status === "NEW" ? (
+                      <IconActionButton
+                        label={reviewMeta.label}
+                        icon={ClipboardList}
+                        loading={isPending}
+                        disabled={isPending}
+                        onClick={() => void updateStatus(family.id, "REVIEW", family.name)}
+                      />
+                    ) : (
+                      <IconActionButton label="Open details" icon={ArrowUpRight} onClick={() => setSelected(family)} />
+                    )}
+                  </div>
                 </td>
               </tr>
             );
@@ -524,10 +559,8 @@ function ProvidersTable({
                 {provider.bedsOpen ?? "—"}
                 {provider.bedsTotal ? ` / ${provider.bedsTotal}` : ""}
               </td>
-              <td className="px-4 py-3">
-                <Button size="xs" variant="outline" onClick={(event) => { event.stopPropagation(); setSelected(provider); }}>
-                  Details
-                </Button>
+              <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}>
+                <IconActionButton label="Open details" icon={ArrowUpRight} onClick={() => setSelected(provider)} />
               </td>
             </tr>
           ))}
@@ -700,27 +733,38 @@ function InquiriesTable({
       });
 
       if (!response.ok) {
-        throw new Error("Could not update inquiry.");
+        const data = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(data?.error || "Could not update inquiry.");
       }
+
+      const updated = (await response.json()) as { status: MatchStatus; notes?: string | null };
 
       setRows((current) =>
         current.map((inquiry) =>
           inquiry.id === id
             ? {
                 ...inquiry,
-                statusRaw: status,
-                status: adminMatchStatusLabel(status)
+                statusRaw: updated.status,
+                status: adminMatchStatusLabel(updated.status),
+                notes: updated.notes ?? inquiry.notes
               }
             : inquiry
         )
       );
       setSelected((current) =>
-        current?.id === id ? { ...current, statusRaw: status, status: adminMatchStatusLabel(status) } : current
+        current?.id === id
+          ? {
+              ...current,
+              statusRaw: updated.status,
+              status: adminMatchStatusLabel(updated.status),
+              notes: updated.notes ?? current.notes
+            }
+          : current
       );
-      setMessage(`Inquiry updated to ${adminMatchStatusLabel(status).toLowerCase()}.`);
+      setMessage(`Inquiry updated to ${adminMatchStatusLabel(updated.status).toLowerCase()}.`);
       await onSync();
-    } catch {
-      setMessage("Could not update inquiry.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not update inquiry.");
     } finally {
       setPendingId(null);
     }
@@ -771,23 +815,35 @@ function InquiriesTable({
                   </span>
                 </td>
                 <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}>
-                  <div className="flex flex-wrap items-center gap-1.5">
+                  <div className="flex flex-wrap items-center gap-1">
                     {inquiry.statusRaw === "VISIT_REQUESTED" || inquiry.statusRaw === "CALLBACK_REQUESTED" || inquiry.statusRaw === "ACCEPTED" ? (
-                      <AdminTableAction primary disabled={isPending} onClick={() => void updateMatchStatus(inquiry.id, "CONTACTED")}>
-                        {isPending ? "..." : adminInquiryActionMeta("CONTACTED").label}
-                      </AdminTableAction>
+                      <IconActionButton
+                        label={adminInquiryActionMeta("CONTACTED").label}
+                        icon={CalendarCheck}
+                        loading={isPending}
+                        disabled={isPending}
+                        onClick={() => void updateMatchStatus(inquiry.id, "CONTACTED")}
+                      />
                     ) : null}
                     {inquiry.statusRaw !== "PLACED" && inquiry.statusRaw !== "CLOSED" ? (
-                      <AdminTableAction disabled={isPending} onClick={() => void updateMatchStatus(inquiry.id, "PLACED")}>
-                        {adminInquiryActionMeta("PLACED").label}
-                      </AdminTableAction>
+                      <IconActionButton
+                        label={adminInquiryActionMeta("PLACED").label}
+                        icon={Building2}
+                        loading={isPending}
+                        disabled={isPending}
+                        onClick={() => void updateMatchStatus(inquiry.id, "PLACED")}
+                      />
                     ) : null}
                     {inquiry.statusRaw !== "CLOSED" ? (
-                      <AdminTableAction disabled={isPending} onClick={() => void updateMatchStatus(inquiry.id, "CLOSED")}>
-                        {adminInquiryActionMeta("CLOSED").label}
-                      </AdminTableAction>
+                      <IconActionButton
+                        label={adminInquiryActionMeta("CLOSED").label}
+                        icon={X}
+                        loading={isPending}
+                        disabled={isPending}
+                        onClick={() => void updateMatchStatus(inquiry.id, "CLOSED")}
+                      />
                     ) : null}
-                    <AdminTableAction onClick={() => setSelected(inquiry)}>Details</AdminTableAction>
+                    <IconActionButton label="Open details" icon={ArrowUpRight} onClick={() => setSelected(inquiry)} />
                   </div>
                 </td>
               </tr>
@@ -989,29 +1045,16 @@ function WaitlistTable({
                     {entry.status}
                   </span>
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}>
                   <div className="flex items-center gap-1">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        setSelected(entry);
-                      }}
-                    >
-                      View
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
+                    <IconActionButton label="Open details" icon={ArrowUpRight} onClick={() => setSelected(entry)} />
+                    <IconActionButton
+                      label={isContacted ? "Already contacted" : "Mark contacted"}
+                      icon={Mail}
+                      loading={isPending}
                       disabled={isContacted || isPending}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        void markContacted(entry.id, entry.name);
-                      }}
-                    >
-                      {isPending ? "Saving..." : isContacted ? "Contacted" : "Mark contacted"}
-                    </Button>
+                      onClick={() => void markContacted(entry.id, entry.name)}
+                    />
                   </div>
                 </td>
               </tr>

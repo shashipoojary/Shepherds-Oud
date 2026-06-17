@@ -131,7 +131,9 @@ export async function getAdminDashboardData() {
       ageRange: intake.ageRange,
       status: intake.status,
       createdAt: intake.createdAt.toLocaleDateString("en-GB"),
-      updatedAt: intake.updatedAt.toLocaleDateString("en-GB")
+      createdAtIso: intake.createdAt.toISOString(),
+      updatedAt: intake.updatedAt.toLocaleDateString("en-GB"),
+      updatedAtIso: intake.updatedAt.toISOString()
     })),
     providerList: providers.map((provider) => ({
       id: provider.id,
@@ -154,7 +156,9 @@ export async function getAdminDashboardData() {
       priceMin: provider.priceMin,
       priceMax: provider.priceMax,
       createdAt: provider.createdAt.toLocaleDateString("en-GB"),
-      updatedAt: provider.updatedAt.toLocaleDateString("en-GB")
+      createdAtIso: provider.createdAt.toISOString(),
+      updatedAt: provider.updatedAt.toLocaleDateString("en-GB"),
+      updatedAtIso: provider.updatedAt.toISOString()
     })),
     inquiries: matches
       .map((match) => ({
@@ -170,7 +174,9 @@ export async function getAdminDashboardData() {
         provider: match.provider.name,
         match: `${match.score}%`,
         date: match.createdAt.toLocaleDateString("en-GB"),
+        createdAtIso: match.createdAt.toISOString(),
         updatedAt: match.updatedAt.toLocaleDateString("en-GB"),
+        updatedAtIso: match.updatedAt.toISOString(),
         statusRaw: match.status,
         status: match.status.replaceAll("_", " "),
         notes: match.notes
@@ -199,7 +205,9 @@ export async function getAdminDashboardData() {
       location: [entry.city, entry.province].filter(Boolean).join(", ") || "—",
       status: entry.status,
       createdAt: entry.createdAt.toLocaleDateString("en-GB"),
-      updatedAt: entry.updatedAt.toLocaleDateString("en-GB")
+      createdAtIso: entry.createdAt.toISOString(),
+      updatedAt: entry.updatedAt.toLocaleDateString("en-GB"),
+      updatedAtIso: entry.updatedAt.toISOString()
     }))
   };
 }

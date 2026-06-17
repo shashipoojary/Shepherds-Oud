@@ -308,8 +308,9 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
         return;
       }
 
-      setInquiries((current) => current.map((item) => (item.id === id ? { ...item, status } : item)));
-      const feedback = providerInquiryActionMessage(status, familyName);
+      const updated = (await response.json()) as Inquiry;
+      setInquiries((current) => current.map((item) => (item.id === id ? { ...item, ...updated } : item)));
+      const feedback = providerInquiryActionMessage(updated.status, familyName);
       setInquiryFeedback((current) => ({ ...current, [id]: feedback }));
       setMessageTone("success");
       setMessage(feedback);
@@ -448,17 +449,7 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
                     ) : null}
 
                     <div className="mt-4 flex flex-wrap gap-2">
-                      {needsResponse && !isAccepted && !isDeclined && inquiry.status === "SUGGESTED" ? (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled={isPending}
-                          onClick={() => void updateInquiry(inquiry.id, "CONTACTED", inquiry.intake.contactName)}
-                        >
-                          {pendingAction === `${inquiry.id}:CONTACTED` ? "Saving..." : "Mark contacted"}
-                        </Button>
-                      ) : null}
-                      {!isAccepted && !isDeclined ? (
+                      {needsResponse ? (
                         <>
                           <Button
                             size="sm"

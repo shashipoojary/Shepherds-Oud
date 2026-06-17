@@ -95,7 +95,7 @@ export function DetailList({ items, columns = 1 }: { items: Array<{ label: strin
 
 export function PanelStep({ number }: { number: number }) {
   return (
-    <span className="mr-2 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-amber text-[10px] font-bold leading-none text-white">
+    <span className="mr-2 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded text-[11px] font-semibold tabular-nums text-neutral-400">
       {number}
     </span>
   );

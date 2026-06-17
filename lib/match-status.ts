@@ -31,7 +31,7 @@ export function isProviderActionNeeded(status: string) {
 }
 
 export function isAdminActionNeeded(status: string) {
-  return ["VISIT_REQUESTED", "CALLBACK_REQUESTED", "ACCEPTED", "CONTACTED"].includes(status);
+  return ["VISIT_REQUESTED", "CALLBACK_REQUESTED", "ACCEPTED"].includes(status);
 }
 
 export function matchStatusLabel(status: string) {
@@ -192,7 +192,7 @@ export function providerInquiryBanner(status: string) {
     case "ACCEPTED":
       return "You accepted this family. The care advisor may contact you to coordinate next steps.";
     case "CONTACTED":
-      return "Marked as contacted. The care advisor is helping coordinate.";
+      return "Your care advisor coordinated next steps with this family.";
     default:
       return null;
   }
@@ -211,8 +211,6 @@ export function providerAcceptButtonLabel(status: string) {
 
 export function providerInquiryActionMessage(status: string, familyName: string) {
   switch (status) {
-    case "CONTACTED":
-      return `Marked ${familyName} as contacted.`;
     case "ACCEPTED":
       return `Accepted ${familyName}. They will see this on their matches page and a care advisor can coordinate next steps.`;
     case "DECLINED":
