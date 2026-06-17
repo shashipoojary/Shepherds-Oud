@@ -164,7 +164,7 @@ export function AdminDashboardClient({ data: initialData }: { data: AdminDashboa
 
       {message ? <div className="mt-4 rounded-lg bg-brand-green-pale/30 px-5 py-4 text-sm text-brand-green-dark">{message}</div> : null}
 
-      <div className="mt-6 overflow-hidden rounded-xl bg-white shadow-soft">
+      <div className="mt-6 rounded-xl bg-white shadow-soft">
         <div className="overflow-x-auto">
           {tab === "families" ? (
             data.families.length ? (
