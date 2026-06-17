@@ -25,10 +25,15 @@ export function saveStoredIntake(intake: StoredIntake) {
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(intake));
 }
 
+export function clearIntakeDraft() {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(DRAFT_KEY);
+}
+
 export function clearStoredIntake() {
   if (typeof window === "undefined") return;
   window.localStorage.removeItem(STORAGE_KEY);
-  window.localStorage.removeItem(DRAFT_KEY);
+  clearIntakeDraft();
 }
 
 export function saveIntakeDraft(form: Record<string, string | string[]>) {

@@ -4,6 +4,7 @@ import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { intakeSteps } from "@/lib/content";
 import {
+  clearIntakeDraft,
   getIntakeDraft,
   getStoredIntake,
   saveIntakeDraft,
@@ -40,11 +41,15 @@ export function IntakeForm() {
   const [form, setForm] = useState<FormState>({});
   const [status, setStatus] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
+  const [existingIntake, setExistingIntake] = useState(getStoredIntake());
   const step = intakeSteps[stepIndex];
   const isFinal = stepIndex === intakeSteps.length - 1;
   const progress = ((stepIndex + 1) / intakeSteps.length) * 100;
+  const isUpdating = Boolean(existingIntake?.id);
 
   useEffect(() => {
+    const stored = getStoredIntake();
+    setExistingIntake(stored);
     setForm(buildInitialForm());
   }, []);
 
@@ -101,16 +106,17 @@ export function IntakeForm() {
       return;
     }
 
-    setStatus("Submitting intake...");
+    setStatus(isUpdating ? "Updating your request..." : "Submitting intake...");
 
-    const response = await fetch("/api/intakes", {
-      method: "POST",
+    const response = await fetch(isUpdating ? `/api/intakes/${existingIntake!.id}` : "/api/intakes", {
+      method: isUpdating ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
     });
 
     if (!response.ok) {
-      setStatus("Please complete the highlighted details and try again.");
+      const data = (await response.json().catch(() => ({}))) as { error?: string };
+      setStatus(data.error || "Please complete the highlighted details and try again.");
       setSubmitting(false);
       return;
     }
@@ -131,9 +137,10 @@ export function IntakeForm() {
       additionalNeeds: payload.additionalNeeds,
       notes: payload.notes,
       status: result.status || "NEW",
-      matchCount: 0,
-      submittedAt: new Date().toISOString()
+      matchCount: isUpdating ? (existingIntake?.matchCount ?? 0) : 0,
+      submittedAt: isUpdating ? (existingIntake?.submittedAt ?? new Date().toISOString()) : new Date().toISOString()
     });
+    clearIntakeDraft();
     router.push("/family/success");
   }
 
@@ -141,7 +148,11 @@ export function IntakeForm() {
     <section className="mx-auto grid max-w-7xl overflow-hidden rounded-card bg-white shadow-panel lg:grid-cols-[380px_minmax(0,1fr)]">
       <header className="bg-brand-green-dark px-8 py-7 text-white">
         <h1 className="font-brand text-[1.3rem] font-semibold">Tell us about your situation</h1>
-        <p className="mt-1 text-[13px] leading-relaxed text-white/80">This takes about 5 minutes. We&apos;ll use this to find the best care options for your family.</p>
+        <p className="mt-1 text-[13px] leading-relaxed text-white/80">
+          {isUpdating
+            ? "Update your existing care request. We will keep the same reference number and matches."
+            : "This takes about 5 minutes. We'll use this to find the best care options for your family."}
+        </p>
         <div className="mt-4">
           <ProgressBar value={progress} trackClassName="bg-white/25" />
         </div>
@@ -194,7 +205,7 @@ export function IntakeForm() {
             )}
             {isFinal ? (
               <Button type="button" className="min-w-[140px]" disabled={submitting} onClick={submit}>
-                {submitting ? "Submitting..." : "Submit"}
+                {submitting ? (isUpdating ? "Updating..." : "Submitting...") : isUpdating ? "Update request" : "Submit"}
               </Button>
             ) : (
               <Button type="button" disabled={!canContinue} onClick={() => setStepIndex((value) => value + 1)}>

@@ -28,17 +28,17 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     }
 
     const { status, notes, intakeId } = parsed.data;
+    const isFamilyAction = guestFamilyStatuses.includes(status as (typeof guestFamilyStatuses)[number]);
 
-    if (!session) {
+    if (isFamilyAction) {
       if (!intakeId) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      }
-      if (!guestFamilyStatuses.includes(status as (typeof guestFamilyStatuses)[number])) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        return NextResponse.json({ error: "Intake reference is required for this request." }, { status: 400 });
       }
       if (existing.intakeId !== intakeId) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        return NextResponse.json({ error: "This match does not belong to your care request." }, { status: 403 });
       }
+    } else if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     } else {
       const role = getUserRole(session);
 

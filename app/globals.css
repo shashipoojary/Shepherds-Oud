@@ -53,4 +53,29 @@ textarea {
   .brand-heading {
     @apply font-brand font-semibold uppercase tracking-[0.06em];
   }
+
+  .scroll-area {
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: var(--brand-green-pale) transparent;
+  }
+
+  .scroll-area::-webkit-scrollbar {
+    width: 5px;
+  }
+
+  .scroll-area::-webkit-scrollbar-track {
+    margin-block: 6px;
+    background: transparent;
+  }
+
+  .scroll-area::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--brand-green-pale) 85%, var(--brand-green-mid));
+  }
+
+  .scroll-area::-webkit-scrollbar-thumb:hover {
+    background: var(--brand-green-light);
+  }
 }

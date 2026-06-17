@@ -6,6 +6,7 @@ import { Chip } from "@/components/ui/chip";
 import { CustomSelect } from "@/components/ui/custom-select";
 import { DashboardSkeleton } from "@/components/ui/dashboard-skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { StatGrid } from "@/components/ui/stat-grid";
 import { careTypeOptions, dutchProvinces, facilityTypes } from "@/lib/content";
 import { providerInquiryActionMessage, providerInquiryStatusLabel } from "@/lib/match-status";
@@ -327,14 +328,26 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
       />
 
       <div className="mt-5 grid gap-5 xl:grid-cols-[1fr_420px]">
-        <section className="rounded-card border border-[var(--card-border)] bg-white p-5 shadow-soft">
-          <h2 className="font-semibold text-ink">Family inquiries</h2>
-          <p className="mt-1 text-sm text-ink/60">
-            Respond to families matched to your facility. Accepting tells the family you are interested; declining removes the match from their results.
-          </p>
+        <section className="flex min-h-0 flex-col rounded-card border border-[var(--card-border)] bg-white p-5 shadow-soft">
+          <div className="shrink-0">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="font-semibold text-ink">Family inquiries</h2>
+                <p className="mt-1 text-sm text-ink/60">
+                  Respond to families matched to your facility. Accepting tells the family you are interested; declining removes the match from their results.
+                </p>
+              </div>
+              {inquiries.length ? (
+                <span className="shrink-0 rounded-full bg-brand-cream px-2.5 py-1 text-xs font-semibold text-ink/55">
+                  {inquiries.length}
+                </span>
+              ) : null}
+            </div>
+          </div>
           {inquiries.length ? (
-            <div className="mt-4 grid gap-3">
-              {inquiries.map((inquiry) => {
+            <ScrollArea className="mt-4 max-h-[min(28rem,52vh)]">
+              <div className="grid gap-3 pr-1.5">
+                {inquiries.map((inquiry) => {
                 const isNew = ["SUGGESTED", "VISIT_REQUESTED", "CALLBACK_REQUESTED"].includes(inquiry.status);
                 const isAccepted = inquiry.status === "ACCEPTED";
                 const isDeclined = inquiry.status === "DECLINED" || inquiry.status === "CLOSED";
@@ -422,7 +435,8 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
                   </article>
                 );
               })}
-            </div>
+              </div>
+            </ScrollArea>
           ) : (
             <div className="mt-4">
               <EmptyState title="No inquiries yet" description="When an admin matches a family to your facility, the inquiry will appear here." />
