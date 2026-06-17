@@ -27,15 +27,21 @@ const keyFor = (label: string) =>
 export function IntakeForm() {
   return (
     <Suspense fallback={<IntakeFormSkeleton />}>
-      <IntakeFormContent />
+      <IntakeFormRouter />
     </Suspense>
   );
 }
 
-function IntakeFormContent() {
-  const router = useRouter();
+function IntakeFormRouter() {
   const searchParams = useSearchParams();
   const isUpdateMode = searchParams.get("update") === "1";
+  const mode = isUpdateMode ? "update" : "new";
+
+  return <IntakeFormContent key={mode} isUpdateMode={isUpdateMode} />;
+}
+
+function IntakeFormContent({ isUpdateMode }: { isUpdateMode: boolean }) {
+  const router = useRouter();
 
   const [stepIndex, setStepIndex] = useState(0);
   const [form, setForm] = useState<FormState>({});
@@ -53,6 +59,8 @@ function IntakeFormContent() {
     const stored = getStoredIntake();
     setExistingIntake(stored);
     clearIntakeDraft();
+    setStatus("");
+    setSubmitting(false);
 
     if (isUpdateMode && stored) {
       setForm(storedIntakeToForm(stored));
@@ -169,8 +177,16 @@ function IntakeFormContent() {
         <p className="mt-1 text-[13px] leading-relaxed text-white/80">
           {isUpdating
             ? "Update your existing care request. We will keep the same reference number and matches."
-            : "This takes about 5 minutes. Start with a blank form — your saved request stays on your dashboard after you submit."}
+            : "This takes about 5 minutes. Fill out each step and submit when you are ready."}
         </p>
+        {!isUpdateMode && existingIntake ? (
+          <p className="mt-3 text-[12px] text-white/70">
+            Need to change your saved request instead?{" "}
+            <Link href="/family/intake?update=1" className="font-semibold text-brand-amber underline underline-offset-2">
+              Open update form
+            </Link>
+          </p>
+        ) : null}
         <div className="mt-4">
           <ProgressBar value={progress} trackClassName="bg-white/25" />
         </div>
@@ -199,16 +215,6 @@ function IntakeFormContent() {
             <Link href="/family/intake" className="font-semibold underline underline-offset-2">
               Start a new intake
             </Link>
-          </div>
-        ) : null}
-
-        {!isUpdateMode && existingIntake ? (
-          <div className="mb-5 rounded-lg bg-brand-cream px-4 py-3 text-sm text-ink/70">
-            You already have a saved request on this device.{" "}
-            <Link href="/family/intake?update=1" className="font-semibold text-brand-amber underline underline-offset-2">
-              Update your existing request
-            </Link>{" "}
-            to edit it, or complete this blank form to submit a new one.
           </div>
         ) : null}
 
