@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
 import { CustomSelect } from "@/components/ui/custom-select";
@@ -9,7 +9,15 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { StatGrid } from "@/components/ui/stat-grid";
 import { careTypeOptions, dutchProvinces, facilityTypes } from "@/lib/content";
-import { providerInquiryActionMessage, providerInquiryStatusLabel } from "@/lib/match-status";
+import {
+  compareMatchPriority,
+  isProviderActionNeeded,
+  matchStatusBadgeClass,
+  providerAcceptButtonLabel,
+  providerInquiryActionMessage,
+  providerInquiryBanner,
+  providerInquiryStatusLabel
+} from "@/lib/match-status";
 import { recordAction } from "@/lib/client-actions";
 
 type ProviderRecord = {
@@ -36,6 +44,7 @@ type Inquiry = {
   id: string;
   score: number;
   status: string;
+  notes: string | null;
   createdAt: string;
   intake: {
     contactName: string;
@@ -288,7 +297,12 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
     }
   }
 
-  const newInquiries = inquiries.filter((item) => ["SUGGESTED", "VISIT_REQUESTED", "CALLBACK_REQUESTED"].includes(item.status)).length;
+  const sortedInquiries = useMemo(
+    () => [...inquiries].sort((a, b) => compareMatchPriority(a.status, b.status)),
+    [inquiries]
+  );
+  const actionNeededCount = inquiries.filter((item) => isProviderActionNeeded(item.status)).length;
+  const newInquiries = actionNeededCount;
   const bedsDisplay = form.bedsOpen.trim() === "" ? "—" : form.bedsOpen;
 
   if (loading) {
@@ -321,7 +335,7 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
       <StatGrid
         stats={[
           [bedsDisplay, "Available beds"],
-          [String(newInquiries), "New inquiries"],
+          [String(newInquiries), "Action needed"],
           [form.availabilityStatus, "Availability"],
           [form.services.length ? String(form.services.length) : "—", "Services listed"]
         ]}
@@ -334,7 +348,7 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
               <div>
                 <h2 className="font-semibold text-ink">Family inquiries</h2>
                 <p className="mt-1 text-sm text-ink/60">
-                  Respond to families matched to your facility. Accepting tells the family you are interested; declining removes the match from their results.
+                  When a family requests a visit or callback, accept or decline so they know you are interested. The care advisor can then coordinate.
                 </p>
               </div>
               {inquiries.length ? (
@@ -347,17 +361,28 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
           {inquiries.length ? (
             <ScrollArea className="mt-4 max-h-[min(28rem,52vh)]">
               <div className="grid gap-3 pr-1.5">
-                {inquiries.map((inquiry) => {
-                const isNew = ["SUGGESTED", "VISIT_REQUESTED", "CALLBACK_REQUESTED"].includes(inquiry.status);
+                {sortedInquiries.map((inquiry) => {
+                const needsResponse = isProviderActionNeeded(inquiry.status);
                 const isAccepted = inquiry.status === "ACCEPTED";
                 const isDeclined = inquiry.status === "DECLINED" || inquiry.status === "CLOSED";
                 const isPending = pendingInquiryId === inquiry.id;
                 const cardFeedback = inquiryFeedback[inquiry.id];
+                const banner = providerInquiryBanner(inquiry.status);
 
                 return (
                   <article
                     key={inquiry.id}
-                    className={`rounded-card border p-4 ${isNew ? "border-brand-amber/40 bg-brand-amber/5" : isAccepted ? "border-brand-green-pale bg-brand-green-pale/15" : isDeclined ? "border-stone-200 bg-stone-50" : "border-[var(--card-border)]"}`}
+                    className={`rounded-card border p-4 ${
+                      inquiry.status === "VISIT_REQUESTED" || inquiry.status === "CALLBACK_REQUESTED"
+                        ? "border-brand-amber/50 bg-brand-amber/8"
+                        : needsResponse
+                          ? "border-brand-amber/40 bg-brand-amber/5"
+                          : isAccepted
+                            ? "border-brand-green-pale bg-brand-green-pale/15"
+                            : isDeclined
+                              ? "border-stone-200 bg-stone-50"
+                              : "border-[var(--card-border)]"
+                    }`}
                   >
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
@@ -372,18 +397,20 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
                           {inquiry.intake.phone} · {inquiry.intake.email}
                         </p>
                       </div>
-                      <span
-                        className={`rounded px-3 py-1 text-xs font-semibold ${
-                          isAccepted
-                            ? "bg-brand-green-pale/60 text-brand-green-dark"
-                            : isDeclined
-                              ? "bg-stone-200 text-neutral-600"
-                              : "bg-brand-green-pale/40 text-brand-green-dark"
-                        }`}
-                      >
+                      <span className={`rounded px-3 py-1 text-xs font-semibold ${matchStatusBadgeClass(inquiry.status)}`}>
                         {inquiry.score}% match · {providerInquiryStatusLabel(inquiry.status)}
                       </span>
                     </div>
+
+                    {banner ? (
+                      <p className="mt-3 rounded-lg bg-white/80 px-3 py-2 text-sm text-ink/75">{banner}</p>
+                    ) : null}
+
+                    {inquiry.notes ? (
+                      <p className="mt-3 rounded-lg bg-brand-cream px-3 py-2 text-xs leading-5 text-ink/65 whitespace-pre-line">
+                        {inquiry.notes}
+                      </p>
+                    ) : null}
 
                     {cardFeedback ? (
                       <p className="mt-3 rounded-lg bg-white/80 px-3 py-2 text-sm text-brand-green-dark" role="status">
@@ -392,14 +419,14 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
                     ) : null}
 
                     <div className="mt-4 flex flex-wrap gap-2">
-                      {isNew && !isAccepted && !isDeclined ? (
+                      {needsResponse && !isAccepted && !isDeclined && inquiry.status === "SUGGESTED" ? (
                         <Button
                           size="sm"
                           variant="outline"
                           disabled={isPending}
                           onClick={() => void updateInquiry(inquiry.id, "CONTACTED", inquiry.intake.contactName)}
                         >
-                          {pendingAction === `${inquiry.id}:CONTACTED` ? "Saving..." : inquiry.status === "CONTACTED" ? "Contacted" : "Mark contacted"}
+                          {pendingAction === `${inquiry.id}:CONTACTED` ? "Saving..." : "Mark contacted"}
                         </Button>
                       ) : null}
                       {!isAccepted && !isDeclined ? (
@@ -409,7 +436,9 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
                             disabled={isPending}
                             onClick={() => void updateInquiry(inquiry.id, "ACCEPTED", inquiry.intake.contactName)}
                           >
-                            {pendingAction === `${inquiry.id}:ACCEPTED` ? "Accepting..." : "Accept inquiry"}
+                            {pendingAction === `${inquiry.id}:ACCEPTED`
+                              ? "Accepting..."
+                              : providerAcceptButtonLabel(inquiry.status)}
                           </Button>
                           <Button
                             size="sm"

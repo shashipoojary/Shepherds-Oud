@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getServerSession, getUserRole } from "@/lib/auth-server";
 import { getUserLinkedProvider } from "@/lib/provider-server";
 import { updateMatchSchema } from "@/lib/validation/match";
+import { familyRequestNote } from "@/lib/match-status";
 
 const guestFamilyStatuses = ["VISIT_REQUESTED", "CALLBACK_REQUESTED"] as const;
 const providerStatuses = ["CONTACTED", "ACCEPTED", "DECLINED"] as const;
@@ -59,7 +60,15 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       where: { id },
       data: {
         status,
-        ...(notes !== undefined ? { notes } : {})
+        ...(notes !== undefined
+          ? { notes }
+          : isFamilyAction
+            ? {
+                notes: [existing.notes, familyRequestNote(status as "VISIT_REQUESTED" | "CALLBACK_REQUESTED")]
+                  .filter(Boolean)
+                  .join("\n")
+              }
+            : {})
       }
     });
 

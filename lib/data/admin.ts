@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { compareMatchPriority } from "@/lib/match-status";
 
 export async function getAdminDashboardData() {
   const [totalFamilies, activeCases, placements, providerCount, intakes, providers, matches, waitlist] = await Promise.all([
@@ -66,7 +67,17 @@ export async function getAdminDashboardData() {
         status: true,
         notes: true,
         createdAt: true,
-        intake: { select: { contactName: true } },
+        updatedAt: true,
+        intake: {
+          select: {
+            contactName: true,
+            phone: true,
+            email: true,
+            preferredArea: true,
+            urgency: true,
+            careTypes: true
+          }
+        },
         provider: { select: { name: true } }
       }
     }),
@@ -145,18 +156,29 @@ export async function getAdminDashboardData() {
       createdAt: provider.createdAt.toLocaleDateString("en-GB"),
       updatedAt: provider.updatedAt.toLocaleDateString("en-GB")
     })),
-    inquiries: matches.map((match) => ({
-      id: match.id,
-      intakeId: match.intakeId,
-      providerId: match.providerId,
-      family: match.intake.contactName,
-      provider: match.provider.name,
-      match: `${match.score}%`,
-      date: match.createdAt.toLocaleDateString("en-GB"),
-      statusRaw: match.status,
-      status: match.status.replaceAll("_", " "),
-      notes: match.notes
-    })),
+    inquiries: matches
+      .map((match) => ({
+        id: match.id,
+        intakeId: match.intakeId,
+        providerId: match.providerId,
+        family: match.intake.contactName,
+        familyPhone: match.intake.phone,
+        familyEmail: match.intake.email,
+        familyArea: match.intake.preferredArea,
+        familyUrgency: match.intake.urgency,
+        familyCare: match.intake.careTypes.join(", "),
+        provider: match.provider.name,
+        match: `${match.score}%`,
+        date: match.createdAt.toLocaleDateString("en-GB"),
+        updatedAt: match.updatedAt.toLocaleDateString("en-GB"),
+        statusRaw: match.status,
+        status: match.status.replaceAll("_", " "),
+        notes: match.notes
+      }))
+      .sort((a, b) => {
+        const priority = compareMatchPriority(a.statusRaw, b.statusRaw);
+        return priority !== 0 ? priority : b.date.localeCompare(a.date);
+      }),
     waitlist: waitlist.map((entry) => ({
       id: entry.id,
       type: entry.type,

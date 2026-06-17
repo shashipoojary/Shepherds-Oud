@@ -1,12 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { DetailList, SlidePanel } from "@/components/ui/slide-panel";
 import { StatGrid } from "@/components/ui/stat-grid";
 import type { AdminDashboardData } from "@/lib/data/admin";
 import { recordAction } from "@/lib/client-actions";
+import {
+  adminInquiryHint,
+  adminMatchStatusLabel,
+  compareMatchPriority,
+  isAdminActionNeeded,
+  matchStatusBadgeClass
+} from "@/lib/match-status";
 
 type AdminTab = "families" | "providers" | "inquiries" | "waitlist";
 type WaitlistEntry = AdminDashboardData["waitlist"][number];
@@ -505,6 +512,13 @@ function InquiriesTable({
 }) {
   const [inquiries, setInquiries] = useState(initialInquiries);
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [selected, setSelected] = useState<InquiryEntry | null>(null);
+
+  const sortedInquiries = useMemo(
+    () => [...inquiries].sort((a, b) => compareMatchPriority(a.statusRaw, b.statusRaw)),
+    [inquiries]
+  );
+  const followUpCount = inquiries.filter((item) => isAdminActionNeeded(item.statusRaw)).length;
 
   async function updateMatchStatus(id: string, status: MatchStatus) {
     setPendingId(id);
@@ -521,10 +535,19 @@ function InquiriesTable({
 
       setInquiries((current) =>
         current.map((inquiry) =>
-          inquiry.id === id ? { ...inquiry, statusRaw: status, status: status.replaceAll("_", " ") } : inquiry
+          inquiry.id === id
+            ? {
+                ...inquiry,
+                statusRaw: status,
+                status: adminMatchStatusLabel(status)
+              }
+            : inquiry
         )
       );
-      setMessage(`Inquiry updated to ${status.replaceAll("_", " ").toLowerCase()}.`);
+      setSelected((current) =>
+        current?.id === id ? { ...current, statusRaw: status, status: adminMatchStatusLabel(status) } : current
+      );
+      setMessage(`Inquiry updated to ${adminMatchStatusLabel(status).toLowerCase()}.`);
     } catch {
       setMessage("Could not update inquiry.");
     } finally {
@@ -533,53 +556,157 @@ function InquiriesTable({
   }
 
   return (
-    <table className="w-full min-w-[980px] border-collapse text-left">
-      <thead className="bg-cream text-xs uppercase tracking-wide text-neutral-500">
-        <tr>
-          <th className="px-4 py-3">Family</th>
-          <th className="px-4 py-3">Provider</th>
-          <th className="px-4 py-3">Match</th>
-          <th className="px-4 py-3">Date</th>
-          <th className="px-4 py-3">Status</th>
-          <th className="px-4 py-3">Actions</th>
-        </tr>
-      </thead>
-      <tbody className="divide-y divide-stone-200">
-        {inquiries.map((inquiry) => {
-          const isPending = pendingId === inquiry.id;
-          return (
-            <tr key={inquiry.id} className="hover:bg-cream">
-              <td className="px-4 py-3 text-sm text-neutral-700">{inquiry.family}</td>
-              <td className="px-4 py-3 text-sm text-neutral-700">{inquiry.provider}</td>
-              <td className="px-4 py-3 text-sm font-semibold text-sage-700">{inquiry.match}</td>
-              <td className="px-4 py-3 text-sm text-neutral-600">{inquiry.date}</td>
-              <td className="px-4 py-3">
-                <span className="rounded-full bg-sage-100 px-3 py-1 text-xs font-medium text-sage-700">{inquiry.status}</span>
-              </td>
-              <td className="px-4 py-3">
-                <div className="flex flex-wrap gap-1">
-                  {inquiry.statusRaw === "SUGGESTED" || inquiry.statusRaw === "VISIT_REQUESTED" || inquiry.statusRaw === "CALLBACK_REQUESTED" ? (
-                    <Button size="sm" variant="ghost" disabled={isPending} onClick={() => void updateMatchStatus(inquiry.id, "CONTACTED")}>
-                      {isPending ? "Saving..." : "Mark contacted"}
+    <>
+      {followUpCount ? (
+        <div className="border-b border-brand-amber/20 bg-brand-amber/8 px-4 py-3 text-sm text-brand-amber-dark">
+          {followUpCount} {followUpCount === 1 ? "inquiry needs" : "inquiries need"} follow-up — visit or callback requests appear first.
+        </div>
+      ) : null}
+
+      <table className="w-full min-w-[980px] border-collapse text-left">
+        <thead className="bg-cream text-xs uppercase tracking-wide text-neutral-500">
+          <tr>
+            <th className="px-4 py-3">Family</th>
+            <th className="px-4 py-3">Provider</th>
+            <th className="px-4 py-3">Match</th>
+            <th className="px-4 py-3">Updated</th>
+            <th className="px-4 py-3">Status</th>
+            <th className="px-4 py-3">Actions</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-stone-200">
+          {sortedInquiries.map((inquiry) => {
+            const isPending = pendingId === inquiry.id;
+            const needsFollowUp = isAdminActionNeeded(inquiry.statusRaw);
+
+            return (
+              <tr
+                key={inquiry.id}
+                className={`cursor-pointer hover:bg-cream ${needsFollowUp ? "bg-brand-amber/5" : ""}`}
+                onClick={() => setSelected(inquiry)}
+              >
+                <td className="px-4 py-3 text-sm text-neutral-700">{inquiry.family}</td>
+                <td className="px-4 py-3 text-sm text-neutral-700">{inquiry.provider}</td>
+                <td className="px-4 py-3 text-sm font-semibold text-sage-700">{inquiry.match}</td>
+                <td className="px-4 py-3 text-sm text-neutral-600">{inquiry.updatedAt}</td>
+                <td className="px-4 py-3">
+                  <span className={`rounded-full px-3 py-1 text-xs font-medium ${matchStatusBadgeClass(inquiry.statusRaw)}`}>
+                    {adminMatchStatusLabel(inquiry.statusRaw)}
+                  </span>
+                </td>
+                <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}>
+                  <div className="flex flex-wrap gap-1">
+                    <Button size="sm" variant="ghost" onClick={() => setSelected(inquiry)}>
+                      View
                     </Button>
-                  ) : null}
-                  {inquiry.statusRaw !== "PLACED" && inquiry.statusRaw !== "CLOSED" ? (
-                    <Button size="sm" variant="ghost" disabled={isPending} onClick={() => void updateMatchStatus(inquiry.id, "PLACED")}>
-                      Placed
-                    </Button>
-                  ) : null}
-                  {inquiry.statusRaw !== "CLOSED" ? (
-                    <Button size="sm" variant="ghost" disabled={isPending} onClick={() => void updateMatchStatus(inquiry.id, "CLOSED")}>
-                      Close
-                    </Button>
-                  ) : null}
-                </div>
-              </td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
+                    {inquiry.statusRaw === "VISIT_REQUESTED" || inquiry.statusRaw === "CALLBACK_REQUESTED" || inquiry.statusRaw === "ACCEPTED" ? (
+                      <Button size="sm" variant="ghost" disabled={isPending} onClick={() => void updateMatchStatus(inquiry.id, "CONTACTED")}>
+                        {isPending ? "Saving..." : "Mark coordinated"}
+                      </Button>
+                    ) : inquiry.statusRaw === "SUGGESTED" ? (
+                      <Button size="sm" variant="ghost" disabled={isPending} onClick={() => void updateMatchStatus(inquiry.id, "CONTACTED")}>
+                        {isPending ? "Saving..." : "Mark contacted"}
+                      </Button>
+                    ) : null}
+                    {inquiry.statusRaw !== "PLACED" && inquiry.statusRaw !== "CLOSED" ? (
+                      <Button size="sm" variant="ghost" disabled={isPending} onClick={() => void updateMatchStatus(inquiry.id, "PLACED")}>
+                        Placed
+                      </Button>
+                    ) : null}
+                    {inquiry.statusRaw !== "CLOSED" ? (
+                      <Button size="sm" variant="ghost" disabled={isPending} onClick={() => void updateMatchStatus(inquiry.id, "CLOSED")}>
+                        Close
+                      </Button>
+                    ) : null}
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+
+      <InquiryDetailPanel
+        inquiry={selected}
+        pendingId={pendingId}
+        onClose={() => setSelected(null)}
+        onUpdateStatus={updateMatchStatus}
+      />
+    </>
+  );
+}
+
+function InquiryDetailPanel({
+  inquiry,
+  pendingId,
+  onClose,
+  onUpdateStatus
+}: {
+  inquiry: InquiryEntry | null;
+  pendingId: string | null;
+  onClose: () => void;
+  onUpdateStatus: (id: string, status: MatchStatus) => Promise<void>;
+}) {
+  const isPending = inquiry ? pendingId === inquiry.id : false;
+  const hint = inquiry ? adminInquiryHint(inquiry.statusRaw) : "";
+
+  const details = inquiry
+    ? [
+        { label: "Family", value: inquiry.family },
+        { label: "Phone", value: inquiry.familyPhone },
+        { label: "Email", value: inquiry.familyEmail },
+        { label: "Area", value: inquiry.familyArea },
+        { label: "Care needed", value: inquiry.familyCare },
+        { label: "Urgency", value: inquiry.familyUrgency },
+        { label: "Provider", value: inquiry.provider },
+        { label: "Match score", value: inquiry.match },
+        { label: "Status", value: adminMatchStatusLabel(inquiry.statusRaw) },
+        { label: "Created", value: inquiry.date },
+        { label: "Last updated", value: inquiry.updatedAt },
+        { label: "Activity log", value: inquiry.notes }
+      ]
+    : [];
+
+  return (
+    <SlidePanel open={Boolean(inquiry)} onClose={onClose} title={inquiry?.family || "Inquiry"} subtitle={inquiry?.provider || "Match details"}>
+      {inquiry ? (
+        <>
+          <div className={`rounded-lg px-4 py-3 text-sm ${matchStatusBadgeClass(inquiry.statusRaw)}`}>{hint}</div>
+
+          <div className="mt-5 rounded-xl border border-stone-200 bg-brand-cream/40 p-4 text-sm leading-6 text-ink/75">
+            <p className="font-medium text-ink">How this flow works</p>
+            <ol className="mt-2 list-decimal space-y-1 pl-5">
+              <li>You create a match — family sees the provider on their shortlist.</li>
+              <li>Family requests a visit or callback — provider and admin are notified via this status.</li>
+              <li>Provider accepts or declines — family sees the update on their matches page.</li>
+              <li>You mark coordinated when visit/call is arranged, then placed when done.</li>
+            </ol>
+          </div>
+
+          <div className="mt-5">
+            <DetailList items={details} />
+          </div>
+
+          <div className="mt-6 flex flex-wrap gap-2">
+            {inquiry.statusRaw === "VISIT_REQUESTED" || inquiry.statusRaw === "CALLBACK_REQUESTED" || inquiry.statusRaw === "ACCEPTED" ? (
+              <Button size="sm" disabled={isPending} onClick={() => void onUpdateStatus(inquiry.id, "CONTACTED")}>
+                Mark coordinated
+              </Button>
+            ) : null}
+            {inquiry.statusRaw !== "PLACED" && inquiry.statusRaw !== "CLOSED" ? (
+              <Button size="sm" variant="ghost" disabled={isPending} onClick={() => void onUpdateStatus(inquiry.id, "PLACED")}>
+                Mark placed
+              </Button>
+            ) : null}
+            {inquiry.statusRaw !== "CLOSED" ? (
+              <Button size="sm" variant="ghost" disabled={isPending} onClick={() => void onUpdateStatus(inquiry.id, "CLOSED")}>
+                Close inquiry
+              </Button>
+            ) : null}
+          </div>
+        </>
+      ) : null}
+    </SlidePanel>
   );
 }
 
