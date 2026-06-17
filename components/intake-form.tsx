@@ -1,13 +1,12 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { intakeSteps } from "@/lib/content";
 import {
   clearIntakeDraft,
-  getIntakeDraft,
   getStoredIntake,
-  saveIntakeDraft,
   saveStoredIntake,
   storedIntakeToForm
 } from "@/lib/client-intake";
@@ -25,38 +24,45 @@ const keyFor = (label: string) =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "");
 
-function buildInitialForm(): FormState {
-  const draft = getIntakeDraft();
-  if (draft && Object.keys(draft).length) return draft;
-
-  const stored = getStoredIntake();
-  if (stored) return storedIntakeToForm(stored);
-
-  return {};
+export function IntakeForm() {
+  return (
+    <Suspense fallback={<IntakeFormSkeleton />}>
+      <IntakeFormContent />
+    </Suspense>
+  );
 }
 
-export function IntakeForm() {
+function IntakeFormContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isUpdateMode = searchParams.get("update") === "1";
+
   const [stepIndex, setStepIndex] = useState(0);
   const [form, setForm] = useState<FormState>({});
-  const [status, setStatus] = useState<string>("");
+  const [status, setStatus] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [existingIntake, setExistingIntake] = useState(getStoredIntake());
+  const [ready, setReady] = useState(false);
+  const [existingIntake, setExistingIntake] = useState<ReturnType<typeof getStoredIntake>>(null);
+
   const step = intakeSteps[stepIndex];
   const isFinal = stepIndex === intakeSteps.length - 1;
   const progress = ((stepIndex + 1) / intakeSteps.length) * 100;
-  const isUpdating = Boolean(existingIntake?.id);
+  const isUpdating = isUpdateMode && Boolean(existingIntake?.id);
 
   useEffect(() => {
     const stored = getStoredIntake();
     setExistingIntake(stored);
-    setForm(buildInitialForm());
-  }, []);
+    clearIntakeDraft();
 
-  useEffect(() => {
-    if (!Object.keys(form).length) return;
-    saveIntakeDraft(form);
-  }, [form]);
+    if (isUpdateMode && stored) {
+      setForm(storedIntakeToForm(stored));
+    } else {
+      setForm({});
+      setStepIndex(0);
+    }
+
+    setReady(true);
+  }, [isUpdateMode]);
 
   const canContinue = useMemo(() => {
     const required = step.fields.filter((field) => field.type !== "notice" && field.type !== "textarea");
@@ -82,6 +88,17 @@ export function IntakeForm() {
   }
 
   async function submit() {
+    if (!isUpdateMode && existingIntake) {
+      setStatus("You already have a saved request. Use “Update your existing request” from your dashboard.");
+      setSubmitting(false);
+      return;
+    }
+
+    if (isUpdateMode && !existingIntake) {
+      setStatus("No saved request found on this device. Start a new intake instead.");
+      return;
+    }
+
     setSubmitting(true);
     setStatus("");
 
@@ -140,8 +157,15 @@ export function IntakeForm() {
       matchCount: isUpdating ? (existingIntake?.matchCount ?? 0) : 0,
       submittedAt: isUpdating ? (existingIntake?.submittedAt ?? new Date().toISOString()) : new Date().toISOString()
     });
+
     clearIntakeDraft();
+    setForm({});
+    setStepIndex(0);
     router.push("/family/success");
+  }
+
+  if (!ready) {
+    return <IntakeFormSkeleton />;
   }
 
   return (
@@ -151,7 +175,7 @@ export function IntakeForm() {
         <p className="mt-1 text-[13px] leading-relaxed text-white/80">
           {isUpdating
             ? "Update your existing care request. We will keep the same reference number and matches."
-            : "This takes about 5 minutes. We'll use this to find the best care options for your family."}
+            : "This takes about 5 minutes. Start with a blank form — your saved request stays on your dashboard after you submit."}
         </p>
         <div className="mt-4">
           <ProgressBar value={progress} trackClassName="bg-white/25" />
@@ -175,6 +199,25 @@ export function IntakeForm() {
       </header>
 
       <div className="px-5 py-6 sm:px-8 lg:px-10 lg:py-9">
+        {isUpdateMode && !existingIntake ? (
+          <div className="mb-5 rounded-lg bg-brand-beige-light/40 px-4 py-3 text-sm text-brand-amber-dark">
+            No saved request on this device.{" "}
+            <Link href="/family/intake" className="font-semibold underline underline-offset-2">
+              Start a new intake
+            </Link>
+          </div>
+        ) : null}
+
+        {!isUpdateMode && existingIntake ? (
+          <div className="mb-5 rounded-lg bg-brand-cream px-4 py-3 text-sm text-ink/70">
+            You already have a saved request on this device.{" "}
+            <Link href="/family/intake?update=1" className="font-semibold text-brand-amber underline underline-offset-2">
+              Update your existing request
+            </Link>{" "}
+            to change your details. This form stays blank so you do not accidentally edit old data.
+          </div>
+        ) : null}
+
         <p className="section-label mb-5">
           Step {stepIndex + 1} of {intakeSteps.length} — {step.title}
         </p>
@@ -214,6 +257,19 @@ export function IntakeForm() {
             )}
           </div>
         </div>
+      </div>
+    </section>
+  );
+}
+
+function IntakeFormSkeleton() {
+  return (
+    <section className="mx-auto max-w-7xl overflow-hidden rounded-card bg-white shadow-panel lg:grid-cols-[380px_minmax(0,1fr)]">
+      <div className="h-48 animate-pulse bg-brand-green-dark/20 lg:h-auto" />
+      <div className="space-y-4 p-8">
+        <div className="h-4 w-40 animate-pulse rounded bg-stone-200" />
+        <div className="h-10 animate-pulse rounded bg-stone-100" />
+        <div className="h-10 animate-pulse rounded bg-stone-100" />
       </div>
     </section>
   );

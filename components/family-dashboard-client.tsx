@@ -56,12 +56,25 @@ export function FamilyDashboardClient() {
           You do not need an account to follow your request. After submitting the intake form, your case card appears here on this device. Use the same phone or computer to view matches later.
         </p>
         <ButtonRow className="mt-5 max-w-lg">
-          <Button asChild className="w-full">
-            <Link href="/family/intake">Start or update intake</Link>
-          </Button>
-          <Button asChild variant="ghost" className="w-full">
-            <Link href="/family/results">View matches</Link>
-          </Button>
+          {intake ? (
+            <>
+              <Button asChild className="w-full">
+                <Link href="/family/intake?update=1">Update your request</Link>
+              </Button>
+              <Button asChild variant="ghost" className="w-full">
+                <Link href="/family/results">View matches</Link>
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button asChild className="w-full">
+                <Link href="/family/intake">Start intake</Link>
+              </Button>
+              <Button asChild variant="ghost" className="w-full">
+                <Link href="/family/results">View matches</Link>
+              </Button>
+            </>
+          )}
         </ButtonRow>
       </header>
 

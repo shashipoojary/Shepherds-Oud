@@ -20,14 +20,11 @@ export type StoredIntake = {
 const STORAGE_KEY = "shepherds:last-intake";
 const DRAFT_KEY = "shepherds:intake-draft";
 
-export function saveStoredIntake(intake: StoredIntake) {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(intake));
-}
-
+/** Clears any legacy draft saved in localStorage from older builds. */
 export function clearIntakeDraft() {
   if (typeof window === "undefined") return;
   window.localStorage.removeItem(DRAFT_KEY);
+  window.sessionStorage.removeItem(DRAFT_KEY);
 }
 
 export function clearStoredIntake() {
@@ -36,20 +33,9 @@ export function clearStoredIntake() {
   clearIntakeDraft();
 }
 
-export function saveIntakeDraft(form: Record<string, string | string[]>) {
+export function saveStoredIntake(intake: StoredIntake) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(DRAFT_KEY, JSON.stringify(form));
-}
-
-export function getIntakeDraft(): Record<string, string | string[]> | null {
-  if (typeof window === "undefined") return null;
-  const raw = window.localStorage.getItem(DRAFT_KEY);
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw) as Record<string, string | string[]>;
-  } catch {
-    return null;
-  }
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(intake));
 }
 
 export function storedIntakeToForm(intake: StoredIntake): Record<string, string | string[]> {
