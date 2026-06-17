@@ -68,7 +68,7 @@ export default async function ProviderDetailPage({ params }: { params: Promise<{
                   ))}
                 </div>
               </Card>
-              <ProviderDetailActions providerName={provider.name} />
+              <ProviderDetailActions providerId={providerId} providerName={provider.name} />
             </section>
           </div>
         </article>

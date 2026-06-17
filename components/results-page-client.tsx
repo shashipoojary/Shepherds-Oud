@@ -2,10 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { BedDouble, Check, CircleDollarSign, Loader2, MapPin } from "lucide-react";
 import { getStoredIntake, saveStoredIntake, type StoredIntake } from "@/lib/client-intake";
+import { requestMatchAction } from "@/lib/client-match-request";
 import { matchStatusHint, matchStatusLabel } from "@/lib/match-status";
 import { IntakeSummaryCard } from "@/components/intake-summary-card";
-import { ProviderCard } from "@/components/provider-card";
+import { ActionFeedback } from "@/components/ui/action-feedback";
 import { availabilityBadgeVariant, Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ButtonRow } from "@/components/ui/button-row";
@@ -14,51 +16,82 @@ import { MatchScore } from "@/components/ui/match-score";
 import { ResultsSkeleton } from "@/components/ui/results-skeleton";
 import type { ProviderMatch } from "@/lib/types";
 
-const filters = ["All options", "Can contact today", "Memory care", "Care at home"];
+const filters = ["All options", "Available now", "Memory care", "Home care"] as const;
 
 type IntakeMeta = {
   status: string;
   matchCount: number;
 };
 
+type PendingAction = {
+  matchId: string;
+  type: "visit" | "callback";
+};
+
+type RowFeedback = {
+  text: string;
+  tone: "success" | "error";
+};
+
 function emptyStateCopy(intake: StoredIntake, loadError: boolean) {
   if (loadError) {
     return {
-      title: "Could not load matches",
-      description: "Please check your connection and refresh this page. Your care request is still saved on this device."
+      title: "Could not load your shortlist",
+      description: "Please check your connection and refresh. Your care request is still saved on this device."
     };
   }
 
   if (intake.status === "MATCHED" || intake.status === "PLACED") {
     return {
-      title: "Matches are being prepared",
+      title: "Your shortlist is almost ready",
       description:
-        "Your case is marked as matched. If providers do not appear here within a day, contact your care advisor with your reference number."
+        "Your case is marked as matched. If nothing appears here within a day, contact your care advisor with your reference number."
     };
   }
 
   if (intake.status === "REVIEW") {
     return {
-      title: "Care advisor is reviewing your intake",
-      description: "Matched providers will appear here once a care advisor approves and publishes them to your results page."
+      title: "A care advisor is reviewing your intake",
+      description: "We will publish suitable providers here once your request has been reviewed."
     };
   }
 
   return {
-    title: "Matches are being prepared",
+    title: "We are preparing your shortlist",
     description: "A care advisor is reviewing your intake. Matched providers will appear here once approved."
   };
 }
 
+function parseMeta(meta: string[]) {
+  const price = meta.find((item) => item.toLowerCase().includes("eur") || item.toLowerCase().includes("price"));
+  const beds = meta.find((item) => item.toLowerCase().includes("bed"));
+  return { price: price || "Price on request", beds: beds || null };
+}
+
+function visibleTags(provider: ProviderMatch, limit = 5) {
+  const tags = provider.tags.map((tag) => tag.label);
+  if (tags.length <= limit) return { shown: tags, extra: 0 };
+  return { shown: tags.slice(0, limit), extra: tags.length - limit };
+}
+
+function showStatusNote(status?: string) {
+  return status && ["VISIT_REQUESTED", "CALLBACK_REQUESTED", "ACCEPTED", "CONTACTED"].includes(status);
+}
+
+function isPending(pending: PendingAction | null, matchId: string | undefined, type: PendingAction["type"]) {
+  return Boolean(matchId && pending?.matchId === matchId && pending.type === type);
+}
+
 export function ResultsPageClient() {
-  const [activeFilter, setActiveFilter] = useState(filters[0]);
-  const [message, setMessage] = useState("");
-  const [messageTone, setMessageTone] = useState<"success" | "error">("success");
+  const [activeFilter, setActiveFilter] = useState<(typeof filters)[number]>("All options");
+  const [globalMessage, setGlobalMessage] = useState("");
+  const [globalTone, setGlobalTone] = useState<"success" | "error">("success");
   const [providers, setProviders] = useState<ProviderMatch[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [intake, setIntake] = useState<StoredIntake | null>(null);
-  const [pendingMatchId, setPendingMatchId] = useState<string | null>(null);
+  const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
+  const [rowFeedback, setRowFeedback] = useState<Record<string, RowFeedback>>({});
   const recommended = providers[0];
 
   useEffect(() => {
@@ -107,58 +140,79 @@ export function ResultsPageClient() {
     void loadMatches();
   }, []);
 
+  useEffect(() => {
+    if (!globalMessage) return;
+    const timer = window.setTimeout(() => setGlobalMessage(""), 6000);
+    return () => window.clearTimeout(timer);
+  }, [globalMessage]);
+
   const visibleProviders = useMemo(() => {
     if (activeFilter === "All options") return providers;
-    if (activeFilter === "Can contact today") {
+    if (activeFilter === "Available now") {
       return providers.filter((provider) => provider.availability.toLowerCase().includes("available"));
     }
     if (activeFilter === "Memory care") {
       return providers.filter((provider) => provider.tags.some((tag) => tag.label.toLowerCase().includes("dementia")));
     }
-    if (activeFilter === "Care at home") {
+    if (activeFilter === "Home care") {
       return providers.filter((provider) => provider.type.toLowerCase().includes("home care"));
     }
     return providers;
   }, [activeFilter, providers]);
 
+  const backupProviders = useMemo(() => visibleProviders.slice(1), [visibleProviders]);
+  const filteredCount = visibleProviders.length;
+
   async function handleProviderAction(provider: ProviderMatch, status: "VISIT_REQUESTED" | "CALLBACK_REQUESTED") {
+    const actionType = status === "VISIT_REQUESTED" ? "visit" : "callback";
+
     if (!intake?.id || !provider.matchId) {
-      setMessageTone("error");
-      setMessage("This match is not ready for requests yet. Please check back after advisor review.");
+      setGlobalTone("error");
+      setGlobalMessage("This match is not ready for requests yet. Please check back after advisor review.");
       return;
     }
 
-    setPendingMatchId(provider.matchId);
-    setMessage("");
+    setPendingAction({ matchId: provider.matchId, type: actionType });
+    setGlobalMessage("");
+    setRowFeedback((current) => {
+      const next = { ...current };
+      delete next[provider.matchId!];
+      return next;
+    });
 
-    try {
-      const response = await fetch(`/api/matches/${provider.matchId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status, intakeId: intake.id })
-      });
+    const result = await requestMatchAction({
+      matchId: provider.matchId,
+      intakeId: intake.id,
+      status
+    });
 
-      if (!response.ok) {
-        throw new Error("Request failed");
-      }
-
-      setProviders((current) =>
-        current.map((item) =>
-          item.matchId === provider.matchId ? { ...item, matchStatus: status, action: matchStatusLabel(status) } : item
-        )
-      );
-      setMessageTone("success");
-      setMessage(
-        status === "VISIT_REQUESTED"
-          ? `Visit request sent for ${provider.name}. A care advisor will follow up.`
-          : `Callback request sent for ${provider.name}.`
-      );
-    } catch {
-      setMessageTone("error");
-      setMessage("Could not send your request. Please try again.");
-    } finally {
-      setPendingMatchId(null);
+    if (!result.ok) {
+      const feedback = { text: result.error, tone: "error" as const };
+      setRowFeedback((current) => ({ ...current, [provider.matchId!]: feedback }));
+      setGlobalTone("error");
+      setGlobalMessage(result.error);
+      setPendingAction(null);
+      return;
     }
+
+    setProviders((current) =>
+      current.map((item) =>
+        item.matchId === provider.matchId ? { ...item, matchStatus: status, action: matchStatusLabel(status) } : item
+      )
+    );
+
+    const successText =
+      status === "VISIT_REQUESTED"
+        ? `Visit request sent for ${provider.name}.`
+        : `Callback request sent for ${provider.name}.`;
+
+    setRowFeedback((current) => ({
+      ...current,
+      [provider.matchId!]: { text: successText, tone: "success" }
+    }));
+    setGlobalTone("success");
+    setGlobalMessage(successText);
+    setPendingAction(null);
   }
 
   if (!intake) {
@@ -166,7 +220,7 @@ export function ResultsPageClient() {
       <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
         <EmptyState
           title="Complete your intake first"
-          description="Submit the care intake form so we can prepare matched providers for your family. No login is required — we save your request on this device."
+          description="Tell us about your situation so we can prepare a shortlist of care providers. No account needed — we save your request on this device."
         />
         <Button asChild className="mt-4">
           <Link href="/family/intake">Start intake</Link>
@@ -185,7 +239,7 @@ export function ResultsPageClient() {
     return (
       <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
         <Link href="/family/dashboard" className="mb-4 inline-flex text-sm text-ink/60 hover:text-brand-amber">
-          Back to dashboard
+          ← Your dashboard
         </Link>
         <IntakeSummaryCard intake={intake} compact />
         <section className="mt-5 rounded-2xl bg-white shadow-soft">
@@ -202,181 +256,276 @@ export function ResultsPageClient() {
     );
   }
 
+  const featuredMeta = parseMeta(recommended.meta);
+  const featuredTags = visibleTags(recommended);
+  const featuredMatchId = recommended.matchId;
+  const featuredVisitSent = recommended.matchStatus === "VISIT_REQUESTED";
+  const featuredCallbackSent = recommended.matchStatus === "CALLBACK_REQUESTED";
+  const featuredAccepted = recommended.matchStatus === "ACCEPTED";
+  const featuredFeedback = featuredMatchId ? rowFeedback[featuredMatchId] : undefined;
+
   return (
     <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
       <Link href="/family/dashboard" className="mb-4 inline-flex text-sm text-ink/60 hover:text-brand-amber">
-        Back to dashboard
+        ← Your dashboard
       </Link>
 
       <IntakeSummaryCard intake={intake} compact />
 
-      <section className="mt-5 overflow-hidden rounded-2xl bg-white shadow-soft">
-        <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_340px]">
-          <div className="p-5 sm:p-7">
-            <p className="section-label">Best place to start</p>
-            <h1 className="mt-2 text-h2 font-semibold text-ink">{recommended.name}</h1>
-            <p className="mt-2 max-w-2xl text-body text-ink/75">{recommended.description}</p>
-            <div className="mt-5 flex flex-wrap gap-2">
-              {recommended.tags.map((tag) => (
-                <Badge key={tag.label} variant="service">
-                  {tag.label}
-                </Badge>
-              ))}
-            </div>
-            {recommended.matchStatus ? (
-              <p className="mt-4 text-sm text-neutral-600">{matchStatusHint(recommended.matchStatus, recommended.name)}</p>
-            ) : null}
-          </div>
-          <div className="border-t border-[var(--card-border)] bg-brand-cream p-5 sm:p-7 lg:border-l lg:border-t-0">
-            <div className="mb-4 flex flex-wrap items-center gap-3">
-              <MatchScore score={recommended.match} size="sm" />
+      <section className="mt-6 overflow-hidden rounded-2xl border border-stone-200/80 bg-white shadow-soft">
+        <div className="border-b border-stone-100 bg-brand-green-dark px-5 py-4 sm:px-7">
+          <p className="text-xs font-medium tracking-wide text-brand-green-pale">Where we would start</p>
+          <h1 className="mt-1 font-brand text-xl font-semibold text-white sm:text-2xl">{recommended.name}</h1>
+          <p className="mt-1 text-sm text-white/75">
+            {recommended.type} · {recommended.area}
+          </p>
+        </div>
+
+        <div className="grid gap-6 p-5 sm:p-7 lg:grid-cols-[minmax(0,1fr)_280px]">
+          <div>
+            <MatchScore score={recommended.match} size="lg" className="max-w-md" />
+
+            <p className="mt-5 max-w-2xl text-[15px] leading-7 text-ink/80">{recommended.description}</p>
+
+            <dl className="mt-6 flex flex-wrap gap-x-6 gap-y-3 text-sm text-ink/70">
+              <Fact icon={MapPin} label={recommended.area} />
+              {featuredMeta.beds ? <Fact icon={BedDouble} label={featuredMeta.beds} /> : null}
+              <Fact icon={CircleDollarSign} label={featuredMeta.price} />
+            </dl>
+
+            <div className="mt-5 flex flex-wrap items-center gap-2">
               <Badge variant={availabilityBadgeVariant(recommended.availability)}>{recommended.availability}</Badge>
-              {recommended.matchStatus ? (
-                <Badge variant="service">{matchStatusLabel(recommended.matchStatus)}</Badge>
+              {recommended.matchStatus && showStatusNote(recommended.matchStatus) ? (
+                <Badge variant="matched">{matchStatusLabel(recommended.matchStatus)}</Badge>
               ) : null}
             </div>
-            <div className="grid gap-3 text-sm">
-              {recommended.meta.map((item) => (
-                <ResultFact key={item} label="Detail" value={item} />
-              ))}
-              <ResultFact label="Availability" value={recommended.availability} />
-              <ResultFact label="Match score" value={`${recommended.match}%`} />
-            </div>
-            <ButtonRow className="mt-5">
-              <Button
-                className="w-full"
-                disabled={
-                  pendingMatchId === recommended.matchId ||
-                  recommended.matchStatus === "VISIT_REQUESTED" ||
-                  recommended.matchStatus === "ACCEPTED"
-                }
-                onClick={() => void handleProviderAction(recommended, "VISIT_REQUESTED")}
-              >
-                {recommended.matchStatus === "VISIT_REQUESTED"
-                  ? "Visit requested"
-                  : recommended.matchStatus === "ACCEPTED"
-                    ? "Provider accepted"
-                    : pendingMatchId === recommended.matchId
-                      ? "Sending..."
-                      : "Request visit"}
-              </Button>
-              <Button asChild variant="ghost" className="w-full">
-                <Link href={`/providers/${recommended.id}`}>Details</Link>
-              </Button>
-            </ButtonRow>
+
+            {recommended.tags.length ? (
+              <p className="mt-4 text-sm text-ink/60">
+                <span className="font-medium text-ink/75">Services & languages: </span>
+                {featuredTags.shown.join(", ")}
+                {featuredTags.extra ? ` +${featuredTags.extra} more` : ""}
+              </p>
+            ) : null}
+
+            {recommended.matchStatus && showStatusNote(recommended.matchStatus) ? (
+              <p className="mt-4 rounded-lg bg-brand-cream px-4 py-3 text-sm text-ink/70">
+                {matchStatusHint(recommended.matchStatus, recommended.name)}
+              </p>
+            ) : null}
           </div>
+
+          <aside className="flex h-fit flex-col gap-3 rounded-xl border border-stone-200/80 bg-brand-cream/60 p-4">
+            <p className="text-sm font-medium text-ink">Next step</p>
+            <p className="text-sm leading-6 text-ink/65">
+              Request a visit or callback and our team will help coordinate with the facility.
+            </p>
+
+            {featuredFeedback ? <ActionFeedback message={featuredFeedback.text} tone={featuredFeedback.tone} /> : null}
+
+            <Button
+              className="w-full"
+              disabled={pendingAction !== null || featuredVisitSent || featuredAccepted || !featuredMatchId}
+              onClick={() => void handleProviderAction(recommended, "VISIT_REQUESTED")}
+            >
+              {isPending(pendingAction, featuredMatchId, "visit") ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Sending...
+                </>
+              ) : featuredVisitSent ? (
+                <>
+                  <Check className="h-4 w-4" />
+                  Visit requested
+                </>
+              ) : featuredAccepted ? (
+                "Provider accepted"
+              ) : (
+                "Request a visit"
+              )}
+            </Button>
+
+            <Button
+              variant="outline"
+              className="w-full"
+              disabled={pendingAction !== null || featuredCallbackSent || featuredAccepted || !featuredMatchId}
+              onClick={() => void handleProviderAction(recommended, "CALLBACK_REQUESTED")}
+            >
+              {isPending(pendingAction, featuredMatchId, "callback") ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Sending...
+                </>
+              ) : featuredCallbackSent ? (
+                <>
+                  <Check className="h-4 w-4" />
+                  Callback requested
+                </>
+              ) : (
+                "Request a callback"
+              )}
+            </Button>
+
+            <Button asChild variant="ghost" className="w-full">
+              <Link href={`/providers/${recommended.id}`}>Read full profile</Link>
+            </Button>
+          </aside>
         </div>
       </section>
 
-      {message ? (
-        <div
-          className={`mt-4 rounded-lg px-5 py-4 text-sm ${
-            messageTone === "success" ? "bg-brand-green-pale/30 text-brand-green-dark" : "bg-brand-beige-light/50 text-brand-amber-dark"
-          }`}
-          role="status"
-        >
-          {message}
+      {globalMessage ? <ActionFeedback message={globalMessage} tone={globalTone} className="mt-4" /> : null}
+
+      <section className="mt-8">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2 className="font-brand text-lg font-semibold text-ink">Other places worth a call</h2>
+            <p className="mt-1 text-sm text-ink/55">It helps to have one or two alternatives before you decide.</p>
+          </div>
+          <span className="text-sm text-ink/45">
+            {filteredCount} of {providers.length} shown
+          </span>
         </div>
-      ) : null}
 
-      <section className="mt-6 grid gap-6 lg:grid-cols-[220px_minmax(0,1fr)]">
-        <aside className="h-fit rounded-2xl bg-white p-4 shadow-soft">
-          <h2 className="text-sm font-semibold">Show me</h2>
-          <div className="mt-3 grid gap-2">
-            {filters.map((filter) => (
-              <button
-                key={filter}
-                onClick={() => setActiveFilter(filter)}
-                className={`rounded-lg px-3 py-2 text-left text-sm transition ${
-                  activeFilter === filter ? "bg-brand-amber text-white" : "bg-white text-ink/70 hover:bg-brand-cream hover:text-brand-amber"
-                }`}
-              >
-                {filter}
-              </button>
-            ))}
-          </div>
-        </aside>
-
-        <div className="grid gap-3">
-          <div className="flex items-end justify-between gap-3">
-            <div>
-              <h2 className="font-semibold">Other options to compare</h2>
-              <p className="text-sm text-neutral-500">Keep one or two backups before making calls.</p>
-            </div>
-            <span className="text-sm text-neutral-500">{visibleProviders.length} shown</span>
-          </div>
-          {visibleProviders.map((provider) => (
-            <CompareRow
-              key={provider.id}
-              provider={provider}
-              pendingMatchId={pendingMatchId}
-              onAction={handleProviderAction}
-            />
+        <div className="mt-4 flex flex-wrap gap-2">
+          {filters.map((filter) => (
+            <button
+              key={filter}
+              type="button"
+              onClick={() => setActiveFilter(filter)}
+              className={`rounded-full border px-3.5 py-1.5 text-sm transition ${
+                activeFilter === filter
+                  ? "border-brand-amber bg-brand-amber text-white"
+                  : "border-stone-200 bg-white text-ink/65 hover:border-brand-amber/40 hover:text-brand-amber"
+              }`}
+            >
+              {filter}
+            </button>
           ))}
+        </div>
+
+        <div className="mt-5 grid gap-3">
+          {backupProviders.length ? (
+            backupProviders.map((provider) => (
+              <CompareRow
+                key={provider.id}
+                provider={provider}
+                pendingAction={pendingAction}
+                feedback={provider.matchId ? rowFeedback[provider.matchId] : undefined}
+                onAction={handleProviderAction}
+              />
+            ))
+          ) : filteredCount <= 1 && activeFilter !== "All options" ? (
+            <p className="rounded-xl border border-dashed border-stone-200 bg-white/60 px-5 py-8 text-center text-sm text-ink/50">
+              No other providers match &ldquo;{activeFilter}&rdquo;. Try &ldquo;All options&rdquo; to see your full shortlist.
+            </p>
+          ) : null}
         </div>
       </section>
     </main>
   );
 }
 
-function ResultFact({ label, value }: { label: string; value: string }) {
+function Fact({ icon: Icon, label }: { icon: typeof MapPin; label: string }) {
   return (
-    <div className="rounded-lg bg-white p-3">
-      <span className="block text-xs text-neutral-500">{label}</span>
-      <strong className="text-sm">{value}</strong>
+    <div className="flex items-center gap-2">
+      <Icon className="h-4 w-4 shrink-0 text-brand-amber" aria-hidden />
+      <span>{label}</span>
     </div>
   );
 }
 
 function CompareRow({
   provider,
-  pendingMatchId,
+  pendingAction,
+  feedback,
   onAction
 }: {
   provider: ProviderMatch;
-  pendingMatchId: string | null;
+  pendingAction: PendingAction | null;
+  feedback?: RowFeedback;
   onAction: (provider: ProviderMatch, status: "VISIT_REQUESTED" | "CALLBACK_REQUESTED") => void;
 }) {
-  const fit = provider.match >= 90 ? "Strong fit" : provider.match >= 75 ? "Good backup" : "Worth discussing";
+  const meta = parseMeta(provider.meta);
   const visitSent = provider.matchStatus === "VISIT_REQUESTED";
+  const callbackSent = provider.matchStatus === "CALLBACK_REQUESTED";
   const accepted = provider.matchStatus === "ACCEPTED";
+  const matchId = provider.matchId;
+  const busy = pendingAction !== null;
 
   return (
-    <article className="grid gap-4 rounded-card border border-[var(--card-border)] bg-white p-5 shadow-soft md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-center">
-      <MatchScore score={provider.match} size="sm" />
-      <div>
-        <div className="flex flex-wrap items-center gap-2">
-          <h3 className="font-semibold text-ink">{provider.name}</h3>
-          <Badge variant={availabilityBadgeVariant(provider.availability)}>{provider.availability}</Badge>
-          {provider.matchStatus ? <Badge variant="service">{matchStatusLabel(provider.matchStatus)}</Badge> : null}
+    <article className="rounded-xl border border-stone-200/80 bg-white p-4 sm:p-5">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="font-semibold text-ink">{provider.name}</h3>
+            <Badge variant={availabilityBadgeVariant(provider.availability)}>{provider.availability}</Badge>
+          </div>
+          <p className="mt-1 text-sm text-ink/55">
+            {provider.type} · {provider.area}
+          </p>
+          <MatchScore score={provider.match} size="sm" variant="compact" className="mt-2 block" />
+          {meta.beds ? (
+            <p className="mt-2 text-sm text-ink/60">
+              {meta.beds} · {meta.price}
+            </p>
+          ) : (
+            <p className="mt-2 text-sm text-ink/60">{meta.price}</p>
+          )}
+          {provider.matchStatus && showStatusNote(provider.matchStatus) ? (
+            <p className="mt-2 text-sm text-brand-green-dark">{matchStatusLabel(provider.matchStatus)}</p>
+          ) : null}
+          {feedback ? <ActionFeedback message={feedback.text} tone={feedback.tone} className="mt-3" /> : null}
         </div>
-        <p className="mt-1 text-sm text-ink/60">
-          {provider.type} - {provider.area}
-        </p>
-        <p className="mt-1 text-xs font-medium text-brand-amber">{fit}</p>
-        {provider.matchStatus ? (
-          <p className="mt-2 text-sm text-neutral-600">{matchStatusHint(provider.matchStatus, provider.name)}</p>
-        ) : null}
-        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-neutral-600">
-          {provider.meta.map((item) => (
-            <span key={item}>{item}</span>
-          ))}
+
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:shrink-0">
+          <Button asChild size="sm" variant="outline" className="w-full sm:min-w-[132px]">
+            <Link href={`/providers/${provider.id}`}>Profile</Link>
+          </Button>
+          <Button
+            size="sm"
+            className="w-full sm:min-w-[132px]"
+            disabled={busy || visitSent || accepted || !matchId}
+            onClick={() => onAction(provider, "VISIT_REQUESTED")}
+          >
+            {isPending(pendingAction, matchId, "visit") ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Sending...
+              </>
+            ) : visitSent ? (
+              <>
+                <Check className="h-4 w-4" />
+                Visit sent
+              </>
+            ) : accepted ? (
+              "Accepted"
+            ) : (
+              "Request visit"
+            )}
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="w-full sm:min-w-[132px]"
+            disabled={busy || callbackSent || accepted || !matchId}
+            onClick={() => onAction(provider, "CALLBACK_REQUESTED")}
+          >
+            {isPending(pendingAction, matchId, "callback") ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Sending...
+              </>
+            ) : callbackSent ? (
+              <>
+                <Check className="h-4 w-4" />
+                Callback sent
+              </>
+            ) : (
+              "Request callback"
+            )}
+          </Button>
         </div>
       </div>
-      <ButtonRow>
-        <Button asChild size="sm" className="w-full">
-          <Link href={`/providers/${provider.id}`}>Details</Link>
-        </Button>
-        <Button
-          size="sm"
-          variant="ghost"
-          className="w-full"
-          disabled={pendingMatchId === provider.matchId || visitSent || accepted}
-          onClick={() => onAction(provider, "VISIT_REQUESTED")}
-        >
-          {visitSent ? "Visit requested" : accepted ? "Accepted" : pendingMatchId === provider.matchId ? "Sending..." : "Request visit"}
-        </Button>
-      </ButtonRow>
     </article>
   );
 }

@@ -3,51 +3,42 @@ import { cn } from "@/lib/utils";
 type MatchScoreProps = {
   score: number;
   size?: "sm" | "md" | "lg";
+  variant?: "bar" | "compact";
   className?: string;
 };
 
-function scoreTone(score: number) {
-  if (score >= 90) {
-    return {
-      ring: "border-brand-green-light text-brand-green-light",
-      bg: "bg-brand-green-light/15"
-    };
-  }
-  if (score >= 70) {
-    return {
-      ring: "border-brand-amber text-brand-amber",
-      bg: "bg-brand-amber/15"
-    };
-  }
-  return {
-    ring: "border-brand-beige-dark text-brand-beige-dark",
-    bg: "bg-brand-beige-light/40"
-  };
+export function fitLabel(score: number) {
+  if (score >= 90) return "Strong match for your situation";
+  if (score >= 75) return "Good option to explore";
+  return "Worth a conversation";
 }
 
-const sizeClasses = {
-  sm: "h-12 w-12 text-sm",
-  md: "h-14 w-14 text-base",
-  lg: "h-16 w-16 text-lg"
-};
+function barHeight(size: MatchScoreProps["size"]) {
+  if (size === "lg") return "h-2";
+  if (size === "sm") return "h-1";
+  return "h-1.5";
+}
 
-export function MatchScore({ score, size = "md", className }: MatchScoreProps) {
-  const tone = scoreTone(score);
+export function MatchScore({ score, size = "md", variant = "bar", className }: MatchScoreProps) {
+  if (variant === "compact") {
+    return (
+      <span className={cn("text-xs font-medium text-brand-green-dark", className)} aria-label={`${score} percent fit`}>
+        {fitLabel(score)}
+      </span>
+    );
+  }
 
   return (
-    <div
-      className={cn(
-        "grid place-items-center rounded-full border-2 font-semibold",
-        sizeClasses[size],
-        tone.ring,
-        tone.bg,
-        className
-      )}
-      aria-label={`${score} percent match`}
-    >
-      <div className="text-center leading-none">
-        <strong className="block">{score}</strong>
-        <span className="text-[10px] font-bold uppercase">match</span>
+    <div className={cn("min-w-0", className)} aria-label={`${score} percent fit`}>
+      <div className="flex items-baseline justify-between gap-3">
+        <p className="text-sm font-medium text-brand-green-dark">{fitLabel(score)}</p>
+        <span className="shrink-0 text-xs text-ink/45">{score}% alignment</span>
+      </div>
+      <div className={cn("mt-2 overflow-hidden rounded-full bg-stone-200/70", barHeight(size))}>
+        <div
+          className="h-full rounded-full bg-gradient-to-r from-brand-green-mid to-brand-amber"
+          style={{ width: `${Math.min(100, Math.max(0, score))}%` }}
+        />
       </div>
     </div>
   );
