@@ -5,10 +5,11 @@ import { AdminResetDataButton } from "@/components/admin-reset-data-button";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { RefreshButton } from "@/components/ui/refresh-button";
-import { DetailList, SlidePanel } from "@/components/ui/slide-panel";
+import { DetailList, PanelSection, SlidePanel, StatusPill } from "@/components/ui/slide-panel";
 import { StatGrid } from "@/components/ui/stat-grid";
 import type { AdminDashboardData } from "@/lib/data/admin";
 import { recordAction } from "@/lib/client-actions";
+import { cn } from "@/lib/utils";
 import {
   adminInquiryActionMeta,
   adminInquiryHint,
@@ -35,6 +36,32 @@ type MatchStatus =
   | "PLACED"
   | "CLOSED";
 
+function AdminTableAction({
+  children,
+  onClick,
+  disabled,
+  primary
+}: {
+  children: React.ReactNode;
+  onClick: () => void;
+  disabled?: boolean;
+  primary?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className={cn(
+        "rounded-md px-2 py-1 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+        primary ? "bg-brand-amber text-white hover:bg-brand-amber-mid" : "text-neutral-600 hover:bg-stone-100 hover:text-ink"
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
 export function AdminDashboardClient({ data: initialData }: { data: AdminDashboardData }) {
   const [data, setData] = useState(initialData);
   const [tab, setTab] = useState<AdminTab>("families");
@@ -51,16 +78,18 @@ export function AdminDashboardClient({ data: initialData }: { data: AdminDashboa
     return () => window.clearTimeout(timer);
   }, [message]);
 
+  async function syncDashboard() {
+    const response = await fetch("/api/admin/dashboard");
+    if (!response.ok) return false;
+    setData((await response.json()) as AdminDashboardData);
+    return true;
+  }
+
   async function refreshDashboard() {
     setRefreshing(true);
     try {
-      const response = await fetch("/api/admin/dashboard");
-      if (response.ok) {
-        setData((await response.json()) as AdminDashboardData);
-        setMessage("Dashboard updated.");
-      } else {
-        setMessage("Could not refresh dashboard.");
-      }
+      const ok = await syncDashboard();
+      setMessage(ok ? "Dashboard updated." : "Could not refresh dashboard.");
     } catch {
       setMessage("Could not refresh dashboard.");
     } finally {
@@ -101,7 +130,12 @@ export function AdminDashboardClient({ data: initialData }: { data: AdminDashboa
         <div className="overflow-x-auto">
           {tab === "families" ? (
             data.families.length ? (
-              <FamiliesTable key={data.families.length} families={data.families} providers={data.providerList} setMessage={setMessage} />
+              <FamiliesTable
+                families={data.families}
+                providers={data.providerList}
+                setMessage={setMessage}
+                onSync={syncDashboard}
+              />
             ) : (
               <EmptyState title="No family intakes yet" description="New submissions from the intake form will appear here." />
             )
@@ -117,7 +151,7 @@ export function AdminDashboardClient({ data: initialData }: { data: AdminDashboa
 
           {tab === "inquiries" ? (
             data.inquiries.length ? (
-              <InquiriesTable key={data.inquiries.length} inquiries={data.inquiries} setMessage={setMessage} />
+              <InquiriesTable inquiries={data.inquiries} setMessage={setMessage} onSync={syncDashboard} />
             ) : (
               <EmptyState title="No matches or inquiries yet" description="When families are matched to providers, those records will show here." />
             )
@@ -139,11 +173,13 @@ export function AdminDashboardClient({ data: initialData }: { data: AdminDashboa
 function FamiliesTable({
   families,
   providers,
-  setMessage
+  setMessage,
+  onSync
 }: {
   families: FamilyEntry[];
   providers: ProviderOption[];
   setMessage: (message: string) => void;
+  onSync: () => Promise<boolean>;
 }) {
   const [rows, setRows] = useState(families);
   const [selected, setSelected] = useState<FamilyEntry | null>(null);
@@ -151,6 +187,10 @@ function FamiliesTable({
 
   useEffect(() => {
     setRows(families);
+    setSelected((current) => {
+      if (!current) return null;
+      return families.find((family) => family.id === current.id) ?? null;
+    });
   }, [families]);
 
   async function updateStatus(id: string, status: IntakeStatus, name: string) {
@@ -178,6 +218,7 @@ function FamiliesTable({
       });
 
       setMessage(`${name} marked as ${status.replaceAll("_", " ").toLowerCase()}.`);
+      await onSync();
     } catch {
       setMessage(`Could not update ${name}. Please try again.`);
     } finally {
@@ -217,17 +258,17 @@ function FamiliesTable({
                 <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}>
                   {family.status === "NEW" ? (
                     <Button
-                      size="sm"
+                      size="xs"
                       variant="outline"
                       disabled={isPending}
                       title={reviewMeta.description}
                       onClick={() => void updateStatus(family.id, "REVIEW", family.name)}
                     >
-                      {isPending ? "Saving..." : reviewMeta.label}
+                      {isPending ? "..." : reviewMeta.label}
                     </Button>
                   ) : (
-                    <Button size="sm" variant="outline" onClick={() => setSelected(family)}>
-                      Open details
+                    <Button size="xs" variant="outline" onClick={() => setSelected(family)}>
+                      Details
                     </Button>
                   )}
                 </td>
@@ -243,6 +284,7 @@ function FamiliesTable({
         onClose={() => setSelected(null)}
         onUpdateStatus={updateStatus}
         onMatchCreated={setMessage}
+        onSync={onSync}
         pendingId={pendingId}
       />
     </>
@@ -255,6 +297,7 @@ function FamilyDetailPanel({
   onClose,
   onUpdateStatus,
   onMatchCreated,
+  onSync,
   pendingId
 }: {
   family: FamilyEntry | null;
@@ -262,6 +305,7 @@ function FamilyDetailPanel({
   onClose: () => void;
   onUpdateStatus: (id: string, status: IntakeStatus, name: string) => Promise<void>;
   onMatchCreated: (message: string) => void;
+  onSync: () => Promise<boolean>;
   pendingId: string | null;
 }) {
   const [providerId, setProviderId] = useState("");
@@ -301,6 +345,7 @@ function FamilyDetailPanel({
       onMatchCreated(`Match created for ${family.name}. They can now see this provider on their results page.`);
       setProviderId("");
       setMatchNotes("");
+      await onSync();
     } catch {
       onMatchCreated(`Could not create match for ${family.name}.`);
     } finally {
@@ -355,18 +400,14 @@ function FamilyDetailPanel({
       subtitle={family ? `${family.location} · ${family.urgency}` : "Care intake details"}
     >
       {family ? (
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_300px]">
           <div>
-            <div className="rounded-xl border border-stone-200 bg-brand-cream/30 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Case status</p>
+            <StatusPill>
+              <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Case status</span>
               <p className="mt-1 text-lg font-semibold text-ink">{family.status}</p>
-              <p className="mt-2 text-sm leading-6 text-neutral-600">
-                Track the family journey here. Create provider matches on the right, then update status so they see progress on their dashboard.
-              </p>
-            </div>
+            </StatusPill>
 
-            <div className="mt-6">
-              <h3 className="text-sm font-semibold text-ink">Contact & care needs</h3>
+            <PanelSection step={1} title="Contact & care needs" className="mt-6">
               <DetailList
                 items={details.filter((item) =>
                   ["Contact name", "Email", "Phone", "Relationship", "Age range", "Preferred area", "Care types", "Urgency", "Budget", "Languages", "Additional needs", "Notes"].includes(
@@ -375,28 +416,25 @@ function FamilyDetailPanel({
                 )}
                 columns={2}
               />
-            </div>
+            </PanelSection>
 
-            <div className="mt-6">
-              <h3 className="text-sm font-semibold text-ink">Record</h3>
+            <PanelSection step={2} title="Record">
               <DetailList
                 items={details.filter((item) => ["Status", "Submitted", "Last updated"].includes(item.label))}
                 columns={2}
               />
-            </div>
+            </PanelSection>
           </div>
 
-          <div className="space-y-5 lg:sticky lg:top-0 lg:self-start">
-            <div className="rounded-xl border border-stone-200 p-4">
-              <h3 className="text-sm font-semibold text-ink">Create provider match</h3>
-              <p className="mt-1 text-sm text-neutral-600">The family will see this provider on their shortlist.</p>
-              <div className="mt-4 grid gap-3">
+          <div className="lg:sticky lg:top-0 lg:self-start">
+            <PanelSection step={3} title="Create provider match" description="The family will see this provider on their shortlist.">
+              <div className="grid gap-3">
                 <label className="grid gap-1.5 text-sm font-medium">
                   Provider
                   <select
                     value={providerId}
                     onChange={(event) => setProviderId(event.target.value)}
-                    className="rounded-lg border border-stone-200 px-3 py-2 text-sm outline-sage-600"
+                    className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm outline-brand-amber"
                   >
                     <option value="">Select provider</option>
                     {providers.map((provider) => (
@@ -414,7 +452,7 @@ function FamilyDetailPanel({
                     max="100"
                     value={score}
                     onChange={(event) => setScore(event.target.value)}
-                    className="rounded-lg border border-stone-200 px-3 py-2 text-sm outline-sage-600"
+                    className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm outline-brand-amber"
                   />
                 </label>
                 <label className="grid gap-1.5 text-sm font-medium">
@@ -422,34 +460,32 @@ function FamilyDetailPanel({
                   <textarea
                     value={matchNotes}
                     onChange={(event) => setMatchNotes(event.target.value)}
-                    className="min-h-20 rounded-lg border border-stone-200 px-3 py-2 text-sm outline-sage-600"
+                    className="min-h-16 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm outline-brand-amber"
                   />
                 </label>
-                <Button type="button" disabled={!providerId || creatingMatch} onClick={() => void createMatch()}>
-                  {creatingMatch ? "Creating match..." : "Create match"}
+                <Button type="button" size="sm" disabled={!providerId || creatingMatch} onClick={() => void createMatch()}>
+                  {creatingMatch ? "Creating..." : "Create match"}
                 </Button>
               </div>
-            </div>
+            </PanelSection>
 
-            <div className="rounded-xl border border-stone-200 p-4">
-              <h3 className="text-sm font-semibold text-ink">Update case status</h3>
-              <p className="mt-1 text-sm text-neutral-600">Each step updates what the family sees on their dashboard.</p>
-              <div className="mt-4 grid gap-3">
+            <PanelSection step={4} title="Update case status" description="Each step updates what the family sees on their dashboard.">
+              <div className="space-y-3">
                 {nextActions.map((action) => (
-                  <div key={action.status} className="rounded-lg border border-stone-100 bg-white p-3">
+                  <div key={action.status}>
                     <Button
-                      className="w-full"
+                      size="sm"
                       variant={action.status === "CLOSED" ? "outline" : "default"}
                       disabled={isPending}
                       onClick={() => void onUpdateStatus(family.id, action.status, family.name)}
                     >
                       {isPending ? "Saving..." : action.label}
                     </Button>
-                    <p className="mt-2 text-xs leading-5 text-neutral-500">{action.description}</p>
+                    <p className="mt-1.5 text-xs leading-5 text-neutral-500">{action.description}</p>
                   </div>
                 ))}
               </div>
-            </div>
+            </PanelSection>
           </div>
         </div>
       ) : null}
@@ -489,8 +525,8 @@ function ProvidersTable({
                 {provider.bedsTotal ? ` / ${provider.bedsTotal}` : ""}
               </td>
               <td className="px-4 py-3">
-                <Button size="sm" variant="outline" onClick={(event) => { event.stopPropagation(); setSelected(provider); }}>
-                  Open details
+                <Button size="xs" variant="outline" onClick={(event) => { event.stopPropagation(); setSelected(provider); }}>
+                  Details
                 </Button>
               </td>
             </tr>
@@ -548,28 +584,80 @@ function ProviderDetailPanel({
     : [];
 
   return (
-    <SlidePanel open={Boolean(provider)} onClose={onClose} title={provider?.name || "Provider"} subtitle="Facility profile">
+    <SlidePanel
+      open={Boolean(provider)}
+      onClose={onClose}
+      size="wide"
+      title={provider?.name || "Provider"}
+      subtitle={provider ? `${provider.type} · ${provider.area}` : "Facility profile"}
+    >
       {provider ? (
-        <>
-          <DetailList items={details} />
-          <div className="mt-6 flex flex-wrap gap-2">
-            <Button asChild size="sm" variant="ghost">
-              <a href={`/providers/${provider.id}`} target="_blank" rel="noreferrer">
-                Open public profile
-              </a>
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => {
-                void navigator.clipboard.writeText(provider.id);
-                setMessage(`Copied provider ID for ${provider.name}.`);
-              }}
-            >
-              Copy provider ID
-            </Button>
+        <div className="grid gap-8 lg:grid-cols-2">
+          <div>
+            <StatusPill>
+              <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Availability</span>
+              <p className="mt-1 font-semibold text-ink">{provider.availabilityStatus || "Not set"}</p>
+              {provider.bedsOpen != null || provider.bedsTotal != null ? (
+                <p className="mt-1 text-sm text-neutral-600">
+                  {provider.bedsOpen ?? "—"} beds open · {provider.bedsTotal ?? "—"} total
+                </p>
+              ) : null}
+            </StatusPill>
+
+            <PanelSection step={1} title="Contact" className="mt-6">
+              <DetailList
+                items={details.filter((item) => ["Contact name", "Email", "Phone", "Website"].includes(item.label))}
+                columns={2}
+              />
+            </PanelSection>
+
+            <PanelSection step={2} title="Location">
+              <DetailList
+                items={details.filter((item) => ["Facility name", "Type", "Area", "City", "Province"].includes(item.label))}
+                columns={2}
+              />
+            </PanelSection>
+
+            <PanelSection step={3} title="Services & languages">
+              <DetailList
+                items={details.filter((item) => ["Services", "Languages", "Description"].includes(item.label))}
+              />
+            </PanelSection>
           </div>
-        </>
+
+          <div>
+            <PanelSection step={4} title="Capacity & pricing">
+              <DetailList
+                items={details.filter((item) => ["Beds", "Availability", "Waitlist", "Price range"].includes(item.label))}
+                columns={2}
+              />
+            </PanelSection>
+
+            <PanelSection step={5} title="Record">
+              <DetailList items={details.filter((item) => ["Added", "Last updated"].includes(item.label))} columns={2} />
+            </PanelSection>
+
+            <PanelSection step={6} title="Quick actions">
+              <div className="flex flex-wrap gap-2">
+                <Button asChild size="sm" variant="outline">
+                  <a href={`/providers/${provider.id}`} target="_blank" rel="noreferrer">
+                    Public profile
+                  </a>
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    void navigator.clipboard.writeText(provider.id);
+                    setMessage(`Copied provider ID for ${provider.name}.`);
+                  }}
+                >
+                  Copy ID
+                </Button>
+              </div>
+            </PanelSection>
+          </div>
+        </div>
       ) : null}
     </SlidePanel>
   );
@@ -577,10 +665,12 @@ function ProviderDetailPanel({
 
 function InquiriesTable({
   inquiries,
-  setMessage
+  setMessage,
+  onSync
 }: {
   inquiries: InquiryEntry[];
   setMessage: (message: string) => void;
+  onSync: () => Promise<boolean>;
 }) {
   const [rows, setRows] = useState(inquiries);
   const [pendingId, setPendingId] = useState<string | null>(null);
@@ -588,6 +678,10 @@ function InquiriesTable({
 
   useEffect(() => {
     setRows(inquiries);
+    setSelected((current) => {
+      if (!current) return null;
+      return inquiries.find((item) => item.id === current.id) ?? null;
+    });
   }, [inquiries]);
 
   const sortedInquiries = useMemo(
@@ -624,6 +718,7 @@ function InquiriesTable({
         current?.id === id ? { ...current, statusRaw: status, status: adminMatchStatusLabel(status) } : current
       );
       setMessage(`Inquiry updated to ${adminMatchStatusLabel(status).toLowerCase()}.`);
+      await onSync();
     } catch {
       setMessage("Could not update inquiry.");
     } finally {
@@ -634,8 +729,13 @@ function InquiriesTable({
   return (
     <>
       {followUpCount ? (
-        <div className="border-b border-brand-amber/20 bg-brand-amber/8 px-4 py-3 text-sm text-brand-amber-dark">
-          <strong>{followUpCount}</strong> {followUpCount === 1 ? "inquiry needs" : "inquiries need"} your follow-up. Open a row for the step-by-step guide.
+        <div className="flex items-center gap-2.5 border-b border-brand-amber/15 bg-brand-amber/5 px-4 py-2.5 text-sm text-brand-amber-dark">
+          <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-amber text-xs font-bold text-white">
+            {followUpCount}
+          </span>
+          <span>
+            {followUpCount === 1 ? "Inquiry needs" : "Inquiries need"} your follow-up — open a row for the step-by-step guide.
+          </span>
         </div>
       ) : null}
 
@@ -671,25 +771,23 @@ function InquiriesTable({
                   </span>
                 </td>
                 <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap items-center gap-1.5">
                     {inquiry.statusRaw === "VISIT_REQUESTED" || inquiry.statusRaw === "CALLBACK_REQUESTED" || inquiry.statusRaw === "ACCEPTED" ? (
-                      <Button size="sm" disabled={isPending} onClick={() => void updateMatchStatus(inquiry.id, "CONTACTED")}>
-                        {isPending ? "Saving..." : adminInquiryActionMeta("CONTACTED").label}
-                      </Button>
+                      <AdminTableAction primary disabled={isPending} onClick={() => void updateMatchStatus(inquiry.id, "CONTACTED")}>
+                        {isPending ? "..." : adminInquiryActionMeta("CONTACTED").label}
+                      </AdminTableAction>
                     ) : null}
                     {inquiry.statusRaw !== "PLACED" && inquiry.statusRaw !== "CLOSED" ? (
-                      <Button size="sm" variant="outline" disabled={isPending} onClick={() => void updateMatchStatus(inquiry.id, "PLACED")}>
+                      <AdminTableAction disabled={isPending} onClick={() => void updateMatchStatus(inquiry.id, "PLACED")}>
                         {adminInquiryActionMeta("PLACED").label}
-                      </Button>
+                      </AdminTableAction>
                     ) : null}
                     {inquiry.statusRaw !== "CLOSED" ? (
-                      <Button size="sm" variant="outline" disabled={isPending} onClick={() => void updateMatchStatus(inquiry.id, "CLOSED")}>
+                      <AdminTableAction disabled={isPending} onClick={() => void updateMatchStatus(inquiry.id, "CLOSED")}>
                         {adminInquiryActionMeta("CLOSED").label}
-                      </Button>
+                      </AdminTableAction>
                     ) : null}
-                    <Button size="sm" variant="ghost" onClick={() => setSelected(inquiry)}>
-                      Details
-                    </Button>
+                    <AdminTableAction onClick={() => setSelected(inquiry)}>Details</AdminTableAction>
                   </div>
                 </td>
               </tr>
@@ -748,38 +846,35 @@ function InquiryDetailPanel({
       subtitle={inquiry ? `${inquiry.provider} · ${adminMatchStatusLabel(inquiry.statusRaw)}` : "Match details"}
     >
       {inquiry ? (
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_300px]">
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_260px]">
           <div>
-            <div className={`rounded-lg px-4 py-3 text-sm ${matchStatusBadgeClass(inquiry.statusRaw)}`}>{hint}</div>
+            <StatusPill className={matchStatusBadgeClass(inquiry.statusRaw)}>{hint}</StatusPill>
 
-            <div className="mt-5 rounded-xl border border-stone-200 bg-brand-cream/40 p-4 text-sm leading-6 text-ink/75">
-              <p className="font-medium text-ink">Inquiry flow</p>
-              <ol className="mt-2 list-decimal space-y-2 pl-5">
-                <li>You create a match — family sees the provider on their shortlist.</li>
-                <li>Family requests a visit or callback — status moves here for you and the provider.</li>
-                <li>Provider accepts or declines — family sees the update on their dashboard and matches page.</li>
-                <li>You mark coordinated after arranging the visit or call with both sides.</li>
+            <PanelSection step={1} title="Inquiry flow" className="mt-5">
+              <ol className="list-decimal space-y-2 pl-5 text-sm leading-6 text-neutral-600">
+                <li>Create a match — family sees the provider on their shortlist.</li>
+                <li>Family requests a visit or callback.</li>
+                <li>Provider accepts or declines.</li>
+                <li>Mark coordinated after arranging the visit or call.</li>
                 <li>Record placement when the family commits, or close the inquiry.</li>
               </ol>
-            </div>
+            </PanelSection>
 
-            <div className="mt-5 grid gap-6 sm:grid-cols-2">
-              <div>
-                <h3 className="text-sm font-semibold text-ink">Family</h3>
+            <div className="mt-6 grid gap-6 sm:grid-cols-2">
+              <PanelSection step={2} title="Family">
                 <DetailList
                   items={details.filter((item) =>
                     ["Family", "Phone", "Email", "Area", "Care needed", "Urgency"].includes(item.label)
                   )}
                 />
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold text-ink">Match</h3>
+              </PanelSection>
+              <PanelSection step={3} title="Match">
                 <DetailList
                   items={details.filter((item) =>
                     ["Provider", "Match score", "Status", "Created", "Last updated", "Activity log"].includes(item.label)
                   )}
                 />
-              </div>
+              </PanelSection>
             </div>
           </div>
 
@@ -787,28 +882,25 @@ function InquiryDetailPanel({
             {(inquiry.statusRaw === "VISIT_REQUESTED" ||
               inquiry.statusRaw === "CALLBACK_REQUESTED" ||
               inquiry.statusRaw === "ACCEPTED") && (
-              <div className="rounded-xl border border-stone-200 p-4">
-                <Button className="w-full" size="sm" disabled={isPending} onClick={() => void onUpdateStatus(inquiry.id, "CONTACTED")}>
-                  {adminInquiryActionMeta("CONTACTED").label}
+              <PanelSection step={4} title={adminInquiryActionMeta("CONTACTED").label} description={adminInquiryActionMeta("CONTACTED").description}>
+                <Button size="sm" disabled={isPending} onClick={() => void onUpdateStatus(inquiry.id, "CONTACTED")}>
+                  {isPending ? "Saving..." : "Confirm"}
                 </Button>
-                <p className="mt-2 text-xs leading-5 text-neutral-500">{adminInquiryActionMeta("CONTACTED").description}</p>
-              </div>
+              </PanelSection>
             )}
             {inquiry.statusRaw !== "PLACED" && inquiry.statusRaw !== "CLOSED" ? (
-              <div className="rounded-xl border border-stone-200 p-4">
-                <Button className="w-full" size="sm" variant="outline" disabled={isPending} onClick={() => void onUpdateStatus(inquiry.id, "PLACED")}>
-                  {adminInquiryActionMeta("PLACED").label}
+              <PanelSection step={5} title={adminInquiryActionMeta("PLACED").label} description={adminInquiryActionMeta("PLACED").description}>
+                <Button size="sm" variant="outline" disabled={isPending} onClick={() => void onUpdateStatus(inquiry.id, "PLACED")}>
+                  {isPending ? "Saving..." : "Confirm"}
                 </Button>
-                <p className="mt-2 text-xs leading-5 text-neutral-500">{adminInquiryActionMeta("PLACED").description}</p>
-              </div>
+              </PanelSection>
             ) : null}
             {inquiry.statusRaw !== "CLOSED" ? (
-              <div className="rounded-xl border border-stone-200 p-4">
-                <Button className="w-full" size="sm" variant="outline" disabled={isPending} onClick={() => void onUpdateStatus(inquiry.id, "CLOSED")}>
-                  {adminInquiryActionMeta("CLOSED").label}
+              <PanelSection step={6} title={adminInquiryActionMeta("CLOSED").label} description={adminInquiryActionMeta("CLOSED").description}>
+                <Button size="sm" variant="outline" disabled={isPending} onClick={() => void onUpdateStatus(inquiry.id, "CLOSED")}>
+                  {isPending ? "Saving..." : "Confirm"}
                 </Button>
-                <p className="mt-2 text-xs leading-5 text-neutral-500">{adminInquiryActionMeta("CLOSED").description}</p>
-              </div>
+              </PanelSection>
             ) : null}
           </div>
         </div>

@@ -14,6 +14,7 @@ const buttonVariants = cva(
         ghost: "border-0 bg-transparent text-ink hover:bg-brand-cream"
       },
       size: {
+        xs: "min-h-7 rounded-md px-2.5 py-1 text-xs",
         sm: "min-h-9 px-3 py-1.5 text-sm",
         default: "min-h-11 px-5 py-2.5 text-sm sm:text-[15px]",
         md: "min-h-11 px-5 py-2.5 text-sm sm:text-[15px]",

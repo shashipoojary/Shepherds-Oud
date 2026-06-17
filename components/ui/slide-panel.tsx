@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 type SlidePanelProps = {
   open: boolean;
@@ -59,7 +60,7 @@ export function SlidePanel({ open, onClose, title, subtitle, size = "default", c
           </div>
           <button
             type="button"
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-stone-200 text-neutral-600 hover:bg-cream"
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-md text-neutral-500 transition hover:bg-stone-100 hover:text-ink"
             onClick={onClose}
             aria-label="Close"
           >
@@ -89,5 +90,46 @@ export function DetailList({ items, columns = 1 }: { items: Array<{ label: strin
         <DetailRow key={item.label} label={item.label} value={item.value} />
       ))}
     </dl>
+  );
+}
+
+export function PanelStep({ number }: { number: number }) {
+  return (
+    <span className="mr-2 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-amber text-[10px] font-bold leading-none text-white">
+      {number}
+    </span>
+  );
+}
+
+export function PanelSection({
+  step,
+  title,
+  description,
+  children,
+  className
+}: {
+  step?: number;
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <section className={cn("border-t border-stone-100 pt-5 first:border-0 first:pt-0", className)}>
+      <div className="mb-3">
+        <h3 className="flex items-center text-sm font-semibold text-ink">
+          {step != null ? <PanelStep number={step} /> : null}
+          {title}
+        </h3>
+        {description ? <p className="mt-1 text-sm leading-6 text-neutral-500">{description}</p> : null}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+export function StatusPill({ children, className }: { children: React.ReactNode; className?: string }) {
+  return (
+    <div className={cn("rounded-lg bg-brand-cream/50 px-3 py-2.5 text-sm leading-6 text-ink/80", className)}>{children}</div>
   );
 }
