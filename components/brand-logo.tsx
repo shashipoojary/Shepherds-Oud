@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { brand } from "@/lib/brand";
@@ -5,43 +6,51 @@ import { brand } from "@/lib/brand";
 type BrandLogoProps = {
   className?: string;
   showTagline?: boolean;
+  /** Nav and mobile drawer: text only, no illustration. */
   compact?: boolean;
+  /** Footer: large illustration above the wordmark. */
+  variant?: "inline" | "footer";
   href?: string | null;
   onClick?: () => void;
+  /** `light` = white text and white logo asset on dark green backgrounds. */
   tone?: "light" | "dark";
 };
 
-/**
- * Wordmark + logo slot. Add the client logo asset at public/brand/logo.svg when available.
- * Do not recreate the tree silhouette in code.
- */
 export function BrandLogo({
   className,
   showTagline = false,
   compact = false,
+  variant = "inline",
   href = "/",
   onClick,
   tone = "dark"
 }: BrandLogoProps) {
   const isLight = tone === "light";
-  const titleClass = isLight ? "text-white" : "text-white";
-  const taglineClass = isLight ? "text-brand-amber italic" : "text-brand-amber italic";
+  const showIllustration = !compact && variant === "footer";
+  const isFooter = variant === "footer";
 
   const content = (
-    <span className={cn("inline-flex min-w-0 items-center gap-3", className)}>
-      <LogoSlot compact={compact} />
+    <span
+      className={cn(
+        "inline-flex min-w-0",
+        isFooter ? "flex-col items-start gap-1.5" : "items-center gap-3",
+        className
+      )}
+    >
+      {showIllustration ? <LogoIllustration tone={tone} size="footer" /> : null}
+
       <span className="min-w-0 text-left leading-tight">
         <span
           className={cn(
             "brand-heading block",
-            compact ? "text-sm" : "text-base sm:text-lg",
-            titleClass
+            compact ? "text-sm" : isFooter ? "text-lg sm:text-xl" : "text-base sm:text-lg",
+            isLight ? "text-white" : "text-ink"
           )}
         >
           {brand.name}
         </span>
         {showTagline ? (
-          <span className={cn("mt-0.5 block text-xs sm:text-sm", taglineClass)}>{brand.tagline}</span>
+          <span className={cn("mt-0.5 block text-xs sm:text-sm italic text-brand-amber")}>{brand.tagline}</span>
         ) : null}
       </span>
     </span>
@@ -58,15 +67,24 @@ export function BrandLogo({
   return content;
 }
 
-function LogoSlot({ compact }: { compact?: boolean }) {
+function LogoIllustration({ tone, size }: { tone: "light" | "dark"; size: "footer" }) {
+  const src = tone === "light" ? brand.logoLightPath : brand.logoFullPath;
+
   return (
     <span
       className={cn(
-        "grid shrink-0 place-items-center overflow-hidden rounded-lg bg-brand-green-light",
-        compact ? "h-9 w-9" : "h-10 w-10"
+        "relative inline-block shrink-0",
+        size === "footer" ? "h-28 w-[8.5rem] sm:h-[8.75rem] sm:w-[10.5rem]" : "h-10 w-10"
       )}
-      title="Logo placeholder — add public/brand/logo.svg"
-      aria-hidden
-    />
+    >
+      <Image
+        src={src}
+        alt="Shepherds Oud logo"
+        fill
+        className="object-contain object-left"
+        sizes={size === "footer" ? "168px" : "40px"}
+        priority={size === "footer"}
+      />
+    </span>
   );
 }

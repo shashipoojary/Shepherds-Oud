@@ -15,11 +15,10 @@ export function Footer() {
       <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
         <div className="grid gap-8 md:grid-cols-[1.2fr_1fr] md:items-start">
           <div>
-            <BrandLogo showTagline tone="light" href="/" />
+            <BrandLogo variant="footer" showTagline tone="light" href="/" />
             <p className="mt-4 max-w-sm text-sm leading-[1.7] text-white/80">
               We help families across the Netherlands find suitable eldercare — with guidance, matched providers, and support through each step.
             </p>
-            <p className="mt-3 text-sm italic text-brand-amber">{brand.tagline}</p>
             <a href={`mailto:${brand.email}`} className="mt-4 inline-block text-sm font-medium text-white/90 hover:text-brand-amber">
               {brand.email}
             </a>
