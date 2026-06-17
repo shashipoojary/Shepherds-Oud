@@ -16,6 +16,11 @@ export function isProviderSaved(providerId: string) {
   return getSavedProviders().includes(providerId);
 }
 
+export function clearSavedProviders() {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(STORAGE_KEY);
+}
+
 export function toggleSavedProvider(providerId: string) {
   if (typeof window === "undefined") return false;
   const current = getSavedProviders();

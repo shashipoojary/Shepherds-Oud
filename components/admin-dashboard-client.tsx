@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { AdminResetDataButton } from "@/components/admin-reset-data-button";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { DetailList, SlidePanel } from "@/components/ui/slide-panel";
@@ -43,9 +44,12 @@ export function AdminDashboardClient({ data }: { data: AdminDashboardData }) {
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <header className="mb-6">
-        <h1 className="text-[1.3rem] font-semibold">Admin dashboard</h1>
-        <p className="text-sm text-neutral-500">Shepherds Oud — Netherlands-wide operations</p>
+      <header className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-[1.3rem] font-semibold">Admin dashboard</h1>
+          <p className="text-sm text-neutral-500">Shepherds Oud — Netherlands-wide operations</p>
+        </div>
+        <AdminResetDataButton />
       </header>
 
       <StatGrid stats={data.stats} />
