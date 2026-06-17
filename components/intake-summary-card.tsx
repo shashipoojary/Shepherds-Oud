@@ -5,9 +5,18 @@ import { ArrowRight } from "lucide-react";
 import { intakeStatusHint, intakeStatusLabel, type StoredIntake } from "@/lib/client-intake";
 import { Button } from "@/components/ui/button";
 
-export function IntakeSummaryCard({ intake, compact = false }: { intake: StoredIntake; compact?: boolean }) {
+export function IntakeSummaryCard({
+  intake,
+  compact = false,
+  showActions = false
+}: {
+  intake: StoredIntake;
+  compact?: boolean;
+  showActions?: boolean;
+}) {
   const status = intakeStatusLabel(intake.status);
   const hint = intakeStatusHint(intake.status);
+  const hasMatches = typeof intake.matchCount === "number" && intake.matchCount > 0;
 
   return (
     <article className={`rounded-2xl border border-stone-200 bg-white shadow-soft ${compact ? "p-4" : "p-5 sm:p-6"}`}>
@@ -41,28 +50,27 @@ export function IntakeSummaryCard({ intake, compact = false }: { intake: StoredI
 
       <p className="mt-4 text-sm leading-6 text-neutral-600">{hint}</p>
 
-      {typeof intake.matchCount === "number" && intake.matchCount > 0 ? (
+      {hasMatches ? (
         <p className="mt-3 text-sm font-medium text-brand-green-dark">
-          {intake.matchCount} provider match{intake.matchCount === 1 ? "" : "es"} ready to view.
+          {intake.matchCount} provider match{intake.matchCount === 1 ? "" : "es"} on your shortlist.
         </p>
       ) : null}
 
-      {!compact ? (
-        <div className="mt-5 flex flex-wrap gap-3">
+      {showActions && hasMatches ? (
+        <div className="mt-5">
           <Button asChild size="sm">
             <Link href="/family/results">
               View matches <ArrowRight className="h-4 w-4" />
             </Link>
           </Button>
-          <Button asChild size="sm" variant="ghost">
-            <Link href="/family/dashboard">Open dashboard</Link>
-          </Button>
         </div>
       ) : null}
 
-      <p className="mt-4 text-xs text-neutral-500">
-        No login required. We saved this on your device so you can return to your request anytime.
-      </p>
+      {!compact ? (
+        <p className="mt-4 text-xs text-neutral-500">
+          No login required. We saved this on your device so you can return to your request anytime.
+        </p>
+      ) : null}
     </article>
   );
 }

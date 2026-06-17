@@ -9,10 +9,11 @@ type SlidePanelProps = {
   onClose: () => void;
   title: string;
   subtitle?: string;
+  size?: "default" | "wide";
   children: React.ReactNode;
 };
 
-export function SlidePanel({ open, onClose, title, subtitle, children }: SlidePanelProps) {
+export function SlidePanel({ open, onClose, title, subtitle, size = "default", children }: SlidePanelProps) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -46,9 +47,9 @@ export function SlidePanel({ open, onClose, title, subtitle, children }: SlidePa
         aria-label="Close panel"
       />
       <aside
-        className={`fixed inset-y-0 right-0 z-[201] flex w-[min(100%,420px)] flex-col bg-white shadow-panel transition-transform duration-300 ease-out ${
-          open ? "translate-x-0" : "translate-x-full"
-        }`}
+        className={`fixed inset-y-0 right-0 z-[201] flex flex-col bg-white shadow-panel transition-transform duration-300 ease-out ${
+          size === "wide" ? "w-[min(100%,56rem)]" : "w-[min(100%,420px)]"
+        } ${open ? "translate-x-0" : "translate-x-full"}`}
         aria-hidden={!open}
       >
         <div className="flex items-start justify-between border-b border-stone-200 px-5 py-5">
@@ -81,9 +82,9 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
   );
 }
 
-export function DetailList({ items }: { items: Array<{ label: string; value: React.ReactNode }> }) {
+export function DetailList({ items, columns = 1 }: { items: Array<{ label: string; value: React.ReactNode }>; columns?: 1 | 2 }) {
   return (
-    <dl>
+    <dl className={columns === 2 ? "grid gap-x-6 sm:grid-cols-2" : undefined}>
       {items.map((item) => (
         <DetailRow key={item.label} label={item.label} value={item.value} />
       ))}

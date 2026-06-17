@@ -38,7 +38,7 @@ export function FamilySuccessClient() {
           </ButtonRow>
         </section>
 
-        {intake ? <IntakeSummaryCard intake={intake} compact /> : null}
+        {intake ? <IntakeSummaryCard intake={intake} compact showActions /> : null}
       </div>
     </main>
   );

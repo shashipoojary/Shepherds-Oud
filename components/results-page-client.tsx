@@ -5,7 +5,7 @@ import Link from "next/link";
 import { BedDouble, Check, CircleDollarSign, Loader2, MapPin } from "lucide-react";
 import { getStoredIntake, saveStoredIntake, type StoredIntake } from "@/lib/client-intake";
 import { requestMatchAction } from "@/lib/client-match-request";
-import { matchStatusHint, matchStatusLabel } from "@/lib/match-status";
+import { familyMatchNextStep, matchStatusLabel, isFamilyActionableMatchStatus } from "@/lib/match-status";
 import { IntakeSummaryCard } from "@/components/intake-summary-card";
 import { ActionFeedback } from "@/components/ui/action-feedback";
 import { availabilityBadgeVariant, Badge } from "@/components/ui/badge";
@@ -75,7 +75,11 @@ function visibleTags(provider: ProviderMatch, limit = 5) {
 }
 
 function showStatusNote(status?: string) {
-  return status && ["VISIT_REQUESTED", "CALLBACK_REQUESTED", "ACCEPTED", "CONTACTED"].includes(status);
+  return isFamilyActionableMatchStatus(status);
+}
+
+function matchIsInProgress(status?: string) {
+  return Boolean(status && ["ACCEPTED", "CONTACTED", "PLACED"].includes(status));
 }
 
 function isPending(pending: PendingAction | null, matchId: string | undefined, type: PendingAction["type"]) {
@@ -261,7 +265,7 @@ export function ResultsPageClient() {
   const featuredMatchId = recommended.matchId;
   const featuredVisitSent = recommended.matchStatus === "VISIT_REQUESTED";
   const featuredCallbackSent = recommended.matchStatus === "CALLBACK_REQUESTED";
-  const featuredAccepted = recommended.matchStatus === "ACCEPTED";
+  const featuredAccepted = matchIsInProgress(recommended.matchStatus);
   const featuredFeedback = featuredMatchId ? rowFeedback[featuredMatchId] : undefined;
 
   return (
@@ -310,61 +314,71 @@ export function ResultsPageClient() {
 
             {recommended.matchStatus && showStatusNote(recommended.matchStatus) ? (
               <p className="mt-4 rounded-lg bg-brand-cream px-4 py-3 text-sm text-ink/70">
-                {matchStatusHint(recommended.matchStatus, recommended.name)}
+                {familyMatchNextStep(recommended.matchStatus, recommended.name)}
               </p>
             ) : null}
           </div>
 
           <aside className="flex h-fit flex-col gap-3 rounded-xl border border-stone-200/80 bg-brand-cream/60 p-4">
             <p className="text-sm font-medium text-ink">Next step</p>
-            <p className="text-sm leading-6 text-ink/65">
-              Request a visit or callback and our team will help coordinate with the facility.
-            </p>
+            {featuredAccepted ? (
+              <p className="text-sm leading-6 text-ink/65">{familyMatchNextStep(recommended.matchStatus!, recommended.name)}</p>
+            ) : (
+              <p className="text-sm leading-6 text-ink/65">
+                Request a visit or callback and our team will help coordinate with the facility.
+              </p>
+            )}
 
             {featuredFeedback ? <ActionFeedback message={featuredFeedback.text} tone={featuredFeedback.tone} /> : null}
 
-            <Button
-              className="w-full"
-              disabled={pendingAction !== null || featuredVisitSent || featuredAccepted || !featuredMatchId}
-              onClick={() => void handleProviderAction(recommended, "VISIT_REQUESTED")}
-            >
-              {isPending(pendingAction, featuredMatchId, "visit") ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Sending...
-                </>
-              ) : featuredVisitSent ? (
-                <>
-                  <Check className="h-4 w-4" />
-                  Visit requested
-                </>
-              ) : featuredAccepted ? (
-                "Provider accepted"
-              ) : (
-                "Request a visit"
-              )}
-            </Button>
+            {!featuredAccepted ? (
+              <>
+                <Button
+                  className="w-full"
+                  disabled={pendingAction !== null || featuredVisitSent || !featuredMatchId}
+                  onClick={() => void handleProviderAction(recommended, "VISIT_REQUESTED")}
+                >
+                  {isPending(pendingAction, featuredMatchId, "visit") ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Sending...
+                    </>
+                  ) : featuredVisitSent ? (
+                    <>
+                      <Check className="h-4 w-4" />
+                      Visit requested
+                    </>
+                  ) : (
+                    "Request a visit"
+                  )}
+                </Button>
 
-            <Button
-              variant="outline"
-              className="w-full"
-              disabled={pendingAction !== null || featuredCallbackSent || featuredAccepted || !featuredMatchId}
-              onClick={() => void handleProviderAction(recommended, "CALLBACK_REQUESTED")}
-            >
-              {isPending(pendingAction, featuredMatchId, "callback") ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Sending...
-                </>
-              ) : featuredCallbackSent ? (
-                <>
-                  <Check className="h-4 w-4" />
-                  Callback requested
-                </>
-              ) : (
-                "Request a callback"
-              )}
-            </Button>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  disabled={pendingAction !== null || featuredCallbackSent || !featuredMatchId}
+                  onClick={() => void handleProviderAction(recommended, "CALLBACK_REQUESTED")}
+                >
+                  {isPending(pendingAction, featuredMatchId, "callback") ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Sending...
+                    </>
+                  ) : featuredCallbackSent ? (
+                    <>
+                      <Check className="h-4 w-4" />
+                      Callback requested
+                    </>
+                  ) : (
+                    "Request a callback"
+                  )}
+                </Button>
+              </>
+            ) : (
+              <Button asChild className="w-full">
+                <Link href="/family/dashboard">Your dashboard</Link>
+              </Button>
+            )}
 
             <Button asChild variant="ghost" className="w-full">
               <Link href={`/providers/${recommended.id}`}>Read full profile</Link>
@@ -448,7 +462,7 @@ function CompareRow({
   const meta = parseMeta(provider.meta);
   const visitSent = provider.matchStatus === "VISIT_REQUESTED";
   const callbackSent = provider.matchStatus === "CALLBACK_REQUESTED";
-  const accepted = provider.matchStatus === "ACCEPTED";
+  const accepted = matchIsInProgress(provider.matchStatus);
   const matchId = provider.matchId;
   const busy = pendingAction !== null;
 
@@ -472,7 +486,7 @@ function CompareRow({
             <p className="mt-2 text-sm text-ink/60">{meta.price}</p>
           )}
           {provider.matchStatus && showStatusNote(provider.matchStatus) ? (
-            <p className="mt-2 text-sm text-brand-green-dark">{matchStatusLabel(provider.matchStatus)}</p>
+            <p className="mt-2 text-sm leading-6 text-brand-green-dark">{familyMatchNextStep(provider.matchStatus, provider.name)}</p>
           ) : null}
           {feedback ? <ActionFeedback message={feedback.text} tone={feedback.tone} className="mt-3" /> : null}
         </div>
@@ -481,49 +495,51 @@ function CompareRow({
           <Button asChild size="sm" variant="outline" className="w-full sm:min-w-[132px]">
             <Link href={`/providers/${provider.id}`}>Profile</Link>
           </Button>
-          <Button
-            size="sm"
-            className="w-full sm:min-w-[132px]"
-            disabled={busy || visitSent || accepted || !matchId}
-            onClick={() => onAction(provider, "VISIT_REQUESTED")}
-          >
-            {isPending(pendingAction, matchId, "visit") ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Sending...
-              </>
-            ) : visitSent ? (
-              <>
-                <Check className="h-4 w-4" />
-                Visit sent
-              </>
-            ) : accepted ? (
-              "Accepted"
-            ) : (
-              "Request visit"
-            )}
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="w-full sm:min-w-[132px]"
-            disabled={busy || callbackSent || accepted || !matchId}
-            onClick={() => onAction(provider, "CALLBACK_REQUESTED")}
-          >
-            {isPending(pendingAction, matchId, "callback") ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Sending...
-              </>
-            ) : callbackSent ? (
-              <>
-                <Check className="h-4 w-4" />
-                Callback sent
-              </>
-            ) : (
-              "Request callback"
-            )}
-          </Button>
+          {!accepted ? (
+            <>
+              <Button
+                size="sm"
+                className="w-full sm:min-w-[132px]"
+                disabled={busy || visitSent || !matchId}
+                onClick={() => onAction(provider, "VISIT_REQUESTED")}
+              >
+                {isPending(pendingAction, matchId, "visit") ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Sending...
+                  </>
+                ) : visitSent ? (
+                  <>
+                    <Check className="h-4 w-4" />
+                    Visit sent
+                  </>
+                ) : (
+                  "Request visit"
+                )}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full sm:min-w-[132px]"
+                disabled={busy || callbackSent || !matchId}
+                onClick={() => onAction(provider, "CALLBACK_REQUESTED")}
+              >
+                {isPending(pendingAction, matchId, "callback") ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Sending...
+                  </>
+                ) : callbackSent ? (
+                  <>
+                    <Check className="h-4 w-4" />
+                    Callback sent
+                  </>
+                ) : (
+                  "Request callback"
+                )}
+              </Button>
+            </>
+          ) : null}
         </div>
       </div>
     </article>

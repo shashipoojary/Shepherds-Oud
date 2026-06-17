@@ -7,6 +7,7 @@ import { CustomSelect } from "@/components/ui/custom-select";
 import { DashboardSkeleton } from "@/components/ui/dashboard-skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { RefreshButton } from "@/components/ui/refresh-button";
 import { StatGrid } from "@/components/ui/stat-grid";
 import { careTypeOptions, dutchProvinces, facilityTypes } from "@/lib/content";
 import {
@@ -148,6 +149,31 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [inquiryFeedback, setInquiryFeedback] = useState<Record<string, string>>({});
   const [providerId, setProviderId] = useState<string | null>(initialData?.provider?.id ?? null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  async function refreshDashboard() {
+    setRefreshing(true);
+    setMessage("");
+    try {
+      const response = await fetch("/api/provider/me");
+      if (response.ok) {
+        const data = (await response.json()) as DashboardData;
+        setForm(toForm(data.provider));
+        setInquiries(data.inquiries);
+        setProviderId(data.provider?.id ?? null);
+        setMessageTone("success");
+        setMessage("Dashboard updated.");
+      } else {
+        setMessageTone("error");
+        setMessage(await readApiError(response));
+      }
+    } catch {
+      setMessageTone("error");
+      setMessage("Could not refresh dashboard.");
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   useEffect(() => {
     if (initialData) return;
@@ -311,14 +337,17 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <header className="mb-6">
-        <p className="section-label">Provider dashboard</p>
-        <h1 className="mt-1 text-h2 font-semibold text-ink">Manage your facility</h1>
-        <p className="mt-2 text-body text-ink/70">
-          {providerId
-            ? "Update your profile, availability, and respond to matched family inquiries."
-            : "Complete your facility profile below — your first save creates your provider record and links it to your login."}
-        </p>
+      <header className="mb-6 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="section-label">Provider dashboard</p>
+          <h1 className="mt-1 text-h2 font-semibold text-ink">Manage your facility</h1>
+          <p className="mt-2 text-body text-ink/70">
+            {providerId
+              ? "Update your profile, availability, and respond to matched family inquiries."
+              : "Complete your facility profile below — your first save creates your provider record and links it to your login."}
+          </p>
+        </div>
+        <RefreshButton onClick={() => void refreshDashboard()} loading={refreshing} />
       </header>
 
       {message ? (

@@ -4,12 +4,15 @@ import { useEffect, useMemo, useState } from "react";
 import { AdminResetDataButton } from "@/components/admin-reset-data-button";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { RefreshButton } from "@/components/ui/refresh-button";
 import { DetailList, SlidePanel } from "@/components/ui/slide-panel";
 import { StatGrid } from "@/components/ui/stat-grid";
 import type { AdminDashboardData } from "@/lib/data/admin";
 import { recordAction } from "@/lib/client-actions";
 import {
+  adminInquiryActionMeta,
   adminInquiryHint,
+  adminIntakeActionMeta,
   adminMatchStatusLabel,
   compareMatchPriority,
   isAdminActionNeeded,
@@ -32,9 +35,15 @@ type MatchStatus =
   | "PLACED"
   | "CLOSED";
 
-export function AdminDashboardClient({ data }: { data: AdminDashboardData }) {
+export function AdminDashboardClient({ data: initialData }: { data: AdminDashboardData }) {
+  const [data, setData] = useState(initialData);
   const [tab, setTab] = useState<AdminTab>("families");
   const [message, setMessage] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
+
+  useEffect(() => {
+    setData(initialData);
+  }, [initialData]);
 
   useEffect(() => {
     if (!message) return;
@@ -42,14 +51,34 @@ export function AdminDashboardClient({ data }: { data: AdminDashboardData }) {
     return () => window.clearTimeout(timer);
   }, [message]);
 
+  async function refreshDashboard() {
+    setRefreshing(true);
+    try {
+      const response = await fetch("/api/admin/dashboard");
+      if (response.ok) {
+        setData((await response.json()) as AdminDashboardData);
+        setMessage("Dashboard updated.");
+      } else {
+        setMessage("Could not refresh dashboard.");
+      }
+    } catch {
+      setMessage("Could not refresh dashboard.");
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
   return (
     <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <header className="mb-6 flex items-start justify-between gap-4">
+      <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-[1.3rem] font-semibold">Admin dashboard</h1>
           <p className="text-sm text-neutral-500">Shepherds Oud — Netherlands-wide operations</p>
         </div>
-        <AdminResetDataButton />
+        <div className="flex flex-wrap items-center gap-2">
+          <RefreshButton onClick={() => void refreshDashboard()} loading={refreshing} />
+          <AdminResetDataButton />
+        </div>
       </header>
 
       <StatGrid stats={data.stats} />
@@ -72,7 +101,7 @@ export function AdminDashboardClient({ data }: { data: AdminDashboardData }) {
         <div className="overflow-x-auto">
           {tab === "families" ? (
             data.families.length ? (
-              <FamiliesTable families={data.families} providers={data.providerList} setMessage={setMessage} />
+              <FamiliesTable key={data.families.length} families={data.families} providers={data.providerList} setMessage={setMessage} />
             ) : (
               <EmptyState title="No family intakes yet" description="New submissions from the intake form will appear here." />
             )
@@ -88,7 +117,7 @@ export function AdminDashboardClient({ data }: { data: AdminDashboardData }) {
 
           {tab === "inquiries" ? (
             data.inquiries.length ? (
-              <InquiriesTable inquiries={data.inquiries} setMessage={setMessage} />
+              <InquiriesTable key={data.inquiries.length} inquiries={data.inquiries} setMessage={setMessage} />
             ) : (
               <EmptyState title="No matches or inquiries yet" description="When families are matched to providers, those records will show here." />
             )
@@ -108,7 +137,7 @@ export function AdminDashboardClient({ data }: { data: AdminDashboardData }) {
 }
 
 function FamiliesTable({
-  families: initialFamilies,
+  families,
   providers,
   setMessage
 }: {
@@ -116,9 +145,13 @@ function FamiliesTable({
   providers: ProviderOption[];
   setMessage: (message: string) => void;
 }) {
-  const [families, setFamilies] = useState(initialFamilies);
+  const [rows, setRows] = useState(families);
   const [selected, setSelected] = useState<FamilyEntry | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setRows(families);
+  }, [families]);
 
   async function updateStatus(id: string, status: IntakeStatus, name: string) {
     setPendingId(id);
@@ -133,7 +166,7 @@ function FamiliesTable({
         throw new Error("Could not update intake.");
       }
 
-      setFamilies((current) => current.map((family) => (family.id === id ? { ...family, status } : family)));
+      setRows((current) => current.map((family) => (family.id === id ? { ...family, status } : family)));
       setSelected((current) => (current?.id === id ? { ...current, status } : current));
 
       await recordAction({
@@ -166,8 +199,9 @@ function FamiliesTable({
           </tr>
         </thead>
         <tbody className="divide-y divide-stone-200">
-          {families.map((family) => {
+          {rows.map((family) => {
             const isPending = pendingId === family.id;
+            const reviewMeta = adminIntakeActionMeta("REVIEW");
             return (
               <tr key={family.id} className="cursor-pointer hover:bg-cream" onClick={() => setSelected(family)}>
                 <td className="px-4 py-3 text-sm">
@@ -180,32 +214,22 @@ function FamiliesTable({
                 <td className="px-4 py-3">
                   <span className="rounded-full bg-sage-100 px-3 py-1 text-xs font-medium text-sage-700">{family.status}</span>
                 </td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-1">
+                <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}>
+                  {family.status === "NEW" ? (
                     <Button
                       size="sm"
-                      variant="ghost"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        setSelected(family);
-                      }}
+                      variant="outline"
+                      disabled={isPending}
+                      title={reviewMeta.description}
+                      onClick={() => void updateStatus(family.id, "REVIEW", family.name)}
                     >
-                      View
+                      {isPending ? "Saving..." : reviewMeta.label}
                     </Button>
-                    {family.status === "NEW" ? (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        disabled={isPending}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          void updateStatus(family.id, "REVIEW", family.name);
-                        }}
-                      >
-                        {isPending ? "Saving..." : "Start review"}
-                      </Button>
-                    ) : null}
-                  </div>
+                  ) : (
+                    <Button size="sm" variant="outline" onClick={() => setSelected(family)}>
+                      Open details
+                    </Button>
+                  )}
                 </td>
               </tr>
             );
@@ -304,79 +328,130 @@ function FamilyDetailPanel({
       ]
     : [];
 
-  const nextActions: Array<{ label: string; status: IntakeStatus }> = [];
-  if (family?.status === "NEW") nextActions.push({ label: "Start review", status: "REVIEW" });
-  if (family?.status === "REVIEW") nextActions.push({ label: "Mark matched", status: "MATCHED" });
-  if (family?.status === "MATCHED") nextActions.push({ label: "Mark placed", status: "PLACED" });
-  if (family && family.status !== "CLOSED") nextActions.push({ label: "Close case", status: "CLOSED" });
+  const nextActions: Array<{ label: string; status: IntakeStatus; description: string }> = [];
+  if (family?.status === "NEW") {
+    const meta = adminIntakeActionMeta("REVIEW");
+    nextActions.push({ label: meta.label, status: "REVIEW", description: meta.description });
+  }
+  if (family?.status === "REVIEW") {
+    const meta = adminIntakeActionMeta("MATCHED");
+    nextActions.push({ label: meta.label, status: "MATCHED", description: meta.description });
+  }
+  if (family?.status === "MATCHED") {
+    const meta = adminIntakeActionMeta("PLACED");
+    nextActions.push({ label: meta.label, status: "PLACED", description: meta.description });
+  }
+  if (family && family.status !== "CLOSED") {
+    const meta = adminIntakeActionMeta("CLOSED");
+    nextActions.push({ label: meta.label, status: "CLOSED", description: meta.description });
+  }
 
   return (
-    <SlidePanel open={Boolean(family)} onClose={onClose} title={family?.name || "Family intake"} subtitle="Care intake details">
+    <SlidePanel
+      open={Boolean(family)}
+      onClose={onClose}
+      size="wide"
+      title={family?.name || "Family intake"}
+      subtitle={family ? `${family.location} · ${family.urgency}` : "Care intake details"}
+    >
       {family ? (
-        <>
-          <DetailList items={details} />
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <div>
+            <div className="rounded-xl border border-stone-200 bg-brand-cream/30 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Case status</p>
+              <p className="mt-1 text-lg font-semibold text-ink">{family.status}</p>
+              <p className="mt-2 text-sm leading-6 text-neutral-600">
+                Track the family journey here. Create provider matches on the right, then update status so they see progress on their dashboard.
+              </p>
+            </div>
 
-          <div className="mt-6 rounded-xl border border-stone-200 p-4">
-            <h3 className="text-sm font-semibold text-ink">Create provider match</h3>
-            <p className="mt-1 text-sm text-neutral-600">Select a provider and fit score. The family will see this on their matches page.</p>
-            <div className="mt-4 grid gap-3">
-              <label className="grid gap-1.5 text-sm font-medium">
-                Provider
-                <select
-                  value={providerId}
-                  onChange={(event) => setProviderId(event.target.value)}
-                  className="rounded-lg border border-stone-200 px-3 py-2 text-sm outline-sage-600"
-                >
-                  <option value="">Select provider</option>
-                  {providers.map((provider) => (
-                    <option key={provider.id} value={provider.id}>
-                      {provider.name} — {provider.area}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="grid gap-1.5 text-sm font-medium">
-                Match score (%)
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={score}
-                  onChange={(event) => setScore(event.target.value)}
-                  className="rounded-lg border border-stone-200 px-3 py-2 text-sm outline-sage-600"
-                />
-              </label>
-              <label className="grid gap-1.5 text-sm font-medium">
-                Internal notes (optional)
-                <textarea
-                  value={matchNotes}
-                  onChange={(event) => setMatchNotes(event.target.value)}
-                  className="min-h-20 rounded-lg border border-stone-200 px-3 py-2 text-sm outline-sage-600"
-                />
-              </label>
-              <Button type="button" disabled={!providerId || creatingMatch} onClick={() => void createMatch()}>
-                {creatingMatch ? "Creating match..." : "Create match"}
-              </Button>
+            <div className="mt-6">
+              <h3 className="text-sm font-semibold text-ink">Contact & care needs</h3>
+              <DetailList
+                items={details.filter((item) =>
+                  ["Contact name", "Email", "Phone", "Relationship", "Age range", "Preferred area", "Care types", "Urgency", "Budget", "Languages", "Additional needs", "Notes"].includes(
+                    item.label
+                  )
+                )}
+                columns={2}
+              />
+            </div>
+
+            <div className="mt-6">
+              <h3 className="text-sm font-semibold text-ink">Record</h3>
+              <DetailList
+                items={details.filter((item) => ["Status", "Submitted", "Last updated"].includes(item.label))}
+                columns={2}
+              />
             </div>
           </div>
 
-          <p className="mt-4 rounded-xl bg-cream px-4 py-3 text-sm leading-6 text-neutral-600">
-            Update the case status after matching so the family sees progress on their dashboard.
-          </p>
-          <div className="mt-5 grid grid-cols-2 gap-3">
-            {nextActions.map((action) => (
-              <Button
-                key={action.status}
-                className="w-full"
-                variant={action.status === "CLOSED" ? "ghost" : "default"}
-                disabled={isPending}
-                onClick={() => void onUpdateStatus(family.id, action.status, family.name)}
-              >
-                {isPending ? "Saving..." : action.label}
-              </Button>
-            ))}
+          <div className="space-y-5 lg:sticky lg:top-0 lg:self-start">
+            <div className="rounded-xl border border-stone-200 p-4">
+              <h3 className="text-sm font-semibold text-ink">Create provider match</h3>
+              <p className="mt-1 text-sm text-neutral-600">The family will see this provider on their shortlist.</p>
+              <div className="mt-4 grid gap-3">
+                <label className="grid gap-1.5 text-sm font-medium">
+                  Provider
+                  <select
+                    value={providerId}
+                    onChange={(event) => setProviderId(event.target.value)}
+                    className="rounded-lg border border-stone-200 px-3 py-2 text-sm outline-sage-600"
+                  >
+                    <option value="">Select provider</option>
+                    {providers.map((provider) => (
+                      <option key={provider.id} value={provider.id}>
+                        {provider.name} — {provider.area}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="grid gap-1.5 text-sm font-medium">
+                  Match score (%)
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={score}
+                    onChange={(event) => setScore(event.target.value)}
+                    className="rounded-lg border border-stone-200 px-3 py-2 text-sm outline-sage-600"
+                  />
+                </label>
+                <label className="grid gap-1.5 text-sm font-medium">
+                  Internal notes (optional)
+                  <textarea
+                    value={matchNotes}
+                    onChange={(event) => setMatchNotes(event.target.value)}
+                    className="min-h-20 rounded-lg border border-stone-200 px-3 py-2 text-sm outline-sage-600"
+                  />
+                </label>
+                <Button type="button" disabled={!providerId || creatingMatch} onClick={() => void createMatch()}>
+                  {creatingMatch ? "Creating match..." : "Create match"}
+                </Button>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-stone-200 p-4">
+              <h3 className="text-sm font-semibold text-ink">Update case status</h3>
+              <p className="mt-1 text-sm text-neutral-600">Each step updates what the family sees on their dashboard.</p>
+              <div className="mt-4 grid gap-3">
+                {nextActions.map((action) => (
+                  <div key={action.status} className="rounded-lg border border-stone-100 bg-white p-3">
+                    <Button
+                      className="w-full"
+                      variant={action.status === "CLOSED" ? "outline" : "default"}
+                      disabled={isPending}
+                      onClick={() => void onUpdateStatus(family.id, action.status, family.name)}
+                    >
+                      {isPending ? "Saving..." : action.label}
+                    </Button>
+                    <p className="mt-2 text-xs leading-5 text-neutral-500">{action.description}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
-        </>
+        </div>
       ) : null}
     </SlidePanel>
   );
@@ -414,15 +489,8 @@ function ProvidersTable({
                 {provider.bedsTotal ? ` / ${provider.bedsTotal}` : ""}
               </td>
               <td className="px-4 py-3">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    setSelected(provider);
-                  }}
-                >
-                  View
+                <Button size="sm" variant="outline" onClick={(event) => { event.stopPropagation(); setSelected(provider); }}>
+                  Open details
                 </Button>
               </td>
             </tr>
@@ -508,21 +576,25 @@ function ProviderDetailPanel({
 }
 
 function InquiriesTable({
-  inquiries: initialInquiries,
+  inquiries,
   setMessage
 }: {
   inquiries: InquiryEntry[];
   setMessage: (message: string) => void;
 }) {
-  const [inquiries, setInquiries] = useState(initialInquiries);
+  const [rows, setRows] = useState(inquiries);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [selected, setSelected] = useState<InquiryEntry | null>(null);
 
+  useEffect(() => {
+    setRows(inquiries);
+  }, [inquiries]);
+
   const sortedInquiries = useMemo(
-    () => [...inquiries].sort((a, b) => compareMatchPriority(a.statusRaw, b.statusRaw)),
-    [inquiries]
+    () => [...rows].sort((a, b) => compareMatchPriority(a.statusRaw, b.statusRaw)),
+    [rows]
   );
-  const followUpCount = inquiries.filter((item) => isAdminActionNeeded(item.statusRaw)).length;
+  const followUpCount = rows.filter((item) => isAdminActionNeeded(item.statusRaw)).length;
 
   async function updateMatchStatus(id: string, status: MatchStatus) {
     setPendingId(id);
@@ -537,7 +609,7 @@ function InquiriesTable({
         throw new Error("Could not update inquiry.");
       }
 
-      setInquiries((current) =>
+      setRows((current) =>
         current.map((inquiry) =>
           inquiry.id === id
             ? {
@@ -563,7 +635,7 @@ function InquiriesTable({
     <>
       {followUpCount ? (
         <div className="border-b border-brand-amber/20 bg-brand-amber/8 px-4 py-3 text-sm text-brand-amber-dark">
-          {followUpCount} {followUpCount === 1 ? "inquiry needs" : "inquiries need"} follow-up — visit or callback requests appear first.
+          <strong>{followUpCount}</strong> {followUpCount === 1 ? "inquiry needs" : "inquiries need"} your follow-up. Open a row for the step-by-step guide.
         </div>
       ) : null}
 
@@ -599,29 +671,25 @@ function InquiriesTable({
                   </span>
                 </td>
                 <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}>
-                  <div className="flex flex-wrap gap-1">
-                    <Button size="sm" variant="ghost" onClick={() => setSelected(inquiry)}>
-                      View
-                    </Button>
+                  <div className="flex flex-wrap gap-2">
                     {inquiry.statusRaw === "VISIT_REQUESTED" || inquiry.statusRaw === "CALLBACK_REQUESTED" || inquiry.statusRaw === "ACCEPTED" ? (
-                      <Button size="sm" variant="ghost" disabled={isPending} onClick={() => void updateMatchStatus(inquiry.id, "CONTACTED")}>
-                        {isPending ? "Saving..." : "Mark coordinated"}
-                      </Button>
-                    ) : inquiry.statusRaw === "SUGGESTED" ? (
-                      <Button size="sm" variant="ghost" disabled={isPending} onClick={() => void updateMatchStatus(inquiry.id, "CONTACTED")}>
-                        {isPending ? "Saving..." : "Mark contacted"}
+                      <Button size="sm" disabled={isPending} onClick={() => void updateMatchStatus(inquiry.id, "CONTACTED")}>
+                        {isPending ? "Saving..." : adminInquiryActionMeta("CONTACTED").label}
                       </Button>
                     ) : null}
                     {inquiry.statusRaw !== "PLACED" && inquiry.statusRaw !== "CLOSED" ? (
-                      <Button size="sm" variant="ghost" disabled={isPending} onClick={() => void updateMatchStatus(inquiry.id, "PLACED")}>
-                        Placed
+                      <Button size="sm" variant="outline" disabled={isPending} onClick={() => void updateMatchStatus(inquiry.id, "PLACED")}>
+                        {adminInquiryActionMeta("PLACED").label}
                       </Button>
                     ) : null}
                     {inquiry.statusRaw !== "CLOSED" ? (
-                      <Button size="sm" variant="ghost" disabled={isPending} onClick={() => void updateMatchStatus(inquiry.id, "CLOSED")}>
-                        Close
+                      <Button size="sm" variant="outline" disabled={isPending} onClick={() => void updateMatchStatus(inquiry.id, "CLOSED")}>
+                        {adminInquiryActionMeta("CLOSED").label}
                       </Button>
                     ) : null}
+                    <Button size="sm" variant="ghost" onClick={() => setSelected(inquiry)}>
+                      Details
+                    </Button>
                   </div>
                 </td>
               </tr>
@@ -672,43 +740,78 @@ function InquiryDetailPanel({
     : [];
 
   return (
-    <SlidePanel open={Boolean(inquiry)} onClose={onClose} title={inquiry?.family || "Inquiry"} subtitle={inquiry?.provider || "Match details"}>
+    <SlidePanel
+      open={Boolean(inquiry)}
+      onClose={onClose}
+      size="wide"
+      title={inquiry?.family || "Inquiry"}
+      subtitle={inquiry ? `${inquiry.provider} · ${adminMatchStatusLabel(inquiry.statusRaw)}` : "Match details"}
+    >
       {inquiry ? (
-        <>
-          <div className={`rounded-lg px-4 py-3 text-sm ${matchStatusBadgeClass(inquiry.statusRaw)}`}>{hint}</div>
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_300px]">
+          <div>
+            <div className={`rounded-lg px-4 py-3 text-sm ${matchStatusBadgeClass(inquiry.statusRaw)}`}>{hint}</div>
 
-          <div className="mt-5 rounded-xl border border-stone-200 bg-brand-cream/40 p-4 text-sm leading-6 text-ink/75">
-            <p className="font-medium text-ink">How this flow works</p>
-            <ol className="mt-2 list-decimal space-y-1 pl-5">
-              <li>You create a match — family sees the provider on their shortlist.</li>
-              <li>Family requests a visit or callback — provider and admin are notified via this status.</li>
-              <li>Provider accepts or declines — family sees the update on their matches page.</li>
-              <li>You mark coordinated when visit/call is arranged, then placed when done.</li>
-            </ol>
+            <div className="mt-5 rounded-xl border border-stone-200 bg-brand-cream/40 p-4 text-sm leading-6 text-ink/75">
+              <p className="font-medium text-ink">Inquiry flow</p>
+              <ol className="mt-2 list-decimal space-y-2 pl-5">
+                <li>You create a match — family sees the provider on their shortlist.</li>
+                <li>Family requests a visit or callback — status moves here for you and the provider.</li>
+                <li>Provider accepts or declines — family sees the update on their dashboard and matches page.</li>
+                <li>You mark coordinated after arranging the visit or call with both sides.</li>
+                <li>Record placement when the family commits, or close the inquiry.</li>
+              </ol>
+            </div>
+
+            <div className="mt-5 grid gap-6 sm:grid-cols-2">
+              <div>
+                <h3 className="text-sm font-semibold text-ink">Family</h3>
+                <DetailList
+                  items={details.filter((item) =>
+                    ["Family", "Phone", "Email", "Area", "Care needed", "Urgency"].includes(item.label)
+                  )}
+                />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-ink">Match</h3>
+                <DetailList
+                  items={details.filter((item) =>
+                    ["Provider", "Match score", "Status", "Created", "Last updated", "Activity log"].includes(item.label)
+                  )}
+                />
+              </div>
+            </div>
           </div>
 
-          <div className="mt-5">
-            <DetailList items={details} />
-          </div>
-
-          <div className="mt-6 flex flex-wrap gap-2">
-            {inquiry.statusRaw === "VISIT_REQUESTED" || inquiry.statusRaw === "CALLBACK_REQUESTED" || inquiry.statusRaw === "ACCEPTED" ? (
-              <Button size="sm" disabled={isPending} onClick={() => void onUpdateStatus(inquiry.id, "CONTACTED")}>
-                Mark coordinated
-              </Button>
-            ) : null}
+          <div className="space-y-4 lg:sticky lg:top-0 lg:self-start">
+            {(inquiry.statusRaw === "VISIT_REQUESTED" ||
+              inquiry.statusRaw === "CALLBACK_REQUESTED" ||
+              inquiry.statusRaw === "ACCEPTED") && (
+              <div className="rounded-xl border border-stone-200 p-4">
+                <Button className="w-full" size="sm" disabled={isPending} onClick={() => void onUpdateStatus(inquiry.id, "CONTACTED")}>
+                  {adminInquiryActionMeta("CONTACTED").label}
+                </Button>
+                <p className="mt-2 text-xs leading-5 text-neutral-500">{adminInquiryActionMeta("CONTACTED").description}</p>
+              </div>
+            )}
             {inquiry.statusRaw !== "PLACED" && inquiry.statusRaw !== "CLOSED" ? (
-              <Button size="sm" variant="ghost" disabled={isPending} onClick={() => void onUpdateStatus(inquiry.id, "PLACED")}>
-                Mark placed
-              </Button>
+              <div className="rounded-xl border border-stone-200 p-4">
+                <Button className="w-full" size="sm" variant="outline" disabled={isPending} onClick={() => void onUpdateStatus(inquiry.id, "PLACED")}>
+                  {adminInquiryActionMeta("PLACED").label}
+                </Button>
+                <p className="mt-2 text-xs leading-5 text-neutral-500">{adminInquiryActionMeta("PLACED").description}</p>
+              </div>
             ) : null}
             {inquiry.statusRaw !== "CLOSED" ? (
-              <Button size="sm" variant="ghost" disabled={isPending} onClick={() => void onUpdateStatus(inquiry.id, "CLOSED")}>
-                Close inquiry
-              </Button>
+              <div className="rounded-xl border border-stone-200 p-4">
+                <Button className="w-full" size="sm" variant="outline" disabled={isPending} onClick={() => void onUpdateStatus(inquiry.id, "CLOSED")}>
+                  {adminInquiryActionMeta("CLOSED").label}
+                </Button>
+                <p className="mt-2 text-xs leading-5 text-neutral-500">{adminInquiryActionMeta("CLOSED").description}</p>
+              </div>
             ) : null}
           </div>
-        </>
+        </div>
       ) : null}
     </SlidePanel>
   );

@@ -37,7 +37,7 @@ export function isAdminActionNeeded(status: string) {
 export function matchStatusLabel(status: string) {
   switch (status) {
     case "CONTACTED":
-      return "Provider contacted you";
+      return "Visit or call coordinated";
     case "VISIT_REQUESTED":
       return "Visit requested";
     case "CALLBACK_REQUESTED":
@@ -98,23 +98,84 @@ export function matchStatusBadgeClass(status: string) {
 }
 
 export function matchStatusHint(status: string, providerName: string) {
+  return familyMatchNextStep(status, providerName) || "This provider was matched to your request by a care advisor.";
+}
+
+export function familyMatchNextStep(status: string, providerName: string) {
   switch (status) {
-    case "CONTACTED":
-      return `${providerName} has been in touch. A care advisor can help with next steps.`;
     case "VISIT_REQUESTED":
-      return "Your visit request was sent. The facility and care advisor will coordinate next steps.";
+      return `You asked to visit ${providerName}. The facility will accept or decline, then your care advisor helps schedule.`;
     case "CALLBACK_REQUESTED":
-      return "Your callback request was sent. Expect follow-up from the facility or our team.";
+      return `You asked ${providerName} to call you back. The facility will respond, then your care advisor follows up.`;
     case "ACCEPTED":
-      return `${providerName} accepted your inquiry. A care advisor will help arrange the next step.`;
-    case "DECLINED":
-      return `${providerName} is not available for this request right now.`;
+      return `${providerName} accepted your request. Your care advisor will contact you to arrange the visit or call.`;
+    case "CONTACTED":
+      return `Your care advisor coordinated with ${providerName}. Expect contact soon about timing and next steps.`;
     case "PLACED":
-      return "Your family is moving toward placement with this provider.";
+      return `Placement is in progress with ${providerName}. Your care advisor will share final details.`;
+    case "DECLINED":
+      return `${providerName} is not available for this request right now. View other matches on your shortlist.`;
+    case "CLOSED":
+      return `This match with ${providerName} is closed.`;
     default:
-      return "This provider was matched to your request by a care advisor.";
+      return "";
   }
 }
+
+export function isFamilyActionableMatchStatus(status?: string) {
+  return Boolean(status && ["VISIT_REQUESTED", "CALLBACK_REQUESTED", "ACCEPTED", "CONTACTED", "PLACED"].includes(status));
+}
+
+export function adminIntakeActionMeta(status: string) {
+  switch (status) {
+    case "REVIEW":
+      return {
+        label: "Start review",
+        description: "Assign to a care advisor. The family sees “Under review” on their dashboard."
+      };
+    case "MATCHED":
+      return {
+        label: "Mark matched",
+        description: "Providers are on the family shortlist. Create matches below first."
+      };
+    case "PLACED":
+      return {
+        label: "Record placement",
+        description: "The family secured care. Closes the case outcome on their dashboard."
+      };
+    case "CLOSED":
+      return {
+        label: "Close case",
+        description: "Archive when the family is no longer active or was helped elsewhere."
+      };
+    default:
+      return { label: status, description: "" };
+  }
+}
+
+export function adminInquiryActionMeta(status: MatchAdminAction) {
+  switch (status) {
+    case "CONTACTED":
+      return {
+        label: "Mark coordinated",
+        description: "You arranged the visit or call with the family and provider."
+      };
+    case "PLACED":
+      return {
+        label: "Record placement",
+        description: "The family chose this provider. Updates their match status."
+      };
+    case "CLOSED":
+      return {
+        label: "Close inquiry",
+        description: "No further action needed on this match."
+      };
+    default:
+      return { label: status, description: "" };
+  }
+}
+
+type MatchAdminAction = "CONTACTED" | "PLACED" | "CLOSED";
 
 export function providerInquiryStatusLabel(status: string) {
   return adminMatchStatusLabel(status);
@@ -164,19 +225,19 @@ export function providerInquiryActionMessage(status: string, familyName: string)
 export function adminInquiryHint(status: string) {
   switch (status) {
     case "SUGGESTED":
-      return "Match published to the family. Waiting for them to request a visit or callback.";
+      return "Step 1 done — family can see this provider. Wait for them to request a visit or callback.";
     case "VISIT_REQUESTED":
-      return "Family asked for a visit. Provider should accept or decline. You can follow up with both sides.";
+      return "Step 2 — family requested a visit. Provider should accept or decline in their dashboard.";
     case "CALLBACK_REQUESTED":
-      return "Family asked for a callback. Provider should accept or decline. You can follow up with both sides.";
+      return "Step 2 — family requested a callback. Provider should accept or decline in their dashboard.";
     case "ACCEPTED":
-      return "Provider accepted. Coordinate the visit or call, then mark as placed when done.";
+      return "Step 3 — provider accepted. Call both sides, arrange timing, then click Mark coordinated.";
     case "CONTACTED":
-      return "You marked this as coordinated. Close the loop with placement or close the inquiry.";
+      return "Step 4 — visit or call arranged. Record placement when the family commits, or close the inquiry.";
     case "DECLINED":
-      return "Provider declined. Consider offering the family another match.";
+      return "Provider declined. Offer the family another match from the Families tab.";
     case "PLACED":
-      return "Placement recorded for this match.";
+      return "Placement recorded. The family sees “Placement in progress” on their dashboard.";
     case "CLOSED":
       return "This inquiry is closed.";
     default:

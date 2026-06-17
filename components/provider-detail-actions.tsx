@@ -6,7 +6,7 @@ import { Check, Heart, Loader2 } from "lucide-react";
 import { getStoredIntake } from "@/lib/client-intake";
 import { isProviderSaved, toggleSavedProvider } from "@/lib/client-favourites";
 import { requestMatchAction } from "@/lib/client-match-request";
-import { matchStatusLabel } from "@/lib/match-status";
+import { familyMatchNextStep, isFamilyActionableMatchStatus, matchStatusLabel } from "@/lib/match-status";
 import { ActionFeedback } from "@/components/ui/action-feedback";
 import { Button } from "@/components/ui/button";
 import type { ProviderMatch } from "@/lib/types";
@@ -88,11 +88,7 @@ export function ProviderDetailActions({ providerId, providerName }: { providerId
 
     setMatchStatus(status);
     setMessageTone("success");
-    setMessage(
-      status === "VISIT_REQUESTED"
-        ? `Visit request sent for ${providerName}. Our team will coordinate with the facility.`
-        : `Callback request sent for ${providerName}. Expect follow-up soon.`
-    );
+    setMessage(familyMatchNextStep(status, providerName));
     setPending(null);
   }
 
@@ -112,7 +108,10 @@ export function ProviderDetailActions({ providerId, providerName }: { providerId
   const visitSent = matchStatus === "VISIT_REQUESTED";
   const callbackSent = matchStatus === "CALLBACK_REQUESTED";
   const accepted = matchStatus === "ACCEPTED";
-  const canRequest = Boolean(matchId) && !accepted;
+  const coordinated = matchStatus === "CONTACTED";
+  const placed = matchStatus === "PLACED";
+  const inProgress = isFamilyActionableMatchStatus(matchStatus || undefined) && (accepted || coordinated || placed);
+  const canRequest = Boolean(matchId) && !accepted && !coordinated && !placed;
 
   if (loadingContext) {
     return (
@@ -138,85 +137,110 @@ export function ProviderDetailActions({ providerId, providerName }: { providerId
           className="mt-4"
           message="Contact requests open once a care advisor matches this provider to your intake."
         />
-      ) : matchStatus && (visitSent || callbackSent || accepted) ? (
-        <ActionFeedback
-          tone="success"
-          className="mt-4"
-          message={`Status: ${matchStatusLabel(matchStatus)}.`}
-        />
+      ) : inProgress && matchStatus ? (
+        <ActionFeedback tone="success" className="mt-4" message={familyMatchNextStep(matchStatus, providerName)} />
+      ) : matchStatus && (visitSent || callbackSent) ? (
+        <ActionFeedback tone="success" className="mt-4" message={`Status: ${matchStatusLabel(matchStatus)}. ${familyMatchNextStep(matchStatus, providerName)}`} />
       ) : null}
 
       {message ? <ActionFeedback message={message} tone={messageTone} className="mt-4" /> : null}
 
-      <div className="mt-5 flex flex-col gap-2">
-        <Button
-          className="w-full"
-          disabled={!canRequest || pending !== null || visitSent}
-          onClick={() => void handleRequest("VISIT_REQUESTED")}
-        >
-          {pending === "visit" ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Sending visit request...
-            </>
-          ) : visitSent ? (
-            <>
-              <Check className="h-4 w-4" />
-              Visit requested
-            </>
-          ) : accepted ? (
-            "Provider accepted"
-          ) : (
-            "Request a visit"
-          )}
-        </Button>
-
-        <Button
-          variant="outline"
-          className="w-full"
-          disabled={!canRequest || pending !== null || callbackSent}
-          onClick={() => void handleRequest("CALLBACK_REQUESTED")}
-        >
-          {pending === "callback" ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Sending callback request...
-            </>
-          ) : callbackSent ? (
-            <>
-              <Check className="h-4 w-4" />
-              Callback requested
-            </>
-          ) : (
-            "Request a callback"
-          )}
-        </Button>
-
-        <Button variant="ghost" className="w-full" disabled={pending === "favourite"} onClick={handleFavourite}>
-          {pending === "favourite" ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Saving...
-            </>
-          ) : saved ? (
-            <>
-              <Heart className="h-4 w-4 fill-brand-amber text-brand-amber" />
-              Saved to favourites
-            </>
-          ) : (
-            <>
-              <Heart className="h-4 w-4" />
-              Save to favourites
-            </>
-          )}
-        </Button>
-
-        {!hasIntake ? (
-          <Button asChild variant="ghost" className="w-full">
-            <Link href="/family/intake">Start intake</Link>
+      {inProgress ? (
+        <div className="mt-5 flex flex-col gap-2">
+          <Button asChild className="w-full">
+            <Link href="/family/results">Back to all matches</Link>
           </Button>
-        ) : null}
-      </div>
+          <Button asChild variant="outline" className="w-full">
+            <Link href="/family/dashboard">Your dashboard</Link>
+          </Button>
+          <Button variant="ghost" className="w-full" disabled={pending === "favourite"} onClick={handleFavourite}>
+            {pending === "favourite" ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : saved ? (
+              <>
+                <Heart className="h-4 w-4 fill-brand-amber text-brand-amber" />
+                Saved to favourites
+              </>
+            ) : (
+              <>
+                <Heart className="h-4 w-4" />
+                Save to favourites
+              </>
+            )}
+          </Button>
+        </div>
+      ) : (
+        <div className="mt-5 flex flex-col gap-2">
+          <Button
+            className="w-full"
+            disabled={!canRequest || pending !== null || visitSent}
+            onClick={() => void handleRequest("VISIT_REQUESTED")}
+          >
+            {pending === "visit" ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Sending visit request...
+              </>
+            ) : visitSent ? (
+              <>
+                <Check className="h-4 w-4" />
+                Visit requested
+              </>
+            ) : (
+              "Request a visit"
+            )}
+          </Button>
+
+          <Button
+            variant="outline"
+            className="w-full"
+            disabled={!canRequest || pending !== null || callbackSent}
+            onClick={() => void handleRequest("CALLBACK_REQUESTED")}
+          >
+            {pending === "callback" ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Sending callback request...
+              </>
+            ) : callbackSent ? (
+              <>
+                <Check className="h-4 w-4" />
+                Callback requested
+              </>
+            ) : (
+              "Request a callback"
+            )}
+          </Button>
+
+          <Button variant="ghost" className="w-full" disabled={pending === "favourite"} onClick={handleFavourite}>
+            {pending === "favourite" ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : saved ? (
+              <>
+                <Heart className="h-4 w-4 fill-brand-amber text-brand-amber" />
+                Saved to favourites
+              </>
+            ) : (
+              <>
+                <Heart className="h-4 w-4" />
+                Save to favourites
+              </>
+            )}
+          </Button>
+
+          {!hasIntake ? (
+            <Button asChild variant="ghost" className="w-full">
+              <Link href="/family/intake">Start intake</Link>
+            </Button>
+          ) : null}
+        </div>
+      )}
     </>
   );
 }
