@@ -56,8 +56,8 @@ export function matchStatusChangeNote(actor: MatchActor, status: MatchStatus) {
   const when = formatWhen();
 
   if (actor === "provider") {
-    if (status === "ACCEPTED") return `Provider accepted on ${when}.`;
-    if (status === "DECLINED") return `Provider declined on ${when}.`;
+    if (status === "ACCEPTED") return `You accepted this inquiry on ${when}.`;
+    if (status === "DECLINED") return `You declined this inquiry on ${when}.`;
     return null;
   }
 

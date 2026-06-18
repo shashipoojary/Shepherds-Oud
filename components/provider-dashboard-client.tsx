@@ -18,7 +18,8 @@ import {
   providerAcceptButtonLabel,
   providerInquiryActionMessage,
   providerInquiryBanner,
-  providerInquiryStatusLabel
+  providerInquiryStatusLabel,
+  providerMatchNotes
 } from "@/lib/match-status";
 import { recordAction } from "@/lib/client-actions";
 
@@ -209,6 +210,21 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
     return () => window.clearTimeout(timer);
   }, [message]);
 
+  useEffect(() => {
+    const ids = Object.keys(inquiryFeedback);
+    if (!ids.length) return;
+    const timer = window.setTimeout(() => {
+      setInquiryFeedback((current) => {
+        const next = { ...current };
+        for (const id of ids) {
+          delete next[id];
+        }
+        return next;
+      });
+    }, 6000);
+    return () => window.clearTimeout(timer);
+  }, [inquiryFeedback]);
+
   function updateForm<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((current) => ({ ...current, [key]: value }));
   }
@@ -286,7 +302,7 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
     }
   }
 
-  async function updateInquiry(id: string, status: string, familyName: string) {
+  async function updateInquiry(id: string, status: string, familyName: string, priorStatus: string) {
     const actionKey = `${id}:${status}`;
     setPendingInquiryId(id);
     setPendingAction(actionKey);
@@ -304,22 +320,23 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
       });
 
       if (!response.ok) {
-        setMessageTone("error");
-        setMessage(await readApiError(response));
-        setInquiryFeedback((current) => ({ ...current, [id]: "Could not update this inquiry. Please try again." }));
+        const errorMessage = await readApiError(response);
+        setInquiryFeedback((current) => ({
+          ...current,
+          [id]: errorMessage || "Could not update this inquiry. Please try again."
+        }));
         return;
       }
 
       const updated = (await response.json()) as Inquiry;
       setInquiries((current) => current.map((item) => (item.id === id ? { ...item, ...updated } : item)));
-      const feedback = providerInquiryActionMessage(updated.status, familyName);
+      const feedback = providerInquiryActionMessage(updated.status, familyName, priorStatus);
       setInquiryFeedback((current) => ({ ...current, [id]: feedback }));
-      setMessageTone("success");
-      setMessage(feedback);
     } catch {
-      setMessageTone("error");
-      setMessage("Could not update inquiry.");
-      setInquiryFeedback((current) => ({ ...current, [id]: "Could not update this inquiry. Please try again." }));
+      setInquiryFeedback((current) => ({
+        ...current,
+        [id]: "Could not update this inquiry. Please check your connection and try again."
+      }));
     } finally {
       setPendingInquiryId(null);
       setPendingAction(null);
@@ -400,6 +417,7 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
                 const isPending = pendingInquiryId === inquiry.id;
                 const cardFeedback = inquiryFeedback[inquiry.id];
                 const banner = providerInquiryBanner(inquiry.status);
+                const activityNotes = providerMatchNotes(inquiry.notes);
 
                 return (
                   <article
@@ -438,14 +456,21 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
                       <p className="mt-3 rounded-lg bg-white/80 px-3 py-2 text-sm text-ink/75">{banner}</p>
                     ) : null}
 
-                    {inquiry.notes ? (
+                    {activityNotes ? (
                       <p className="mt-3 rounded-lg bg-brand-cream px-3 py-2 text-xs leading-5 text-ink/65 whitespace-pre-line">
-                        {inquiry.notes}
+                        {activityNotes}
                       </p>
                     ) : null}
 
                     {cardFeedback ? (
-                      <p className="mt-3 rounded-lg bg-white/80 px-3 py-2 text-sm text-brand-green-dark" role="status">
+                      <p
+                        className={`mt-3 rounded-lg px-3 py-2 text-sm ${
+                          cardFeedback.startsWith("Could not")
+                            ? "bg-brand-beige-light/50 text-brand-amber-dark"
+                            : "bg-brand-green-pale/30 text-brand-green-dark"
+                        }`}
+                        role="status"
+                      >
                         {cardFeedback}
                       </p>
                     ) : null}
@@ -456,7 +481,9 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
                           <Button
                             size="sm"
                             disabled={isPending}
-                            onClick={() => void updateInquiry(inquiry.id, "ACCEPTED", inquiry.intake.contactName)}
+                            onClick={() =>
+                              void updateInquiry(inquiry.id, "ACCEPTED", inquiry.intake.contactName, inquiry.status)
+                            }
                           >
                             {pendingAction === `${inquiry.id}:ACCEPTED`
                               ? "Accepting..."
@@ -579,12 +606,17 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
         tone="danger"
         pending={Boolean(confirmDecline && pendingAction === `${confirmDecline.id}:DECLINED`)}
         title="Decline this inquiry?"
-        description="The family will no longer see this provider on their shortlist for this request."
+        description="The family will be notified that your facility cannot help with this request right now."
         confirmLabel="Decline inquiry"
         onCancel={() => setConfirmDecline(null)}
         onConfirm={() => {
           if (!confirmDecline) return;
-          void updateInquiry(confirmDecline.id, "DECLINED", confirmDecline.familyName);
+          void updateInquiry(
+            confirmDecline.id,
+            "DECLINED",
+            confirmDecline.familyName,
+            inquiries.find((item) => item.id === confirmDecline.id)?.status ?? "SUGGESTED"
+          );
           setConfirmDecline(null);
         }}
       />

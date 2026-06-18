@@ -178,21 +178,42 @@ export function adminInquiryActionMeta(status: MatchAdminAction) {
 type MatchAdminAction = "CONTACTED" | "PLACED" | "CLOSED";
 
 export function providerInquiryStatusLabel(status: string) {
-  return adminMatchStatusLabel(status);
+  switch (status) {
+    case "SUGGESTED":
+      return "New match";
+    case "VISIT_REQUESTED":
+      return "Visit requested";
+    case "CALLBACK_REQUESTED":
+      return "Callback requested";
+    case "CONTACTED":
+      return "Coordinating";
+    case "ACCEPTED":
+      return "Accepted by you";
+    case "DECLINED":
+      return "Declined by you";
+    case "PLACED":
+      return "Placement in progress";
+    case "CLOSED":
+      return "Closed";
+    default:
+      return status.replaceAll("_", " ");
+  }
 }
 
 export function providerInquiryBanner(status: string) {
   switch (status) {
     case "VISIT_REQUESTED":
-      return "Family requested a visit — please accept or decline so they know you are interested.";
+      return "A family requested a visit to your facility. Accept if you can host them, or decline if you cannot help right now.";
     case "CALLBACK_REQUESTED":
-      return "Family requested a callback — please accept or decline so they know you can help.";
+      return "A family asked you to call them back. Accept if you can help, or decline if you are not available.";
     case "SUGGESTED":
-      return "New match from your care advisor. The family can see your facility on their shortlist.";
+      return "Your care advisor matched this family to your facility. They may request a visit or callback soon.";
     case "ACCEPTED":
-      return "You accepted this family. The care advisor may contact you to coordinate next steps.";
+      return "You accepted this inquiry. A care advisor will contact you to coordinate next steps.";
     case "CONTACTED":
-      return "Your care advisor coordinated next steps with this family.";
+      return "Your care advisor is coordinating the visit or call with this family.";
+    case "PLACED":
+      return "Placement is in progress for this family at your facility.";
     default:
       return null;
   }
@@ -209,12 +230,24 @@ export function providerAcceptButtonLabel(status: string) {
   }
 }
 
-export function providerInquiryActionMessage(status: string, familyName: string) {
+export function providerInquiryActionMessage(status: string, familyName: string, priorStatus?: string) {
   switch (status) {
     case "ACCEPTED":
-      return `Accepted ${familyName}. They will see this on their matches page and a care advisor can coordinate next steps.`;
+      if (priorStatus === "VISIT_REQUESTED") {
+        return `You accepted the visit request from ${familyName}. A care advisor will help arrange timing with you.`;
+      }
+      if (priorStatus === "CALLBACK_REQUESTED") {
+        return `You accepted the callback request from ${familyName}. A care advisor will follow up to coordinate.`;
+      }
+      return `You accepted the inquiry from ${familyName}. A care advisor will coordinate next steps with you.`;
     case "DECLINED":
-      return `Declined ${familyName}. The family will no longer see this match.`;
+      if (priorStatus === "VISIT_REQUESTED") {
+        return `You declined the visit request from ${familyName}.`;
+      }
+      if (priorStatus === "CALLBACK_REQUESTED") {
+        return `You declined the callback request from ${familyName}.`;
+      }
+      return `You declined the inquiry from ${familyName}.`;
     default:
       return "Inquiry updated.";
   }
@@ -241,6 +274,32 @@ export function adminInquiryHint(status: string) {
     default:
       return "";
   }
+}
+
+export function providerMatchNotes(notes: string | null | undefined) {
+  if (!notes) return null;
+
+  return notes
+    .split("\n")
+    .map((line) => {
+      if (line.startsWith("Provider accepted")) {
+        return line.replace("Provider accepted", "You accepted");
+      }
+      if (line.startsWith("Provider declined")) {
+        return line.replace("Provider declined", "You declined");
+      }
+      if (line.startsWith("Family requested a visit")) {
+        return line.replace("Family requested a visit", "Visit requested");
+      }
+      if (line.startsWith("Family requested a callback")) {
+        return line.replace("Family requested a callback", "Callback requested");
+      }
+      if (line.startsWith("Care advisor marked coordinated")) {
+        return line.replace("Care advisor marked coordinated", "Care advisor coordinated");
+      }
+      return line;
+    })
+    .join("\n");
 }
 
 export function familyRequestNote(status: "VISIT_REQUESTED" | "CALLBACK_REQUESTED") {
