@@ -29,10 +29,16 @@ import {
   initTabSeenFromData,
   markTabSeen
 } from "@/lib/client-admin-seen";
+import { CARE_PATHWAYS } from "@/lib/care-pathways";
+import {
+  adminIntakeActionMeta,
+  adminIntakeStatusLabel,
+  canCreateMatches,
+  type IntakeStatus
+} from "@/lib/intake-workflow";
 import {
   adminInquiryActionMeta,
   adminInquiryHint,
-  adminIntakeActionMeta,
   adminMatchStatusLabel,
   compareMatchPriority,
   isAdminActionNeeded,
@@ -42,7 +48,7 @@ import {
 type AdminTab = "families" | "providers" | "inquiries" | "waitlist";
 type WaitlistEntry = AdminDashboardData["waitlist"][number];
 type FamilyEntry = AdminDashboardData["families"][number];
-type IntakeStatus = "NEW" | "REVIEW" | "MATCHED" | "PLACED" | "CLOSED";
+type CareGuideOption = AdminDashboardData["careGuides"][number];
 type ProviderOption = AdminDashboardData["providerList"][number];
 type InquiryEntry = AdminDashboardData["inquiries"][number];
 type MatchStatus =
@@ -171,6 +177,7 @@ export function AdminDashboardClient({ data: initialData }: { data: AdminDashboa
               <FamiliesTable
                 families={data.families}
                 providers={data.providerList}
+                careGuides={data.careGuides}
                 setMessage={setMessage}
                 onSync={syncDashboard}
               />
@@ -211,11 +218,13 @@ export function AdminDashboardClient({ data: initialData }: { data: AdminDashboa
 function FamiliesTable({
   families,
   providers,
+  careGuides,
   setMessage,
   onSync
 }: {
   families: FamilyEntry[];
   providers: ProviderOption[];
+  careGuides: CareGuideOption[];
   setMessage: (message: string) => void;
   onSync: () => Promise<boolean>;
 }) {
@@ -231,37 +240,80 @@ function FamiliesTable({
     });
   }, [families]);
 
-  async function updateStatus(id: string, status: IntakeStatus, name: string) {
+  async function patchIntake(id: string, body: Record<string, unknown>, name: string, successMessage: string) {
     setPendingId(id);
     try {
       const response = await fetch(`/api/intakes/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status })
+        body: JSON.stringify(body)
       });
 
       if (!response.ok) {
-        throw new Error("Could not update intake.");
+        const data = (await response.json().catch(() => ({}))) as { error?: string };
+        throw new Error(data.error || "Could not update intake.");
       }
 
-      setRows((current) => current.map((family) => (family.id === id ? { ...family, status } : family)));
-      setSelected((current) => (current?.id === id ? { ...current, status } : current));
-
-      await recordAction({
-        type: "intake_status_updated",
-        targetType: "intake",
-        targetId: id,
-        label: `Updated ${name} to ${status}.`,
-        payload: { id, status, name }
+      const result = (await response.json()) as { status?: string; careGuideId?: string | null; carePathway?: string | null };
+      setRows((current) =>
+        current.map((family) =>
+          family.id === id
+            ? {
+                ...family,
+                ...(result.status ? { status: result.status as IntakeStatus } : {}),
+                ...(body.careGuideId !== undefined
+                  ? {
+                      careGuideId: body.careGuideId as string | null,
+                      careGuideName:
+                        careGuides.find((guide) => guide.id === body.careGuideId)?.name ||
+                        careGuides.find((guide) => guide.id === body.careGuideId)?.email ||
+                        null,
+                      careGuideEmail: careGuides.find((guide) => guide.id === body.careGuideId)?.email || null
+                    }
+                  : {}),
+                ...(body.carePathway !== undefined ? { carePathway: body.carePathway as string } : {}),
+                ...(body.assessmentNotes !== undefined ? { assessmentNotes: body.assessmentNotes as string } : {}),
+                ...(body.carePlanSummary !== undefined ? { carePlanSummary: body.carePlanSummary as string } : {})
+              }
+            : family
+        )
+      );
+      setSelected((current) => {
+        if (current?.id !== id) return current;
+        const guide = careGuides.find((item) => item.id === (body.careGuideId ?? current.careGuideId));
+        return {
+          ...current,
+          ...(result.status ? { status: result.status as IntakeStatus } : {}),
+          ...(body.careGuideId !== undefined
+            ? { careGuideId: body.careGuideId as string | null, careGuideName: guide?.name || guide?.email || null, careGuideEmail: guide?.email || null }
+            : {}),
+          ...(body.carePathway !== undefined ? { carePathway: body.carePathway as string } : {}),
+          ...(body.assessmentNotes !== undefined ? { assessmentNotes: body.assessmentNotes as string } : {}),
+          ...(body.carePlanSummary !== undefined ? { carePlanSummary: body.carePlanSummary as string } : {})
+        };
       });
 
-      setMessage(`${name} marked as ${status.replaceAll("_", " ").toLowerCase()}.`);
+      if (body.status) {
+        await recordAction({
+          type: "intake_status_updated",
+          targetType: "intake",
+          targetId: id,
+          label: `Updated ${name} to ${body.status}.`,
+          payload: { id, status: body.status, name }
+        });
+      }
+
+      setMessage(successMessage);
       await onSync();
-    } catch {
-      setMessage(`Could not update ${name}. Please try again.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : `Could not update ${name}. Please try again.`);
     } finally {
       setPendingId(null);
     }
+  }
+
+  async function updateStatus(id: string, status: IntakeStatus, name: string) {
+    await patchIntake(id, { status }, name, `${name} marked as ${adminIntakeStatusLabel(status).toLowerCase()}.`);
   }
 
   return (
@@ -273,6 +325,7 @@ function FamiliesTable({
             <th className="px-4 py-3">Care needed</th>
             <th className="px-4 py-3">Location</th>
             <th className="px-4 py-3">Urgency</th>
+            <th className="px-4 py-3">Care Guide</th>
             <th className="px-4 py-3">Status</th>
             <th className="px-4 py-3">Actions</th>
           </tr>
@@ -280,7 +333,7 @@ function FamiliesTable({
         <tbody className="divide-y divide-stone-200">
           {rows.map((family) => {
             const isPending = pendingId === family.id;
-            const reviewMeta = adminIntakeActionMeta("REVIEW");
+            const assessmentMeta = adminIntakeActionMeta("ASSESSMENT");
             return (
               <tr key={family.id} className="cursor-pointer hover:bg-cream" onClick={() => setSelected(family)}>
                 <td className="px-4 py-3 text-sm">
@@ -290,18 +343,21 @@ function FamiliesTable({
                 <td className="px-4 py-3 text-sm text-neutral-600">{family.care}</td>
                 <td className="px-4 py-3 text-sm text-neutral-600">{family.location}</td>
                 <td className="px-4 py-3 text-sm text-neutral-600">{family.urgency}</td>
+                <td className="px-4 py-3 text-sm text-neutral-600">{family.careGuideName || "—"}</td>
                 <td className="px-4 py-3">
-                  <span className="rounded-full bg-sage-100 px-3 py-1 text-xs font-medium text-sage-700">{family.status}</span>
+                  <span className="rounded-full bg-sage-100 px-3 py-1 text-xs font-medium text-sage-700">
+                    {adminIntakeStatusLabel(family.status)}
+                  </span>
                 </td>
                 <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}>
                   <div className="flex items-center gap-1">
                     {family.status === "NEW" ? (
                       <IconActionButton
-                        label={reviewMeta.label}
+                        label={assessmentMeta.label}
                         icon={ClipboardList}
                         loading={isPending}
                         disabled={isPending}
-                        onClick={() => void updateStatus(family.id, "REVIEW", family.name)}
+                        onClick={() => void updateStatus(family.id, "ASSESSMENT", family.name)}
                       />
                     ) : (
                       <IconActionButton label="Open details" icon={ArrowUpRight} onClick={() => setSelected(family)} />
@@ -317,8 +373,10 @@ function FamiliesTable({
       <FamilyDetailPanel
         family={selected}
         providers={providers}
+        careGuides={careGuides}
         onClose={() => setSelected(null)}
         onUpdateStatus={updateStatus}
+        onPatchIntake={patchIntake}
         onMatchCreated={setMessage}
         onSync={onSync}
         pendingId={pendingId}
@@ -330,16 +388,20 @@ function FamiliesTable({
 function FamilyDetailPanel({
   family,
   providers,
+  careGuides,
   onClose,
   onUpdateStatus,
+  onPatchIntake,
   onMatchCreated,
   onSync,
   pendingId
 }: {
   family: FamilyEntry | null;
   providers: ProviderOption[];
+  careGuides: CareGuideOption[];
   onClose: () => void;
   onUpdateStatus: (id: string, status: IntakeStatus, name: string) => Promise<void>;
+  onPatchIntake: (id: string, body: Record<string, unknown>, name: string, successMessage: string) => Promise<void>;
   onMatchCreated: (message: string) => void;
   onSync: () => Promise<boolean>;
   pendingId: string | null;
@@ -350,8 +412,22 @@ function FamilyDetailPanel({
   const [creatingMatch, setCreatingMatch] = useState(false);
   const [pendingAction, setPendingAction] = useState<IntakeStatus | null>(null);
   const [confirmCloseCase, setConfirmCloseCase] = useState(false);
+  const [careGuideId, setCareGuideId] = useState("");
+  const [carePathway, setCarePathway] = useState("");
+  const [assessmentNotes, setAssessmentNotes] = useState("");
+  const [carePlanSummary, setCarePlanSummary] = useState("");
+  const [savingAssessment, setSavingAssessment] = useState(false);
+
+  useEffect(() => {
+    if (!family) return;
+    setCareGuideId(family.careGuideId || "");
+    setCarePathway(family.carePathway || "");
+    setAssessmentNotes(family.assessmentNotes || "");
+    setCarePlanSummary(family.carePlanSummary || "");
+  }, [family]);
 
   const isPending = family ? pendingId === family.id : false;
+  const matchingAllowed = family ? canCreateMatches(family.status, carePathway || family.carePathway) : false;
 
   async function handleCaseAction(status: IntakeStatus) {
     if (!family) return;
@@ -366,8 +442,45 @@ function FamilyDetailPanel({
     }
   }
 
+  async function saveCareGuide() {
+    if (!family || !careGuideId) return;
+    await onPatchIntake(family.id, { careGuideId }, family.name, `Care Guide updated for ${family.name}.`);
+  }
+
+  async function saveAssessment(complete = false) {
+    if (!family || !carePathway) {
+      onMatchCreated("Select a recommended care pathway before saving the assessment.");
+      return;
+    }
+
+    setSavingAssessment(true);
+    try {
+      await onPatchIntake(
+        family.id,
+        {
+          careGuideId: careGuideId || family.careGuideId || null,
+          carePathway,
+          assessmentNotes,
+          carePlanSummary,
+          ...(complete ? { status: "MATCHED" } : {})
+        },
+        family.name,
+        complete
+          ? `Assessment completed for ${family.name}. Family can now view matched providers.`
+          : `Assessment saved for ${family.name}.`
+      );
+    } finally {
+      setSavingAssessment(false);
+    }
+  }
+
   async function createMatch() {
     if (!family || !providerId) return;
+    if (!matchingAllowed) {
+      onMatchCreated("Complete the assessment and select a care pathway before creating matches.");
+      return;
+    }
+
     setCreatingMatch(true);
     try {
       const response = await fetch("/api/matches", {
@@ -382,7 +495,8 @@ function FamilyDetailPanel({
       });
 
       if (!response.ok) {
-        throw new Error("Could not create match.");
+        const data = (await response.json().catch(() => ({}))) as { error?: string };
+        throw new Error(data.error || "Could not create match.");
       }
 
       await recordAction({
@@ -397,8 +511,8 @@ function FamilyDetailPanel({
       setProviderId("");
       setMatchNotes("");
       await onSync();
-    } catch {
-      onMatchCreated(`Could not create match for ${family.name}.`);
+    } catch (error) {
+      onMatchCreated(error instanceof Error ? error.message : `Could not create match for ${family.name}.`);
     } finally {
       setCreatingMatch(false);
     }
@@ -418,7 +532,10 @@ function FamilyDetailPanel({
         { label: "Languages", value: family.languages?.length ? family.languages.join(", ") : null },
         { label: "Additional needs", value: family.additionalNeeds?.length ? family.additionalNeeds.join(", ") : null },
         { label: "Notes", value: family.notes },
-        { label: "Status", value: family.status },
+        { label: "Care Guide", value: family.careGuideName },
+        { label: "Care pathway", value: family.carePathway },
+        { label: "Status", value: adminIntakeStatusLabel(family.status) },
+        { label: "Visit scheduled", value: family.visitScheduledAt },
         { label: "Submitted", value: family.createdAt },
         { label: "Last updated", value: family.updatedAt }
       ]
@@ -426,14 +543,18 @@ function FamilyDetailPanel({
 
   const nextActions: Array<{ label: string; status: IntakeStatus; description: string }> = [];
   if (family?.status === "NEW") {
-    const meta = adminIntakeActionMeta("REVIEW");
-    nextActions.push({ label: meta.label, status: "REVIEW", description: meta.description });
-  }
-  if (family?.status === "REVIEW") {
-    const meta = adminIntakeActionMeta("MATCHED");
-    nextActions.push({ label: meta.label, status: "MATCHED", description: meta.description });
+    const meta = adminIntakeActionMeta("ASSESSMENT");
+    nextActions.push({ label: meta.label, status: "ASSESSMENT", description: meta.description });
   }
   if (family?.status === "MATCHED") {
+    const meta = adminIntakeActionMeta("VISIT_SCHEDULED");
+    nextActions.push({ label: meta.label, status: "VISIT_SCHEDULED", description: meta.description });
+  }
+  if (family?.status === "VISIT_SCHEDULED") {
+    const meta = adminIntakeActionMeta("PLACEMENT_IN_PROGRESS");
+    nextActions.push({ label: meta.label, status: "PLACEMENT_IN_PROGRESS", description: meta.description });
+  }
+  if (family?.status === "PLACEMENT_IN_PROGRESS") {
     const meta = adminIntakeActionMeta("PLACED");
     nextActions.push({ label: meta.label, status: "PLACED", description: meta.description });
   }
@@ -451,11 +572,11 @@ function FamilyDetailPanel({
       subtitle={family ? `${family.location} · ${family.urgency}` : "Care intake details"}
     >
       {family ? (
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_300px]">
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
           <div>
             <StatusPill>
               <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Case status</span>
-              <p className="mt-1 text-lg font-semibold text-ink">{family.status}</p>
+              <p className="mt-1 text-lg font-semibold text-ink">{adminIntakeStatusLabel(family.status)}</p>
             </StatusPill>
 
             <PanelSection step={1} title="Contact & care needs" className="mt-6">
@@ -469,23 +590,92 @@ function FamilyDetailPanel({
               />
             </PanelSection>
 
-            <PanelSection step={2} title="Record">
+            <PanelSection step={2} title="Assessment & care plan (internal)" className="mt-6">
+              <div className="grid gap-3">
+                <label className="grid gap-1.5 text-sm font-medium">
+                  Care Guide
+                  <select
+                    value={careGuideId}
+                    onChange={(event) => setCareGuideId(event.target.value)}
+                    className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm outline-brand-amber"
+                  >
+                    <option value="">Select Care Guide</option>
+                    {careGuides.map((guide) => (
+                      <option key={guide.id} value={guide.id}>
+                        {guide.name || guide.email}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <Button type="button" size="sm" variant="outline" disabled={!careGuideId || isPending} onClick={() => void saveCareGuide()}>
+                  Save Care Guide
+                </Button>
+                <label className="grid gap-1.5 text-sm font-medium">
+                  Recommended care pathway
+                  <select
+                    value={carePathway}
+                    onChange={(event) => setCarePathway(event.target.value)}
+                    className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm outline-brand-amber"
+                  >
+                    <option value="">Select pathway</option>
+                    {CARE_PATHWAYS.map((pathway) => (
+                      <option key={pathway} value={pathway}>
+                        {pathway}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="grid gap-1.5 text-sm font-medium">
+                  Assessment notes (internal)
+                  <textarea
+                    value={assessmentNotes}
+                    onChange={(event) => setAssessmentNotes(event.target.value)}
+                    className="min-h-20 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm outline-brand-amber"
+                    placeholder="Family situation, decision-makers, funding context..."
+                  />
+                </label>
+                <label className="grid gap-1.5 text-sm font-medium">
+                  Care plan summary (shared with family as pathway)
+                  <textarea
+                    value={carePlanSummary}
+                    onChange={(event) => setCarePlanSummary(event.target.value)}
+                    className="min-h-20 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm outline-brand-amber"
+                    placeholder="Brief plan: recommended next steps and why this pathway fits."
+                  />
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" size="sm" variant="outline" disabled={savingAssessment || isPending} onClick={() => void saveAssessment(false)}>
+                    {savingAssessment ? "Saving..." : "Save assessment"}
+                  </Button>
+                  {family.status === "ASSESSMENT" ? (
+                    <Button type="button" size="sm" disabled={savingAssessment || isPending || !carePathway} onClick={() => void saveAssessment(true)}>
+                      {savingAssessment ? "Saving..." : "Complete assessment & match"}
+                    </Button>
+                  ) : null}
+                </div>
+              </div>
+            </PanelSection>
+
+            <PanelSection step={3} title="Record">
               <DetailList
-                items={details.filter((item) => ["Status", "Submitted", "Last updated"].includes(item.label))}
+                items={details.filter((item) =>
+                  ["Care Guide", "Care pathway", "Status", "Visit scheduled", "Submitted", "Last updated"].includes(item.label)
+                )}
                 columns={2}
               />
             </PanelSection>
           </div>
 
           <div className="lg:sticky lg:top-0 lg:self-start">
-            <PanelSection step={3} title="Create provider match" description="The family will see this provider on their shortlist.">
+            <PanelSection step={4} title="Create provider match" description="Available after assessment and care pathway are set.">
               <div className="grid gap-3">
                 <label className="grid gap-1.5 text-sm font-medium">
                   Provider
                   <select
                     value={providerId}
                     onChange={(event) => setProviderId(event.target.value)}
-                    className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm outline-brand-amber"
+                    disabled={!matchingAllowed}
+                    className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm outline-brand-amber disabled:opacity-60"
                   >
                     <option value="">Select provider</option>
                     {providers.map((provider) => (
@@ -502,25 +692,27 @@ function FamilyDetailPanel({
                     min="0"
                     max="100"
                     value={score}
+                    disabled={!matchingAllowed}
                     onChange={(event) => setScore(event.target.value)}
-                    className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm outline-brand-amber"
+                    className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm outline-brand-amber disabled:opacity-60"
                   />
                 </label>
                 <label className="grid gap-1.5 text-sm font-medium">
                   Internal notes (optional)
                   <textarea
                     value={matchNotes}
+                    disabled={!matchingAllowed}
                     onChange={(event) => setMatchNotes(event.target.value)}
-                    className="min-h-16 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm outline-brand-amber"
+                    className="min-h-16 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm outline-brand-amber disabled:opacity-60"
                   />
                 </label>
-                <Button type="button" size="sm" disabled={!providerId || creatingMatch} onClick={() => void createMatch()}>
+                <Button type="button" size="sm" disabled={!providerId || creatingMatch || !matchingAllowed} onClick={() => void createMatch()}>
                   {creatingMatch ? "Creating..." : "Create match"}
                 </Button>
               </div>
             </PanelSection>
 
-            <PanelSection step={4} title="Update case status" description="Each step updates what the family sees on their dashboard.">
+            <PanelSection step={5} title="Update case status" description="NEW → Assessment → Matched → Visit scheduled → Placement in progress → Placed → Closed">
               <div className="space-y-3">
                 {nextActions.map((action) => (
                   <div key={action.status}>

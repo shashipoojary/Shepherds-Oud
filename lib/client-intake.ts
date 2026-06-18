@@ -1,3 +1,8 @@
+export type CareGuideInfo = {
+  name: string;
+  email: string;
+};
+
 export type StoredIntake = {
   id: string;
   contactName: string;
@@ -14,11 +19,15 @@ export type StoredIntake = {
   notes?: string;
   status: string;
   matchCount?: number;
+  careGuide?: CareGuideInfo | null;
+  carePathway?: string | null;
   submittedAt: string;
 };
 
 const STORAGE_KEY = "shepherds:last-intake";
 const DRAFT_KEY = "shepherds:intake-draft";
+
+export { intakeStatusHint, intakeStatusLabel } from "@/lib/intake-workflow";
 
 /** Clears any legacy draft saved in localStorage from older builds. */
 export function clearIntakeDraft() {
@@ -63,35 +72,5 @@ export function getStoredIntake(): StoredIntake | null {
     return JSON.parse(raw) as StoredIntake;
   } catch {
     return null;
-  }
-}
-
-export function intakeStatusLabel(status: string) {
-  switch (status) {
-    case "REVIEW":
-      return "Under review";
-    case "MATCHED":
-      return "Providers matched";
-    case "PLACED":
-      return "Placement in progress";
-    case "CLOSED":
-      return "Case closed";
-    default:
-      return "Received";
-  }
-}
-
-export function intakeStatusHint(status: string) {
-  switch (status) {
-    case "REVIEW":
-      return "A care advisor is reviewing your details.";
-    case "MATCHED":
-      return "You can view suggested providers while we follow up.";
-    case "PLACED":
-      return "Your family is moving toward placement.";
-    case "CLOSED":
-      return "This request has been closed.";
-    default:
-      return "We received your form and will review it shortly.";
   }
 }

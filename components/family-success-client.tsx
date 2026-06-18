@@ -21,7 +21,7 @@ export function FamilySuccessClient() {
           <div className="mx-auto mb-6 grid h-[72px] w-[72px] place-items-center rounded-full bg-sage-100 text-xl font-bold text-sage-600">SO</div>
           <h1 className="text-[1.4rem] font-bold">We&apos;ve received your request</h1>
           <p className="mt-3 text-[15px] leading-7 text-neutral-700">
-            Thank you. A care advisor will review your details and follow up with matched providers across the Netherlands.
+            Thank you. A Care Guide will support you through assessment, matching, and placement — you are not navigating this alone.
           </p>
           {intake ? (
             <p className="mt-4 rounded-xl bg-cream px-4 py-3 text-sm text-neutral-700">

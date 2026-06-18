@@ -21,6 +21,8 @@ const filters = ["All options", "Available now", "Memory care", "Home care"] as 
 type IntakeMeta = {
   status: string;
   matchCount: number;
+  careGuide?: { name: string; email: string } | null;
+  carePathway?: string | null;
 };
 
 type PendingAction = {
@@ -41,24 +43,24 @@ function emptyStateCopy(intake: StoredIntake, loadError: boolean) {
     };
   }
 
-  if (intake.status === "MATCHED" || intake.status === "PLACED") {
+  if (intake.status === "MATCHED" || intake.status === "PLACED" || intake.status === "PLACEMENT_IN_PROGRESS" || intake.status === "VISIT_SCHEDULED") {
     return {
       title: "Your shortlist is almost ready",
       description:
-        "Your case is marked as matched. If nothing appears here within a day, contact your care advisor with your reference number."
+        "Your Care Guide has matched suitable providers. If nothing appears here within a day, contact your Care Guide with your reference number."
     };
   }
 
-  if (intake.status === "REVIEW") {
+  if (intake.status === "ASSESSMENT" || intake.status === "REVIEW") {
     return {
-      title: "A care advisor is reviewing your intake",
-      description: "We will publish suitable providers here once your request has been reviewed."
+      title: "Your Care Guide is completing your assessment",
+      description: "We will publish suitable providers here once your recommended care pathway is ready."
     };
   }
 
   return {
-    title: "We are preparing your shortlist",
-    description: "A care advisor is reviewing your intake. Matched providers will appear here once approved."
+    title: "We are preparing your care journey",
+    description: "Your Care Guide will review your request and begin your assessment shortly."
   };
 }
 
@@ -122,7 +124,9 @@ export function ResultsPageClient() {
           const updated: StoredIntake = {
             ...current,
             status: intakeData.status,
-            matchCount: intakeData.matchCount
+            matchCount: intakeData.matchCount,
+            careGuide: intakeData.careGuide ?? current.careGuide,
+            carePathway: intakeData.carePathway ?? current.carePathway
           };
           saveStoredIntake(updated);
           setIntake(updated);

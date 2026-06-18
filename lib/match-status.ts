@@ -126,33 +126,6 @@ export function isFamilyActionableMatchStatus(status?: string) {
   return Boolean(status && ["VISIT_REQUESTED", "CALLBACK_REQUESTED", "ACCEPTED", "CONTACTED", "PLACED"].includes(status));
 }
 
-export function adminIntakeActionMeta(status: string) {
-  switch (status) {
-    case "REVIEW":
-      return {
-        label: "Start review",
-        description: "Assign to a care advisor. The family sees “Under review” on their dashboard."
-      };
-    case "MATCHED":
-      return {
-        label: "Mark matched",
-        description: "Providers are on the family shortlist. Create matches below first."
-      };
-    case "PLACED":
-      return {
-        label: "Record placement",
-        description: "The family secured care. Closes the case outcome on their dashboard."
-      };
-    case "CLOSED":
-      return {
-        label: "Close case",
-        description: "Archive when the family is no longer active or was helped elsewhere."
-      };
-    default:
-      return { label: status, description: "" };
-  }
-}
-
 export function adminInquiryActionMeta(status: MatchAdminAction) {
   switch (status) {
     case "CONTACTED":

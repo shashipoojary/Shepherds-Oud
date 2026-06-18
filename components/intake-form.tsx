@@ -140,7 +140,11 @@ function IntakeFormContent({ isUpdateMode }: { isUpdateMode: boolean }) {
       return;
     }
 
-    const result = (await response.json()) as { id: string; status: string };
+    const result = (await response.json()) as {
+      id: string;
+      status: string;
+      careGuide?: { name: string; email: string } | null;
+    };
     saveStoredIntake({
       id: result.id,
       contactName: payload.contactName,
@@ -156,6 +160,7 @@ function IntakeFormContent({ isUpdateMode }: { isUpdateMode: boolean }) {
       additionalNeeds: payload.additionalNeeds,
       notes: payload.notes,
       status: result.status || "NEW",
+      careGuide: result.careGuide ?? null,
       matchCount: isUpdating ? (existingIntake?.matchCount ?? 0) : 0,
       submittedAt: isUpdating ? (existingIntake?.submittedAt ?? new Date().toISOString()) : new Date().toISOString()
     });

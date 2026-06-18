@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getMatchesForIntake } from "@/lib/data/matches";
 import { getServerSession, getUserRole } from "@/lib/auth-server";
+import { canCreateMatches, normalizeIntakeStatus } from "@/lib/intake-workflow";
 import { createMatchSchema } from "@/lib/validation/match";
 
 async function assertAdmin() {
@@ -48,6 +49,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Intake or provider not found." }, { status: 404 });
     }
 
+    if (!canCreateMatches(intake.status, intake.carePathway)) {
+      return NextResponse.json(
+        { error: "Complete the family assessment and select a care pathway before creating matches." },
+        { status: 400 }
+      );
+    }
+
     const match = await prisma.match.upsert({
       where: {
         intakeId_providerId: { intakeId, providerId }
@@ -65,7 +73,8 @@ export async function POST(request: Request) {
       }
     });
 
-    if (intake.status !== "MATCHED" && intake.status !== "PLACED") {
+    const intakeStatus = normalizeIntakeStatus(intake.status);
+    if (intakeStatus === "ASSESSMENT") {
       await prisma.intake.update({
         where: { id: intakeId },
         data: { status: "MATCHED" }

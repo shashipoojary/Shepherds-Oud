@@ -22,9 +22,10 @@ model User {
   linkedProviderId String?   @unique
   linkedProvider   Provider? @relation(fields: [linkedProviderId], references: [id])
 
-  intakes  Intake[]
-  sessions Session[]
-  accounts Account[]
+  intakes       Intake[]
+  guidedIntakes Intake[] @relation("CareGuideIntakes")
+  sessions      Session[]
+  accounts      Account[]
 }
 
 model Session {
@@ -86,14 +87,22 @@ model Intake {
   budget          String?
   languages       String[]
   additionalNeeds String[]
-  notes           String?
-  status          IntakeStatus @default(NEW)
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+  notes             String?
+  status            IntakeStatus @default(NEW)
+  careGuideId       String?
+  carePathway       String?
+  assessmentNotes   String?
+  carePlanSummary   String?
+  visitScheduledAt  DateTime?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
 
-  userId  String?
-  user    User?   @relation(fields: [userId], references: [id])
-  matches Match[]
+  userId    String?
+  user      User?   @relation(fields: [userId], references: [id])
+  careGuide User?   @relation("CareGuideIntakes", fields: [careGuideId], references: [id])
+  matches   Match[]
+
+  @@index([careGuideId])
 }
 
 model Provider {
@@ -158,8 +167,10 @@ enum Role {
 
 enum IntakeStatus {
   NEW
+  ASSESSMENT
   MATCHED
-  REVIEW
+  VISIT_SCHEDULED
+  PLACEMENT_IN_PROGRESS
   PLACED
   CLOSED
 }

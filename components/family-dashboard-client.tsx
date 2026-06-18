@@ -27,8 +27,19 @@ export function FamilyDashboardClient() {
     try {
       const response = await fetch(`/api/intakes/${stored.id}`);
       if (response.ok) {
-        const data = (await response.json()) as { status: string; matchCount?: number };
-        const updated: StoredIntake = { ...stored, status: data.status, matchCount: data.matchCount ?? 0 };
+        const data = (await response.json()) as {
+          status: string;
+          matchCount?: number;
+          careGuide?: { name: string; email: string } | null;
+          carePathway?: string | null;
+        };
+        const updated: StoredIntake = {
+          ...stored,
+          status: data.status,
+          matchCount: data.matchCount ?? 0,
+          careGuide: data.careGuide ?? stored.careGuide,
+          carePathway: data.carePathway ?? stored.carePathway
+        };
         saveStoredIntake(updated);
         setIntake(updated);
       } else {
@@ -63,7 +74,7 @@ export function FamilyDashboardClient() {
             <p className="section-label">Family dashboard</p>
             <h1 className="mt-2 text-2xl font-semibold">Your care journey</h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">
-              Follow your request on this device — no account needed. Matched providers and status updates appear below.
+              Follow your care journey with your dedicated Care Guide — no account needed. Status updates and matched providers appear below.
             </p>
           </div>
           {intake ? <RefreshButton onClick={() => void handleRefresh()} loading={refreshing} /> : null}

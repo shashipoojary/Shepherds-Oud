@@ -1,8 +1,10 @@
 import { prisma } from "@/lib/db";
 import { compareMatchPriority } from "@/lib/match-status";
+import { normalizeIntakeStatus } from "@/lib/intake-workflow";
 
 export async function getAdminDashboardData() {
-  const [totalFamilies, activeCases, placements, providerCount, intakes, providers, matches, waitlist] = await Promise.all([
+  const [totalFamilies, activeCases, placements, providerCount, intakes, providers, matches, waitlist, careGuides] =
+    await Promise.all([
     prisma.intake.count(),
     prisma.intake.count({ where: { status: { notIn: ["PLACED", "CLOSED"] } } }),
     prisma.intake.count({ where: { status: "PLACED" } }),
@@ -25,6 +27,12 @@ export async function getAdminDashboardData() {
         additionalNeeds: true,
         notes: true,
         status: true,
+        careGuideId: true,
+        carePathway: true,
+        assessmentNotes: true,
+        carePlanSummary: true,
+        visitScheduledAt: true,
+        careGuide: { select: { id: true, name: true, email: true } },
         createdAt: true,
         updatedAt: true
       }
@@ -104,6 +112,11 @@ export async function getAdminDashboardData() {
         createdAt: true,
         updatedAt: true
       }
+    }),
+    prisma.user.findMany({
+      where: { role: "ADMIN" },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, email: true }
     })
   ]);
 
@@ -129,7 +142,14 @@ export async function getAdminDashboardData() {
       additionalNeeds: intake.additionalNeeds,
       notes: intake.notes,
       ageRange: intake.ageRange,
-      status: intake.status,
+      status: normalizeIntakeStatus(intake.status),
+      careGuideId: intake.careGuideId,
+      careGuideName: intake.careGuide?.name || intake.careGuide?.email || null,
+      careGuideEmail: intake.careGuide?.email || null,
+      carePathway: intake.carePathway,
+      assessmentNotes: intake.assessmentNotes,
+      carePlanSummary: intake.carePlanSummary,
+      visitScheduledAt: intake.visitScheduledAt?.toLocaleDateString("en-GB") || null,
       createdAt: intake.createdAt.toLocaleDateString("en-GB"),
       createdAtIso: intake.createdAt.toISOString(),
       updatedAt: intake.updatedAt.toLocaleDateString("en-GB"),
@@ -208,7 +228,8 @@ export async function getAdminDashboardData() {
       createdAtIso: entry.createdAt.toISOString(),
       updatedAt: entry.updatedAt.toLocaleDateString("en-GB"),
       updatedAtIso: entry.updatedAt.toISOString()
-    }))
+    })),
+    careGuides
   };
 }
 
