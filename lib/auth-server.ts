@@ -1,17 +1,52 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
+import { resolveRole } from "@/lib/auth-roles";
+import { prisma } from "@/lib/db";
 
 export type AppRole = "FAMILY" | "PROVIDER" | "ADMIN";
 
-export async function getServerSession() {
-  return auth.api.getSession({
-    headers: await headers()
+type Session = NonNullable<Awaited<ReturnType<typeof auth.api.getSession>>>;
+
+async function syncUserRole(session: Session) {
+  const resolvedRole = resolveRole(session.user.email);
+
+  if (session.user.role === resolvedRole) {
+    return { session, role: resolvedRole };
+  }
+
+  await prisma.user.update({
+    where: { id: session.user.id },
+    data: { role: resolvedRole }
   });
+
+  return {
+    session: {
+      ...session,
+      user: {
+        ...session.user,
+        role: resolvedRole
+      }
+    },
+    role: resolvedRole
+  };
 }
 
-export function getUserRole(session: NonNullable<Awaited<ReturnType<typeof getServerSession>>>) {
-  return (session.user.role ?? "FAMILY") as AppRole;
+export async function getServerSession() {
+  const session = await auth.api.getSession({
+    headers: await headers()
+  });
+
+  if (!session) {
+    return null;
+  }
+
+  const { session: syncedSession } = await syncUserRole(session);
+  return syncedSession;
+}
+
+export function getUserRole(session: Session) {
+  return resolveRole(session.user.email);
 }
 
 export async function requireSession(callbackUrl: string) {

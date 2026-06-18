@@ -4,34 +4,10 @@ import { dash } from "@better-auth/infra";
 import { nextCookies } from "better-auth/next-js";
 import { magicLink } from "better-auth/plugins";
 import { prisma } from "@/lib/db";
+import { isAdminEmail, resolveRole } from "@/lib/auth-roles";
 import { sendProviderMagicLinkEmail } from "@/lib/email/provider-magic-link";
 
 const appUrl = process.env.BETTER_AUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-
-function parseEmailList(value: string | undefined) {
-  return (value ?? "")
-    .split(",")
-    .map((email) => email.trim().toLowerCase())
-    .filter(Boolean);
-}
-
-function isAdminEmail(email: string) {
-  return parseEmailList(process.env.ADMIN_EMAILS).includes(email.trim().toLowerCase());
-}
-
-function resolveRole(email: string | undefined) {
-  const normalized = email?.toLowerCase();
-  if (!normalized) {
-    return "FAMILY";
-  }
-
-  if (parseEmailList(process.env.ADMIN_EMAILS).includes(normalized)) {
-    return "ADMIN";
-  }
-
-  // Open provider onboarding: any care facility Google account (non-admin) is a provider.
-  return "PROVIDER";
-}
 
 export const auth = betterAuth({
   secret: process.env.BETTER_AUTH_SECRET || "development-only-better-auth-secret-change-in-production",
