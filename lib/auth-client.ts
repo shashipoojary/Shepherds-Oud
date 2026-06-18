@@ -2,6 +2,7 @@
 
 import { createAuthClient } from "better-auth/react";
 import { inferAdditionalFields } from "better-auth/client/plugins";
+import { magicLinkClient } from "better-auth/client/plugins";
 import type { auth } from "@/lib/auth";
 
 function getBaseURL() {
@@ -18,5 +19,5 @@ function getBaseURL() {
 
 export const authClient = createAuthClient({
   baseURL: getBaseURL(),
-  plugins: [inferAdditionalFields<typeof auth>()]
+  plugins: [inferAdditionalFields<typeof auth>(), magicLinkClient()]
 });

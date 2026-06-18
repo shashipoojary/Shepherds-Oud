@@ -17,7 +17,7 @@ export default function ProviderLoginPage() {
           <p className="section-label">For care facilities</p>
           <h1 className="mt-2 text-2xl font-semibold text-ink">List your facility on Shepherds Oud</h1>
           <p className="mt-2 text-sm leading-relaxed text-ink/70">
-            Sign in with Google to create your facility profile, set availability, and receive enquiries from matched families.
+            Sign in with your work email or Google to manage your facility profile, availability, and family inquiries.
           </p>
 
           <div className="mt-6">
