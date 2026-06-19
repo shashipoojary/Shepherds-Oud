@@ -397,7 +397,7 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
               <div>
                 <h2 className="font-semibold text-ink">Family inquiries</h2>
                 <p className="mt-1 text-sm text-ink/60">
-                  When a family requests a visit or callback, accept or decline so they know you are interested. The care advisor can then coordinate.
+                  When a family requests a visit or callback, accept or decline so they know you are interested. Their Care Guide will then coordinate next steps.
                 </p>
               </div>
               {inquiries.length ? (

@@ -98,21 +98,21 @@ export function matchStatusBadgeClass(status: string) {
 }
 
 export function matchStatusHint(status: string, providerName: string) {
-  return familyMatchNextStep(status, providerName) || "This provider was matched to your request by a care advisor.";
+  return familyMatchNextStep(status, providerName) || "This provider was matched to your request by your Care Guide.";
 }
 
 export function familyMatchNextStep(status: string, providerName: string) {
   switch (status) {
     case "VISIT_REQUESTED":
-      return `You asked to visit ${providerName}. The facility will accept or decline, then your care advisor helps schedule.`;
+      return `You asked to visit ${providerName}. The facility will accept or decline, then your Care Guide helps schedule.`;
     case "CALLBACK_REQUESTED":
-      return `You asked ${providerName} to call you back. The facility will respond, then your care advisor follows up.`;
+      return `You asked ${providerName} to call you back. The facility will respond, then your Care Guide follows up.`;
     case "ACCEPTED":
-      return `${providerName} accepted your request. Your care advisor will contact you to arrange the visit or call.`;
+      return `${providerName} accepted your request. Your Care Guide will contact you to arrange the visit or call.`;
     case "CONTACTED":
-      return `Your care advisor coordinated with ${providerName}. Expect contact soon about timing and next steps.`;
+      return `Your Care Guide coordinated with ${providerName}. Expect contact soon about timing and next steps.`;
     case "PLACED":
-      return `Placement is in progress with ${providerName}. Your care advisor will share final details.`;
+      return `Placement is in progress with ${providerName}. Your Care Guide will share final details.`;
     case "DECLINED":
       return `${providerName} is not available for this request right now. View other matches on your shortlist.`;
     case "CLOSED":
@@ -180,11 +180,11 @@ export function providerInquiryBanner(status: string) {
     case "CALLBACK_REQUESTED":
       return "A family asked you to call them back. Accept if you can help, or decline if you are not available.";
     case "SUGGESTED":
-      return "Your care advisor matched this family to your facility. They may request a visit or callback soon.";
+      return "Shepherds Oud matched this family to your facility. They may request a visit or callback soon.";
     case "ACCEPTED":
-      return "You accepted this inquiry. A care advisor will contact you to coordinate next steps.";
+      return "You accepted this inquiry. The family's Care Guide will contact you to coordinate next steps.";
     case "CONTACTED":
-      return "Your care advisor is coordinating the visit or call with this family.";
+      return "The Care Guide is coordinating the visit or call with this family.";
     case "PLACED":
       return "Placement is in progress for this family at your facility.";
     default:
@@ -207,12 +207,12 @@ export function providerInquiryActionMessage(status: string, familyName: string,
   switch (status) {
     case "ACCEPTED":
       if (priorStatus === "VISIT_REQUESTED") {
-        return `You accepted the visit request from ${familyName}. A care advisor will help arrange timing with you.`;
+        return `You accepted the visit request from ${familyName}. Their Care Guide will help arrange timing with you.`;
       }
       if (priorStatus === "CALLBACK_REQUESTED") {
-        return `You accepted the callback request from ${familyName}. A care advisor will follow up to coordinate.`;
+        return `You accepted the callback request from ${familyName}. Their Care Guide will follow up to coordinate.`;
       }
-      return `You accepted the inquiry from ${familyName}. A care advisor will coordinate next steps with you.`;
+      return `You accepted the inquiry from ${familyName}. Their Care Guide will coordinate next steps with you.`;
     case "DECLINED":
       if (priorStatus === "VISIT_REQUESTED") {
         return `You declined the visit request from ${familyName}.`;
@@ -267,8 +267,11 @@ export function providerMatchNotes(notes: string | null | undefined) {
       if (line.startsWith("Family requested a callback")) {
         return line.replace("Family requested a callback", "Callback requested");
       }
+      if (line.startsWith("Care Guide coordinated")) {
+        return line;
+      }
       if (line.startsWith("Care advisor marked coordinated")) {
-        return line.replace("Care advisor marked coordinated", "Care advisor coordinated");
+        return line.replace("Care advisor marked coordinated", "Care Guide coordinated");
       }
       return line;
     })

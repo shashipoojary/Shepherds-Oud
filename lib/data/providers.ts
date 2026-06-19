@@ -48,7 +48,7 @@ export function mapProviderRecord(provider: ProviderRecord, score = 0): Provider
         ? { "Price range": `EUR ${provider.priceMin} - EUR ${provider.priceMax} per month` }
         : {})
     },
-    contact: ["Contact details will be shared after advisor review."]
+    contact: ["Contact details will be shared after your Care Guide reviews your request."]
   };
 }
 

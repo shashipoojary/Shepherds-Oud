@@ -3,6 +3,9 @@ import { prisma } from "@/lib/db";
 import { getServerSession, getUserRole } from "@/lib/auth-server";
 import { getUserLinkedProvider } from "@/lib/provider-server";
 import { updateMatchSchema } from "@/lib/validation/match";
+import { syncIntakeCaseFromMatch } from "@/lib/intake-case-sync";
+import { sendIntakeStatusEmail } from "@/lib/email/intake-status-email";
+import { normalizeIntakeStatus } from "@/lib/intake-workflow";
 import { familyRequestNote } from "@/lib/match-status";
 import {
   appendMatchNotes,
@@ -92,6 +95,38 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
             : {})
       }
     });
+
+    if (actor === "admin" && (nextStatus === "CONTACTED" || nextStatus === "PLACED")) {
+      const synced = await syncIntakeCaseFromMatch(existing.intakeId, nextStatus);
+      if (synced) {
+        const intake = await prisma.intake.findUnique({
+          where: { id: existing.intakeId },
+          select: {
+            id: true,
+            contactName: true,
+            email: true,
+            status: true,
+            carePathway: true,
+            careGuide: { select: { name: true, email: true } }
+          }
+        });
+
+        if (intake) {
+          try {
+            await sendIntakeStatusEmail({
+              contactName: intake.contactName,
+              email: intake.email,
+              intakeId: intake.id,
+              status: normalizeIntakeStatus(intake.status),
+              carePathway: intake.carePathway,
+              careGuide: intake.careGuide
+            });
+          } catch {
+            // Email is non-blocking.
+          }
+        }
+      }
+    }
 
     return NextResponse.json(match);
   } catch (error) {

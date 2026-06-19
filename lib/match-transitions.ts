@@ -62,7 +62,7 @@ export function matchStatusChangeNote(actor: MatchActor, status: MatchStatus) {
   }
 
   if (actor === "admin") {
-    if (status === "CONTACTED") return `Care advisor marked coordinated on ${when}.`;
+    if (status === "CONTACTED") return `Care Guide coordinated on ${when}.`;
     if (status === "PLACED") return `Placement recorded on ${when}.`;
     if (status === "CLOSED") return `Inquiry closed on ${when}.`;
     return null;

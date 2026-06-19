@@ -16,7 +16,7 @@ const bodyFont = DM_Sans({
 
 export const metadata: Metadata = {
   title: "Shepherds Oud",
-  description: "Finding the right care together. Nationwide eldercare matching for families, providers, and advisors in the Netherlands."
+  description: "Finding the right care together. Nationwide eldercare navigation for families, providers, and Care Guides in the Netherlands."
 };
 
 export const viewport: Viewport = {

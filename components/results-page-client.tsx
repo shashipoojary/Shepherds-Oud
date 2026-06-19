@@ -23,6 +23,7 @@ type IntakeMeta = {
   matchCount: number;
   careGuide?: { name: string; email: string } | null;
   carePathway?: string | null;
+  carePlanSummary?: string | null;
 };
 
 type PendingAction = {
@@ -126,7 +127,8 @@ export function ResultsPageClient() {
             status: intakeData.status,
             matchCount: intakeData.matchCount,
             careGuide: intakeData.careGuide ?? current.careGuide,
-            carePathway: intakeData.carePathway ?? current.carePathway
+            carePathway: intakeData.carePathway ?? current.carePathway,
+            carePlanSummary: intakeData.carePlanSummary ?? current.carePlanSummary
           };
           saveStoredIntake(updated);
           setIntake(updated);
@@ -176,7 +178,7 @@ export function ResultsPageClient() {
 
     if (!intake?.id || !provider.matchId) {
       setGlobalTone("error");
-      setGlobalMessage("This match is not ready for requests yet. Please check back after advisor review.");
+      setGlobalMessage("This match is not ready for requests yet. Please check back after your Care Guide completes your assessment.");
       return;
     }
 

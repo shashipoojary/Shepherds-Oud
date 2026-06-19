@@ -60,6 +60,13 @@ export function IntakeSummaryCard({
         </p>
       ) : null}
 
+      {intake.carePlanSummary ? (
+        <p className="mt-3 rounded-xl bg-brand-green-pale/20 px-4 py-3 text-sm leading-6 text-neutral-700">
+          <span className="font-medium text-ink">From your Care Guide: </span>
+          {intake.carePlanSummary}
+        </p>
+      ) : null}
+
       {hasMatches ? (
         <p className="mt-3 text-sm font-medium text-brand-green-dark">
           {intake.matchCount} provider match{intake.matchCount === 1 ? "" : "es"} on your shortlist.

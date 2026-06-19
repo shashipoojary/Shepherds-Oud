@@ -21,6 +21,7 @@ export type StoredIntake = {
   matchCount?: number;
   careGuide?: CareGuideInfo | null;
   carePathway?: string | null;
+  carePlanSummary?: string | null;
   submittedAt: string;
 };
 

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { sendBrevoEmail } from "@/lib/email/brevo";
 import { resolveDefaultCareGuideId } from "@/lib/care-guide";
+import { normalizeIntakeStatus } from "@/lib/intake-workflow";
 import { intakeSchema } from "@/lib/validation/intake";
 
 export async function POST(request: Request) {
@@ -22,7 +23,8 @@ export async function POST(request: Request) {
   const intake = await prisma.intake.create({
     data: {
       ...parsed.data,
-      careGuideId
+      careGuideId,
+      status: careGuideId ? "ASSESSMENT" : "NEW"
     },
     include: {
       careGuide: { select: { name: true, email: true } }
@@ -34,7 +36,7 @@ export async function POST(request: Request) {
   return NextResponse.json(
     {
       id: intake.id,
-      status: intake.status,
+      status: normalizeIntakeStatus(intake.status),
       careGuide: intake.careGuide
         ? { name: intake.careGuide.name || "Your Care Guide", email: intake.careGuide.email }
         : null,
@@ -64,7 +66,7 @@ async function notifyIntake(
     }),
     advisorEmail
       ? sendBrevoEmail({
-          to: [{ email: advisorEmail, name: "Shepherds Oud advisor" }],
+          to: [{ email: advisorEmail, name: "Shepherds Oud Care Guide team" }],
           subject: `New care intake: ${name}`,
           htmlContent: `<p>A new intake was submitted by ${name}.</p><p>Reference: <strong>${intakeId}</strong></p>`,
           textContent: `A new intake was submitted by ${name}. Reference: ${intakeId}.`

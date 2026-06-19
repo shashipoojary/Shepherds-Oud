@@ -70,7 +70,7 @@ export function ProviderDetailActions({ providerId, providerName }: { providerId
 
     if (!matchId) {
       setMessageTone("error");
-      setMessage("This provider has not been matched to your request yet. A care advisor will publish matches first.");
+      setMessage("This provider has not been matched to your request yet. Your Care Guide will publish matches first.");
       return;
     }
 
@@ -135,7 +135,7 @@ export function ProviderDetailActions({ providerId, providerName }: { providerId
         <ActionFeedback
           tone="info"
           className="mt-4"
-          message="Contact requests open once a care advisor matches this provider to your intake."
+          message="Contact requests open once your Care Guide matches this provider to your intake."
         />
       ) : inProgress && matchStatus ? (
         <ActionFeedback tone="success" className="mt-4" message={familyMatchNextStep(matchStatus, providerName)} />

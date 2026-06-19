@@ -8,6 +8,7 @@ import {
   normalizeIntakeStatus,
   type IntakeStatus
 } from "@/lib/intake-workflow";
+import { sendIntakeStatusEmail } from "@/lib/email/intake-status-email";
 import { intakeSchema } from "@/lib/validation/intake";
 import { adminIntakeUpdateSchema } from "@/lib/validation/intake-admin";
 
@@ -27,6 +28,7 @@ const familyIntakeSelect = {
   urgency: true,
   ageRange: true,
   carePathway: true,
+  carePlanSummary: true,
   createdAt: true,
   careGuide: {
     select: {
@@ -123,15 +125,34 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         select: {
           id: true,
           status: true,
+          contactName: true,
+          email: true,
           careGuideId: true,
           carePathway: true,
           assessmentNotes: true,
           carePlanSummary: true,
-          visitScheduledAt: true
+          visitScheduledAt: true,
+          careGuide: { select: { name: true, email: true } }
         }
       });
 
-      return NextResponse.json({ ...intake, status: normalizeIntakeStatus(intake.status) });
+      const normalizedStatus = normalizeIntakeStatus(intake.status);
+      if (nextStatus && nextStatus !== currentStatus) {
+        try {
+          await sendIntakeStatusEmail({
+            contactName: intake.contactName,
+            email: intake.email,
+            intakeId: intake.id,
+            status: normalizedStatus,
+            carePathway: intake.carePathway,
+            careGuide: intake.careGuide
+          });
+        } catch {
+          // Email is non-blocking.
+        }
+      }
+
+      return NextResponse.json({ ...intake, status: normalizedStatus });
     }
 
     const parsed = intakeSchema.safeParse(body);

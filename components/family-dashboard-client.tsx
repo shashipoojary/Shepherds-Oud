@@ -32,13 +32,15 @@ export function FamilyDashboardClient() {
           matchCount?: number;
           careGuide?: { name: string; email: string } | null;
           carePathway?: string | null;
+          carePlanSummary?: string | null;
         };
         const updated: StoredIntake = {
           ...stored,
           status: data.status,
           matchCount: data.matchCount ?? 0,
           careGuide: data.careGuide ?? stored.careGuide,
-          carePathway: data.carePathway ?? stored.carePathway
+          carePathway: data.carePathway ?? stored.carePathway,
+          carePlanSummary: data.carePlanSummary ?? stored.carePlanSummary
         };
         saveStoredIntake(updated);
         setIntake(updated);
