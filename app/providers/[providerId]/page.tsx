@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { SiteHeader } from "@/components/site-header";
-import { ProviderDetailActions } from "@/components/provider-detail-actions";
+import { SiteHeader } from "@/components/layout/site-header";
+import { ProviderDetailActions } from "@/components/provider/detail-actions";
 import { availabilityBadgeVariant, Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { getProviderById } from "@/lib/data/providers";

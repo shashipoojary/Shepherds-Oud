@@ -1,7 +1,7 @@
-import { prisma } from "@/lib/db";
+import { prisma } from "@/lib/core/db";
 import { mapProviderRecord } from "@/lib/data/providers";
-import { familyVisibleMatchStatuses } from "@/lib/match-status";
-import type { ProviderMatch } from "@/lib/types";
+import { familyVisibleMatchStatuses } from "@/lib/domain/match-status";
+import type { ProviderMatch } from "@/lib/core/types";
 
 export async function getMatchesForIntake(intakeId: string): Promise<ProviderMatch[]> {
   const matches = await prisma.match.findMany({

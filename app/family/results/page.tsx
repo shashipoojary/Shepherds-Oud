@@ -1,5 +1,5 @@
-import { SiteHeader } from "@/components/site-header";
-import { ResultsPageClient } from "@/components/results-page-client";
+import { SiteHeader } from "@/components/layout/site-header";
+import { ResultsPageClient } from "@/components/family/results-page-client";
 
 export default function ResultsPage() {
   return (

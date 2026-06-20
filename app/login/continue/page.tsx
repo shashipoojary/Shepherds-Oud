@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
-import { getServerSession } from "@/lib/auth-server";
-import { isAdminEmail, resolveRole } from "@/lib/auth-roles";
-import { postLoginHref, PROVIDER_DASHBOARD_PATH } from "@/lib/auth-routes";
-import { prisma } from "@/lib/db";
+import { getServerSession } from "@/lib/auth/server";
+import { isAdminEmail, resolveRole } from "@/lib/auth/roles";
+import { postLoginHref, PROVIDER_DASHBOARD_PATH } from "@/lib/auth/routes";
+import { prisma } from "@/lib/core/db";
 
 export const dynamic = "force-dynamic";
 

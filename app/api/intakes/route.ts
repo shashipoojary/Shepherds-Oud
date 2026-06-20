@@ -1,10 +1,10 @@
 import { sendBrevoEmail } from "@/lib/email/brevo";
-import { ubuntuTagline } from "@/lib/content";
-import { isPrelaunch } from "@/lib/prelaunch";
-import { resolveDefaultCareGuideId } from "@/lib/care-guide";
-import { normalizeIntakeStatus } from "@/lib/intake-workflow";
+import { ubuntuTagline } from "@/lib/config/content";
+import { isPrelaunch } from "@/lib/config/prelaunch";
+import { resolveDefaultCareGuideId } from "@/lib/domain/care-guide";
+import { normalizeIntakeStatus } from "@/lib/domain/intake-workflow";
 import { intakeSchema } from "@/lib/validation/intake";
-import { handleApiError, jsonError, jsonOk, rateLimitResponse, readJsonBody, runInBackground } from "@/lib/api-helpers";
+import { handleApiError, jsonError, jsonOk, rateLimitResponse, readJsonBody, runInBackground } from "@/lib/core/api-helpers";
 
 export const runtime = "nodejs";
 
@@ -46,7 +46,7 @@ export async function POST(request: Request) {
       return jsonOk({ id: "demo-intake", status: "CARE_GUIDE_ASSIGNED", mode: "demo" }, 201);
     }
 
-    const { prisma } = await import("@/lib/db");
+    const { prisma } = await import("@/lib/core/db");
     const careGuideId = await resolveDefaultCareGuideId();
 
     const intake = await prisma.intake.create({

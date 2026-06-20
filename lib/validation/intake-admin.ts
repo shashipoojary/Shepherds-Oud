@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { CARE_PATHWAYS } from "@/lib/care-pathways";
-import { INTAKE_STATUSES } from "@/lib/intake-workflow";
+import { CARE_PATHWAYS } from "@/lib/domain/care-pathways";
+import { INTAKE_STATUSES } from "@/lib/domain/intake-workflow";
 
 export const adminIntakeUpdateSchema = z.object({
   status: z.enum(INTAKE_STATUSES).optional(),

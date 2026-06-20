@@ -1,10 +1,10 @@
 import { Prisma } from "@prisma/client";
 import { headers } from "next/headers";
-import { auth } from "@/lib/auth";
+import { auth } from "@/lib/auth/config";
 import { sendBrevoEmail } from "@/lib/email/brevo";
-import { getUserRole } from "@/lib/auth-server";
+import { getUserRole } from "@/lib/auth/server";
 import { actionSchema } from "@/lib/validation/action";
-import { handleApiError, jsonError, jsonOk, readJsonBody, runInBackground } from "@/lib/api-helpers";
+import { handleApiError, jsonError, jsonOk, readJsonBody, runInBackground } from "@/lib/core/api-helpers";
 
 export const runtime = "nodejs";
 
@@ -36,7 +36,7 @@ export async function POST(request: Request) {
       return jsonOk({ id: `demo-${Date.now()}`, mode: "demo", action: parsed.data }, 201);
     }
 
-    const { prisma } = await import("@/lib/db");
+    const { prisma } = await import("@/lib/core/db");
     const action = await prisma.actionLog.create({
       data: {
         type: parsed.data.type,

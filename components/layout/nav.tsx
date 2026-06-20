@@ -3,14 +3,14 @@
 import dynamic from "next/dynamic";
 import { Menu } from "lucide-react";
 import { useEffect, useState } from "react";
-import { BrandLogo } from "@/components/brand-logo";
-import { MobileNavDrawer } from "@/components/mobile-nav-drawer";
+import { BrandLogo } from "@/components/shared/brand-logo";
+import { MobileNavDrawer } from "@/components/layout/mobile-nav-drawer";
 
-const AuthHeaderActions = dynamic(() => import("@/components/auth-user-menu").then((module) => module.AuthHeaderActions), {
+const AuthHeaderActions = dynamic(() => import("@/components/auth/user-menu").then((module) => module.AuthHeaderActions), {
   ssr: false
 });
 
-const MobileNavProfile = dynamic(() => import("@/components/auth-user-menu").then((module) => module.MobileNavProfile), {
+const MobileNavProfile = dynamic(() => import("@/components/auth/user-menu").then((module) => module.MobileNavProfile), {
   ssr: false
 });
 

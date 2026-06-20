@@ -1,14 +1,14 @@
 import Link from "next/link";
 import { ArrowRight, CalendarDays, ClipboardList, Home, Inbox, UserCheck, Users } from "lucide-react";
-import { SiteFooter } from "@/components/site-footer";
-import { SiteHeader } from "@/components/site-header";
+import { SiteFooter } from "@/components/layout/site-footer";
+import { SiteHeader } from "@/components/layout/site-header";
 import { Button } from "@/components/ui/button";
 import { ButtonRow } from "@/components/ui/button-row";
 import { Card } from "@/components/ui/card";
 import { SectionHeader } from "@/components/ui/section-header";
-import { brand } from "@/lib/brand";
-import { homeContent, isPrelaunch, ubuntuTagline } from "@/lib/content";
-import { publicRoutes } from "@/lib/prelaunch";
+import { brand } from "@/lib/config/brand";
+import { homeContent, isPrelaunch, ubuntuTagline } from "@/lib/config/content";
+import { publicRoutes } from "@/lib/config/prelaunch";
 
 const providerSteps = [
   { icon: UserCheck, ...homeContent.providerSteps[0] },

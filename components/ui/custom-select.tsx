@@ -2,7 +2,7 @@
 
 import { Check, ChevronDown } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/core/utils";
 
 type CustomSelectProps = {
   label?: string;

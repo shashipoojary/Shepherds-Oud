@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { SiteHeader } from "@/components/site-header";
-import { AuthLoginForm } from "@/components/auth-login-form";
+import { SiteHeader } from "@/components/layout/site-header";
+import { AuthLoginForm } from "@/components/auth/login-form";
 import { Button } from "@/components/ui/button";
 
 export const metadata = {

@@ -1,8 +1,8 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { getSessionCookie } from "better-auth/cookies";
-import { isFamilyFlowPath, isPrelaunch, prelaunchFamilyRedirect } from "@/lib/prelaunch";
-import { securityHeaders } from "@/lib/security-headers";
+import { isFamilyFlowPath, isPrelaunch, prelaunchFamilyRedirect } from "@/lib/config/prelaunch";
+import { securityHeaders } from "@/lib/core/security-headers";
 
 const publicProviderPaths = new Set(["/provider/login"]);
 

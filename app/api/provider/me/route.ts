@@ -1,8 +1,8 @@
-import { getServerSession, getUserRole } from "@/lib/auth-server";
-import { logError } from "@/lib/logger";
-import { handleApiError, jsonError, jsonOk, readJsonBody } from "@/lib/api-helpers";
-import { providerSaveErrorMessage } from "@/lib/provider-errors";
-import { getProviderInquiries, getUserLinkedProvider, upsertProviderForUser } from "@/lib/provider-server";
+import { getServerSession, getUserRole } from "@/lib/auth/server";
+import { logError } from "@/lib/core/logger";
+import { handleApiError, jsonError, jsonOk, readJsonBody } from "@/lib/core/api-helpers";
+import { providerSaveErrorMessage } from "@/lib/providers/errors";
+import { getProviderInquiries, getUserLinkedProvider, upsertProviderForUser } from "@/lib/providers/server";
 import { providerProfileSchema } from "@/lib/validation/provider";
 
 export const runtime = "nodejs";

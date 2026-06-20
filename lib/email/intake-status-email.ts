@@ -1,6 +1,6 @@
 import { sendBrevoEmail } from "@/lib/email/brevo";
 import { renderTransactionalEmail } from "@/lib/email/transactional-template";
-import { intakeStatusLabel, normalizeIntakeStatus } from "@/lib/intake-workflow";
+import { intakeStatusLabel, normalizeIntakeStatus } from "@/lib/domain/intake-workflow";
 
 const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.BETTER_AUTH_URL || "https://shepherds-oud.vercel.app";
 

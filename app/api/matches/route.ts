@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { prisma } from "@/lib/core/db";
 import { getMatchesForIntake } from "@/lib/data/matches";
-import { getServerSession, getUserRole } from "@/lib/auth-server";
-import { canCreateMatches, normalizeIntakeStatus } from "@/lib/intake-workflow";
+import { getServerSession, getUserRole } from "@/lib/auth/server";
+import { canCreateMatches, normalizeIntakeStatus } from "@/lib/domain/intake-workflow";
 import { createMatchSchema } from "@/lib/validation/match";
-import { handleApiError, jsonError, jsonOk, rateLimitResponse, readJsonBody } from "@/lib/api-helpers";
+import { handleApiError, jsonError, jsonOk, rateLimitResponse, readJsonBody } from "@/lib/core/api-helpers";
 
 export const runtime = "nodejs";
 

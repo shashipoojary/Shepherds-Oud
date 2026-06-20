@@ -1,5 +1,5 @@
-import { SiteHeader } from "@/components/site-header";
-import { WaitlistForm } from "@/components/waitlist-form";
+import { SiteHeader } from "@/components/layout/site-header";
+import { WaitlistForm } from "@/components/register/waitlist-form";
 
 export default function FacilityRegisterPage() {
   return (

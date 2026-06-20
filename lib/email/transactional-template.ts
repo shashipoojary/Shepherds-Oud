@@ -1,4 +1,4 @@
-import { brand } from "@/lib/brand";
+import { brand } from "@/lib/config/brand";
 
 const colors = {
   cream: "#f7f4f0",

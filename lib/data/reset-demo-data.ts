@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/db";
+import { prisma } from "@/lib/core/db";
 
 export async function resetOperationalData() {
   return prisma.$transaction(async (tx) => {

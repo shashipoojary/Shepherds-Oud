@@ -1,6 +1,6 @@
-import { SiteHeader } from "@/components/site-header";
-import { WaitlistForm } from "@/components/waitlist-form";
-import { isPrelaunch } from "@/lib/prelaunch";
+import { SiteHeader } from "@/components/layout/site-header";
+import { WaitlistForm } from "@/components/register/waitlist-form";
+import { isPrelaunch } from "@/lib/config/prelaunch";
 
 export default function FamilyRegisterPage() {
   return (

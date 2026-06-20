@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getServerSession, getUserRole } from "@/lib/auth-server";
+import { getServerSession, getUserRole } from "@/lib/auth/server";
 import { resetOperationalData } from "@/lib/data/reset-demo-data";
 
 export async function POST() {

@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { SiteHeader } from "@/components/site-header";
+import { SiteHeader } from "@/components/layout/site-header";
 import { Button } from "@/components/ui/button";
 import { ButtonLabel } from "@/components/ui/button-label";
 import { ButtonRow } from "@/components/ui/button-row";
-import { isPrelaunch, publicRoutes } from "@/lib/prelaunch";
+import { isPrelaunch, publicRoutes } from "@/lib/config/prelaunch";
 
 export default async function RegisterSuccessPage({ searchParams }: { searchParams: Promise<{ type?: string }> }) {
   const params = await searchParams;

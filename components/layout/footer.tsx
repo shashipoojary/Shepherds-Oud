@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { BrandLogo } from "@/components/brand-logo";
-import { brand } from "@/lib/brand";
-import { isPrelaunch } from "@/lib/content";
-import { publicRoutes } from "@/lib/prelaunch";
+import { BrandLogo } from "@/components/shared/brand-logo";
+import { brand } from "@/lib/config/brand";
+import { isPrelaunch } from "@/lib/config/content";
+import { publicRoutes } from "@/lib/config/prelaunch";
 
 const links = isPrelaunch
   ? [

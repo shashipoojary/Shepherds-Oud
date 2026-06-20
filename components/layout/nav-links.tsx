@@ -1,9 +1,9 @@
 "use client";
 
-import { authClient } from "@/lib/auth-client";
-import type { AppRole } from "@/lib/auth-server";
-import { buildNavItems } from "@/lib/auth-routes";
-import { LoadingLink } from "@/components/loading-link";
+import { authClient } from "@/lib/auth/client";
+import type { AppRole } from "@/lib/auth/server";
+import { buildNavItems } from "@/lib/auth/routes";
+import { LoadingLink } from "@/components/shared/loading-link";
 
 type RoleAwareNavProps = {
   variant?: "desktop" | "mobile";

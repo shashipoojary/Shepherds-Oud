@@ -1,6 +1,7 @@
-import { prisma } from "@/lib/db";
-import { compareMatchPriority } from "@/lib/match-status";
-import { normalizeIntakeStatus } from "@/lib/intake-workflow";
+import { prisma } from "@/lib/core/db";
+import { displayVisitAvailability } from "@/lib/config/content";
+import { compareMatchPriority } from "@/lib/domain/match-status";
+import { normalizeIntakeStatus } from "@/lib/domain/intake-workflow";
 
 export async function getAdminDashboardData() {
   const [statusGroups, providerCount, intakes, providers, matches, waitlist, careGuides] = await Promise.all([
@@ -164,6 +165,7 @@ export async function getAdminDashboardData() {
       relationship: intake.relationship,
       context: `For loved one, ${intake.ageRange}`,
       care: intake.careTypes.join(", ") || "Not specified",
+      careTypes: intake.careTypes,
       location: intake.preferredArea,
       urgency: intake.urgency,
       budget: intake.budget,
@@ -222,7 +224,7 @@ export async function getAdminDashboardData() {
       dementiaCapacity: provider.dementiaCapacity,
       fundingTypes: provider.fundingTypes,
       responseTimeHours: provider.responseTimeHours,
-      visitAvailability: provider.visitAvailability,
+      visitAvailability: displayVisitAvailability(provider.visitAvailability),
       priceMin: provider.priceMin,
       priceMax: provider.priceMax,
       createdAt: provider.createdAt.toLocaleDateString("en-GB"),

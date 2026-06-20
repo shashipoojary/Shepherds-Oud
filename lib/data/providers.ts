@@ -1,5 +1,6 @@
-import { prisma } from "@/lib/db";
-import type { ProviderMatch } from "@/lib/types";
+import { prisma } from "@/lib/core/db";
+import { displayVisitAvailability } from "@/lib/config/content";
+import type { ProviderMatch } from "@/lib/core/types";
 
 type ProviderRecord = {
   id: string;
@@ -54,7 +55,7 @@ export function mapProviderRecord(provider: ProviderRecord, score = 0): Provider
       ...(provider.waitlistText ? { Waitlist: provider.waitlistText } : {}),
       ...(provider.dementiaCapacity ? { "Dementia capacity": provider.dementiaCapacity } : {}),
       ...(provider.fundingTypes.length ? { "Funding types": provider.fundingTypes.join(", ") } : {}),
-      ...(provider.visitAvailability ? { "Visit availability": provider.visitAvailability } : {}),
+      "Visit availability": displayVisitAvailability(provider.visitAvailability),
       ...(provider.priceMin && provider.priceMax
         ? { "Price range": `EUR ${provider.priceMin} - EUR ${provider.priceMax} per month` }
         : {})

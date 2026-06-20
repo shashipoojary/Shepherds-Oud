@@ -1,6 +1,6 @@
 import { cva, type VariantProps } from "class-variance-authority";
 import type { HTMLAttributes } from "react";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/core/utils";
 
 const badgeVariants = cva("inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold", {
   variants: {

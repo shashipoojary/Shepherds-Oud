@@ -1,19 +1,19 @@
-import { prisma } from "@/lib/db";
-import { getServerSession, getUserRole } from "@/lib/auth-server";
-import { getUserLinkedProvider } from "@/lib/provider-server";
+import { prisma } from "@/lib/core/db";
+import { getServerSession, getUserRole } from "@/lib/auth/server";
+import { getUserLinkedProvider } from "@/lib/providers/server";
 import { updateMatchSchema } from "@/lib/validation/match";
-import { syncIntakeCaseFromMatch } from "@/lib/intake-case-sync";
+import { syncIntakeCaseFromMatch } from "@/lib/domain/intake-case-sync";
 import { sendIntakeStatusEmail } from "@/lib/email/intake-status-email";
-import { normalizeIntakeStatus } from "@/lib/intake-workflow";
-import { familyRequestNote } from "@/lib/match-status";
-import { handleApiError, jsonError, jsonOk, readJsonBody, runInBackground } from "@/lib/api-helpers";
+import { normalizeIntakeStatus } from "@/lib/domain/intake-workflow";
+import { familyRequestNote } from "@/lib/domain/match-status";
+import { handleApiError, jsonError, jsonOk, readJsonBody, runInBackground } from "@/lib/core/api-helpers";
 import {
   appendMatchNotes,
   canTransitionMatchStatus,
   matchStatusChangeNote,
   type MatchActor,
   type MatchStatus
-} from "@/lib/match-transitions";
+} from "@/lib/domain/match-transitions";
 
 const guestFamilyStatuses = ["VISIT_REQUESTED", "CALLBACK_REQUESTED"] as const;
 const providerStatuses = ["ACCEPTED", "DECLINED"] as const;

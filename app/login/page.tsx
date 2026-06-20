@@ -1,8 +1,8 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { SiteHeader } from "@/components/site-header";
-import { AuthLoginForm } from "@/components/auth-login-form";
-import { isPrelaunch, publicRoutes } from "@/lib/prelaunch";
+import { SiteHeader } from "@/components/layout/site-header";
+import { AuthLoginForm } from "@/components/auth/login-form";
+import { isPrelaunch, publicRoutes } from "@/lib/config/prelaunch";
 
 export default function LoginPage() {
   return (

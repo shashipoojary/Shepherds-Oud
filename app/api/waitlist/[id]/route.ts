@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { requireRole } from "@/lib/auth-server";
+import { prisma } from "@/lib/core/db";
+import { requireRole } from "@/lib/auth/server";
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {

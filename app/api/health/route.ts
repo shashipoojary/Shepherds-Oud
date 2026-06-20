@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { getEnvHealth } from "@/lib/env";
+import { prisma } from "@/lib/core/db";
+import { getEnvHealth } from "@/lib/config/env";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";

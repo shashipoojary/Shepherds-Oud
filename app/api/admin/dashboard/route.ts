@@ -1,6 +1,6 @@
 import { getAdminDashboardData } from "@/lib/data/admin";
-import { getServerSession, getUserRole } from "@/lib/auth-server";
-import { handleApiError, jsonError, jsonOk } from "@/lib/api-helpers";
+import { getServerSession, getUserRole } from "@/lib/auth/server";
+import { handleApiError, jsonError, jsonOk } from "@/lib/core/api-helpers";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

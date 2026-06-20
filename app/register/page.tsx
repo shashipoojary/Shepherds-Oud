@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { SiteHeader } from "@/components/site-header";
+import { SiteHeader } from "@/components/layout/site-header";
 import { Button } from "@/components/ui/button";
-import { homeContent } from "@/lib/content";
+import { homeContent } from "@/lib/config/content";
 
 export default function RegisterPage() {
   return (

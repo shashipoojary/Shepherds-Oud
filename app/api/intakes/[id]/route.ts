@@ -1,16 +1,16 @@
-import { prisma } from "@/lib/db";
+import { prisma } from "@/lib/core/db";
 import { countVisibleMatchesForIntake } from "@/lib/data/matches";
-import { getServerSession, getUserRole } from "@/lib/auth-server";
+import { getServerSession, getUserRole } from "@/lib/auth/server";
 import {
   assessmentComplete,
   canTransitionIntakeStatus,
   carePlanComplete,
   followUpTimestampField,
   normalizeIntakeStatus
-} from "@/lib/intake-workflow";
+} from "@/lib/domain/intake-workflow";
 import { sendIntakeStatusEmail } from "@/lib/email/intake-status-email";
-import { handleApiError, jsonError, jsonOk, rateLimitResponse, readJsonBody, runInBackground } from "@/lib/api-helpers";
-import { isPrelaunch } from "@/lib/prelaunch";
+import { handleApiError, jsonError, jsonOk, rateLimitResponse, readJsonBody, runInBackground } from "@/lib/core/api-helpers";
+import { isPrelaunch } from "@/lib/config/prelaunch";
 import { intakeSchema } from "@/lib/validation/intake";
 import { adminIntakeUpdateSchema } from "@/lib/validation/intake-admin";
 

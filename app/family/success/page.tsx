@@ -1,5 +1,5 @@
-import { SiteHeader } from "@/components/site-header";
-import { FamilySuccessClient } from "@/components/family-success-client";
+import { SiteHeader } from "@/components/layout/site-header";
+import { FamilySuccessClient } from "@/components/family/success-client";
 
 export default function SuccessPage() {
   return (

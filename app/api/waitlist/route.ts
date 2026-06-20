@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { sendBrevoEmail } from "@/lib/email/brevo";
 import { waitlistSchema } from "@/lib/validation/waitlist";
-import { handleApiError, jsonError, jsonOk, rateLimitResponse, readJsonBody, runInBackground } from "@/lib/api-helpers";
+import { handleApiError, jsonError, jsonOk, rateLimitResponse, readJsonBody, runInBackground } from "@/lib/core/api-helpers";
 
 export const runtime = "nodejs";
 
@@ -25,7 +25,7 @@ export async function POST(request: Request) {
       return jsonOk({ id: "demo-waitlist", mode: "demo" }, 201);
     }
 
-    const { prisma } = await import("@/lib/db");
+    const { prisma } = await import("@/lib/core/db");
     const entry = await prisma.waitlistEntry.create({ data: parsed.data });
 
     void runInBackground(

@@ -1,5 +1,5 @@
-import { SiteHeader } from "@/components/site-header";
-import { IntakeForm } from "@/components/intake-form";
+import { SiteHeader } from "@/components/layout/site-header";
+import { IntakeForm } from "@/components/family/intake-form";
 
 export const dynamic = "force-dynamic";
 
