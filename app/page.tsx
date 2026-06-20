@@ -3,6 +3,7 @@ import { ArrowRight, CalendarDays, ClipboardList, Home, Inbox, UserCheck, Users 
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
 import { Button } from "@/components/ui/button";
+import { ButtonLabel } from "@/components/ui/button-label";
 import { ButtonRow } from "@/components/ui/button-row";
 import { Card } from "@/components/ui/card";
 import { SectionHeader } from "@/components/ui/section-header";
@@ -37,14 +38,19 @@ export default function HomePage() {
                 : "Shepherds Oud connects families with a dedicated Care Guide and matched eldercare providers."}
             </p>
             <p className="mx-auto mt-3 max-w-[560px] text-body text-ink/70">{heroIntro}</p>
-            <ButtonRow className="mx-auto mt-8 max-w-md" columns={isPrelaunch ? 1 : 2}>
-              <Button asChild size="lg" className="w-full">
-                <Link href={primaryHref}>
-                  {primaryLabel} <ArrowRight className="h-4 w-4 shrink-0" />
+            <ButtonRow className="mx-auto mt-8 max-w-lg" columns={isPrelaunch ? 1 : 2}>
+              <Button asChild className="w-full">
+                <Link href={primaryHref} className="inline-flex items-center justify-center gap-1.5">
+                  {isPrelaunch ? (
+                    primaryLabel
+                  ) : (
+                    <ButtonLabel short="Start intake">{primaryLabel}</ButtonLabel>
+                  )}
+                  <ArrowRight className="h-3.5 w-3.5 shrink-0" />
                 </Link>
               </Button>
               {!isPrelaunch ? (
-                <Button asChild variant="outline" size="lg" className="w-full">
+                <Button asChild variant="outline" className="w-full">
                   <Link href={publicRoutes.waitlist}>Join the waitlist</Link>
                 </Button>
               ) : null}
