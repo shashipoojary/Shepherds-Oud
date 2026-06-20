@@ -23,6 +23,7 @@ import {
 } from "@/lib/domain/match-status";
 import { sanitizeClientErrorMessage } from "@/lib/providers/errors";
 import { recordAction } from "@/lib/client/actions";
+import { cn } from "@/lib/core/utils";
 
 type ProviderRecord = {
   id: string;
@@ -462,7 +463,7 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
       />
 
       <div className="mt-5 grid gap-5 xl:grid-cols-[1fr_420px]">
-        <section className="flex min-h-0 flex-col rounded-card border border-[var(--card-border)] bg-white p-5 shadow-soft">
+        <section className="flex min-h-0 flex-col rounded-card bg-white p-4 shadow-soft ring-1 ring-stone-200 sm:p-5">
           <div className="shrink-0">
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -484,62 +485,63 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
                 {sortedInquiries.map((inquiry) => {
                 const needsResponse = isProviderActionNeeded(inquiry.status);
                 const isAccepted = inquiry.status === "ACCEPTED";
-                const isDeclined = inquiry.status === "DECLINED" || inquiry.status === "CLOSED";
+                const isDeclined = inquiry.status === "DECLINED";
+                const isClosed = inquiry.status === "CLOSED";
+                const isCoordinating = inquiry.status === "CONTACTED";
+                const isPlaced = inquiry.status === "PLACED";
                 const isPending = pendingInquiryId === inquiry.id;
                 const cardFeedback = inquiryFeedback[inquiry.id];
                 const banner = providerInquiryBanner(inquiry.status);
                 const activityNotes = providerMatchNotes(inquiry.notes);
+                const cardTone =
+                  inquiry.status === "VISIT_REQUESTED" || inquiry.status === "CALLBACK_REQUESTED"
+                    ? "ring-brand-amber/40 bg-brand-amber/5"
+                    : needsResponse
+                      ? "ring-brand-amber/30 bg-brand-amber/[0.03]"
+                      : isAccepted || isCoordinating || isPlaced
+                        ? "ring-brand-green-pale/80 bg-brand-green-pale/10"
+                        : isDeclined || isClosed
+                          ? "ring-stone-200 bg-stone-50/80"
+                          : "ring-stone-200 bg-white";
 
                 return (
-                  <article
-                    key={inquiry.id}
-                    className={`rounded-card border p-4 ${
-                      inquiry.status === "VISIT_REQUESTED" || inquiry.status === "CALLBACK_REQUESTED"
-                        ? "border-brand-amber/50 bg-brand-amber/8"
-                        : needsResponse
-                          ? "border-brand-amber/40 bg-brand-amber/5"
-                          : isAccepted
-                            ? "border-brand-green-pale bg-brand-green-pale/15"
-                            : isDeclined
-                              ? "border-stone-200 bg-stone-50"
-                              : "border-[var(--card-border)]"
-                    }`}
-                  >
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
+                  <article key={inquiry.id} className={cn("rounded-xl p-4 ring-1", cardTone)}>
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="min-w-0">
                         <p className="font-semibold text-ink">{inquiry.intake.contactName}</p>
                         <p className="mt-1 text-sm text-ink/70">
                           {inquiry.intake.preferredArea} · {inquiry.intake.careTypes.join(", ")}
                         </p>
                         <p className="mt-1 text-sm text-ink/55">
-                          Urgency: {inquiry.intake.urgency} · Age: {inquiry.intake.ageRange}
+                          {inquiry.intake.urgency} · Age {inquiry.intake.ageRange}
                         </p>
-                        <p className="mt-2 text-sm text-ink/70">
+                        <p className="mt-2 break-all text-sm text-ink/70">
                           {inquiry.intake.phone} · {inquiry.intake.email}
                         </p>
                       </div>
-                      <span className={`rounded px-3 py-1 text-xs font-semibold ${matchStatusBadgeClass(inquiry.status)}`}>
-                        {inquiry.score}% match · {providerInquiryStatusLabel(inquiry.status)}
-                      </span>
+                      <div className="flex shrink-0 flex-col items-start gap-1.5 sm:items-end">
+                        <span className={cn("inline-flex whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold", matchStatusBadgeClass(inquiry.status))}>
+                          {inquiry.score}% match
+                        </span>
+                        <span className="text-xs font-medium text-ink/60">{providerInquiryStatusLabel(inquiry.status)}</span>
+                      </div>
                     </div>
 
-                    {banner ? (
-                      <p className="mt-3 rounded-lg bg-white/80 px-3 py-2 text-sm text-ink/75">{banner}</p>
-                    ) : null}
+                    {banner ? <p className="mt-3 text-sm leading-6 text-ink/75">{banner}</p> : null}
 
                     {activityNotes ? (
-                      <p className="mt-3 rounded-lg bg-brand-cream px-3 py-2 text-xs leading-5 text-ink/65 whitespace-pre-line">
-                        {activityNotes}
-                      </p>
+                      <div className="mt-3 border-t border-stone-200/80 pt-3">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Activity</p>
+                        <p className="mt-1.5 whitespace-pre-line text-xs leading-5 text-ink/65">{activityNotes}</p>
+                      </div>
                     ) : null}
 
                     {cardFeedback ? (
                       <p
-                        className={`mt-3 rounded-lg px-3 py-2 text-sm ${
-                          cardFeedback.startsWith("Could not")
-                            ? "bg-brand-beige-light/50 text-brand-amber-dark"
-                            : "bg-brand-green-pale/30 text-brand-green-dark"
-                        }`}
+                        className={cn(
+                          "mt-3 text-sm leading-6",
+                          cardFeedback.startsWith("Could not") ? "text-brand-amber-dark" : "text-brand-green-dark"
+                        )}
                         role="status"
                       >
                         {cardFeedback}
@@ -550,7 +552,7 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
                       {needsResponse ? (
                         <>
                           <Button
-                            size="sm"
+                            className="w-full sm:w-auto"
                             disabled={isPending}
                             onClick={() =>
                               void updateInquiry(inquiry.id, "ACCEPTED", inquiry.intake.contactName, inquiry.status)
@@ -561,7 +563,7 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
                               : providerAcceptButtonLabel(inquiry.status)}
                           </Button>
                           <Button
-                            size="sm"
+                            className="w-full sm:w-auto"
                             variant="outline"
                             disabled={isPending}
                             onClick={() => setConfirmDecline({ id: inquiry.id, familyName: inquiry.intake.contactName })}
@@ -571,14 +573,29 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
                         </>
                       ) : null}
                       {isAccepted ? (
-                        <Button size="sm" disabled className="bg-brand-green-pale/50 text-brand-green-dark">
-                          Accepted
-                        </Button>
+                        <span className="inline-flex items-center rounded-lg bg-brand-green-pale/40 px-3 py-2 text-sm font-medium text-brand-green-dark">
+                          Accepted — Care Guide coordinating
+                        </span>
+                      ) : null}
+                      {isCoordinating ? (
+                        <span className="inline-flex items-center rounded-lg bg-brand-cream px-3 py-2 text-sm font-medium text-ink/70">
+                          Visit or call coordinated
+                        </span>
+                      ) : null}
+                      {isPlaced ? (
+                        <span className="inline-flex items-center rounded-lg bg-brand-green-pale/40 px-3 py-2 text-sm font-medium text-brand-green-dark">
+                          Placement in progress
+                        </span>
                       ) : null}
                       {isDeclined ? (
-                        <Button size="sm" variant="outline" disabled>
+                        <span className="inline-flex items-center rounded-lg bg-stone-200/80 px-3 py-2 text-sm font-medium text-neutral-600">
                           Declined
-                        </Button>
+                        </span>
+                      ) : null}
+                      {isClosed ? (
+                        <span className="inline-flex items-center rounded-lg bg-stone-200/80 px-3 py-2 text-sm font-medium text-neutral-600">
+                          Inquiry closed
+                        </span>
                       ) : null}
                     </div>
                   </article>

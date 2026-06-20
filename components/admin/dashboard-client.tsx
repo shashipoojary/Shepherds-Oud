@@ -34,7 +34,10 @@ import {
   adminIntakeActionMeta,
   adminIntakeStatusLabel,
   canCreateMatches,
+  JOURNEY_STEPS,
+  journeyStepIndex,
   nextIntakeActions,
+  normalizeIntakeStatus,
   type IntakeStatus
 } from "@/lib/domain/intake-workflow";
 import {
@@ -331,7 +334,62 @@ function FamiliesTable({
 
   return (
     <>
-      <table className="w-full min-w-[900px] border-collapse text-left">
+      <div className="md:hidden divide-y divide-stone-200">
+        {rows.map((family) => {
+          const isPending = pendingId === family.id;
+          const assignMeta = adminIntakeActionMeta("CARE_GUIDE_ASSIGNED");
+          return (
+            <article
+              key={family.id}
+              className="cursor-pointer space-y-3 px-4 py-4 hover:bg-cream"
+              onClick={() => setSelected(family)}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-semibold text-ink">{family.name}</p>
+                  <p className="mt-0.5 text-xs text-neutral-500">{family.context}</p>
+                </div>
+                <span className="inline-flex shrink-0 whitespace-nowrap rounded-full bg-sage-100 px-2.5 py-1 text-[11px] font-semibold leading-none text-sage-700">
+                  {adminIntakeStatusLabel(family.status)}
+                </span>
+              </div>
+              <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
+                <div>
+                  <dt className="text-neutral-400">Care needed</dt>
+                  <dd className="mt-0.5 font-medium text-neutral-700">{family.care}</dd>
+                </div>
+                <div>
+                  <dt className="text-neutral-400">Location</dt>
+                  <dd className="mt-0.5 font-medium text-neutral-700">{family.location}</dd>
+                </div>
+                <div>
+                  <dt className="text-neutral-400">Urgency</dt>
+                  <dd className="mt-0.5 font-medium text-neutral-700">{family.urgency}</dd>
+                </div>
+                <div>
+                  <dt className="text-neutral-400">Care Guide</dt>
+                  <dd className="mt-0.5 font-medium text-neutral-700">{family.careGuideName || "—"}</dd>
+                </div>
+              </dl>
+              <div className="flex justify-end" onClick={(event) => event.stopPropagation()}>
+                {family.status === "NEW" ? (
+                  <IconActionButton
+                    label={assignMeta.label}
+                    icon={ClipboardList}
+                    loading={isPending}
+                    disabled={isPending}
+                    onClick={() => setSelected(family)}
+                  />
+                ) : (
+                  <IconActionButton label="Open details" icon={ArrowUpRight} onClick={() => setSelected(family)} />
+                )}
+              </div>
+            </article>
+          );
+        })}
+      </div>
+
+      <table className="hidden w-full min-w-[900px] border-collapse text-left md:table">
         <thead className="bg-cream text-xs uppercase tracking-wide text-neutral-500">
           <tr>
             <th className="px-4 py-3">Family</th>
@@ -358,7 +416,7 @@ function FamiliesTable({
                 <td className="px-4 py-3 text-sm text-neutral-600">{family.urgency}</td>
                 <td className="px-4 py-3 text-sm text-neutral-600">{family.careGuideName || "—"}</td>
                 <td className="px-4 py-3">
-                  <span className="rounded-full bg-sage-100 px-3 py-1 text-xs font-medium text-sage-700">
+                  <span className="inline-flex whitespace-nowrap rounded-full bg-sage-100 px-3 py-1 text-xs font-semibold text-sage-700">
                     {adminIntakeStatusLabel(family.status)}
                   </span>
                 </td>
@@ -591,6 +649,9 @@ function FamilyDetailPanel({
         return { label: meta.label, status, description: meta.description };
       })
     : [];
+  const currentStepIndex = family ? journeyStepIndex(family.status) : 0;
+  const normalizedStatus = family ? normalizeIntakeStatus(family.status) : "NEW";
+  const visibleJourneySteps = JOURNEY_STEPS.filter((step) => step.status !== "CLOSED");
 
   return (
     <SlidePanel
@@ -603,7 +664,7 @@ function FamilyDetailPanel({
       noticeTone={panelNoticeTone(panelMessage)}
     >
       {family ? (
-        <div className="space-y-6">
+        <div className="space-y-5">
           <StatusPill>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <div>
@@ -625,9 +686,27 @@ function FamilyDetailPanel({
             </div>
           </StatusPill>
 
-          <div className="grid gap-6 xl:grid-cols-3">
-            <div className="space-y-5">
-              <PanelSection step={1} title="Contact">
+          <div className="rounded-xl border border-stone-200 bg-brand-cream/20 px-4 py-4 sm:px-5">
+            <p className="section-label">Family journey progress</p>
+            <p className="mt-1 text-sm font-semibold text-ink">
+              Step {Math.min(currentStepIndex + 1, visibleJourneySteps.length)} of {visibleJourneySteps.length} ·{" "}
+              {adminIntakeStatusLabel(family.status)}
+            </p>
+            <p className="mt-1 text-sm leading-6 text-neutral-600">
+              {visibleJourneySteps.find((step) => step.status === normalizedStatus)?.hint}
+            </p>
+          </div>
+
+          <details className="group rounded-xl border border-stone-200 bg-white open:shadow-sm">
+            <summary className="cursor-pointer list-none px-4 py-4 text-sm font-semibold text-ink marker:content-none sm:px-5 [&::-webkit-details-marker]:hidden">
+              <span className="flex items-center justify-between gap-3">
+                Step 1 · Intake details
+                <span className="text-xs font-normal text-neutral-500 group-open:hidden">Show family submission</span>
+                <span className="hidden text-xs font-normal text-neutral-500 group-open:inline">Hide</span>
+              </span>
+            </summary>
+            <div className="space-y-5 border-t border-stone-100 px-4 py-5 sm:px-5">
+              <PanelSection title="Contact">
                 <DetailList
                   columns={1}
                   items={[
@@ -640,8 +719,7 @@ function FamilyDetailPanel({
                   ]}
                 />
               </PanelSection>
-
-              <PanelSection step={2} title="Decision support">
+              <PanelSection title="Decision support">
                 <DetailList
                   columns={1}
                   items={[
@@ -652,10 +730,7 @@ function FamilyDetailPanel({
                   ]}
                 />
               </PanelSection>
-            </div>
-
-            <div className="space-y-5">
-              <PanelSection step={3} title="Care needs">
+              <PanelSection title="Care needs">
                 <DetailList
                   columns={1}
                   items={[
@@ -685,222 +760,214 @@ function FamilyDetailPanel({
                       <TagList items={family.supportTypes ?? []} />
                     </div>
                   </div>
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Emotional support</p>
-                    <div className="mt-2">
-                      <TagList items={family.emotionalSupportNeeds ?? []} />
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Additional needs</p>
-                    <div className="mt-2">
-                      <TagList items={family.additionalNeeds ?? []} />
-                    </div>
-                  </div>
                 </div>
               </PanelSection>
+              {family.notes?.trim() ? (
+                <PanelSection title="Family notes">
+                  <p className="text-sm leading-7 text-neutral-700">{family.notes}</p>
+                </PanelSection>
+              ) : null}
+            </div>
+          </details>
 
-              <PanelSection step={4} title="Family notes">
-                <p className="text-sm leading-7 text-neutral-700">{family.notes?.trim() || "—"}</p>
-              </PanelSection>
+          <div className="overflow-hidden rounded-xl border border-stone-200 bg-white">
+            <div className="border-b border-stone-100 bg-brand-cream/15 px-4 py-4 sm:px-5">
+              <p className="section-label">Care coordination workflow</p>
+              <p className="mt-1 text-sm text-neutral-600">Work through each step in order — the family dashboard updates when you save.</p>
             </div>
 
-            <div className="space-y-5">
-              <PanelSection step={5} title="Case record">
-                <DetailList
-                  columns={1}
-                  items={[
-                    { label: "Intake ID", value: family.id },
-                    { label: "Care pathway", value: family.carePathway },
-                    { label: "Visit scheduled", value: family.visitScheduledAtLabel },
-                    { label: "Visit type", value: family.visitType },
-                    { label: "Visit provider", value: family.visitProviderName },
-                    { label: "7-day follow-up", value: family.followUp7At },
-                    { label: "30-day follow-up", value: family.followUp30At },
-                    { label: "90-day follow-up", value: family.followUp90At },
-                    { label: "Submitted", value: family.createdAt },
-                    { label: "Last updated", value: family.updatedAt }
-                  ]}
-                />
-              </PanelSection>
-            </div>
-          </div>
-
-          <div className="grid gap-6 xl:grid-cols-2">
-            <PanelSection step={6} title="Assessment & care plan (internal)">
-              <div className="grid gap-3">
-                <label className="grid gap-1.5 text-sm font-medium">
-                  Care Guide
-                  <select
-                    value={careGuideId}
-                    onChange={(event) => setCareGuideId(event.target.value)}
-                    className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm outline-brand-amber"
-                  >
-                    <option value="">Select Care Guide</option>
-                    {careGuides.map((guide) => (
-                      <option key={guide.id} value={guide.id}>
-                        {guide.name || guide.email}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <Button type="button" size="sm" variant="outline" disabled={!careGuideId || isPending} onClick={() => void saveCareGuide()}>
-                  Assign Care Guide
-                </Button>
-                <label className="grid gap-1.5 text-sm font-medium">
-                  Recommended care pathway
-                  <select
-                    value={carePathway}
-                    onChange={(event) => setCarePathway(event.target.value)}
-                    className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm outline-brand-amber"
-                  >
-                    <option value="">Select pathway</option>
-                    {CARE_PATHWAYS.map((pathway) => (
-                      <option key={pathway} value={pathway}>
-                        {pathway}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="grid gap-1.5 text-sm font-medium">
-                  Assessment notes (internal)
-                  <textarea
-                    value={assessmentNotes}
-                    onChange={(event) => setAssessmentNotes(event.target.value)}
-                    className="min-h-20 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm outline-brand-amber"
-                    placeholder="Family situation, decision-makers, funding context..."
-                  />
-                </label>
-                <label className="grid gap-1.5 text-sm font-medium">
-                  Care plan summary (shared with family as pathway)
-                  <textarea
-                    value={carePlanSummary}
-                    onChange={(event) => setCarePlanSummary(event.target.value)}
-                    className="min-h-20 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm outline-brand-amber"
-                    placeholder="Brief plan: recommended next steps and why this pathway fits."
-                  />
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  <Button type="button" size="sm" variant="outline" disabled={savingAssessment || isPending} onClick={() => void saveAssessment()}>
-                    {savingAssessment ? "Saving..." : "Save assessment"}
-                  </Button>
-                  {["ASSESSMENT", "CARE_GUIDE_ASSIGNED"].includes(family.status) ? (
-                    <Button type="button" size="sm" disabled={savingAssessment || isPending || !carePlanSummary.trim()} onClick={() => void saveAssessment("CARE_PLAN")}>
-                      Publish care plan
-                    </Button>
-                  ) : null}
-                  {["CARE_PLAN", "ASSESSMENT"].includes(family.status) ? (
-                    <Button type="button" size="sm" disabled={savingAssessment || isPending || !carePathway} onClick={() => void saveAssessment("MATCHED")}>
-                      Mark matched
-                    </Button>
-                  ) : null}
-                </div>
-              </div>
-            </PanelSection>
-
-            <div className="space-y-5">
-              <PanelSection step={7} title="Visit scheduling">
-              <div className="grid gap-3">
-                <label className="grid gap-1.5 text-sm font-medium">
-                  Visit or callback date & time
-                  <input
-                    type="datetime-local"
-                    value={visitScheduledAt}
-                    onChange={(event) => setVisitScheduledAt(event.target.value)}
-                    className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm outline-brand-amber"
-                  />
-                </label>
-                <label className="grid gap-1.5 text-sm font-medium">
-                  Type
-                  <select
-                    value={visitType}
-                    onChange={(event) => setVisitType(event.target.value as "VISIT" | "CALLBACK" | "")}
-                    className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm outline-brand-amber"
-                  >
-                    <option value="">Select type</option>
-                    <option value="VISIT">Facility visit</option>
-                    <option value="CALLBACK">Phone callback</option>
-                  </select>
-                </label>
-                <label className="grid gap-1.5 text-sm font-medium">
-                  Provider / facility
-                  <input
-                    value={visitProviderName}
-                    onChange={(event) => setVisitProviderName(event.target.value)}
-                    className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm outline-brand-amber"
-                    placeholder="Provider name"
-                  />
-                </label>
-                <label className="grid gap-1.5 text-sm font-medium">
-                  Visit notes
-                  <textarea
-                    value={visitNotes}
-                    onChange={(event) => setVisitNotes(event.target.value)}
-                    className="min-h-16 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm outline-brand-amber"
-                    placeholder="Directions, contact person, what to bring..."
-                  />
-                </label>
-                <Button type="button" size="sm" disabled={savingVisit || isPending || !visitScheduledAt} onClick={() => void saveVisitSchedule()}>
-                  {savingVisit ? "Saving..." : "Save visit & mark scheduled"}
-                </Button>
-              </div>
-            </PanelSection>
-
-            <PanelSection step={8} title="Create provider match" description="Available after care plan and pathway are set.">
-              <div className="grid gap-3">
-                <label className="grid gap-1.5 text-sm font-medium">
-                  Provider
-                  <select
-                    value={providerId}
-                    onChange={(event) => setProviderId(event.target.value)}
-                    disabled={!matchingAllowed}
-                    className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm outline-brand-amber disabled:opacity-60"
-                  >
-                    <option value="">Select provider</option>
-                    {providers.map((provider) => (
-                      <option key={provider.id} value={provider.id}>
-                        {provider.name} — {provider.area}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="grid gap-1.5 text-sm font-medium">
-                  Match score (%)
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={score}
-                    disabled={!matchingAllowed}
-                    onChange={(event) => setScore(event.target.value)}
-                    className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm outline-brand-amber disabled:opacity-60"
-                  />
-                </label>
-                <label className="grid gap-1.5 text-sm font-medium">
-                  Internal notes (optional)
-                  <textarea
-                    value={matchNotes}
-                    disabled={!matchingAllowed}
-                    onChange={(event) => setMatchNotes(event.target.value)}
-                    className="min-h-16 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm outline-brand-amber disabled:opacity-60"
-                  />
-                </label>
-                <Button type="button" size="sm" disabled={!providerId || creatingMatch || !matchingAllowed} onClick={() => void createMatch()}>
-                  {creatingMatch ? "Creating..." : "Create match"}
-                </Button>
-              </div>
-            </PanelSection>
-
-            <PanelSection
-              step={9}
-              title="Update case status"
-              description="New → Care Guide assigned → Assessment → Care plan → Matched → Visit scheduled → Provider response → Placement → 7/30/90 follow-up → Closed"
+            <AdminWorkflowStep
+              step={2}
+              title="Assign Care Guide"
+              description="A named Care Guide reviews the case and supports the family through decisions."
+              current={normalizedStatus === "NEW" || normalizedStatus === "CARE_GUIDE_ASSIGNED"}
+              complete={currentStepIndex >= 1}
             >
-              <div className="space-y-3">
+              <label className="grid gap-2 text-sm font-medium">
+                Care Guide
+                <select
+                  value={careGuideId}
+                  onChange={(event) => setCareGuideId(event.target.value)}
+                  className={adminFieldClass}
+                >
+                  <option value="">Select Care Guide</option>
+                  {careGuides.map((guide) => (
+                    <option key={guide.id} value={guide.id}>
+                      {guide.name || guide.email}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <Button type="button" className={adminActionClass} disabled={!careGuideId || isPending} onClick={() => void saveCareGuide()}>
+                Assign Care Guide
+              </Button>
+            </AdminWorkflowStep>
+
+            <AdminWorkflowStep
+              step={3}
+              title="Assessment & care plan"
+              description="Review intake details, save assessment notes, then publish the care plan for the family."
+              current={["CARE_GUIDE_ASSIGNED", "ASSESSMENT", "CARE_PLAN"].includes(normalizedStatus)}
+              complete={currentStepIndex >= 3}
+            >
+              <label className="grid gap-2 text-sm font-medium">
+                Recommended care pathway
+                <select value={carePathway} onChange={(event) => setCarePathway(event.target.value)} className={adminFieldClass}>
+                  <option value="">Select pathway</option>
+                  {CARE_PATHWAYS.map((pathway) => (
+                    <option key={pathway} value={pathway}>
+                      {pathway}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="grid gap-2 text-sm font-medium">
+                Assessment notes (internal)
+                <textarea
+                  value={assessmentNotes}
+                  onChange={(event) => setAssessmentNotes(event.target.value)}
+                  className={`${adminFieldClass} min-h-24`}
+                  placeholder="Family situation, decision-makers, funding context..."
+                />
+              </label>
+              <label className="grid gap-2 text-sm font-medium">
+                Care plan summary (shared with family)
+                <textarea
+                  value={carePlanSummary}
+                  onChange={(event) => setCarePlanSummary(event.target.value)}
+                  className={`${adminFieldClass} min-h-24`}
+                  placeholder="Brief plan: recommended next steps and why this pathway fits."
+                />
+              </label>
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                <Button type="button" variant="outline" className={adminActionClass} disabled={savingAssessment || isPending} onClick={() => void saveAssessment()}>
+                  {savingAssessment ? "Saving..." : "Save assessment"}
+                </Button>
+                {["ASSESSMENT", "CARE_GUIDE_ASSIGNED"].includes(family.status) ? (
+                  <Button type="button" className={adminActionClass} disabled={savingAssessment || isPending || !carePlanSummary.trim()} onClick={() => void saveAssessment("CARE_PLAN")}>
+                    Publish care plan
+                  </Button>
+                ) : null}
+                {["CARE_PLAN", "ASSESSMENT"].includes(family.status) ? (
+                  <Button type="button" className={adminActionClass} disabled={savingAssessment || isPending || !carePathway} onClick={() => void saveAssessment("MATCHED")}>
+                    Mark matched
+                  </Button>
+                ) : null}
+              </div>
+            </AdminWorkflowStep>
+
+            <AdminWorkflowStep
+              step={4}
+              title="Create provider match"
+              description="Add suitable providers to the family shortlist once the care plan is published."
+              current={normalizedStatus === "CARE_PLAN" || normalizedStatus === "MATCHED"}
+              complete={currentStepIndex >= 4}
+            >
+              <label className="grid gap-2 text-sm font-medium">
+                Provider
+                <select
+                  value={providerId}
+                  onChange={(event) => setProviderId(event.target.value)}
+                  disabled={!matchingAllowed}
+                  className={adminFieldClass}
+                >
+                  <option value="">Select provider</option>
+                  {providers.map((provider) => (
+                    <option key={provider.id} value={provider.id}>
+                      {provider.name} — {provider.area}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="grid gap-2 text-sm font-medium">
+                Match score (%)
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={score}
+                  disabled={!matchingAllowed}
+                  onChange={(event) => setScore(event.target.value)}
+                  className={adminFieldClass}
+                />
+              </label>
+              <label className="grid gap-2 text-sm font-medium">
+                Internal notes (optional)
+                <textarea
+                  value={matchNotes}
+                  disabled={!matchingAllowed}
+                  onChange={(event) => setMatchNotes(event.target.value)}
+                  className={`${adminFieldClass} min-h-20`}
+                />
+              </label>
+              <Button type="button" className={adminActionClass} disabled={!providerId || creatingMatch || !matchingAllowed} onClick={() => void createMatch()}>
+                {creatingMatch ? "Creating..." : "Create match"}
+              </Button>
+            </AdminWorkflowStep>
+
+            <AdminWorkflowStep
+              step={5}
+              title="Schedule visit or callback"
+              description="Record the visit or callback date — the family sees this on their dashboard."
+              current={normalizedStatus === "MATCHED" || normalizedStatus === "VISIT_SCHEDULED"}
+              complete={currentStepIndex >= 5}
+            >
+              <label className="grid gap-2 text-sm font-medium">
+                Visit or callback date & time
+                <input
+                  type="datetime-local"
+                  value={visitScheduledAt}
+                  onChange={(event) => setVisitScheduledAt(event.target.value)}
+                  className={adminFieldClass}
+                />
+              </label>
+              <label className="grid gap-2 text-sm font-medium">
+                Type
+                <select
+                  value={visitType}
+                  onChange={(event) => setVisitType(event.target.value as "VISIT" | "CALLBACK" | "")}
+                  className={adminFieldClass}
+                >
+                  <option value="">Select type</option>
+                  <option value="VISIT">Facility visit</option>
+                  <option value="CALLBACK">Phone callback</option>
+                </select>
+              </label>
+              <label className="grid gap-2 text-sm font-medium">
+                Provider / facility
+                <input
+                  value={visitProviderName}
+                  onChange={(event) => setVisitProviderName(event.target.value)}
+                  className={adminFieldClass}
+                  placeholder="Provider name"
+                />
+              </label>
+              <label className="grid gap-2 text-sm font-medium">
+                Visit notes
+                <textarea
+                  value={visitNotes}
+                  onChange={(event) => setVisitNotes(event.target.value)}
+                  className={`${adminFieldClass} min-h-20`}
+                  placeholder="Directions, contact person, what to bring..."
+                />
+              </label>
+              <Button type="button" className={adminActionClass} disabled={savingVisit || isPending || !visitScheduledAt} onClick={() => void saveVisitSchedule()}>
+                {savingVisit ? "Saving..." : "Save visit & mark scheduled"}
+              </Button>
+            </AdminWorkflowStep>
+
+            <AdminWorkflowStep
+              step={6}
+              title="Advance case status"
+              description="Move the family through provider response, placement, follow-ups, or close the case."
+              current={currentStepIndex >= 6}
+              complete={normalizedStatus === "CLOSED"}
+            >
+              <div className="space-y-4">
                 {nextActions.map((action) => (
-                  <div key={action.status}>
+                  <div key={action.status} className="rounded-lg border border-stone-100 bg-brand-cream/20 px-4 py-3">
                     <Button
-                      size="sm"
+                      className={adminActionClass}
                       variant={action.status === "CLOSED" ? "outline" : "default"}
                       disabled={isPending}
                       onClick={() => {
@@ -913,13 +980,30 @@ function FamilyDetailPanel({
                     >
                       {isPending && pendingAction === action.status ? "Saving..." : action.label}
                     </Button>
-                    <p className="mt-1.5 text-xs leading-5 text-neutral-500">{action.description}</p>
+                    <p className="mt-2 text-xs leading-5 text-neutral-500">{action.description}</p>
                   </div>
                 ))}
               </div>
-            </PanelSection>
-            </div>
+            </AdminWorkflowStep>
           </div>
+
+          <PanelSection title="Case record">
+            <DetailList
+              columns={1}
+              items={[
+                { label: "Intake ID", value: family.id },
+                { label: "Care pathway", value: family.carePathway },
+                { label: "Visit scheduled", value: family.visitScheduledAtLabel },
+                { label: "Visit type", value: family.visitType },
+                { label: "Visit provider", value: family.visitProviderName },
+                { label: "7-day follow-up", value: family.followUp7At },
+                { label: "30-day follow-up", value: family.followUp30At },
+                { label: "90-day follow-up", value: family.followUp90At },
+                { label: "Submitted", value: family.createdAt },
+                { label: "Last updated", value: family.updatedAt }
+              ]}
+            />
+          </PanelSection>
         </div>
       ) : null}
       <ConfirmDialog
@@ -1755,5 +1839,54 @@ function WaitlistDetailPanel({
         </div>
       ) : null}
     </SlidePanel>
+  );
+}
+
+const adminFieldClass = "rounded-lg border border-stone-200 bg-white px-3 py-2.5 text-sm outline-brand-amber";
+const adminActionClass = "w-full sm:w-auto";
+
+function AdminWorkflowStep({
+  step,
+  title,
+  description,
+  current = false,
+  complete = false,
+  children
+}: {
+  step: number;
+  title: string;
+  description?: string;
+  current?: boolean;
+  complete?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <section
+      className={cn(
+        "border-t border-stone-100 px-4 py-5 sm:px-5",
+        current && "bg-brand-amber/[0.04]",
+        complete && !current && "bg-brand-green-pale/10"
+      )}
+    >
+      <div className="flex items-start gap-3">
+        <span
+          className={cn(
+            "grid h-8 w-8 shrink-0 place-items-center rounded-full text-xs font-bold",
+            current
+              ? "bg-brand-amber text-white"
+              : complete
+                ? "bg-brand-green-dark text-white"
+                : "bg-stone-200 text-stone-600"
+          )}
+        >
+          {step}
+        </span>
+        <div className="min-w-0 flex-1">
+          <h3 className="text-sm font-semibold text-ink">{title}</h3>
+          {description ? <p className="mt-1 text-sm leading-6 text-neutral-500">{description}</p> : null}
+          <div className="mt-4 grid gap-3">{children}</div>
+        </div>
+      </div>
+    </section>
   );
 }

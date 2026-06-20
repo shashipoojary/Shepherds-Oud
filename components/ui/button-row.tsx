@@ -12,7 +12,7 @@ export function ButtonRow({
   return (
     <div
       className={cn(
-        columns === 1 ? "grid grid-cols-1 gap-2 sm:gap-3" : "grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3",
+        columns === 1 ? "grid grid-cols-1 gap-2 sm:gap-3" : "grid grid-cols-2 gap-2 sm:gap-3",
         className
       )}
     >

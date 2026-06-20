@@ -191,6 +191,10 @@ export function providerInquiryBanner(status: string) {
       return "The Care Guide is coordinating the visit or call with this family.";
     case "PLACED":
       return "Placement is in progress for this family at your facility.";
+    case "CLOSED":
+      return "This inquiry is closed. No further action is needed on your side.";
+    case "DECLINED":
+      return "You declined this inquiry. The family may be matched with another facility.";
     default:
       return null;
   }
