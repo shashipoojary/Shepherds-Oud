@@ -36,7 +36,7 @@ export default function HomePage() {
                 : "Shepherds Oud connects families with a dedicated Care Guide and matched eldercare providers."}
             </p>
             <p className="mx-auto mt-3 max-w-[560px] text-body text-ink/70">{heroIntro}</p>
-            <ButtonRow className="mx-auto mt-8 max-w-md">
+            <ButtonRow className="mx-auto mt-8 max-w-md" columns={isPrelaunch ? 1 : 2}>
               <Button asChild size="lg" className="w-full">
                 <Link href={primaryHref}>
                   {primaryLabel} <ArrowRight className="h-4 w-4 shrink-0" />
