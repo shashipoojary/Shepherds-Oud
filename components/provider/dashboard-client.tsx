@@ -7,6 +7,7 @@ import { Chip } from "@/components/ui/chip";
 import { CustomSelect } from "@/components/ui/custom-select";
 import { DashboardSkeleton } from "@/components/ui/dashboard-skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { RefreshButton } from "@/components/ui/refresh-button";
 import { StatGrid } from "@/components/ui/stat-grid";
 import { careTypeOptions, declineReasonOptions, careLevelOptions, dementiaCapacityOptions, dutchProvinces, facilityTypes, fundingTypeOptions, visitAvailabilityOptions } from "@/lib/config/content";
@@ -479,8 +480,11 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
             </div>
           </div>
           {inquiries.length ? (
-            <div className="scroll-area mt-4 min-h-0 max-h-[min(28rem,52vh)] overscroll-y-contain">
-              <ul className="divide-y divide-stone-200">
+            <ScrollArea
+              className="mt-4 h-[min(28rem,52vh)] min-h-[12rem] shrink-0"
+              aria-label="Family inquiries list"
+            >
+              <ul className="divide-y divide-stone-200 pr-1">
                 {sortedInquiries.map((inquiry) => {
                 const needsResponse = isProviderActionNeeded(inquiry.status);
                 const isAccepted = inquiry.status === "ACCEPTED";
@@ -515,7 +519,7 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
                         </p>
                       </div>
                       <div className="flex shrink-0 flex-col items-start gap-1 sm:items-end">
-                        <span className={cn("inline-flex whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold", matchStatusBadgeClass(inquiry.status))}>
+                        <span className={cn("inline-flex max-w-full rounded-full px-3 py-1 text-xs font-semibold leading-snug", matchStatusBadgeClass(inquiry.status))}>
                           {inquiry.score}% match · {providerInquiryStatusLabel(inquiry.status)}
                         </span>
                       </div>
@@ -586,7 +590,7 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
                 );
               })}
               </ul>
-            </div>
+            </ScrollArea>
           ) : (
             <div className="mt-4">
               <EmptyState title="No inquiries yet" description="When an admin matches a family to your facility, the inquiry will appear here." />
