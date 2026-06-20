@@ -55,10 +55,9 @@ textarea {
   }
 
   .scroll-area {
-    overflow: auto;
+    overflow-y: auto;
+    overflow-x: clip;
     -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
-    touch-action: pan-y;
     scrollbar-width: thin;
     scrollbar-color: var(--brand-green-pale) transparent;
   }

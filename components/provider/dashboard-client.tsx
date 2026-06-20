@@ -7,7 +7,6 @@ import { Chip } from "@/components/ui/chip";
 import { CustomSelect } from "@/components/ui/custom-select";
 import { DashboardSkeleton } from "@/components/ui/dashboard-skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { RefreshButton } from "@/components/ui/refresh-button";
 import { StatGrid } from "@/components/ui/stat-grid";
 import { careTypeOptions, declineReasonOptions, careLevelOptions, dementiaCapacityOptions, dutchProvinces, facilityTypes, fundingTypeOptions, visitAvailabilityOptions } from "@/lib/config/content";
@@ -463,7 +462,7 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
       />
 
       <div className="mt-5 grid gap-5 xl:grid-cols-[1fr_420px]">
-        <section className="flex min-h-0 flex-col rounded-card border border-[var(--card-border)] bg-white p-4 shadow-soft sm:p-5">
+        <section className="flex max-h-[min(32rem,calc(100dvh-12rem))] min-h-[16rem] flex-col overflow-hidden rounded-card border border-[var(--card-border)] bg-white p-4 shadow-soft sm:p-5">
           <div className="shrink-0">
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -480,8 +479,9 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
             </div>
           </div>
           {inquiries.length ? (
-            <ScrollArea
-              className="mt-4 h-[min(28rem,52vh)] min-h-[12rem] shrink-0"
+            <div
+              className="scroll-area mt-4 min-h-0 flex-1 basis-0"
+              role="region"
               aria-label="Family inquiries list"
             >
               <ul className="divide-y divide-stone-200 pr-1">
@@ -590,7 +590,7 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
                 );
               })}
               </ul>
-            </ScrollArea>
+            </div>
           ) : (
             <div className="mt-4">
               <EmptyState title="No inquiries yet" description="When an admin matches a family to your facility, the inquiry will appear here." />
