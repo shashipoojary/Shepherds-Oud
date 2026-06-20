@@ -334,71 +334,16 @@ function FamiliesTable({
 
   return (
     <>
-      <div className="md:hidden divide-y divide-stone-200">
-        {rows.map((family) => {
-          const isPending = pendingId === family.id;
-          const assignMeta = adminIntakeActionMeta("CARE_GUIDE_ASSIGNED");
-          return (
-            <article
-              key={family.id}
-              className="cursor-pointer space-y-3 px-4 py-4 hover:bg-cream"
-              onClick={() => setSelected(family)}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="font-semibold text-ink">{family.name}</p>
-                  <p className="mt-0.5 text-xs text-neutral-500">{family.context}</p>
-                </div>
-                <span className="inline-flex shrink-0 whitespace-nowrap rounded-full bg-sage-100 px-2.5 py-1 text-[11px] font-semibold leading-none text-sage-700">
-                  {adminIntakeStatusLabel(family.status)}
-                </span>
-              </div>
-              <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
-                <div>
-                  <dt className="text-neutral-400">Care needed</dt>
-                  <dd className="mt-0.5 font-medium text-neutral-700">{family.care}</dd>
-                </div>
-                <div>
-                  <dt className="text-neutral-400">Location</dt>
-                  <dd className="mt-0.5 font-medium text-neutral-700">{family.location}</dd>
-                </div>
-                <div>
-                  <dt className="text-neutral-400">Urgency</dt>
-                  <dd className="mt-0.5 font-medium text-neutral-700">{family.urgency}</dd>
-                </div>
-                <div>
-                  <dt className="text-neutral-400">Care Guide</dt>
-                  <dd className="mt-0.5 font-medium text-neutral-700">{family.careGuideName || "—"}</dd>
-                </div>
-              </dl>
-              <div className="flex justify-end" onClick={(event) => event.stopPropagation()}>
-                {family.status === "NEW" ? (
-                  <IconActionButton
-                    label={assignMeta.label}
-                    icon={ClipboardList}
-                    loading={isPending}
-                    disabled={isPending}
-                    onClick={() => setSelected(family)}
-                  />
-                ) : (
-                  <IconActionButton label="Open details" icon={ArrowUpRight} onClick={() => setSelected(family)} />
-                )}
-              </div>
-            </article>
-          );
-        })}
-      </div>
-
-      <table className="hidden w-full min-w-[900px] border-collapse text-left md:table">
+      <table className="w-full min-w-[720px] border-collapse text-left">
         <thead className="bg-cream text-xs uppercase tracking-wide text-neutral-500">
           <tr>
             <th className="px-4 py-3">Family</th>
-            <th className="px-4 py-3">Care needed</th>
-            <th className="px-4 py-3">Location</th>
-            <th className="px-4 py-3">Urgency</th>
-            <th className="px-4 py-3">Care Guide</th>
-            <th className="px-4 py-3">Status</th>
-            <th className="px-4 py-3">Actions</th>
+            <th className="hidden px-4 py-3 sm:table-cell">Care needed</th>
+            <th className="hidden px-4 py-3 md:table-cell">Location</th>
+            <th className="hidden px-4 py-3 lg:table-cell">Urgency</th>
+            <th className="hidden px-4 py-3 lg:table-cell">Care Guide</th>
+            <th className="min-w-[8.5rem] whitespace-nowrap px-4 py-3">Status</th>
+            <th className="whitespace-nowrap px-4 py-3">Actions</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-stone-200">
@@ -410,17 +355,18 @@ function FamiliesTable({
                 <td className="px-4 py-3 text-sm">
                   <strong>{family.name}</strong>
                   <span className="block text-xs text-neutral-500">{family.context}</span>
+                  <span className="mt-1 block text-xs text-neutral-500 sm:hidden">{family.location}</span>
                 </td>
-                <td className="px-4 py-3 text-sm text-neutral-600">{family.care}</td>
-                <td className="px-4 py-3 text-sm text-neutral-600">{family.location}</td>
-                <td className="px-4 py-3 text-sm text-neutral-600">{family.urgency}</td>
-                <td className="px-4 py-3 text-sm text-neutral-600">{family.careGuideName || "—"}</td>
-                <td className="px-4 py-3">
-                  <span className="inline-flex whitespace-nowrap rounded-full bg-sage-100 px-3 py-1 text-xs font-semibold text-sage-700">
+                <td className="hidden px-4 py-3 text-sm text-neutral-600 sm:table-cell">{family.care}</td>
+                <td className="hidden px-4 py-3 text-sm text-neutral-600 md:table-cell">{family.location}</td>
+                <td className="hidden px-4 py-3 text-sm text-neutral-600 lg:table-cell">{family.urgency}</td>
+                <td className="hidden px-4 py-3 text-sm text-neutral-600 lg:table-cell">{family.careGuideName || "—"}</td>
+                <td className="whitespace-nowrap px-4 py-3">
+                  <span className="inline-flex whitespace-nowrap rounded-full bg-sage-100 px-3 py-1 text-xs font-semibold leading-none text-sage-700">
                     {adminIntakeStatusLabel(family.status)}
                   </span>
                 </td>
-                <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}>
+                <td className="whitespace-nowrap px-4 py-3" onClick={(event) => event.stopPropagation()}>
                   <div className="flex items-center gap-1">
                     {family.status === "NEW" ? (
                       <IconActionButton

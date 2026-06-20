@@ -7,7 +7,6 @@ import { Chip } from "@/components/ui/chip";
 import { CustomSelect } from "@/components/ui/custom-select";
 import { DashboardSkeleton } from "@/components/ui/dashboard-skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { RefreshButton } from "@/components/ui/refresh-button";
 import { StatGrid } from "@/components/ui/stat-grid";
 import { careTypeOptions, declineReasonOptions, careLevelOptions, dementiaCapacityOptions, dutchProvinces, facilityTypes, fundingTypeOptions, visitAvailabilityOptions } from "@/lib/config/content";
@@ -463,7 +462,7 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
       />
 
       <div className="mt-5 grid gap-5 xl:grid-cols-[1fr_420px]">
-        <section className="flex min-h-0 flex-col rounded-card bg-white p-4 shadow-soft ring-1 ring-stone-200 sm:p-5">
+        <section className="flex min-h-0 flex-col rounded-card border border-[var(--card-border)] bg-white p-4 shadow-soft sm:p-5">
           <div className="shrink-0">
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -480,8 +479,8 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
             </div>
           </div>
           {inquiries.length ? (
-            <ScrollArea className="mt-4 max-h-[min(28rem,52vh)]">
-              <div className="grid gap-3 pr-1.5">
+            <div className="scroll-area mt-4 min-h-0 max-h-[min(28rem,52vh)] overscroll-y-contain">
+              <ul className="divide-y divide-stone-200">
                 {sortedInquiries.map((inquiry) => {
                 const needsResponse = isProviderActionNeeded(inquiry.status);
                 const isAccepted = inquiry.status === "ACCEPTED";
@@ -493,19 +492,15 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
                 const cardFeedback = inquiryFeedback[inquiry.id];
                 const banner = providerInquiryBanner(inquiry.status);
                 const activityNotes = providerMatchNotes(inquiry.notes);
-                const cardTone =
-                  inquiry.status === "VISIT_REQUESTED" || inquiry.status === "CALLBACK_REQUESTED"
-                    ? "ring-brand-amber/40 bg-brand-amber/5"
-                    : needsResponse
-                      ? "ring-brand-amber/30 bg-brand-amber/[0.03]"
-                      : isAccepted || isCoordinating || isPlaced
-                        ? "ring-brand-green-pale/80 bg-brand-green-pale/10"
-                        : isDeclined || isClosed
-                          ? "ring-stone-200 bg-stone-50/80"
-                          : "ring-stone-200 bg-white";
 
                 return (
-                  <article key={inquiry.id} className={cn("rounded-xl p-4 ring-1", cardTone)}>
+                  <li
+                    key={inquiry.id}
+                    className={cn(
+                      "space-y-3 border-l-[3px] py-4 pl-4 first:pt-0 last:pb-0",
+                      needsResponse ? "border-l-brand-amber" : "border-l-transparent"
+                    )}
+                  >
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div className="min-w-0">
                         <p className="font-semibold text-ink">{inquiry.intake.contactName}</p>
@@ -519,27 +514,26 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
                           {inquiry.intake.phone} · {inquiry.intake.email}
                         </p>
                       </div>
-                      <div className="flex shrink-0 flex-col items-start gap-1.5 sm:items-end">
+                      <div className="flex shrink-0 flex-col items-start gap-1 sm:items-end">
                         <span className={cn("inline-flex whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold", matchStatusBadgeClass(inquiry.status))}>
-                          {inquiry.score}% match
+                          {inquiry.score}% match · {providerInquiryStatusLabel(inquiry.status)}
                         </span>
-                        <span className="text-xs font-medium text-ink/60">{providerInquiryStatusLabel(inquiry.status)}</span>
                       </div>
                     </div>
 
-                    {banner ? <p className="mt-3 text-sm leading-6 text-ink/75">{banner}</p> : null}
+                    {banner ? <p className="text-sm leading-6 text-ink/75">{banner}</p> : null}
 
                     {activityNotes ? (
-                      <div className="mt-3 border-t border-stone-200/80 pt-3">
+                      <div>
                         <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Activity</p>
-                        <p className="mt-1.5 whitespace-pre-line text-xs leading-5 text-ink/65">{activityNotes}</p>
+                        <p className="mt-1 whitespace-pre-line text-xs leading-5 text-ink/65">{activityNotes}</p>
                       </div>
                     ) : null}
 
                     {cardFeedback ? (
                       <p
                         className={cn(
-                          "mt-3 text-sm leading-6",
+                          "text-sm leading-6",
                           cardFeedback.startsWith("Could not") ? "text-brand-amber-dark" : "text-brand-green-dark"
                         )}
                         role="status"
@@ -548,7 +542,7 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
                       </p>
                     ) : null}
 
-                    <div className="mt-4 flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-2">
                       {needsResponse ? (
                         <>
                           <Button
@@ -573,36 +567,26 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
                         </>
                       ) : null}
                       {isAccepted ? (
-                        <span className="inline-flex items-center rounded-lg bg-brand-green-pale/40 px-3 py-2 text-sm font-medium text-brand-green-dark">
-                          Accepted — Care Guide coordinating
-                        </span>
+                        <span className="text-sm font-medium text-brand-green-dark">Accepted — Care Guide coordinating</span>
                       ) : null}
                       {isCoordinating ? (
-                        <span className="inline-flex items-center rounded-lg bg-brand-cream px-3 py-2 text-sm font-medium text-ink/70">
-                          Visit or call coordinated
-                        </span>
+                        <span className="text-sm font-medium text-ink/70">Visit or call coordinated</span>
                       ) : null}
                       {isPlaced ? (
-                        <span className="inline-flex items-center rounded-lg bg-brand-green-pale/40 px-3 py-2 text-sm font-medium text-brand-green-dark">
-                          Placement in progress
-                        </span>
+                        <span className="text-sm font-medium text-brand-green-dark">Placement in progress</span>
                       ) : null}
                       {isDeclined ? (
-                        <span className="inline-flex items-center rounded-lg bg-stone-200/80 px-3 py-2 text-sm font-medium text-neutral-600">
-                          Declined
-                        </span>
+                        <span className="text-sm font-medium text-neutral-600">Declined</span>
                       ) : null}
                       {isClosed ? (
-                        <span className="inline-flex items-center rounded-lg bg-stone-200/80 px-3 py-2 text-sm font-medium text-neutral-600">
-                          Inquiry closed
-                        </span>
+                        <span className="text-sm font-medium text-neutral-600">Inquiry closed</span>
                       ) : null}
                     </div>
-                  </article>
+                  </li>
                 );
               })}
-              </div>
-            </ScrollArea>
+              </ul>
+            </div>
           ) : (
             <div className="mt-4">
               <EmptyState title="No inquiries yet" description="When an admin matches a family to your facility, the inquiry will appear here." />
