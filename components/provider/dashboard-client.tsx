@@ -462,7 +462,7 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
       />
 
       <div className="mt-5 grid gap-5 xl:grid-cols-[1fr_420px]">
-        <section className="flex max-h-[min(32rem,calc(100dvh-12rem))] min-h-[16rem] flex-col overflow-hidden rounded-card border border-[var(--card-border)] bg-white p-4 shadow-soft sm:p-5">
+        <section className="flex min-h-[26rem] max-h-[min(44rem,calc(100dvh-5.5rem))] flex-col overflow-hidden rounded-card border border-[var(--card-border)] bg-white p-4 shadow-soft sm:min-h-[18rem] sm:max-h-[min(32rem,calc(100dvh-12rem))] sm:p-5">
           <div className="shrink-0">
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -484,8 +484,8 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
               role="region"
               aria-label="Family inquiries list"
             >
-              <ul className="divide-y divide-stone-200 pr-1">
-                {sortedInquiries.map((inquiry) => {
+              <ul className="divide-y divide-stone-300 pr-1">
+                {sortedInquiries.map((inquiry, index) => {
                 const needsResponse = isProviderActionNeeded(inquiry.status);
                 const isAccepted = inquiry.status === "ACCEPTED";
                 const isDeclined = inquiry.status === "DECLINED";
@@ -501,13 +501,27 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
                   <li
                     key={inquiry.id}
                     className={cn(
-                      "space-y-3 border-l-[3px] py-4 pl-4 first:pt-0 last:pb-0",
-                      needsResponse ? "border-l-brand-amber" : "border-l-transparent"
+                      "space-y-3 border-l-[3px] py-5 pl-4",
+                      needsResponse ? "border-l-brand-amber bg-brand-amber/[0.03]" : "border-l-transparent"
                     )}
                   >
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div className="min-w-0">
-                        <p className="font-semibold text-ink">{inquiry.intake.contactName}</p>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="font-semibold text-ink">{inquiry.intake.contactName}</p>
+                          {sortedInquiries.length > 1 ? (
+                            <span className="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-neutral-600">
+                              Inquiry {index + 1} of {sortedInquiries.length}
+                            </span>
+                          ) : null}
+                        </div>
+                        <p className="mt-1 text-xs text-neutral-500">
+                          Received{" "}
+                          {new Date(inquiry.createdAt).toLocaleString("en-GB", {
+                            dateStyle: "medium",
+                            timeStyle: "short"
+                          })}
+                        </p>
                         <p className="mt-1 text-sm text-ink/70">
                           {inquiry.intake.preferredArea} · {inquiry.intake.careTypes.join(", ")}
                         </p>
