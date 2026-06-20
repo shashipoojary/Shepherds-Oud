@@ -1,48 +1,62 @@
+/** When true, the public site shows waitlist-first messaging until full launch. Set NEXT_PUBLIC_PRELAUNCH=false when live. */
+export const isPrelaunch = process.env.NEXT_PUBLIC_PRELAUNCH !== "false";
+
+export const ubuntuTagline = "No family should carry eldercare decisions alone.";
+
 export const homeContent = {
-  badge: "Netherlands eldercare platform",
-  intro:
-    "We help families across the Netherlands find the right eldercare — with clearer guidance, better-fit referrals, and less stress during urgent decisions.",
+  badge: isPrelaunch ? "Preparing for nationwide launch" : "Netherlands eldercare platform",
+  intro: isPrelaunch
+    ? "Shepherds Oud is a guided care navigation service — not a directory. Register your interest and a Care Guide will support your family when we open in your area."
+    : "We help families across the Netherlands find the right eldercare — with a dedicated Care Guide, clearer guidance, and shared decision support at every step.",
   familySteps: [
     {
       title: "Tell us about your situation",
-      text: "Complete a short guided intake form. It takes about 5 minutes and helps us understand what care is needed."
+      text: "Complete a guided intake about urgency, mobility, dementia needs, budget, language, and who helps decide."
     },
     {
-      title: "See matched providers",
-      text: "We match your family with suitable care providers based on location, care level, availability, and budget."
+      title: "Meet your Care Guide",
+      text: "A real person reviews your case, prepares a care plan, and supports your family — you are not navigating this alone."
     },
     {
-      title: "We help you take the next step",
-      text: "Request a visit or a call. Our team supports you through the process until your loved one is placed."
+      title: "Visits, placement, and follow-up",
+      text: "Your Care Guide coordinates provider matches, tracked visits, placement, and 7/30/90-day check-ins."
     }
   ],
   providerSteps: [
     {
       title: "Qualified inquiries only",
-      text: "Families are pre-matched to your care type, language, and availability before they contact you."
+      text: "Families are pre-matched to your care type, language, dementia capacity, and availability before they contact you."
     },
     {
       title: "Update availability easily",
-      text: "Mark beds, rooms, and care categories available in real time from your provider dashboard."
+      text: "Mark beds, care levels, funding types, and visit availability from your provider dashboard."
     },
     {
       title: "Track and manage leads",
-      text: "Accept, decline, or follow up on family inquiries in one place."
+      text: "Accept, decline with a reason, or follow up on family inquiries in one place."
     }
   ],
   prelaunch: {
     title: "Join before launch",
     description:
-      "Shepherds Oud is preparing for nationwide rollout. Register now and we will contact you as soon as the platform is ready.",
+      "Shepherds Oud is preparing for nationwide rollout. Register now — we will contact you when guided care navigation opens in your area.",
     familyCta: "Register as a family",
     facilityCta: "Register your care facility"
+  },
+  live: {
+    title: "Start your guided care journey",
+    description: "Complete intake and your Care Guide will review your case, prepare a care plan, and support every decision.",
+    familyCta: "Start family intake",
+    facilityCta: "Register your facility"
   }
 };
 
 export const intakeSteps = [
   {
     title: "Your contact details",
+    subtitle: ubuntuTagline,
     fields: [
+      { type: "notice", text: ubuntuTagline },
       { type: "text", label: "Your name", placeholder: "e.g. Maria van den Berg" },
       { type: "email", label: "Email address", placeholder: "maria@example.nl" },
       { type: "tel", label: "Phone number", placeholder: "+31 6 ..." },
@@ -64,11 +78,56 @@ export const intakeSteps = [
         options: ["Living alone at home", "Living with family", "In a care home already", "In hospital"]
       },
       {
+        type: "select",
+        label: "Mobility level",
+        options: ["Fully mobile", "Needs walking aid", "Wheelchair user", "Bedbound / limited mobility"]
+      },
+      {
+        type: "select",
+        label: "Dementia or memory care needs",
+        options: ["None", "Early memory concerns", "Moderate dementia", "Advanced dementia / memory care required"]
+      },
+      {
         type: "chips",
         label: "Type of care needed",
         options: ["Assisted living", "Home care", "Dementia / memory care", "Nursing care", "Rehabilitation", "Palliative care"]
       },
-      { type: "chips", label: "How urgent is the care need?", options: ["Within 1 week", "Within 1 month", "1-3 months", "No set timeline"] }
+      { type: "chips", label: "How urgent is the care need?", options: ["Within 1 week", "Within 1 month", "1-3 months", "No set timeline"] },
+      { type: "date", label: "Hospital discharge date (if applicable)", placeholder: "Optional" }
+    ]
+  },
+  {
+    title: "Family decision support",
+    fields: [
+      { type: "text", label: "Primary family decision-maker", placeholder: "Who leads care decisions?" },
+      {
+        type: "select",
+        label: "Decision-maker relationship",
+        options: ["Child", "Spouse or partner", "Sibling", "Other family member", "Legal representative", "Shared family decision"]
+      },
+      {
+        type: "chips",
+        label: "Type of support your family needs",
+        options: [
+          "Help comparing options",
+          "Emotional support during decisions",
+          "Coordinating siblings or relatives",
+          "Understanding funding / WLZ",
+          "Hospital discharge planning",
+          "Urgent placement guidance"
+        ]
+      },
+      {
+        type: "chips",
+        label: "Emotional support needs",
+        options: [
+          "Feeling overwhelmed",
+          "Family disagreement",
+          "Guilt or grief",
+          "Need reassurance",
+          "Need someone to explain options clearly"
+        ]
+      }
     ]
   },
   {
@@ -83,7 +142,7 @@ export const intakeSteps = [
       {
         type: "chips",
         label: "Additional needs",
-        options: ["Dementia or memory care", "Mobility support", "Medical nursing", "Wheelchair accessible", "Special diet", "Spiritual / cultural care"]
+        options: ["Medical nursing", "Wheelchair accessible", "Special diet", "Spiritual / cultural care", "24-hour supervision"]
       }
     ]
   },
@@ -102,7 +161,7 @@ export const intakeSteps = [
       },
       {
         type: "notice",
-        text: "Your information is kept private and only shared with providers you choose to contact. This service complies with GDPR."
+        text: "Your information is kept private and shared only with providers you choose to contact. A Care Guide will review your case personally. GDPR compliant."
       }
     ]
   }
@@ -140,4 +199,18 @@ export const careTypeOptions = [
   "Nursing care",
   "Rehabilitation",
   "Palliative care"
+];
+
+export const careLevelOptions = ["Low care", "Medium care", "High care", "Specialist dementia", "Nursing / 24h"];
+export const fundingTypeOptions = ["WLZ funded", "Private pay", "Combination WLZ + private", "Insurance / other"];
+export const dementiaCapacityOptions = ["None", "Early stage", "Moderate", "Advanced / secure unit"];
+export const visitAvailabilityOptions = ["Visits welcome", "Virtual tour available", "Callback only", "By appointment"];
+
+export const declineReasonOptions = [
+  "No capacity right now",
+  "Care needs exceed our services",
+  "Language / communication mismatch",
+  "Funding type not accepted",
+  "Geographic area not served",
+  "Other"
 ];

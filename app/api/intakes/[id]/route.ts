@@ -4,6 +4,8 @@ import { getServerSession, getUserRole } from "@/lib/auth-server";
 import {
   assessmentComplete,
   canTransitionIntakeStatus,
+  carePlanComplete,
+  followUpTimestampField,
   normalizeIntakeStatus
 } from "@/lib/intake-workflow";
 import { sendIntakeStatusEmail } from "@/lib/email/intake-status-email";
@@ -13,10 +15,25 @@ import { adminIntakeUpdateSchema } from "@/lib/validation/intake-admin";
 
 export const runtime = "nodejs";
 
+function parseDischargeDate(value?: string) {
+  if (!value) return undefined;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+}
+
+function intakeUpdateData(data: ReturnType<typeof intakeSchema.parse>) {
+  const { hospitalDischargeDate, ...rest } = data;
+  return {
+    ...rest,
+    hospitalDischargeDate: parseDischargeDate(hospitalDischargeDate)
+  };
+}
+
 function nextStatusAfterFamilyUpdate(current: string) {
   const status = normalizeIntakeStatus(current);
-  if (status === "NEW") return "NEW";
+  if (status === "NEW" || status === "CARE_GUIDE_ASSIGNED") return status;
   if (status === "PLACED" || status === "CLOSED") return status;
+  if (status.startsWith("FOLLOW_UP")) return status;
   return "ASSESSMENT";
 }
 
@@ -30,6 +47,10 @@ const familyIntakeSelect = {
   ageRange: true,
   carePathway: true,
   carePlanSummary: true,
+  visitScheduledAt: true,
+  visitType: true,
+  visitProviderName: true,
+  visitNotes: true,
   createdAt: true,
   careGuide: {
     select: {
@@ -53,7 +74,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     if (!process.env.DATABASE_URL) {
       return jsonOk({
         id,
-        status: "NEW",
+        status: "CARE_GUIDE_ASSIGNED",
         contactName: "Demo family",
         preferredArea: "Netherlands",
         careTypes: ["Assisted living"],
@@ -62,7 +83,11 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
         matchCount: 0,
         careGuide: { name: "Demo Care Guide", email: "guide@shepherdsoud.nl" },
         carePathway: null,
-        carePlanSummary: null
+        carePlanSummary: null,
+        visitScheduledAt: null,
+        visitType: null,
+        visitProviderName: null,
+        visitNotes: null
       });
     }
 
@@ -83,6 +108,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       careGuide: intake.careGuide
         ? { name: intake.careGuide.name || "Your Care Guide", email: intake.careGuide.email }
         : null,
+      visitScheduledAt: intake.visitScheduledAt?.toISOString() ?? null,
       matchCount
     });
   } catch (error) {
@@ -120,15 +146,33 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       }
 
       const currentStatus = normalizeIntakeStatus(existing.status);
-      const nextStatus = parsed.data.status;
+      let nextStatus = parsed.data.status;
+
+      if (parsed.data.careGuideId && !nextStatus && currentStatus === "NEW") {
+        nextStatus = "CARE_GUIDE_ASSIGNED";
+      }
+
+      if (parsed.data.carePathway && parsed.data.assessmentNotes !== undefined && !nextStatus && ["CARE_GUIDE_ASSIGNED", "NEW"].includes(currentStatus)) {
+        nextStatus = "ASSESSMENT";
+      }
+
+      if (parsed.data.carePlanSummary && carePlanComplete({ carePlanSummary: parsed.data.carePlanSummary }) && !nextStatus && currentStatus === "ASSESSMENT") {
+        nextStatus = "CARE_PLAN";
+      }
 
       if (nextStatus && !canTransitionIntakeStatus(currentStatus, nextStatus)) {
         return jsonError(`Cannot change case status from ${currentStatus} to ${nextStatus}.`, 400);
       }
 
       if (nextStatus === "MATCHED" && !assessmentComplete({ carePathway: parsed.data.carePathway ?? existing.carePathway })) {
-        return jsonError("Select a recommended care pathway before completing assessment.", 400);
+        return jsonError("Select a recommended care pathway before marking matched.", 400);
       }
+
+      if (nextStatus === "CARE_PLAN" && !carePlanComplete({ carePlanSummary: parsed.data.carePlanSummary ?? existing.carePlanSummary })) {
+        return jsonError("Add a care plan summary before publishing the care plan.", 400);
+      }
+
+      const followUpField = nextStatus ? followUpTimestampField(nextStatus) : null;
 
       const intake = await prisma.intake.update({
         where: { id },
@@ -138,7 +182,16 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
           ...(parsed.data.carePathway !== undefined ? { carePathway: parsed.data.carePathway } : {}),
           ...(parsed.data.assessmentNotes !== undefined ? { assessmentNotes: parsed.data.assessmentNotes } : {}),
           ...(parsed.data.carePlanSummary !== undefined ? { carePlanSummary: parsed.data.carePlanSummary } : {}),
-          ...(nextStatus === "VISIT_SCHEDULED" ? { visitScheduledAt: new Date() } : {})
+          ...(parsed.data.visitScheduledAt !== undefined
+            ? { visitScheduledAt: parsed.data.visitScheduledAt ? new Date(parsed.data.visitScheduledAt) : null }
+            : {}),
+          ...(parsed.data.visitType !== undefined ? { visitType: parsed.data.visitType } : {}),
+          ...(parsed.data.visitProviderName !== undefined ? { visitProviderName: parsed.data.visitProviderName } : {}),
+          ...(parsed.data.visitNotes !== undefined ? { visitNotes: parsed.data.visitNotes } : {}),
+          ...(nextStatus === "VISIT_SCHEDULED" && parsed.data.visitScheduledAt === undefined && !existing.visitScheduledAt
+            ? { visitScheduledAt: new Date() }
+            : {}),
+          ...(followUpField ? { [followUpField]: new Date() } : {})
         },
         select: {
           id: true,
@@ -150,6 +203,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
           assessmentNotes: true,
           carePlanSummary: true,
           visitScheduledAt: true,
+          visitType: true,
+          visitProviderName: true,
+          visitNotes: true,
           careGuide: { select: { name: true, email: true } }
         }
       });
@@ -163,7 +219,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
             intakeId: intake.id,
             status: normalizedStatus,
             carePathway: intake.carePathway,
-            careGuide: intake.careGuide
+            careGuide: intake.careGuide,
+            visitProviderName: intake.visitProviderName,
+            visitScheduledAt: intake.visitScheduledAt
           }),
           "intake_status_email"
         );
@@ -187,14 +245,14 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     }
 
     const existingStatus = normalizeIntakeStatus(existing.status);
-    if (existingStatus === "PLACED" || existingStatus === "CLOSED") {
+    if (existingStatus === "PLACED" || existingStatus === "CLOSED" || existingStatus.startsWith("FOLLOW_UP")) {
       return jsonError("This request is closed and cannot be updated.", 409);
     }
 
     const intake = await prisma.intake.update({
       where: { id },
       data: {
-        ...parsed.data,
+        ...intakeUpdateData(parsed.data),
         status: nextStatusAfterFamilyUpdate(existing.status)
       },
       select: { id: true, status: true }
@@ -215,6 +273,10 @@ function isAdminUpdate(body: unknown): body is Record<string, unknown> {
     "careGuideId" in record ||
     "carePathway" in record ||
     "assessmentNotes" in record ||
-    "carePlanSummary" in record
+    "carePlanSummary" in record ||
+    "visitScheduledAt" in record ||
+    "visitType" in record ||
+    "visitProviderName" in record ||
+    "visitNotes" in record
   );
 }

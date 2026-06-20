@@ -12,14 +12,14 @@ export async function syncIntakeCaseFromMatch(intakeId: string, matchStatus: Mat
 
   const caseStatus = normalizeIntakeStatus(intake.status);
 
-  if (matchStatus === "CONTACTED" && caseStatus === "MATCHED") {
+  if ((matchStatus === "ACCEPTED" || matchStatus === "DECLINED") && ["MATCHED", "VISIT_SCHEDULED"].includes(caseStatus)) {
     return prisma.intake.update({
       where: { id: intakeId },
-      data: { status: "VISIT_SCHEDULED", visitScheduledAt: new Date() }
+      data: { status: "PROVIDER_RESPONSE" }
     });
   }
 
-  if (matchStatus === "PLACED" && (caseStatus === "VISIT_SCHEDULED" || caseStatus === "MATCHED")) {
+  if (matchStatus === "PLACED" && ["PROVIDER_RESPONSE", "VISIT_SCHEDULED", "MATCHED"].includes(caseStatus)) {
     return prisma.intake.update({
       where: { id: intakeId },
       data: { status: "PLACEMENT_IN_PROGRESS" }

@@ -91,9 +91,45 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
           ? { notes }
           : autoNote
             ? { notes: appendMatchNotes(existing.notes, autoNote) }
-            : {})
+            : {}),
+        ...(parsed.data.declineReason !== undefined ? { declineReason: parsed.data.declineReason } : {})
       }
     });
+
+    if (actor === "provider" && (nextStatus === "ACCEPTED" || nextStatus === "DECLINED")) {
+      const synced = await syncIntakeCaseFromMatch(existing.intakeId, nextStatus);
+      if (synced) {
+        const intake = await prisma.intake.findUnique({
+          where: { id: existing.intakeId },
+          select: {
+            id: true,
+            contactName: true,
+            email: true,
+            status: true,
+            carePathway: true,
+            visitProviderName: true,
+            visitScheduledAt: true,
+            careGuide: { select: { name: true, email: true } }
+          }
+        });
+
+        if (intake) {
+          void runInBackground(
+            sendIntakeStatusEmail({
+              contactName: intake.contactName,
+              email: intake.email,
+              intakeId: intake.id,
+              status: normalizeIntakeStatus(intake.status),
+              carePathway: intake.carePathway,
+              careGuide: intake.careGuide,
+              visitProviderName: intake.visitProviderName,
+              visitScheduledAt: intake.visitScheduledAt
+            }),
+            "provider_response_status_email"
+          );
+        }
+      }
+    }
 
     if (actor === "admin" && (nextStatus === "CONTACTED" || nextStatus === "PLACED")) {
       const synced = await syncIntakeCaseFromMatch(existing.intakeId, nextStatus);

@@ -44,7 +44,13 @@ function emptyStateCopy(intake: StoredIntake, loadError: boolean) {
     };
   }
 
-  if (intake.status === "MATCHED" || intake.status === "PLACED" || intake.status === "PLACEMENT_IN_PROGRESS" || intake.status === "VISIT_SCHEDULED") {
+  if (
+    intake.status === "MATCHED" ||
+    intake.status === "PLACED" ||
+    intake.status === "PLACEMENT_IN_PROGRESS" ||
+    intake.status === "VISIT_SCHEDULED" ||
+    intake.status === "PROVIDER_RESPONSE"
+  ) {
     return {
       title: "Your shortlist is almost ready",
       description:
@@ -52,10 +58,24 @@ function emptyStateCopy(intake: StoredIntake, loadError: boolean) {
     };
   }
 
+  if (intake.status === "CARE_PLAN") {
+    return {
+      title: "Your care plan is ready",
+      description: "Your Care Guide is finalizing provider matches for your shortlist."
+    };
+  }
+
   if (intake.status === "ASSESSMENT" || intake.status === "REVIEW") {
     return {
       title: "Your Care Guide is completing your assessment",
-      description: "We will publish suitable providers here once your recommended care pathway is ready."
+      description: "We will publish your care plan and suitable providers here once assessment is complete."
+    };
+  }
+
+  if (intake.status === "CARE_GUIDE_ASSIGNED") {
+    return {
+      title: "Your Care Guide is reviewing your case",
+      description: "A real person is reviewing your intake before assessment begins."
     };
   }
 

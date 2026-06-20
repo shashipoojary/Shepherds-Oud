@@ -34,6 +34,7 @@ import {
   adminIntakeActionMeta,
   adminIntakeStatusLabel,
   canCreateMatches,
+  nextIntakeActions,
   type IntakeStatus
 } from "@/lib/intake-workflow";
 import {
@@ -333,7 +334,7 @@ function FamiliesTable({
         <tbody className="divide-y divide-stone-200">
           {rows.map((family) => {
             const isPending = pendingId === family.id;
-            const assessmentMeta = adminIntakeActionMeta("ASSESSMENT");
+            const assignMeta = adminIntakeActionMeta("CARE_GUIDE_ASSIGNED");
             return (
               <tr key={family.id} className="cursor-pointer hover:bg-cream" onClick={() => setSelected(family)}>
                 <td className="px-4 py-3 text-sm">
@@ -353,11 +354,11 @@ function FamiliesTable({
                   <div className="flex items-center gap-1">
                     {family.status === "NEW" ? (
                       <IconActionButton
-                        label={assessmentMeta.label}
+                        label={assignMeta.label}
                         icon={ClipboardList}
                         loading={isPending}
                         disabled={isPending}
-                        onClick={() => void updateStatus(family.id, "ASSESSMENT", family.name)}
+                        onClick={() => setSelected(family)}
                       />
                     ) : (
                       <IconActionButton label="Open details" icon={ArrowUpRight} onClick={() => setSelected(family)} />
@@ -416,7 +417,12 @@ function FamilyDetailPanel({
   const [carePathway, setCarePathway] = useState("");
   const [assessmentNotes, setAssessmentNotes] = useState("");
   const [carePlanSummary, setCarePlanSummary] = useState("");
+  const [visitScheduledAt, setVisitScheduledAt] = useState("");
+  const [visitType, setVisitType] = useState<"VISIT" | "CALLBACK" | "">("");
+  const [visitProviderName, setVisitProviderName] = useState("");
+  const [visitNotes, setVisitNotes] = useState("");
   const [savingAssessment, setSavingAssessment] = useState(false);
+  const [savingVisit, setSavingVisit] = useState(false);
 
   useEffect(() => {
     if (!family) return;
@@ -424,6 +430,10 @@ function FamilyDetailPanel({
     setCarePathway(family.carePathway || "");
     setAssessmentNotes(family.assessmentNotes || "");
     setCarePlanSummary(family.carePlanSummary || "");
+    setVisitScheduledAt(family.visitScheduledAt ? family.visitScheduledAt.slice(0, 16) : "");
+    setVisitType((family.visitType as "VISIT" | "CALLBACK") || "");
+    setVisitProviderName(family.visitProviderName || "");
+    setVisitNotes(family.visitNotes || "");
   }, [family]);
 
   const isPending = family ? pendingId === family.id : false;
@@ -444,12 +454,22 @@ function FamilyDetailPanel({
 
   async function saveCareGuide() {
     if (!family || !careGuideId) return;
-    await onPatchIntake(family.id, { careGuideId }, family.name, `Care Guide updated for ${family.name}.`);
+    await onPatchIntake(
+      family.id,
+      { careGuideId, ...(family.status === "NEW" ? { status: "CARE_GUIDE_ASSIGNED" } : {}) },
+      family.name,
+      `Care Guide assigned for ${family.name}.`
+    );
   }
 
-  async function saveAssessment(complete = false) {
+  async function saveAssessment(advanceTo?: IntakeStatus) {
     if (!family || !carePathway) {
       onMatchCreated("Select a recommended care pathway before saving the assessment.");
+      return;
+    }
+
+    if (advanceTo === "CARE_PLAN" && !carePlanSummary.trim()) {
+      onMatchCreated("Add a care plan summary before publishing the care plan.");
       return;
     }
 
@@ -462,15 +482,42 @@ function FamilyDetailPanel({
           carePathway,
           assessmentNotes,
           carePlanSummary,
-          ...(complete ? { status: "MATCHED" } : {})
+          ...(advanceTo ? { status: advanceTo } : family.status === "CARE_GUIDE_ASSIGNED" ? { status: "ASSESSMENT" } : {})
         },
         family.name,
-        complete
-          ? `Assessment completed for ${family.name}. Family can now view matched providers.`
-          : `Assessment saved for ${family.name}.`
+        advanceTo === "CARE_PLAN"
+          ? `Care plan published for ${family.name}.`
+          : advanceTo === "MATCHED"
+            ? `${family.name} marked as matched.`
+            : `Assessment saved for ${family.name}.`
       );
     } finally {
       setSavingAssessment(false);
+    }
+  }
+
+  async function saveVisitSchedule() {
+    if (!family || !visitScheduledAt) {
+      onMatchCreated("Set a visit or callback date and time before saving.");
+      return;
+    }
+
+    setSavingVisit(true);
+    try {
+      await onPatchIntake(
+        family.id,
+        {
+          visitScheduledAt: new Date(visitScheduledAt).toISOString(),
+          visitType: visitType || null,
+          visitProviderName: visitProviderName || null,
+          visitNotes: visitNotes || null,
+          status: "VISIT_SCHEDULED"
+        },
+        family.name,
+        `Visit scheduled for ${family.name}.`
+      );
+    } finally {
+      setSavingVisit(false);
     }
   }
 
@@ -530,38 +577,37 @@ function FamilyDetailPanel({
         { label: "Urgency", value: family.urgency },
         { label: "Budget", value: family.budget },
         { label: "Languages", value: family.languages?.length ? family.languages.join(", ") : null },
+        { label: "Mobility", value: family.mobility },
+        { label: "Dementia needs", value: family.dementiaNeeds },
+        { label: "Hospital discharge", value: family.hospitalDischargeDate },
+        { label: "Decision-maker", value: family.decisionMakerName },
+        { label: "Decision-maker role", value: family.decisionMakerRelationship },
+        { label: "Support needed", value: family.supportTypes?.length ? family.supportTypes.join(", ") : null },
+        { label: "Emotional support", value: family.emotionalSupportNeeds?.length ? family.emotionalSupportNeeds.join(", ") : null },
+        { label: "Living situation", value: family.livingSituation },
+        { label: "Move-in timeline", value: family.moveInTimeline },
         { label: "Additional needs", value: family.additionalNeeds?.length ? family.additionalNeeds.join(", ") : null },
         { label: "Notes", value: family.notes },
         { label: "Care Guide", value: family.careGuideName },
         { label: "Care pathway", value: family.carePathway },
         { label: "Status", value: adminIntakeStatusLabel(family.status) },
-        { label: "Visit scheduled", value: family.visitScheduledAt },
+        { label: "Visit scheduled", value: family.visitScheduledAtLabel },
+        { label: "Visit type", value: family.visitType },
+        { label: "Visit provider", value: family.visitProviderName },
+        { label: "7-day follow-up", value: family.followUp7At },
+        { label: "30-day follow-up", value: family.followUp30At },
+        { label: "90-day follow-up", value: family.followUp90At },
         { label: "Submitted", value: family.createdAt },
         { label: "Last updated", value: family.updatedAt }
       ]
     : [];
 
-  const nextActions: Array<{ label: string; status: IntakeStatus; description: string }> = [];
-  if (family?.status === "NEW") {
-    const meta = adminIntakeActionMeta("ASSESSMENT");
-    nextActions.push({ label: meta.label, status: "ASSESSMENT", description: meta.description });
-  }
-  if (family?.status === "MATCHED") {
-    const meta = adminIntakeActionMeta("VISIT_SCHEDULED");
-    nextActions.push({ label: meta.label, status: "VISIT_SCHEDULED", description: meta.description });
-  }
-  if (family?.status === "VISIT_SCHEDULED") {
-    const meta = adminIntakeActionMeta("PLACEMENT_IN_PROGRESS");
-    nextActions.push({ label: meta.label, status: "PLACEMENT_IN_PROGRESS", description: meta.description });
-  }
-  if (family?.status === "PLACEMENT_IN_PROGRESS") {
-    const meta = adminIntakeActionMeta("PLACED");
-    nextActions.push({ label: meta.label, status: "PLACED", description: meta.description });
-  }
-  if (family && family.status !== "CLOSED") {
-    const meta = adminIntakeActionMeta("CLOSED");
-    nextActions.push({ label: meta.label, status: "CLOSED", description: meta.description });
-  }
+  const nextActions = family
+    ? nextIntakeActions(family.status).map((status) => {
+        const meta = adminIntakeActionMeta(status);
+        return { label: meta.label, status, description: meta.description };
+      })
+    : [];
 
   return (
     <SlidePanel
@@ -582,9 +628,29 @@ function FamilyDetailPanel({
             <PanelSection step={1} title="Contact & care needs" className="mt-6">
               <DetailList
                 items={details.filter((item) =>
-                  ["Contact name", "Email", "Phone", "Relationship", "Age range", "Preferred area", "Care types", "Urgency", "Budget", "Languages", "Additional needs", "Notes"].includes(
-                    item.label
-                  )
+                  [
+                    "Contact name",
+                    "Email",
+                    "Phone",
+                    "Relationship",
+                    "Age range",
+                    "Preferred area",
+                    "Care types",
+                    "Urgency",
+                    "Budget",
+                    "Languages",
+                    "Mobility",
+                    "Dementia needs",
+                    "Hospital discharge",
+                    "Decision-maker",
+                    "Decision-maker role",
+                    "Support needed",
+                    "Emotional support",
+                    "Living situation",
+                    "Move-in timeline",
+                    "Additional needs",
+                    "Notes"
+                  ].includes(item.label)
                 )}
                 columns={2}
               />
@@ -608,7 +674,7 @@ function FamilyDetailPanel({
                   </select>
                 </label>
                 <Button type="button" size="sm" variant="outline" disabled={!careGuideId || isPending} onClick={() => void saveCareGuide()}>
-                  Save Care Guide
+                  Assign Care Guide
                 </Button>
                 <label className="grid gap-1.5 text-sm font-medium">
                   Recommended care pathway
@@ -644,22 +710,86 @@ function FamilyDetailPanel({
                   />
                 </label>
                 <div className="flex flex-wrap gap-2">
-                  <Button type="button" size="sm" variant="outline" disabled={savingAssessment || isPending} onClick={() => void saveAssessment(false)}>
+                  <Button type="button" size="sm" variant="outline" disabled={savingAssessment || isPending} onClick={() => void saveAssessment()}>
                     {savingAssessment ? "Saving..." : "Save assessment"}
                   </Button>
-                  {family.status === "ASSESSMENT" ? (
-                    <Button type="button" size="sm" disabled={savingAssessment || isPending || !carePathway} onClick={() => void saveAssessment(true)}>
-                      {savingAssessment ? "Saving..." : "Complete assessment & match"}
+                  {["ASSESSMENT", "CARE_GUIDE_ASSIGNED"].includes(family.status) ? (
+                    <Button type="button" size="sm" disabled={savingAssessment || isPending || !carePlanSummary.trim()} onClick={() => void saveAssessment("CARE_PLAN")}>
+                      Publish care plan
+                    </Button>
+                  ) : null}
+                  {["CARE_PLAN", "ASSESSMENT"].includes(family.status) ? (
+                    <Button type="button" size="sm" disabled={savingAssessment || isPending || !carePathway} onClick={() => void saveAssessment("MATCHED")}>
+                      Mark matched
                     </Button>
                   ) : null}
                 </div>
               </div>
             </PanelSection>
 
-            <PanelSection step={3} title="Record">
+            <PanelSection step={3} title="Visit scheduling" className="mt-6">
+              <div className="grid gap-3">
+                <label className="grid gap-1.5 text-sm font-medium">
+                  Visit or callback date & time
+                  <input
+                    type="datetime-local"
+                    value={visitScheduledAt}
+                    onChange={(event) => setVisitScheduledAt(event.target.value)}
+                    className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm outline-brand-amber"
+                  />
+                </label>
+                <label className="grid gap-1.5 text-sm font-medium">
+                  Type
+                  <select
+                    value={visitType}
+                    onChange={(event) => setVisitType(event.target.value as "VISIT" | "CALLBACK" | "")}
+                    className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm outline-brand-amber"
+                  >
+                    <option value="">Select type</option>
+                    <option value="VISIT">Facility visit</option>
+                    <option value="CALLBACK">Phone callback</option>
+                  </select>
+                </label>
+                <label className="grid gap-1.5 text-sm font-medium">
+                  Provider / facility
+                  <input
+                    value={visitProviderName}
+                    onChange={(event) => setVisitProviderName(event.target.value)}
+                    className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm outline-brand-amber"
+                    placeholder="Provider name"
+                  />
+                </label>
+                <label className="grid gap-1.5 text-sm font-medium">
+                  Visit notes
+                  <textarea
+                    value={visitNotes}
+                    onChange={(event) => setVisitNotes(event.target.value)}
+                    className="min-h-16 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm outline-brand-amber"
+                    placeholder="Directions, contact person, what to bring..."
+                  />
+                </label>
+                <Button type="button" size="sm" disabled={savingVisit || isPending || !visitScheduledAt} onClick={() => void saveVisitSchedule()}>
+                  {savingVisit ? "Saving..." : "Save visit & mark scheduled"}
+                </Button>
+              </div>
+            </PanelSection>
+
+            <PanelSection step={4} title="Record">
               <DetailList
                 items={details.filter((item) =>
-                  ["Care Guide", "Care pathway", "Status", "Visit scheduled", "Submitted", "Last updated"].includes(item.label)
+                  [
+                    "Care Guide",
+                    "Care pathway",
+                    "Status",
+                    "Visit scheduled",
+                    "Visit type",
+                    "Visit provider",
+                    "7-day follow-up",
+                    "30-day follow-up",
+                    "90-day follow-up",
+                    "Submitted",
+                    "Last updated"
+                  ].includes(item.label)
                 )}
                 columns={2}
               />
@@ -667,7 +797,7 @@ function FamilyDetailPanel({
           </div>
 
           <div className="lg:sticky lg:top-0 lg:self-start">
-            <PanelSection step={4} title="Create provider match" description="Available after assessment and care pathway are set.">
+            <PanelSection step={5} title="Create provider match" description="Available after care plan and pathway are set.">
               <div className="grid gap-3">
                 <label className="grid gap-1.5 text-sm font-medium">
                   Provider
@@ -712,7 +842,11 @@ function FamilyDetailPanel({
               </div>
             </PanelSection>
 
-            <PanelSection step={5} title="Update case status" description="NEW → Assessment → Matched → Visit scheduled → Placement in progress → Placed → Closed">
+            <PanelSection
+              step={6}
+              title="Update case status"
+              description="New → Care Guide assigned → Assessment → Care plan → Matched → Visit scheduled → Provider response → Placement → 7/30/90 follow-up → Closed"
+            >
               <div className="space-y-3">
                 {nextActions.map((action) => (
                   <div key={action.status}>
@@ -833,7 +967,12 @@ function ProviderDetailPanel({
               : null
         },
         { label: "Services", value: provider.services?.length ? provider.services.join(", ") : null },
+        { label: "Care levels", value: provider.careLevels?.length ? provider.careLevels.join(", ") : null },
         { label: "Languages", value: provider.languages?.length ? provider.languages.join(", ") : null },
+        { label: "Dementia capacity", value: provider.dementiaCapacity },
+        { label: "Funding types", value: provider.fundingTypes?.length ? provider.fundingTypes.join(", ") : null },
+        { label: "Response time", value: provider.responseTimeHours ? `${provider.responseTimeHours} hours` : null },
+        { label: "Visit availability", value: provider.visitAvailability },
         { label: "Description", value: provider.description },
         { label: "Added", value: provider.createdAt },
         { label: "Last updated", value: provider.updatedAt }

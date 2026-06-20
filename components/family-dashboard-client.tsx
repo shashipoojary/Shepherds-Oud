@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { getStoredIntake, saveStoredIntake, type StoredIntake } from "@/lib/client-intake";
+import { CareJourneyTimeline } from "@/components/care-journey-timeline";
 import { FamilyActiveMatches } from "@/components/family-active-matches";
 import { IntakeSummaryCard } from "@/components/intake-summary-card";
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,10 @@ export function FamilyDashboardClient() {
           careGuide?: { name: string; email: string } | null;
           carePathway?: string | null;
           carePlanSummary?: string | null;
+          visitScheduledAt?: string | null;
+          visitType?: string | null;
+          visitProviderName?: string | null;
+          visitNotes?: string | null;
         };
         const updated: StoredIntake = {
           ...stored,
@@ -40,7 +45,11 @@ export function FamilyDashboardClient() {
           matchCount: data.matchCount ?? 0,
           careGuide: data.careGuide ?? stored.careGuide,
           carePathway: data.carePathway ?? stored.carePathway,
-          carePlanSummary: data.carePlanSummary ?? stored.carePlanSummary
+          carePlanSummary: data.carePlanSummary ?? stored.carePlanSummary,
+          visitScheduledAt: data.visitScheduledAt ?? stored.visitScheduledAt,
+          visitType: data.visitType ?? stored.visitType,
+          visitProviderName: data.visitProviderName ?? stored.visitProviderName,
+          visitNotes: data.visitNotes ?? stored.visitNotes
         };
         saveStoredIntake(updated);
         setIntake(updated);
@@ -74,9 +83,9 @@ export function FamilyDashboardClient() {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="section-label">Family dashboard</p>
-            <h1 className="mt-2 text-2xl font-semibold">Your care journey</h1>
+            <h1 className="mt-2 text-2xl font-semibold">Your guided care journey</h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">
-              Follow your care journey with your dedicated Care Guide — no account needed. Status updates and matched providers appear below.
+              Follow each step with your dedicated Care Guide. Shared decision support — not a directory search.
             </p>
           </div>
           {intake ? <RefreshButton onClick={() => void handleRefresh()} loading={refreshing} /> : null}
@@ -99,9 +108,10 @@ export function FamilyDashboardClient() {
         </ButtonRow>
       </header>
 
-      <section className="mt-5">
+      <section className="mt-5 space-y-5">
         {intake ? (
           <>
+            <CareJourneyTimeline status={intake.status} careGuide={intake.careGuide} />
             <IntakeSummaryCard intake={intake} />
             <FamilyActiveMatches key={`${intake.id}-${intake.matchCount}`} intakeId={intake.id} />
           </>
@@ -109,7 +119,7 @@ export function FamilyDashboardClient() {
           <div className="rounded-2xl bg-white shadow-soft">
             <EmptyState
               title="No request saved on this device yet"
-              description="Complete the intake form to create your care request card. We will also email you a reference number."
+              description="Complete the intake form to create your care request. A Care Guide will be assigned to support your family."
             />
           </div>
         )}

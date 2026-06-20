@@ -27,6 +27,7 @@ export async function GET() {
         score: match.score,
         status: match.status,
         notes: match.notes,
+        declineReason: match.declineReason,
         createdAt: match.createdAt.toISOString(),
         intake: match.intake
       }))

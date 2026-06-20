@@ -34,7 +34,14 @@ export async function upsertProviderForUser(userId: string, userEmail: string, i
     availabilityStatus: input.availabilityStatus || null,
     waitlistText: input.waitlistText || null,
     services: input.services,
-    languages: input.languages
+    careLevels: input.careLevels,
+    languages: input.languages,
+    dementiaCapacity: input.dementiaCapacity || null,
+    fundingTypes: input.fundingTypes,
+    responseTimeHours: input.responseTimeHours ?? null,
+    visitAvailability: input.visitAvailability || null,
+    priceMin: input.priceMin ?? null,
+    priceMax: input.priceMax ?? null
   };
 
   if (user.linkedProviderId) {
@@ -86,6 +93,7 @@ export async function getProviderDashboardData(userId: string) {
       score: match.score,
       status: match.status,
       notes: match.notes,
+      declineReason: match.declineReason,
       createdAt: match.createdAt.toISOString(),
       intake: match.intake
     }))

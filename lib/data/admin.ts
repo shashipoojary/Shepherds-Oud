@@ -25,6 +25,15 @@ export async function getAdminDashboardData() {
         budget: true,
         languages: true,
         additionalNeeds: true,
+        livingSituation: true,
+        moveInTimeline: true,
+        mobility: true,
+        dementiaNeeds: true,
+        hospitalDischargeDate: true,
+        decisionMakerName: true,
+        decisionMakerRelationship: true,
+        emotionalSupportNeeds: true,
+        supportTypes: true,
         notes: true,
         status: true,
         careGuideId: true,
@@ -32,6 +41,12 @@ export async function getAdminDashboardData() {
         assessmentNotes: true,
         carePlanSummary: true,
         visitScheduledAt: true,
+        visitType: true,
+        visitProviderName: true,
+        visitNotes: true,
+        followUp7At: true,
+        followUp30At: true,
+        followUp90At: true,
         careGuide: { select: { id: true, name: true, email: true } },
         createdAt: true,
         updatedAt: true
@@ -58,6 +73,11 @@ export async function getAdminDashboardData() {
         waitlistText: true,
         services: true,
         languages: true,
+        careLevels: true,
+        dementiaCapacity: true,
+        fundingTypes: true,
+        responseTimeHours: true,
+        visitAvailability: true,
         priceMin: true,
         priceMax: true,
         createdAt: true,
@@ -74,6 +94,7 @@ export async function getAdminDashboardData() {
         score: true,
         status: true,
         notes: true,
+        declineReason: true,
         createdAt: true,
         updatedAt: true,
         intake: {
@@ -125,7 +146,7 @@ export async function getAdminDashboardData() {
     .filter((group) => group.status === "PLACED")
     .reduce((sum, group) => sum + group._count._all, 0);
   const activeCases = statusGroups
-    .filter((group) => !["PLACED", "CLOSED"].includes(group.status))
+    .filter((group) => group.status !== "CLOSED")
     .reduce((sum, group) => sum + group._count._all, 0);
 
   return {
@@ -148,6 +169,15 @@ export async function getAdminDashboardData() {
       budget: intake.budget,
       languages: intake.languages,
       additionalNeeds: intake.additionalNeeds,
+      livingSituation: intake.livingSituation,
+      moveInTimeline: intake.moveInTimeline,
+      mobility: intake.mobility,
+      dementiaNeeds: intake.dementiaNeeds,
+      hospitalDischargeDate: intake.hospitalDischargeDate?.toLocaleDateString("en-GB") || null,
+      decisionMakerName: intake.decisionMakerName,
+      decisionMakerRelationship: intake.decisionMakerRelationship,
+      emotionalSupportNeeds: intake.emotionalSupportNeeds,
+      supportTypes: intake.supportTypes,
       notes: intake.notes,
       ageRange: intake.ageRange,
       status: normalizeIntakeStatus(intake.status),
@@ -157,7 +187,14 @@ export async function getAdminDashboardData() {
       carePathway: intake.carePathway,
       assessmentNotes: intake.assessmentNotes,
       carePlanSummary: intake.carePlanSummary,
-      visitScheduledAt: intake.visitScheduledAt?.toLocaleDateString("en-GB") || null,
+      visitScheduledAt: intake.visitScheduledAt?.toISOString() || null,
+      visitScheduledAtLabel: intake.visitScheduledAt?.toLocaleString("en-GB") || null,
+      visitType: intake.visitType,
+      visitProviderName: intake.visitProviderName,
+      visitNotes: intake.visitNotes,
+      followUp7At: intake.followUp7At?.toLocaleDateString("en-GB") || null,
+      followUp30At: intake.followUp30At?.toLocaleDateString("en-GB") || null,
+      followUp90At: intake.followUp90At?.toLocaleDateString("en-GB") || null,
       createdAt: intake.createdAt.toLocaleDateString("en-GB"),
       createdAtIso: intake.createdAt.toISOString(),
       updatedAt: intake.updatedAt.toLocaleDateString("en-GB"),
@@ -181,6 +218,11 @@ export async function getAdminDashboardData() {
       waitlistText: provider.waitlistText,
       services: provider.services,
       languages: provider.languages,
+      careLevels: provider.careLevels,
+      dementiaCapacity: provider.dementiaCapacity,
+      fundingTypes: provider.fundingTypes,
+      responseTimeHours: provider.responseTimeHours,
+      visitAvailability: provider.visitAvailability,
       priceMin: provider.priceMin,
       priceMax: provider.priceMax,
       createdAt: provider.createdAt.toLocaleDateString("en-GB"),
@@ -207,7 +249,8 @@ export async function getAdminDashboardData() {
         updatedAtIso: match.updatedAt.toISOString(),
         statusRaw: match.status,
         status: match.status.replaceAll("_", " "),
-        notes: match.notes
+        notes: match.notes,
+        declineReason: match.declineReason
       }))
       .sort((a, b) => {
         const priority = compareMatchPriority(a.statusRaw, b.statusRaw);

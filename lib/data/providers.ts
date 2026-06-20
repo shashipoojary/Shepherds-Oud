@@ -9,6 +9,11 @@ type ProviderRecord = {
   description: string;
   languages: string[];
   services: string[];
+  careLevels: string[];
+  dementiaCapacity: string | null;
+  fundingTypes: string[];
+  responseTimeHours: number | null;
+  visitAvailability: string | null;
   priceMin: number | null;
   priceMax: number | null;
   bedsTotal: number | null;
@@ -33,17 +38,23 @@ export function mapProviderRecord(provider: ProviderRecord, score = 0): Provider
     action: "Request visit",
     tags: [
       ...provider.services.map((label) => ({ label, type: "service" as const })),
-      ...provider.languages.map((label) => ({ label, type: "lang" as const }))
+      ...provider.careLevels.map((label) => ({ label, type: "service" as const })),
+      ...provider.languages.map((label) => ({ label, type: "lang" as const })),
+      ...(provider.dementiaCapacity ? [{ label: `Dementia: ${provider.dementiaCapacity}`, type: "service" as const }] : [])
     ],
     meta: [
       provider.priceMin && provider.priceMax ? `EUR ${provider.priceMin}-${provider.priceMax}/mo` : "Price on request",
-      provider.bedsOpen != null && provider.bedsOpen > 0 ? `${provider.bedsOpen} beds open` : ""
+      provider.bedsOpen != null && provider.bedsOpen > 0 ? `${provider.bedsOpen} beds open` : "",
+      provider.responseTimeHours ? `Responds within ${provider.responseTimeHours}h` : ""
     ].filter(Boolean),
     description: provider.description,
     details: {
       Area: provider.area,
       ...(provider.bedsTotal && provider.bedsOpen != null ? { "Beds available": `${openBeds} of ${provider.bedsTotal}` } : {}),
       ...(provider.waitlistText ? { Waitlist: provider.waitlistText } : {}),
+      ...(provider.dementiaCapacity ? { "Dementia capacity": provider.dementiaCapacity } : {}),
+      ...(provider.fundingTypes.length ? { "Funding types": provider.fundingTypes.join(", ") } : {}),
+      ...(provider.visitAvailability ? { "Visit availability": provider.visitAvailability } : {}),
       ...(provider.priceMin && provider.priceMax
         ? { "Price range": `EUR ${provider.priceMin} - EUR ${provider.priceMax} per month` }
         : {})

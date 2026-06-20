@@ -19,5 +19,6 @@ export const updateMatchSchema = z.object({
     "CLOSED"
   ]),
   notes: z.string().optional(),
+  declineReason: z.string().max(500).optional(),
   intakeId: z.string().min(1).optional()
 });

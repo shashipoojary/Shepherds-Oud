@@ -1,11 +1,25 @@
-import { NextResponse } from "next/server";
 import { sendBrevoEmail } from "@/lib/email/brevo";
+import { ubuntuTagline } from "@/lib/content";
 import { resolveDefaultCareGuideId } from "@/lib/care-guide";
 import { normalizeIntakeStatus } from "@/lib/intake-workflow";
 import { intakeSchema } from "@/lib/validation/intake";
 import { handleApiError, jsonError, jsonOk, rateLimitResponse, readJsonBody, runInBackground } from "@/lib/api-helpers";
 
 export const runtime = "nodejs";
+
+function parseDischargeDate(value?: string) {
+  if (!value) return undefined;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+}
+
+function intakeCreateData(data: ReturnType<typeof intakeSchema.parse>) {
+  const { hospitalDischargeDate, ...rest } = data;
+  return {
+    ...rest,
+    hospitalDischargeDate: parseDischargeDate(hospitalDischargeDate)
+  };
+}
 
 export async function POST(request: Request) {
   const limited = rateLimitResponse(request, "intake-create", 8, 60 * 60 * 1000);
@@ -24,7 +38,7 @@ export async function POST(request: Request) {
         notifyIntake(parsed.data.contactName, parsed.data.email, "demo-intake", null),
         "intake_confirmation_email"
       );
-      return jsonOk({ id: "demo-intake", status: "received", mode: "demo" }, 201);
+      return jsonOk({ id: "demo-intake", status: "CARE_GUIDE_ASSIGNED", mode: "demo" }, 201);
     }
 
     const { prisma } = await import("@/lib/db");
@@ -32,9 +46,9 @@ export async function POST(request: Request) {
 
     const intake = await prisma.intake.create({
       data: {
-        ...parsed.data,
+        ...intakeCreateData(parsed.data),
         careGuideId,
-        status: careGuideId ? "ASSESSMENT" : "NEW"
+        status: careGuideId ? "CARE_GUIDE_ASSIGNED" : "NEW"
       },
       include: {
         careGuide: { select: { name: true, email: true } }
@@ -70,15 +84,15 @@ async function notifyIntake(
 ) {
   const advisorEmail = process.env.ADVISOR_EMAIL;
   const guideLine = careGuide
-    ? `<p>Your Care Guide is <strong>${careGuide.name || "from Shepherds Oud"}</strong> (${careGuide.email}). They will support you through every step.</p>`
-    : "<p>A Care Guide will be assigned to support you through every step.</p>";
+    ? `<p>Your Care Guide is <strong>${careGuide.name || "from Shepherds Oud"}</strong> (${careGuide.email}). They will personally review your case and guide your family through each decision.</p>`
+    : "<p>A Care Guide will be assigned shortly to personally review your case and guide your family through each decision.</p>";
 
   await Promise.allSettled([
     sendBrevoEmail({
       to: [{ email, name }],
       subject: "We received your Shepherds Oud care request",
-      htmlContent: `<p>Hello ${name},</p><p>We received your care request. Your reference is <strong>${intakeId}</strong>.</p>${guideLine}<p>No family should navigate elder care alone — we are here to guide you.</p>`,
-      textContent: `Hello ${name}, we received your care request. Reference: ${intakeId}.`
+      htmlContent: `<p>Hello ${name},</p><p>We received your care request. Your reference is <strong>${intakeId}</strong>.</p>${guideLine}<p><em>${ubuntuTagline}</em></p>`,
+      textContent: `Hello ${name}, we received your care request. Reference: ${intakeId}. ${ubuntuTagline}`
     }),
     advisorEmail
       ? sendBrevoEmail({

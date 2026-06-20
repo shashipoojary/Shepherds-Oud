@@ -3,12 +3,11 @@ import { ArrowRight, CalendarDays, ClipboardList, Home, Inbox, UserCheck, Users 
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
-import { ButtonLabel } from "@/components/ui/button-label";
 import { ButtonRow } from "@/components/ui/button-row";
 import { Card } from "@/components/ui/card";
 import { SectionHeader } from "@/components/ui/section-header";
 import { brand } from "@/lib/brand";
-import { homeContent } from "@/lib/content";
+import { homeContent, isPrelaunch, ubuntuTagline } from "@/lib/content";
 
 const providerSteps = [
   { icon: UserCheck, ...homeContent.providerSteps[0] },
@@ -17,6 +16,11 @@ const providerSteps = [
 ];
 
 export default function HomePage() {
+  const heroTitle = isPrelaunch ? "Guided eldercare navigation — opening soon" : "Find the right care for your loved one";
+  const heroIntro = isPrelaunch ? homeContent.intro : homeContent.intro;
+  const primaryHref = isPrelaunch ? "/register" : "/family/intake";
+  const primaryLabel = isPrelaunch ? "Join the waitlist" : "Start guided intake";
+
   return (
     <>
       <SiteHeader />
@@ -24,26 +28,31 @@ export default function HomePage() {
         <section className="bg-white px-4 py-16 sm:px-6 sm:py-20">
           <div className="mx-auto max-w-3xl text-center">
             <span className="section-label inline-flex rounded bg-brand-green-pale/40 px-3 py-1">{homeContent.badge}</span>
-            <h1 className="mx-auto mt-5 max-w-[680px] font-brand text-hero font-bold text-ink">
-              Find the right care for your loved one
-            </h1>
-            <p className="mx-auto mt-4 max-w-xl text-lg italic text-brand-amber">{brand.tagline}</p>
+            <h1 className="mx-auto mt-5 max-w-[680px] font-brand text-hero font-bold text-ink">{heroTitle}</h1>
+            <p className="mx-auto mt-4 max-w-xl text-lg italic text-brand-amber">{ubuntuTagline}</p>
             <p className="mx-auto mt-3 max-w-xl text-body text-ink/80">
-              Shepherds Oud connects families with eldercare providers across the Netherlands.
+              {isPrelaunch
+                ? "Shepherds Oud is a human-guided care navigation service for families across the Netherlands — not a care directory."
+                : "Shepherds Oud connects families with a dedicated Care Guide and matched eldercare providers."}
             </p>
-            <p className="mx-auto mt-3 max-w-[560px] text-body text-ink/70">{homeContent.intro}</p>
+            <p className="mx-auto mt-3 max-w-[560px] text-body text-ink/70">{heroIntro}</p>
             <ButtonRow className="mx-auto mt-8 max-w-md">
               <Button asChild size="lg" className="w-full">
-                <Link href="/family/intake">
-                  Find care <ArrowRight className="h-4 w-4 shrink-0" />
+                <Link href={primaryHref}>
+                  {primaryLabel} <ArrowRight className="h-4 w-4 shrink-0" />
                 </Link>
               </Button>
-              <Button asChild variant="outline" size="lg" className="w-full">
-                <Link href="/register">
-                  <ButtonLabel short="Waitlist">Join the waitlist</ButtonLabel>
-                </Link>
-              </Button>
+              {!isPrelaunch ? (
+                <Button asChild variant="outline" size="lg" className="w-full">
+                  <Link href="/register">Join the waitlist</Link>
+                </Button>
+              ) : null}
             </ButtonRow>
+            {isPrelaunch ? (
+              <p className="mx-auto mt-4 max-w-md text-sm text-ink/60">
+                Full guided intake opens at launch. Register now and we will contact you when your area goes live.
+              </p>
+            ) : null}
           </div>
         </section>
 
@@ -52,29 +61,41 @@ export default function HomePage() {
             <AudienceCard
               icon={<Users className="h-5 w-5" />}
               title="For families"
-              text="Share your situation and get matched with care options that fit your loved one's needs."
-              href="/family/intake"
-              cta="Start intake"
+              text={
+                isPrelaunch
+                  ? "Register your interest. When we launch, a Care Guide will personally review your case and support every decision."
+                  : "Share your situation with a guided intake. A Care Guide reviews your case and supports your family through placement."
+              }
+              href={isPrelaunch ? "/register/family" : "/family/intake"}
+              cta={isPrelaunch ? "Register interest" : "Start intake"}
             />
             <AudienceCard
               icon={<Home className="h-5 w-5" />}
               title="For care facilities"
-              text="Register your facility interest and we will contact you when onboarding opens in your area."
+              text="Register your facility interest and we will contact you when provider onboarding opens in your area."
               href="/register/facility"
               cta="Register your facility"
             />
             <AudienceCard
               icon={<ClipboardList className="h-5 w-5" />}
-              title="Before full launch"
-              text="Join the waitlist now and we will contact you when Shepherds Oud opens in your area."
-              href="/register"
-              cta="Join waitlist"
+              title={isPrelaunch ? "Before full launch" : "How it works"}
+              text={
+                isPrelaunch
+                  ? "One clear path until launch: join the waitlist and we will reach out when guided navigation is ready."
+                  : "Care Guide assigned → assessment → care plan → matched providers → tracked visits → placement → follow-up."
+              }
+              href={isPrelaunch ? "/register" : "/family/intake"}
+              cta={isPrelaunch ? "Join waitlist" : "See how it works"}
             />
           </div>
         </section>
 
         <section className="bg-white px-4 py-14 sm:px-6 lg:px-[max(2rem,calc((100vw-1040px)/2))]">
-          <SectionHeader label="How it works" title="How it works" description="Three simple steps to find the right eldercare option anywhere in the Netherlands." />
+          <SectionHeader
+            label="How it works"
+            title="A guided journey — not a directory"
+            description="Your family works with a real Care Guide through assessment, care planning, visits, placement, and follow-up."
+          />
           <div className="mx-auto grid max-w-5xl gap-5 md:grid-cols-3">
             {homeContent.familySteps.map((step, index) => (
               <StepCard key={step.title} marker={String(index + 1)} title={step.title} text={step.text} />
@@ -89,7 +110,7 @@ export default function HomePage() {
               <p className="section-label">Families and seniors</p>
               <h3 className="mt-2 text-h3 font-semibold">Looking for care support?</h3>
               <p className="mt-2 text-body text-ink/75">
-                Register your interest and we will reach out when the platform is ready to help your family.
+                Register your interest and we will reach out when guided care navigation is ready for your family.
               </p>
               <Button asChild className="mt-5">
                 <Link href="/register/family">{homeContent.prelaunch.familyCta}</Link>
@@ -109,8 +130,8 @@ export default function HomePage() {
         </section>
 
         <section className="bg-brand-green-dark px-4 py-14 text-center text-white sm:px-6">
-          <p className="mx-auto max-w-2xl text-xl italic leading-relaxed">&quot;No family should carry eldercare decisions alone.&quot;</p>
-          <p className="mt-3 text-sm text-white/70">The philosophy behind {brand.name}</p>
+          <p className="mx-auto max-w-2xl text-xl italic leading-relaxed">&quot;{ubuntuTagline}&quot;</p>
+          <p className="mt-3 text-sm text-white/70">Shared decision support at the heart of {brand.name}</p>
         </section>
 
         <section className="bg-white px-4 py-14 sm:px-6 lg:px-[max(2rem,calc((100vw-1040px)/2))]">

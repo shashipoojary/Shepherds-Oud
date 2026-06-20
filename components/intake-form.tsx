@@ -73,7 +73,7 @@ function IntakeFormContent({ isUpdateMode }: { isUpdateMode: boolean }) {
   }, [isUpdateMode]);
 
   const canContinue = useMemo(() => {
-    const required = step.fields.filter((field) => field.type !== "notice" && field.type !== "textarea");
+    const required = step.fields.filter((field) => field.type !== "notice" && field.type !== "textarea" && field.type !== "date");
     return required.every((field) => {
       const value = form[keyFor(field.label)];
       return Array.isArray(value) ? value.length > 0 : Boolean(value);
@@ -111,15 +111,33 @@ function IntakeFormContent({ isUpdateMode }: { isUpdateMode: boolean }) {
       relationship: String(form["your-relationship-to-the-senior"] || "").trim(),
       preferredArea: String(form["preferred-city-or-province"] || "").trim(),
       ageRange: String(form["age-range"] || "").trim(),
+      livingSituation: String(form["current-living-situation"] || "").trim(),
+      mobility: String(form["mobility-level"] || "").trim(),
+      dementiaNeeds: String(form["dementia-or-memory-care-needs"] || "").trim(),
       careTypes: asArray(form["type-of-care-needed"]),
       urgency: String(form["how-urgent-is-the-care-need"] || "").trim(),
+      hospitalDischargeDate: String(form["hospital-discharge-date-if-applicable"] || "").trim() || undefined,
+      decisionMakerName: String(form["primary-family-decision-maker"] || "").trim(),
+      decisionMakerRelationship: String(form["decision-maker-relationship"] || "").trim(),
+      supportTypes: asArray(form["type-of-support-your-family-needs"]),
+      emotionalSupportNeeds: asArray(form["emotional-support-needs"]),
       budget: String(form["monthly-budget-range"] || "").trim(),
       languages: asArray(form["preferred-languages"]),
       additionalNeeds: asArray(form["additional-needs"]),
+      moveInTimeline: String(form["desired-move-in-timeline"] || "").trim(),
       notes: String(form["anything-else-we-should-know"] || "").trim()
     };
 
-    if (!payload.contactName || !payload.email || !payload.preferredArea || !payload.ageRange || !payload.careTypes.length || !payload.urgency) {
+    if (
+      !payload.contactName ||
+      !payload.email ||
+      !payload.preferredArea ||
+      !payload.ageRange ||
+      !payload.careTypes.length ||
+      !payload.urgency ||
+      !payload.decisionMakerName ||
+      !payload.decisionMakerRelationship
+    ) {
       setStatus("Please complete all required steps before submitting.");
       setSubmitting(false);
       return;
@@ -158,6 +176,15 @@ function IntakeFormContent({ isUpdateMode }: { isUpdateMode: boolean }) {
       budget: payload.budget,
       languages: payload.languages,
       additionalNeeds: payload.additionalNeeds,
+      livingSituation: payload.livingSituation,
+      moveInTimeline: payload.moveInTimeline,
+      mobility: payload.mobility,
+      dementiaNeeds: payload.dementiaNeeds,
+      hospitalDischargeDate: payload.hospitalDischargeDate || null,
+      decisionMakerName: payload.decisionMakerName,
+      decisionMakerRelationship: payload.decisionMakerRelationship,
+      emotionalSupportNeeds: payload.emotionalSupportNeeds,
+      supportTypes: payload.supportTypes,
       notes: payload.notes,
       status: result.status || "NEW",
       careGuide: result.careGuide ?? null,
@@ -181,8 +208,8 @@ function IntakeFormContent({ isUpdateMode }: { isUpdateMode: boolean }) {
         <h1 className="font-brand text-[1.3rem] font-semibold">Tell us about your situation</h1>
         <p className="mt-1 text-[13px] leading-relaxed text-white/80">
           {isUpdating
-            ? "Update your existing care request. We will keep the same reference number and matches."
-            : "This takes about 5 minutes. Fill out each step and submit when you are ready."}
+            ? "Update your existing care request. Your Care Guide keeps supporting your family through shared decisions."
+            : "About 5 minutes. A real Care Guide reviews your case personally — no family should carry eldercare decisions alone."}
         </p>
         {!isUpdateMode && existingIntake ? (
           <p className="mt-3 text-[12px] text-white/70">
@@ -324,6 +351,15 @@ function renderField(field: Field, form: FormState, setValue: (label: string, va
       <label key={field.label} className="mb-5 block text-sm font-medium md:col-span-2">
         <span className="mb-1.5 block">{field.label}</span>
         <textarea value={String(form[key] || "")} onChange={(event) => setValue(field.label, event.target.value)} className={`${baseInput} min-h-20 resize-y`} placeholder={field.placeholder} />
+      </label>
+    );
+  }
+
+  if (field.type === "date") {
+    return (
+      <label key={field.label} className="mb-5 block text-sm font-medium">
+        <span className="mb-1.5 block">{field.label}</span>
+        <input value={String(form[key] || "")} onChange={(event) => setValue(field.label, event.target.value)} type="date" className={baseInput} />
       </label>
     );
   }

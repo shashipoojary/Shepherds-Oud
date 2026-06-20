@@ -27,7 +27,14 @@ export const providerProfileSchema = z.object({
   availabilityStatus: optionalText,
   waitlistText: optionalText,
   services: z.array(z.string()).default([]),
-  languages: z.array(z.string()).default([])
+  careLevels: z.array(z.string()).default([]),
+  languages: z.array(z.string()).default([]),
+  dementiaCapacity: optionalText,
+  fundingTypes: z.array(z.string()).default([]),
+  responseTimeHours: z.number().int().min(1).max(168).nullable().optional(),
+  visitAvailability: optionalText,
+  priceMin: z.number().int().min(0).nullable().optional(),
+  priceMax: z.number().int().min(0).nullable().optional()
 });
 
 export type ProviderProfileInput = z.infer<typeof providerProfileSchema>;

@@ -86,7 +86,7 @@ export async function POST(request: Request) {
     });
 
     const intakeStatus = normalizeIntakeStatus(intake.status);
-    if (intakeStatus === "ASSESSMENT") {
+    if (intakeStatus === "CARE_PLAN" || intakeStatus === "ASSESSMENT") {
       await prisma.intake.update({
         where: { id: intakeId },
         data: { status: "MATCHED" }

@@ -75,27 +75,42 @@ model Verification {
 }
 
 model Intake {
-  id              String       @id @default(cuid())
-  contactName     String
-  email           String
-  phone           String
-  relationship    String
-  preferredArea   String
-  ageRange        String
-  careTypes       String[]
-  urgency         String
-  budget          String?
-  languages       String[]
-  additionalNeeds String[]
-  notes             String?
-  status            IntakeStatus @default(NEW)
-  careGuideId       String?
-  carePathway       String?
-  assessmentNotes   String?
-  carePlanSummary   String?
-  visitScheduledAt  DateTime?
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
+  id                        String       @id @default(cuid())
+  contactName               String
+  email                     String
+  phone                     String
+  relationship              String
+  preferredArea             String
+  ageRange                  String
+  careTypes                 String[]
+  urgency                   String
+  budget                    String?
+  languages                 String[]
+  additionalNeeds           String[]
+  livingSituation           String?
+  moveInTimeline            String?
+  mobility                  String?
+  dementiaNeeds             String?
+  hospitalDischargeDate     DateTime?
+  decisionMakerName         String?
+  decisionMakerRelationship String?
+  emotionalSupportNeeds     String[]
+  supportTypes              String[]
+  notes                     String?
+  status                    IntakeStatus @default(NEW)
+  careGuideId               String?
+  carePathway               String?
+  assessmentNotes           String?
+  carePlanSummary           String?
+  visitScheduledAt          DateTime?
+  visitType                 String?
+  visitProviderName         String?
+  visitNotes                String?
+  followUp7At               DateTime?
+  followUp30At              DateTime?
+  followUp90At              DateTime?
+  createdAt                 DateTime     @default(now())
+  updatedAt                 DateTime     @updatedAt
 
   userId    String?
   user      User?   @relation(fields: [userId], references: [id])
@@ -113,6 +128,11 @@ model Provider {
   description        String   @default("")
   languages          String[]
   services           String[]
+  careLevels         String[] @default([])
+  dementiaCapacity   String?
+  fundingTypes       String[] @default([])
+  responseTimeHours  Int?
+  visitAvailability  String?
   priceMin           Int?
   priceMax           Int?
   bedsTotal          Int?
@@ -134,12 +154,13 @@ model Provider {
 }
 
 model Match {
-  id        String      @id @default(cuid())
-  score     Int
-  status    MatchStatus @default(SUGGESTED)
-  notes     String?
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
+  id            String      @id @default(cuid())
+  score         Int
+  status        MatchStatus @default(SUGGESTED)
+  notes         String?
+  declineReason String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
 
   intakeId   String
   providerId String
@@ -167,11 +188,17 @@ enum Role {
 
 enum IntakeStatus {
   NEW
+  CARE_GUIDE_ASSIGNED
   ASSESSMENT
+  CARE_PLAN
   MATCHED
   VISIT_SCHEDULED
+  PROVIDER_RESPONSE
   PLACEMENT_IN_PROGRESS
   PLACED
+  FOLLOW_UP_7
+  FOLLOW_UP_30
+  FOLLOW_UP_90
   CLOSED
 }
 

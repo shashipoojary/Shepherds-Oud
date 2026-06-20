@@ -16,19 +16,32 @@ export type StoredIntake = {
   budget?: string;
   languages?: string[];
   additionalNeeds?: string[];
+  livingSituation?: string;
+  moveInTimeline?: string;
+  mobility?: string;
+  dementiaNeeds?: string;
+  hospitalDischargeDate?: string | null;
+  decisionMakerName?: string;
+  decisionMakerRelationship?: string;
+  emotionalSupportNeeds?: string[];
+  supportTypes?: string[];
   notes?: string;
   status: string;
   matchCount?: number;
   careGuide?: CareGuideInfo | null;
   carePathway?: string | null;
   carePlanSummary?: string | null;
+  visitScheduledAt?: string | null;
+  visitType?: string | null;
+  visitProviderName?: string | null;
+  visitNotes?: string | null;
   submittedAt: string;
 };
 
 const STORAGE_KEY = "shepherds:last-intake";
 const DRAFT_KEY = "shepherds:intake-draft";
 
-export { intakeStatusHint, intakeStatusLabel } from "@/lib/intake-workflow";
+export { intakeStatusHint, intakeStatusLabel, JOURNEY_STEPS } from "@/lib/intake-workflow";
 
 /** Clears any legacy draft saved in localStorage from older builds. */
 export function clearIntakeDraft() {
@@ -56,11 +69,20 @@ export function storedIntakeToForm(intake: StoredIntake): Record<string, string 
     "your-relationship-to-the-senior": intake.relationship,
     "preferred-city-or-province": intake.preferredArea,
     "age-range": intake.ageRange,
+    "current-living-situation": intake.livingSituation || "",
+    "mobility-level": intake.mobility || "",
+    "dementia-or-memory-care-needs": intake.dementiaNeeds || "",
     "type-of-care-needed": intake.careTypes,
     "how-urgent-is-the-care-need": intake.urgency,
+    "hospital-discharge-date-if-applicable": intake.hospitalDischargeDate || "",
+    "primary-family-decision-maker": intake.decisionMakerName || "",
+    "decision-maker-relationship": intake.decisionMakerRelationship || "",
+    "type-of-support-your-family-needs": intake.supportTypes || [],
+    "emotional-support-needs": intake.emotionalSupportNeeds || [],
     "monthly-budget-range": intake.budget || "",
     "preferred-languages": intake.languages || [],
     "additional-needs": intake.additionalNeeds || [],
+    "desired-move-in-timeline": intake.moveInTimeline || "",
     "anything-else-we-should-know": intake.notes || ""
   };
 }
@@ -74,4 +96,21 @@ export function getStoredIntake(): StoredIntake | null {
   } catch {
     return null;
   }
+}
+
+export function formatVisitSchedule(intake: Pick<StoredIntake, "visitScheduledAt" | "visitType" | "visitProviderName" | "visitNotes">) {
+  if (!intake.visitScheduledAt) return null;
+  const date = new Date(intake.visitScheduledAt);
+  if (Number.isNaN(date.getTime())) return null;
+  const when = date.toLocaleString("en-GB", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+  const kind = intake.visitType === "CALLBACK" ? "Callback" : "Facility visit";
+  const withProvider = intake.visitProviderName ? ` with ${intake.visitProviderName}` : "";
+  return `${kind}${withProvider} · ${when}${intake.visitNotes ? ` — ${intake.visitNotes}` : ""}`;
 }

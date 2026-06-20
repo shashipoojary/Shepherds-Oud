@@ -10,7 +10,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { RefreshButton } from "@/components/ui/refresh-button";
 import { StatGrid } from "@/components/ui/stat-grid";
-import { careTypeOptions, dutchProvinces, facilityTypes } from "@/lib/content";
+import { careTypeOptions, declineReasonOptions, careLevelOptions, dementiaCapacityOptions, dutchProvinces, facilityTypes, fundingTypeOptions, visitAvailabilityOptions } from "@/lib/content";
 import {
   compareMatchPriority,
   isProviderActionNeeded,
@@ -41,6 +41,13 @@ type ProviderRecord = {
   waitlistText: string | null;
   services: string[];
   languages: string[];
+  careLevels: string[];
+  dementiaCapacity: string | null;
+  fundingTypes: string[];
+  responseTimeHours: number | null;
+  visitAvailability: string | null;
+  priceMin: number | null;
+  priceMax: number | null;
 };
 
 type Inquiry = {
@@ -74,6 +81,13 @@ type FormState = {
   availabilityStatus: string;
   services: string[];
   languages: string[];
+  careLevels: string[];
+  dementiaCapacity: string;
+  fundingTypes: string[];
+  responseTimeHours: string;
+  visitAvailability: string;
+  priceMin: string;
+  priceMax: string;
 };
 
 type DashboardData = {
@@ -94,7 +108,14 @@ const emptyForm: FormState = {
   bedsOpen: "",
   availabilityStatus: "Not set",
   services: [],
-  languages: []
+  languages: [],
+  careLevels: [],
+  dementiaCapacity: dementiaCapacityOptions[0],
+  fundingTypes: [],
+  responseTimeHours: "",
+  visitAvailability: visitAvailabilityOptions[0],
+  priceMin: "",
+  priceMax: ""
 };
 
 const availabilityOptions = ["Not set", "Available now", "Limited availability", "Waitlist", "Fully occupied"] as const;
@@ -114,7 +135,14 @@ function toForm(provider: ProviderRecord | null): FormState {
     bedsOpen: provider.bedsOpen?.toString() || "",
     availabilityStatus: provider.availabilityStatus || "Not set",
     services: provider.services ?? [],
-    languages: provider.languages ?? []
+    languages: provider.languages ?? [],
+    careLevels: provider.careLevels ?? [],
+    dementiaCapacity: provider.dementiaCapacity || dementiaCapacityOptions[0],
+    fundingTypes: provider.fundingTypes ?? [],
+    responseTimeHours: provider.responseTimeHours?.toString() || "",
+    visitAvailability: provider.visitAvailability || visitAvailabilityOptions[0],
+    priceMin: provider.priceMin?.toString() || "",
+    priceMax: provider.priceMax?.toString() || ""
   };
 }
 
@@ -153,6 +181,7 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
   const [providerId, setProviderId] = useState<string | null>(initialData?.provider?.id ?? null);
   const [refreshing, setRefreshing] = useState(false);
   const [confirmDecline, setConfirmDecline] = useState<{ id: string; familyName: string } | null>(null);
+  const [declineReason, setDeclineReason] = useState(declineReasonOptions[0]);
 
   async function refreshDashboard() {
     setRefreshing(true);
@@ -229,7 +258,7 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
     setForm((current) => ({ ...current, [key]: value }));
   }
 
-  function toggleList(key: "services" | "languages", value: string) {
+  function toggleList(key: "services" | "languages" | "careLevels" | "fundingTypes", value: string) {
     setForm((current) => {
       const list = current[key];
       return {
@@ -267,7 +296,14 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
           availabilityStatus: form.availabilityStatus === "Not set" ? undefined : form.availabilityStatus,
           waitlistText: form.availabilityStatus === "Waitlist" ? "Waitlist open" : undefined,
           services: form.services,
-          languages: form.languages
+          careLevels: form.careLevels,
+          languages: form.languages,
+          dementiaCapacity: form.dementiaCapacity === dementiaCapacityOptions[0] ? undefined : form.dementiaCapacity,
+          fundingTypes: form.fundingTypes,
+          responseTimeHours: parseOptionalInt(form.responseTimeHours),
+          visitAvailability: form.visitAvailability === visitAvailabilityOptions[0] ? undefined : form.visitAvailability,
+          priceMin: parseOptionalInt(form.priceMin),
+          priceMax: parseOptionalInt(form.priceMax)
         })
       });
 
@@ -302,7 +338,7 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
     }
   }
 
-  async function updateInquiry(id: string, status: string, familyName: string, priorStatus: string) {
+  async function updateInquiry(id: string, status: string, familyName: string, priorStatus: string, reason?: string) {
     const actionKey = `${id}:${status}`;
     setPendingInquiryId(id);
     setPendingAction(actionKey);
@@ -316,7 +352,7 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
       const response = await fetch(`/api/matches/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status })
+        body: JSON.stringify({ status, ...(reason ? { declineReason: reason } : {}) })
       });
 
       if (!response.ok) {
@@ -592,7 +628,28 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
             <ChipField label="Services offered" options={careTypeOptions} selected={form.services} onToggle={(value) => toggleList("services", value)} />
           </div>
           <div className="md:col-span-2">
+            <ChipField label="Care levels" options={careLevelOptions} selected={form.careLevels} onToggle={(value) => toggleList("careLevels", value)} />
+          </div>
+          <div className="md:col-span-2">
             <ChipField label="Languages spoken" options={["Dutch", "English", "Arabic", "Turkish", "German", "French"]} selected={form.languages} onToggle={(value) => toggleList("languages", value)} />
+          </div>
+          <Field label="Dementia capacity">
+            <CustomSelect value={form.dementiaCapacity} onChange={(value) => updateForm("dementiaCapacity", value)} options={dementiaCapacityOptions} />
+          </Field>
+          <Field label="Visit availability">
+            <CustomSelect value={form.visitAvailability} onChange={(value) => updateForm("visitAvailability", value)} options={visitAvailabilityOptions} />
+          </Field>
+          <Field label="Typical response time (hours)">
+            <input type="number" min="1" max="168" value={form.responseTimeHours} onChange={(e) => updateForm("responseTimeHours", e.target.value)} className={inputClass} placeholder="e.g. 24" />
+          </Field>
+          <Field label="Monthly price min (EUR)">
+            <input type="number" min="0" value={form.priceMin} onChange={(e) => updateForm("priceMin", e.target.value)} className={inputClass} placeholder="Optional" />
+          </Field>
+          <Field label="Monthly price max (EUR)">
+            <input type="number" min="0" value={form.priceMax} onChange={(e) => updateForm("priceMax", e.target.value)} className={inputClass} placeholder="Optional" />
+          </Field>
+          <div className="md:col-span-2">
+            <ChipField label="Funding types accepted" options={fundingTypeOptions} selected={form.fundingTypes} onToggle={(value) => toggleList("fundingTypes", value)} />
           </div>
           <div className="md:col-span-2">
             <Button type="submit" disabled={saving} className="min-w-[180px]">
@@ -606,20 +663,30 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
         tone="danger"
         pending={Boolean(confirmDecline && pendingAction === `${confirmDecline.id}:DECLINED`)}
         title="Decline this inquiry?"
-        description="The family will be notified that your facility cannot help with this request right now."
+        description="Please select a reason. The family and their Care Guide will see that your facility cannot help right now."
         confirmLabel="Decline inquiry"
-        onCancel={() => setConfirmDecline(null)}
+        onCancel={() => {
+          setConfirmDecline(null);
+          setDeclineReason(declineReasonOptions[0]);
+        }}
         onConfirm={() => {
           if (!confirmDecline) return;
           void updateInquiry(
             confirmDecline.id,
             "DECLINED",
             confirmDecline.familyName,
-            inquiries.find((item) => item.id === confirmDecline.id)?.status ?? "SUGGESTED"
+            inquiries.find((item) => item.id === confirmDecline.id)?.status ?? "SUGGESTED",
+            declineReason
           );
           setConfirmDecline(null);
+          setDeclineReason(declineReasonOptions[0]);
         }}
-      />
+      >
+        <label className="mt-4 grid gap-2 text-left text-sm font-medium text-ink">
+          Decline reason
+          <CustomSelect value={declineReason} onChange={setDeclineReason} options={declineReasonOptions} />
+        </label>
+      </ConfirmDialog>
     </main>
   );
 }
