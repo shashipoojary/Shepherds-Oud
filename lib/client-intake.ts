@@ -41,7 +41,23 @@ export type StoredIntake = {
 const STORAGE_KEY = "shepherds:last-intake";
 const DRAFT_KEY = "shepherds:intake-draft";
 
+const languageOptions = ["Dutch", "English", "Arabic", "Turkish", "French", "Other"] as const;
+
 export { intakeStatusHint, intakeStatusLabel, JOURNEY_STEPS } from "@/lib/intake-workflow";
+export {
+  decisionMakerRelationshipOptions,
+  INTAKE_OTHER_OPTION,
+  relationshipToSeniorOptions
+} from "@/lib/intake-field-utils";
+
+import {
+  decisionMakerRelationshipOptions,
+  fieldKeyFor,
+  otherFieldKey,
+  relationshipToSeniorOptions,
+  splitChipsForForm,
+  splitSelectForForm
+} from "@/lib/intake-field-utils";
 
 /** Clears any legacy draft saved in localStorage from older builds. */
 export function clearIntakeDraft() {
@@ -62,11 +78,16 @@ export function saveStoredIntake(intake: StoredIntake) {
 }
 
 export function storedIntakeToForm(intake: StoredIntake): Record<string, string | string[]> {
+  const relationship = splitSelectForForm(intake.relationship, relationshipToSeniorOptions);
+  const decisionMakerRelationship = splitSelectForForm(intake.decisionMakerRelationship, decisionMakerRelationshipOptions);
+  const languages = splitChipsForForm(intake.languages, languageOptions);
+
   return {
     "your-name": intake.contactName,
     "email-address": intake.email,
     "phone-number": intake.phone,
-    "your-relationship-to-the-senior": intake.relationship,
+    "your-relationship-to-the-senior": relationship.value,
+    [otherFieldKey("Your relationship to the senior")]: relationship.other,
     "preferred-city-or-province": intake.preferredArea,
     "age-range": intake.ageRange,
     "current-living-situation": intake.livingSituation || "",
@@ -76,11 +97,13 @@ export function storedIntakeToForm(intake: StoredIntake): Record<string, string 
     "how-urgent-is-the-care-need": intake.urgency,
     "hospital-discharge-date-if-applicable": intake.hospitalDischargeDate || "",
     "primary-family-decision-maker": intake.decisionMakerName || "",
-    "decision-maker-relationship": intake.decisionMakerRelationship || "",
+    "decision-maker-relationship": decisionMakerRelationship.value,
+    [otherFieldKey("Decision-maker relationship")]: decisionMakerRelationship.other,
     "type-of-support-your-family-needs": intake.supportTypes || [],
     "emotional-support-needs": intake.emotionalSupportNeeds || [],
     "monthly-budget-range": intake.budget || "",
-    "preferred-languages": intake.languages || [],
+    "preferred-languages": languages.selected,
+    [otherFieldKey("Preferred languages")]: languages.other,
     "additional-needs": intake.additionalNeeds || [],
     "desired-move-in-timeline": intake.moveInTimeline || "",
     "anything-else-we-should-know": intake.notes || ""
@@ -114,3 +137,5 @@ export function formatVisitSchedule(intake: Pick<StoredIntake, "visitScheduledAt
   const withProvider = intake.visitProviderName ? ` with ${intake.visitProviderName}` : "";
   return `${kind}${withProvider} · ${when}${intake.visitNotes ? ` — ${intake.visitNotes}` : ""}`;
 }
+
+export { fieldKeyFor };

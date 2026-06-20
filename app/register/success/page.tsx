@@ -1,12 +1,18 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
 import { ButtonLabel } from "@/components/ui/button-label";
 import { ButtonRow } from "@/components/ui/button-row";
+import { isPrelaunch, publicRoutes } from "@/lib/prelaunch";
 
 export default async function RegisterSuccessPage({ searchParams }: { searchParams: Promise<{ type?: string }> }) {
   const params = await searchParams;
   const isFacility = params.type === "facility";
+
+  if (!isPrelaunch && !isFacility) {
+    redirect(`${publicRoutes.intake}?from=waitlist`);
+  }
 
   return (
     <>
@@ -20,15 +26,17 @@ export default async function RegisterSuccessPage({ searchParams }: { searchPara
               ? "Thank you for registering your care facility. We will contact you when provider onboarding opens."
               : "Thank you for registering. We will contact you as soon as Shepherds Oud is ready to support your family."}
           </p>
-          <ButtonRow className="mt-8">
+          <ButtonRow className="mt-8" columns={isPrelaunch ? 1 : 2}>
             <Button asChild className="w-full">
-              <Link href="/">Back to home</Link>
+              <Link href={publicRoutes.home}>Back to home</Link>
             </Button>
-            <Button asChild variant="outline" className="w-full">
-              <Link href="/family/intake">
-                <ButtonLabel short="Care intake">Start a care intake</ButtonLabel>
-              </Link>
-            </Button>
+            {!isPrelaunch && !isFacility ? (
+              <Button asChild variant="outline" className="w-full">
+                <Link href={publicRoutes.intake}>
+                  <ButtonLabel short="Care intake">Start a care intake</ButtonLabel>
+                </Link>
+              </Button>
+            ) : null}
           </ButtonRow>
         </section>
       </main>

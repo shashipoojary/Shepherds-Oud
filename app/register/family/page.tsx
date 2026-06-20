@@ -1,5 +1,6 @@
 import { SiteHeader } from "@/components/site-header";
 import { WaitlistForm } from "@/components/waitlist-form";
+import { isPrelaunch } from "@/lib/prelaunch";
 
 export default function FamilyRegisterPage() {
   return (
@@ -10,7 +11,9 @@ export default function FamilyRegisterPage() {
           <p className="text-xs font-semibold uppercase tracking-wide text-sage-700">Family waitlist</p>
           <h1 className="mt-2 text-3xl font-semibold">Register for care support</h1>
           <p className="mt-3 text-sm leading-7 text-neutral-600">
-            Tell us about your situation anywhere in the Netherlands. We will reach out when Shepherds Oud is ready to help.
+            {isPrelaunch
+              ? "Tell us about your situation anywhere in the Netherlands. We will reach out when Shepherds Oud is ready to help."
+              : "Prefer a short registration first? Join the waitlist and we will take you to the full guided intake next."}
           </p>
           <div className="mt-8">
             <WaitlistForm type="FAMILY" />

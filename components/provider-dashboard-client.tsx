@@ -21,6 +21,7 @@ import {
   providerInquiryStatusLabel,
   providerMatchNotes
 } from "@/lib/match-status";
+import { sanitizeClientErrorMessage } from "@/lib/provider-errors";
 import { recordAction } from "@/lib/client-actions";
 
 type ProviderRecord = {
@@ -146,12 +147,22 @@ function toForm(provider: ProviderRecord | null): FormState {
   };
 }
 
-function parseOptionalInt(value: string): number | null {
+function parseOptionalInt(value: string): number | undefined {
   const trimmed = value.trim();
-  if (!trimmed) return null;
+  if (!trimmed) return undefined;
   const parsed = Number(trimmed);
-  if (!Number.isFinite(parsed) || parsed < 0) return null;
+  if (!Number.isFinite(parsed) || parsed < 0) return undefined;
   return Math.trunc(parsed);
+}
+
+function parseRequiredIntField(value: string): number | undefined | "invalid" {
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  const parsed = Number(trimmed);
+  if (!Number.isFinite(parsed) || parsed < 0 || !Number.isInteger(parsed)) {
+    return "invalid";
+  }
+  return parsed;
 }
 
 async function readApiError(response: Response) {
@@ -160,9 +171,9 @@ async function readApiError(response: Response) {
     const fieldErrors = data.issues?.fieldErrors;
     if (fieldErrors) {
       const first = Object.values(fieldErrors).flat()[0];
-      if (first) return first;
+      if (first) return sanitizeClientErrorMessage(first);
     }
-    return data.error || "Request failed.";
+    return sanitizeClientErrorMessage(data.error || "Request failed.");
   } catch {
     return "Request failed.";
   }
@@ -278,6 +289,30 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
     setSaving(true);
     setMessage("");
 
+    const bedsTotal = parseRequiredIntField(form.bedsTotal);
+    if (bedsTotal === "invalid") {
+      setMessageTone("error");
+      setMessage("Total beds must be a whole number (0 or more).");
+      setSaving(false);
+      return;
+    }
+
+    const bedsOpen = parseRequiredIntField(form.bedsOpen);
+    if (bedsOpen === "invalid") {
+      setMessageTone("error");
+      setMessage("Available beds must be a whole number (0 or more).");
+      setSaving(false);
+      return;
+    }
+
+    const responseTimeHours = parseOptionalInt(form.responseTimeHours);
+    if (form.responseTimeHours.trim() && responseTimeHours === undefined) {
+      setMessageTone("error");
+      setMessage("Response time must be a whole number of hours.");
+      setSaving(false);
+      return;
+    }
+
     try {
       const response = await fetch("/api/provider/me", {
         method: "PATCH",
@@ -291,8 +326,8 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
           city: form.city.trim() || undefined,
           province: form.province,
           description: form.description.trim() || undefined,
-          bedsTotal: parseOptionalInt(form.bedsTotal),
-          bedsOpen: parseOptionalInt(form.bedsOpen),
+          ...(bedsTotal !== undefined ? { bedsTotal } : {}),
+          ...(bedsOpen !== undefined ? { bedsOpen } : {}),
           availabilityStatus: form.availabilityStatus === "Not set" ? undefined : form.availabilityStatus,
           waitlistText: form.availabilityStatus === "Waitlist" ? "Waitlist open" : undefined,
           services: form.services,
@@ -300,10 +335,10 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
           languages: form.languages,
           dementiaCapacity: form.dementiaCapacity === dementiaCapacityOptions[0] ? undefined : form.dementiaCapacity,
           fundingTypes: form.fundingTypes,
-          responseTimeHours: parseOptionalInt(form.responseTimeHours),
+          ...(responseTimeHours !== undefined ? { responseTimeHours } : {}),
           visitAvailability: form.visitAvailability === visitAvailabilityOptions[0] ? undefined : form.visitAvailability,
-          priceMin: parseOptionalInt(form.priceMin),
-          priceMax: parseOptionalInt(form.priceMax)
+          ...(parseOptionalInt(form.priceMin) !== undefined ? { priceMin: parseOptionalInt(form.priceMin) } : {}),
+          ...(parseOptionalInt(form.priceMax) !== undefined ? { priceMax: parseOptionalInt(form.priceMax) } : {})
         })
       });
 

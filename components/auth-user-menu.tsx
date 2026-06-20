@@ -9,6 +9,7 @@ import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import type { AppRole } from "@/lib/auth-server";
 import { dashboardHref, roleLabel } from "@/lib/auth-routes";
+import { publicRoutes } from "@/lib/prelaunch";
 
 type AuthUserMenuProps = {
   variant?: "desktop" | "mobile";
@@ -204,7 +205,7 @@ export function GetStartedButton({ onNavigate, className = "" }: { onNavigate?: 
 
   return (
     <Button asChild size="sm" className={className}>
-      <Link href="/family/intake" onClick={onNavigate}>
+      <Link href={publicRoutes.familyPrimary} onClick={onNavigate}>
         Get started
       </Link>
     </Button>

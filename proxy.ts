@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { getSessionCookie } from "better-auth/cookies";
+import { isFamilyFlowPath, isPrelaunch, prelaunchFamilyRedirect } from "@/lib/prelaunch";
 import { securityHeaders } from "@/lib/security-headers";
 
 const publicProviderPaths = new Set(["/provider/login"]);
@@ -30,6 +31,11 @@ export function proxy(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-request-id", crypto.randomUUID());
 
+  if (isPrelaunch && isFamilyFlowPath(pathname)) {
+    const redirectUrl = new URL(prelaunchFamilyRedirect(pathname), request.url);
+    return applySecurityHeaders(NextResponse.redirect(redirectUrl));
+  }
+
   const needsProviderAuth = isProtectedProviderPath(pathname);
   const needsAdminAuth = isProtectedAdminPath(pathname);
 
@@ -57,5 +63,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/provider/:path*", "/admin", "/provider"]
+  matcher: ["/admin/:path*", "/provider/:path*", "/admin", "/provider", "/family/:path*"]
 };

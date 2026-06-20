@@ -2,19 +2,20 @@ import Link from "next/link";
 import { BrandLogo } from "@/components/brand-logo";
 import { brand } from "@/lib/brand";
 import { isPrelaunch } from "@/lib/content";
+import { publicRoutes } from "@/lib/prelaunch";
 
 const links = isPrelaunch
   ? [
-      { label: "Home", href: "/" },
-      { label: "Join waitlist", href: "/register" },
-      { label: "Register as a family", href: "/register/family" },
-      { label: "Register a facility", href: "/register/facility" }
+      { label: "Home", href: publicRoutes.home },
+      { label: "Join waitlist", href: publicRoutes.waitlist },
+      { label: "Register as a family", href: publicRoutes.waitlistFamily },
+      { label: "Register a facility", href: publicRoutes.waitlistFacility }
     ]
   : [
-      { label: "Home", href: "/" },
-      { label: "Start intake", href: "/family/intake" },
-      { label: "Join waitlist", href: "/register" },
-      { label: "Register a facility", href: "/register/facility" }
+      { label: "Home", href: publicRoutes.home },
+      { label: "Start intake", href: publicRoutes.intake },
+      { label: "Join waitlist", href: publicRoutes.waitlist },
+      { label: "Register a facility", href: publicRoutes.waitlistFacility }
     ];
 
 export function Footer() {

@@ -48,10 +48,20 @@ export function IntakeSummaryCard({
             <dt className="text-neutral-500">Urgency</dt>
             <dd className="font-medium text-neutral-800">{intake.urgency}</dd>
           </div>
+        <div>
+          <dt className="text-neutral-500">Relationship</dt>
+          <dd className="font-medium text-neutral-800">{intake.relationship || "—"}</dd>
+        </div>
+        <div>
+          <dt className="text-neutral-500">Decision-maker</dt>
+          <dd className="font-medium text-neutral-800">{intake.decisionMakerName || "—"}</dd>
+        </div>
+        {intake.decisionMakerRelationship ? (
           <div>
-            <dt className="text-neutral-500">Decision-maker</dt>
-            <dd className="font-medium text-neutral-800">{intake.decisionMakerName || "—"}</dd>
+            <dt className="text-neutral-500">Decision-maker role</dt>
+            <dd className="font-medium text-neutral-800">{intake.decisionMakerRelationship}</dd>
           </div>
+        ) : null}
           {intake.mobility ? (
             <div>
               <dt className="text-neutral-500">Mobility</dt>

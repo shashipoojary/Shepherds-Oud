@@ -4,12 +4,22 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { intakeSteps } from "@/lib/content";
+import { isPrelaunch } from "@/lib/prelaunch";
 import {
   clearIntakeDraft,
+  fieldKeyFor,
   getStoredIntake,
   saveStoredIntake,
   storedIntakeToForm
 } from "@/lib/client-intake";
+import {
+  chipFieldComplete,
+  INTAKE_OTHER_OPTION,
+  otherFieldKey,
+  resolveChipField,
+  resolveSelectField,
+  selectFieldComplete
+} from "@/lib/intake-field-utils";
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
 import { CustomSelect } from "@/components/ui/custom-select";
@@ -17,12 +27,6 @@ import { ProgressBar } from "@/components/ui/progress-bar";
 
 type Field = (typeof intakeSteps)[number]["fields"][number];
 type FormState = Record<string, string | string[]>;
-
-const keyFor = (label: string) =>
-  label
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
 
 export function IntakeForm() {
   return (
@@ -35,12 +39,13 @@ export function IntakeForm() {
 function IntakeFormRouter() {
   const searchParams = useSearchParams();
   const isUpdateMode = searchParams.get("update") === "1";
+  const fromWaitlist = searchParams.get("from") === "waitlist";
   const mode = isUpdateMode ? "update" : "new";
 
-  return <IntakeFormContent key={mode} isUpdateMode={isUpdateMode} />;
+  return <IntakeFormContent key={mode} isUpdateMode={isUpdateMode} fromWaitlist={fromWaitlist} />;
 }
 
-function IntakeFormContent({ isUpdateMode }: { isUpdateMode: boolean }) {
+function IntakeFormContent({ isUpdateMode, fromWaitlist }: { isUpdateMode: boolean; fromWaitlist: boolean }) {
   const router = useRouter();
 
   const [stepIndex, setStepIndex] = useState(0);
@@ -74,24 +79,33 @@ function IntakeFormContent({ isUpdateMode }: { isUpdateMode: boolean }) {
 
   const canContinue = useMemo(() => {
     const required = step.fields.filter((field) => field.type !== "notice" && field.type !== "textarea" && field.type !== "date");
-    return required.every((field) => {
-      const value = form[keyFor(field.label)];
-      return Array.isArray(value) ? value.length > 0 : Boolean(value);
-    });
+    return required.every((field) => fieldIsComplete(field, form));
   }, [form, step.fields]);
 
   function setValue(label: string, value: string) {
-    setForm((current) => ({ ...current, [keyFor(label)]: value }));
+    setForm((current) => {
+      const next = { ...current, [fieldKeyFor(label)]: value };
+      if (value !== INTAKE_OTHER_OPTION) {
+        delete next[otherFieldKey(label)];
+      }
+      return next;
+    });
+  }
+
+  function setOtherValue(label: string, value: string) {
+    setForm((current) => ({ ...current, [otherFieldKey(label)]: value }));
   }
 
   function toggleChip(label: string, option: string) {
     setForm((current) => {
-      const key = keyFor(label);
+      const key = fieldKeyFor(label);
       const selected = Array.isArray(current[key]) ? current[key] : [];
-      return {
-        ...current,
-        [key]: selected.includes(option) ? selected.filter((item) => item !== option) : [...selected, option]
-      };
+      const nextSelected = selected.includes(option) ? selected.filter((item) => item !== option) : [...selected, option];
+      const next = { ...current, [key]: nextSelected };
+      if (!nextSelected.includes(INTAKE_OTHER_OPTION)) {
+        delete next[otherFieldKey(label)];
+      }
+      return next;
     });
   }
 
@@ -108,7 +122,7 @@ function IntakeFormContent({ isUpdateMode }: { isUpdateMode: boolean }) {
       contactName: String(form["your-name"] || "").trim(),
       email: String(form["email-address"] || "").trim(),
       phone: String(form["phone-number"] || "").trim(),
-      relationship: String(form["your-relationship-to-the-senior"] || "").trim(),
+      relationship: resolveSelectField(form, "Your relationship to the senior"),
       preferredArea: String(form["preferred-city-or-province"] || "").trim(),
       ageRange: String(form["age-range"] || "").trim(),
       livingSituation: String(form["current-living-situation"] || "").trim(),
@@ -118,11 +132,11 @@ function IntakeFormContent({ isUpdateMode }: { isUpdateMode: boolean }) {
       urgency: String(form["how-urgent-is-the-care-need"] || "").trim(),
       hospitalDischargeDate: String(form["hospital-discharge-date-if-applicable"] || "").trim() || undefined,
       decisionMakerName: String(form["primary-family-decision-maker"] || "").trim(),
-      decisionMakerRelationship: String(form["decision-maker-relationship"] || "").trim(),
+      decisionMakerRelationship: resolveSelectField(form, "Decision-maker relationship"),
       supportTypes: asArray(form["type-of-support-your-family-needs"]),
       emotionalSupportNeeds: asArray(form["emotional-support-needs"]),
       budget: String(form["monthly-budget-range"] || "").trim(),
-      languages: asArray(form["preferred-languages"]),
+      languages: resolveChipField(form, "Preferred languages"),
       additionalNeeds: asArray(form["additional-needs"]),
       moveInTimeline: String(form["desired-move-in-timeline"] || "").trim(),
       notes: String(form["anything-else-we-should-know"] || "").trim()
@@ -135,6 +149,7 @@ function IntakeFormContent({ isUpdateMode }: { isUpdateMode: boolean }) {
       !payload.ageRange ||
       !payload.careTypes.length ||
       !payload.urgency ||
+      !payload.relationship ||
       !payload.decisionMakerName ||
       !payload.decisionMakerRelationship
     ) {
@@ -241,6 +256,12 @@ function IntakeFormContent({ isUpdateMode }: { isUpdateMode: boolean }) {
       </header>
 
       <div className="px-5 py-6 sm:px-8 lg:px-10 lg:py-9">
+        {fromWaitlist && !isPrelaunch && !isUpdateMode ? (
+          <div className="mb-5 rounded-lg border border-brand-green-pale/60 bg-brand-green-pale/20 px-4 py-3 text-sm text-brand-green-dark">
+            You are on our waitlist. Complete your guided intake next so a Care Guide can review your family&apos;s situation.
+          </div>
+        ) : null}
+
         {isUpdateMode && !existingIntake ? (
           <div className="mb-5 rounded-lg bg-brand-beige-light/40 px-4 py-3 text-sm text-brand-amber-dark">
             No saved request on this device.{" "}
@@ -253,11 +274,13 @@ function IntakeFormContent({ isUpdateMode }: { isUpdateMode: boolean }) {
         <p className="section-label mb-5">
           Step {stepIndex + 1} of {intakeSteps.length} — {step.title}
         </p>
-        <div className="grid gap-x-5 md:grid-cols-2">{step.fields.map((field) => renderField(field, form, setValue, toggleChip))}</div>
+        <div className="grid gap-x-5 md:grid-cols-2">
+          {step.fields.map((field) => renderField(field, form, setValue, setOtherValue, toggleChip))}
+        </div>
 
         {status ? <p className="mt-4 rounded-lg bg-brand-green-pale/30 p-3 text-sm text-brand-green-dark">{status}</p> : null}
 
-        <div className="mt-7 flex flex-col gap-4 border-t border-[var(--card-border)] pt-6 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative z-10 mt-7 flex flex-col gap-4 border-t border-[var(--card-border)] pt-6 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex gap-2">
             {intakeSteps.map((item, index) => (
               <span
@@ -307,7 +330,34 @@ function IntakeFormSkeleton() {
   );
 }
 
-function renderField(field: Field, form: FormState, setValue: (label: string, value: string) => void, toggleChip: (label: string, option: string) => void) {
+function fieldIsComplete(field: Field, form: FormState) {
+  if (field.type === "notice" || field.type === "textarea" || field.type === "date") {
+    return true;
+  }
+
+  if (field.type === "select") {
+    return selectFieldComplete(form, field.label, field.options);
+  }
+
+  if (field.type === "chips") {
+    if ("allowsOther" in field && field.allowsOther) {
+      return chipFieldComplete(form, field.label);
+    }
+    const value = form[fieldKeyFor(field.label)];
+    return Array.isArray(value) ? value.length > 0 : Boolean(value);
+  }
+
+  const value = form[fieldKeyFor(field.label)];
+  return Array.isArray(value) ? value.length > 0 : Boolean(value);
+}
+
+function renderField(
+  field: Field,
+  form: FormState,
+  setValue: (label: string, value: string) => void,
+  setOtherValue: (label: string, value: string) => void,
+  toggleChip: (label: string, option: string) => void
+) {
   const baseInput =
     "w-full rounded-lg border-[1.5px] border-[var(--card-border)] bg-white px-3.5 py-2.5 text-body text-ink outline-none transition focus:border-brand-amber";
 
@@ -319,16 +369,34 @@ function renderField(field: Field, form: FormState, setValue: (label: string, va
     );
   }
 
-  const key = keyFor(field.label);
+  const key = fieldKeyFor(field.label);
+  const otherKey = otherFieldKey(field.label);
+  const otherPlaceholder =
+    ("otherPlaceholder" in field && field.otherPlaceholder) || "Please specify";
 
   if (field.type === "select") {
+    const selected = String(form[key] || "");
     return (
-      <CustomSelect key={field.label} className="mb-5" label={field.label} value={String(form[key] || "")} options={field.options} onChange={(value) => setValue(field.label, value)} />
+      <div key={field.label} className="mb-5 md:col-span-2">
+        <CustomSelect className="w-full" label={field.label} value={selected} options={field.options} onChange={(value) => setValue(field.label, value)} />
+        {selected === INTAKE_OTHER_OPTION ? (
+          <label className="mt-3 block text-sm font-medium">
+            <span className="mb-1.5 block">{otherPlaceholder}</span>
+            <input
+              value={String(form[otherKey] || "")}
+              onChange={(event) => setOtherValue(field.label, event.target.value)}
+              className={baseInput}
+              placeholder={otherPlaceholder}
+            />
+          </label>
+        ) : null}
+      </div>
     );
   }
 
   if (field.type === "chips") {
     const selected = asArray(form[key]);
+    const allowsOther = "allowsOther" in field && field.allowsOther;
     return (
       <fieldset key={field.label} className="mb-5 md:col-span-2">
         <legend className="mb-2 text-sm font-medium">{field.label}</legend>
@@ -342,6 +410,17 @@ function renderField(field: Field, form: FormState, setValue: (label: string, va
             );
           })}
         </div>
+        {allowsOther && selected.includes(INTAKE_OTHER_OPTION) ? (
+          <label className="mt-3 block text-sm font-medium">
+            <span className="mb-1.5 block">{otherPlaceholder}</span>
+            <input
+              value={String(form[otherKey] || "")}
+              onChange={(event) => setOtherValue(field.label, event.target.value)}
+              className={baseInput}
+              placeholder={otherPlaceholder}
+            />
+          </label>
+        ) : null}
       </fieldset>
     );
   }

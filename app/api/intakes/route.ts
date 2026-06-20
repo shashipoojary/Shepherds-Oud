@@ -1,5 +1,6 @@
 import { sendBrevoEmail } from "@/lib/email/brevo";
 import { ubuntuTagline } from "@/lib/content";
+import { isPrelaunch } from "@/lib/prelaunch";
 import { resolveDefaultCareGuideId } from "@/lib/care-guide";
 import { normalizeIntakeStatus } from "@/lib/intake-workflow";
 import { intakeSchema } from "@/lib/validation/intake";
@@ -22,6 +23,10 @@ function intakeCreateData(data: ReturnType<typeof intakeSchema.parse>) {
 }
 
 export async function POST(request: Request) {
+  if (isPrelaunch) {
+    return jsonError("Guided intake is not open yet. Please join the waitlist.", 403);
+  }
+
   const limited = rateLimitResponse(request, "intake-create", 8, 60 * 60 * 1000);
   if (limited) return limited;
 

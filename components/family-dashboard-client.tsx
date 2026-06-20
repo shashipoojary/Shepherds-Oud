@@ -111,8 +111,10 @@ export function FamilyDashboardClient() {
       <section className="mt-5 space-y-5">
         {intake ? (
           <>
-            <CareJourneyTimeline status={intake.status} careGuide={intake.careGuide} />
-            <IntakeSummaryCard intake={intake} />
+            <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(300px,380px)] lg:items-start">
+              <CareJourneyTimeline status={intake.status} careGuide={intake.careGuide} />
+              <IntakeSummaryCard intake={intake} />
+            </div>
             <FamilyActiveMatches key={`${intake.id}-${intake.matchCount}`} intakeId={intake.id} />
           </>
         ) : (

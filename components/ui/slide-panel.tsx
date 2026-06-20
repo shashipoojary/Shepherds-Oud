@@ -10,7 +10,7 @@ type SlidePanelProps = {
   onClose: () => void;
   title: string;
   subtitle?: string;
-  size?: "default" | "wide";
+  size?: "default" | "wide" | "xl";
   children: React.ReactNode;
 };
 
@@ -39,6 +39,13 @@ export function SlidePanel({ open, onClose, title, subtitle, size = "default", c
 
   if (!mounted) return null;
 
+  const widthClass =
+    size === "xl"
+      ? "w-[min(100%,100vw)] sm:w-[min(100%,42rem)] lg:w-[min(94vw,72rem)]"
+      : size === "wide"
+        ? "w-[min(100%,100vw)] sm:w-[min(100%,36rem)] lg:w-[min(92vw,56rem)]"
+        : "w-[min(100%,420px)]";
+
   return createPortal(
     <>
       <button
@@ -48,15 +55,17 @@ export function SlidePanel({ open, onClose, title, subtitle, size = "default", c
         aria-label="Close panel"
       />
       <aside
-        className={`fixed inset-y-0 right-0 z-[201] flex flex-col bg-white shadow-panel transition-transform duration-300 ease-out ${
-          size === "wide" ? "w-[min(100%,56rem)]" : "w-[min(100%,420px)]"
-        } ${open ? "translate-x-0" : "translate-x-full"}`}
+        className={cn(
+          "fixed inset-y-0 right-0 z-[201] flex max-h-[100dvh] flex-col bg-white shadow-panel transition-transform duration-300 ease-out",
+          widthClass,
+          open ? "translate-x-0" : "translate-x-full"
+        )}
         aria-hidden={!open}
       >
-        <div className="flex items-start justify-between border-b border-stone-200 px-5 py-5">
-          <div>
-            <h2 className="text-lg font-semibold text-ink">{title}</h2>
-            {subtitle ? <p className="mt-1 text-sm text-neutral-500">{subtitle}</p> : null}
+        <div className="flex shrink-0 items-start justify-between border-b border-stone-200 px-4 py-4 sm:px-5 sm:py-5">
+          <div className="min-w-0 pr-3">
+            <h2 className="truncate text-lg font-semibold text-ink">{title}</h2>
+            {subtitle ? <p className="mt-1 text-sm leading-6 text-neutral-500">{subtitle}</p> : null}
           </div>
           <button
             type="button"
@@ -67,7 +76,7 @@ export function SlidePanel({ open, onClose, title, subtitle, size = "default", c
             <X className="h-4 w-4" />
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto px-5 py-5">{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-5 sm:py-5 lg:px-6 lg:py-6">{children}</div>
       </aside>
     </>,
     document.body
@@ -83,9 +92,28 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
   );
 }
 
-export function DetailList({ items, columns = 1 }: { items: Array<{ label: string; value: React.ReactNode }>; columns?: 1 | 2 }) {
+export function TagList({ items }: { items: string[] }) {
+  if (!items.length) {
+    return <p className="text-sm text-neutral-500">—</p>;
+  }
+
   return (
-    <dl className={columns === 2 ? "grid gap-x-6 sm:grid-cols-2" : undefined}>
+    <div className="flex flex-wrap gap-1.5">
+      {items.map((item) => (
+        <span key={item} className="rounded-full bg-brand-cream px-2.5 py-1 text-xs font-medium text-neutral-700">
+          {item}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+export function DetailList({ items, columns = 1 }: { items: Array<{ label: string; value: React.ReactNode }>; columns?: 1 | 2 | 3 }) {
+  const gridClass =
+    columns === 3 ? "grid gap-x-6 lg:grid-cols-3" : columns === 2 ? "grid gap-x-6 sm:grid-cols-2" : undefined;
+
+  return (
+    <dl className={gridClass}>
       {items.map((item) => (
         <DetailRow key={item.label} label={item.label} value={item.value} />
       ))}

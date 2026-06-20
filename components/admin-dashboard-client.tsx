@@ -15,7 +15,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { IconActionButton } from "@/components/ui/icon-action-button";
 import { RefreshButton } from "@/components/ui/refresh-button";
-import { DetailList, PanelSection, SlidePanel, StatusPill } from "@/components/ui/slide-panel";
+import { DetailList, PanelSection, SlidePanel, StatusPill, TagList } from "@/components/ui/slide-panel";
 import { StatGrid } from "@/components/ui/stat-grid";
 import type { AdminDashboardData } from "@/lib/data/admin";
 import { recordAction } from "@/lib/client-actions";
@@ -939,124 +939,175 @@ function ProviderDetailPanel({
   onClose: () => void;
   setMessage: (message: string) => void;
 }) {
-  const details = provider
-    ? [
-        { label: "Facility name", value: provider.name },
-        { label: "Type", value: provider.type },
-        { label: "Area", value: provider.area },
-        { label: "City", value: provider.city },
-        { label: "Province", value: provider.province },
-        { label: "Contact name", value: provider.contactName },
-        { label: "Email", value: provider.email },
-        { label: "Phone", value: provider.phone },
-        { label: "Website", value: provider.website },
-        {
-          label: "Beds",
-          value:
-            provider.bedsOpen != null || provider.bedsTotal != null
-              ? `${provider.bedsOpen ?? "—"} open / ${provider.bedsTotal ?? "—"} total`
-              : null
-        },
-        { label: "Availability", value: provider.availabilityStatus },
-        { label: "Waitlist", value: provider.waitlistText },
-        {
-          label: "Price range",
-          value:
-            provider.priceMin != null && provider.priceMax != null
-              ? `EUR ${provider.priceMin} - EUR ${provider.priceMax} per month`
-              : null
-        },
-        { label: "Services", value: provider.services?.length ? provider.services.join(", ") : null },
-        { label: "Care levels", value: provider.careLevels?.length ? provider.careLevels.join(", ") : null },
-        { label: "Languages", value: provider.languages?.length ? provider.languages.join(", ") : null },
-        { label: "Dementia capacity", value: provider.dementiaCapacity },
-        { label: "Funding types", value: provider.fundingTypes?.length ? provider.fundingTypes.join(", ") : null },
-        { label: "Response time", value: provider.responseTimeHours ? `${provider.responseTimeHours} hours` : null },
-        { label: "Visit availability", value: provider.visitAvailability },
-        { label: "Description", value: provider.description },
-        { label: "Added", value: provider.createdAt },
-        { label: "Last updated", value: provider.updatedAt }
-      ]
-    : [];
+  const priceRange = provider ? formatProviderPriceRange(provider.priceMin, provider.priceMax) : null;
+  const bedsSummary =
+    provider && (provider.bedsOpen != null || provider.bedsTotal != null)
+      ? `${provider.bedsOpen ?? "—"} open · ${provider.bedsTotal ?? "—"} total`
+      : null;
 
   return (
     <SlidePanel
       open={Boolean(provider)}
       onClose={onClose}
-      size="wide"
+      size="xl"
       title={provider?.name || "Provider"}
       subtitle={provider ? `${provider.type} · ${provider.area}` : "Facility profile"}
     >
       {provider ? (
-        <div className="grid gap-8 lg:grid-cols-2">
-          <div>
-            <StatusPill>
-              <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Availability</span>
-              <p className="mt-1 font-semibold text-ink">{provider.availabilityStatus || "Not set"}</p>
-              {provider.bedsOpen != null || provider.bedsTotal != null ? (
-                <p className="mt-1 text-sm text-neutral-600">
-                  {provider.bedsOpen ?? "—"} beds open · {provider.bedsTotal ?? "—"} total
-                </p>
-              ) : null}
-            </StatusPill>
-
-            <PanelSection step={1} title="Contact" className="mt-6">
-              <DetailList
-                items={details.filter((item) => ["Contact name", "Email", "Phone", "Website"].includes(item.label))}
-                columns={2}
-              />
-            </PanelSection>
-
-            <PanelSection step={2} title="Location">
-              <DetailList
-                items={details.filter((item) => ["Facility name", "Type", "Area", "City", "Province"].includes(item.label))}
-                columns={2}
-              />
-            </PanelSection>
-
-            <PanelSection step={3} title="Services & languages">
-              <DetailList
-                items={details.filter((item) => ["Services", "Languages", "Description"].includes(item.label))}
-              />
-            </PanelSection>
-          </div>
-
-          <div>
-            <PanelSection step={4} title="Capacity & pricing">
-              <DetailList
-                items={details.filter((item) => ["Beds", "Availability", "Waitlist", "Price range"].includes(item.label))}
-                columns={2}
-              />
-            </PanelSection>
-
-            <PanelSection step={5} title="Record">
-              <DetailList items={details.filter((item) => ["Added", "Last updated"].includes(item.label))} columns={2} />
-            </PanelSection>
-
-            <PanelSection step={6} title="Quick actions">
-              <div className="flex flex-wrap gap-2">
-                <Button asChild size="sm" variant="outline">
-                  <a href={`/providers/${provider.id}`} target="_blank" rel="noreferrer">
-                    Public profile
-                  </a>
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    void navigator.clipboard.writeText(provider.id);
-                    setMessage(`Copied provider ID for ${provider.name}.`);
-                  }}
-                >
-                  Copy ID
-                </Button>
+        <div className="space-y-6">
+          <StatusPill>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div>
+                <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Availability</span>
+                <p className="mt-1 font-semibold text-ink">{provider.availabilityStatus || "Not set"}</p>
               </div>
-            </PanelSection>
+              <div>
+                <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Beds</span>
+                <p className="mt-1 font-semibold text-ink">{bedsSummary || "Not set"}</p>
+              </div>
+              <div>
+                <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Response time</span>
+                <p className="mt-1 font-semibold text-ink">
+                  {provider.responseTimeHours ? `${provider.responseTimeHours} hours` : "Not set"}
+                </p>
+              </div>
+              <div>
+                <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Visit availability</span>
+                <p className="mt-1 font-semibold text-ink">{provider.visitAvailability || "Not set"}</p>
+              </div>
+            </div>
+          </StatusPill>
+
+          <div className="grid gap-6 xl:grid-cols-3">
+            <div className="space-y-5">
+              <PanelSection step={1} title="Contact">
+                <DetailList
+                  columns={1}
+                  items={[
+                    { label: "Contact name", value: provider.contactName },
+                    { label: "Email", value: provider.email },
+                    { label: "Phone", value: provider.phone },
+                    { label: "Website", value: provider.website }
+                  ]}
+                />
+              </PanelSection>
+
+              <PanelSection step={2} title="Location">
+                <DetailList
+                  columns={1}
+                  items={[
+                    { label: "Facility name", value: provider.name },
+                    { label: "Type", value: provider.type },
+                    { label: "Area", value: provider.area },
+                    { label: "City", value: provider.city },
+                    { label: "Province", value: provider.province }
+                  ]}
+                />
+              </PanelSection>
+            </div>
+
+            <div className="space-y-5">
+              <PanelSection step={3} title="Capacity & pricing">
+                <DetailList
+                  columns={1}
+                  items={[
+                    { label: "Available beds", value: provider.bedsOpen != null ? String(provider.bedsOpen) : null },
+                    { label: "Total beds / places", value: provider.bedsTotal != null ? String(provider.bedsTotal) : null },
+                    { label: "Availability status", value: provider.availabilityStatus },
+                    { label: "Waitlist", value: provider.waitlistText },
+                    { label: "Price range", value: priceRange }
+                  ]}
+                />
+              </PanelSection>
+
+              <PanelSection step={4} title="Care profile">
+                <DetailList columns={1} items={[{ label: "Dementia capacity", value: provider.dementiaCapacity }]} />
+                <div className="mt-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Care levels</p>
+                  <div className="mt-2">
+                    <TagList items={provider.careLevels ?? []} />
+                  </div>
+                </div>
+              </PanelSection>
+            </div>
+
+            <div className="space-y-5">
+              <PanelSection step={5} title="Services & languages">
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Services offered</p>
+                    <div className="mt-2">
+                      <TagList items={provider.services ?? []} />
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Languages spoken</p>
+                    <div className="mt-2">
+                      <TagList items={provider.languages ?? []} />
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Funding types accepted</p>
+                    <div className="mt-2">
+                      <TagList items={provider.fundingTypes ?? []} />
+                    </div>
+                  </div>
+                </div>
+              </PanelSection>
+
+              <PanelSection step={6} title="Description">
+                <p className="text-sm leading-7 text-neutral-700">{provider.description?.trim() || "—"}</p>
+              </PanelSection>
+
+              <PanelSection step={7} title="Record">
+                <DetailList
+                  columns={1}
+                  items={[
+                    { label: "Provider ID", value: provider.id },
+                    { label: "Added", value: provider.createdAt },
+                    { label: "Last updated", value: provider.updatedAt }
+                  ]}
+                />
+              </PanelSection>
+
+              <PanelSection step={8} title="Quick actions">
+                <div className="flex flex-wrap gap-2">
+                  <Button asChild size="sm" variant="outline">
+                    <a href={`/providers/${provider.id}`} target="_blank" rel="noreferrer">
+                      Public profile
+                    </a>
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      void navigator.clipboard.writeText(provider.id);
+                      setMessage(`Copied provider ID for ${provider.name}.`);
+                    }}
+                  >
+                    Copy ID
+                  </Button>
+                </div>
+              </PanelSection>
+            </div>
           </div>
         </div>
       ) : null}
     </SlidePanel>
   );
+}
+
+function formatProviderPriceRange(priceMin: number | null, priceMax: number | null) {
+  if (priceMin != null && priceMax != null) {
+    return `EUR ${priceMin.toLocaleString("en-GB")} – EUR ${priceMax.toLocaleString("en-GB")} per month`;
+  }
+  if (priceMin != null) {
+    return `From EUR ${priceMin.toLocaleString("en-GB")} per month`;
+  }
+  if (priceMax != null) {
+    return `Up to EUR ${priceMax.toLocaleString("en-GB")} per month`;
+  }
+  return null;
 }
 
 function InquiriesTable({
@@ -1485,67 +1536,150 @@ function WaitlistDetailPanel({
 }) {
   const isContacted = entry?.status === "CONTACTED";
   const isPending = entry ? pendingId === entry.id : false;
-
-  const familyDetails = entry
-    ? [
-        { label: "Type", value: entry.type },
-        { label: "Contact name", value: entry.contactName },
-        { label: "Email", value: entry.email },
-        { label: "Phone", value: entry.phone },
-        { label: "City", value: entry.city },
-        { label: "Province", value: entry.province },
-        { label: "Relationship", value: entry.relationship },
-        { label: "Age range", value: entry.ageRange },
-        { label: "Care types", value: entry.careTypes?.length ? entry.careTypes.join(", ") : null },
-        { label: "Message", value: entry.message },
-        { label: "Status", value: entry.status },
-        { label: "Registered", value: entry.createdAt },
-        { label: "Last updated", value: entry.updatedAt }
-      ]
-    : [];
-
-  const facilityDetails = entry
-    ? [
-        { label: "Type", value: entry.type },
-        { label: "Facility name", value: entry.facilityName },
-        { label: "Contact name", value: entry.contactName },
-        { label: "Email", value: entry.email },
-        { label: "Phone", value: entry.phone },
-        { label: "City", value: entry.city },
-        { label: "Province", value: entry.province },
-        { label: "Facility type", value: entry.facilityType },
-        { label: "Total beds", value: entry.bedsTotal },
-        { label: "Services", value: entry.services?.length ? entry.services.join(", ") : null },
-        { label: "Message", value: entry.message },
-        { label: "Status", value: entry.status },
-        { label: "Registered", value: entry.createdAt },
-        { label: "Last updated", value: entry.updatedAt }
-      ]
-    : [];
+  const isFamily = entry?.type === "FAMILY";
 
   return (
     <SlidePanel
       open={Boolean(entry)}
       onClose={onClose}
+      size="xl"
       title={entry?.name || "Waitlist entry"}
-      subtitle={entry ? `${entry.type} registration` : undefined}
+      subtitle={entry ? `${entry.type} registration · ${entry.location}` : undefined}
     >
       {entry ? (
-        <>
-          <DetailList items={entry.type === "FACILITY" ? facilityDetails : familyDetails} />
-          <div className="mt-6 grid grid-cols-2 gap-3">
-            <Button variant="outline" className="w-full" onClick={onClose}>
-              Close
-            </Button>
-            <Button
-              className="w-full"
-              disabled={isContacted || isPending}
-              onClick={() => void onMarkContacted(entry.id, entry.name)}
-            >
-              {isPending ? "Saving..." : isContacted ? "Contacted" : "Mark contacted"}
-            </Button>
+        <div className="space-y-6">
+          <StatusPill>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div>
+                <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Type</span>
+                <p className="mt-1 font-semibold text-ink">{entry.type}</p>
+              </div>
+              <div>
+                <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Status</span>
+                <p className="mt-1 font-semibold text-ink">{entry.status}</p>
+              </div>
+              <div>
+                <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Registered</span>
+                <p className="mt-1 font-semibold text-ink">{entry.createdAt}</p>
+              </div>
+              <div>
+                <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Location</span>
+                <p className="mt-1 font-semibold text-ink">{entry.location}</p>
+              </div>
+            </div>
+          </StatusPill>
+
+          <div className="grid gap-6 xl:grid-cols-3">
+            <div className="space-y-5">
+              <PanelSection step={1} title="Contact">
+                <DetailList
+                  columns={1}
+                  items={[
+                    { label: "Contact name", value: entry.contactName },
+                    { label: "Email", value: entry.email },
+                    { label: "Phone", value: entry.phone }
+                  ]}
+                />
+              </PanelSection>
+
+              <PanelSection step={2} title="Location">
+                <DetailList
+                  columns={1}
+                  items={[
+                    { label: "City", value: entry.city },
+                    { label: "Province", value: entry.province },
+                    { label: "Full location", value: entry.location }
+                  ]}
+                />
+              </PanelSection>
+            </div>
+
+            <div className="space-y-5">
+              {isFamily ? (
+                <PanelSection step={3} title="Family context">
+                  <DetailList
+                    columns={1}
+                    items={[
+                      { label: "Relationship", value: entry.relationship },
+                      { label: "Age range", value: entry.ageRange }
+                    ]}
+                  />
+                  <div className="mt-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Care types</p>
+                    <div className="mt-2">
+                      <TagList items={entry.careTypes ?? []} />
+                    </div>
+                  </div>
+                </PanelSection>
+              ) : (
+                <PanelSection step={3} title="Facility details">
+                  <DetailList
+                    columns={1}
+                    items={[
+                      { label: "Facility name", value: entry.facilityName },
+                      { label: "Facility type", value: entry.facilityType },
+                      { label: "Total beds", value: entry.bedsTotal != null ? String(entry.bedsTotal) : null }
+                    ]}
+                  />
+                  <div className="mt-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Services</p>
+                    <div className="mt-2">
+                      <TagList items={entry.services ?? []} />
+                    </div>
+                  </div>
+                </PanelSection>
+              )}
+
+              <PanelSection step={4} title="Message">
+                <p className="text-sm leading-7 text-neutral-700">{entry.message?.trim() || "—"}</p>
+              </PanelSection>
+            </div>
+
+            <div className="space-y-5">
+              <PanelSection step={5} title="Record">
+                <DetailList
+                  columns={1}
+                  items={[
+                    { label: "Entry ID", value: entry.id },
+                    { label: "Registered", value: entry.createdAt },
+                    { label: "Last updated", value: entry.updatedAt }
+                  ]}
+                />
+              </PanelSection>
+
+              <PanelSection step={6} title="Quick actions">
+                <div className="flex flex-wrap gap-2">
+                  {entry.email ? (
+                    <Button asChild size="sm" variant="outline">
+                      <a href={`mailto:${entry.email}`}>Email contact</a>
+                    </Button>
+                  ) : null}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      void navigator.clipboard.writeText(entry.id);
+                    }}
+                  >
+                    Copy ID
+                  </Button>
+                </div>
+                <div className="mt-4 grid grid-cols-2 gap-3">
+                  <Button variant="outline" className="w-full" onClick={onClose}>
+                    Close
+                  </Button>
+                  <Button
+                    className="w-full"
+                    disabled={isContacted || isPending}
+                    onClick={() => void onMarkContacted(entry.id, entry.name)}
+                  >
+                    {isPending ? "Saving..." : isContacted ? "Contacted" : "Mark contacted"}
+                  </Button>
+                </div>
+              </PanelSection>
+            </div>
           </div>
-        </>
+        </div>
       ) : null}
     </SlidePanel>
   );

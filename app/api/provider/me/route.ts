@@ -1,14 +1,18 @@
-import { NextResponse } from "next/server";
 import { getServerSession, getUserRole } from "@/lib/auth-server";
+import { logError } from "@/lib/logger";
+import { handleApiError, jsonError, jsonOk, readJsonBody } from "@/lib/api-helpers";
+import { providerSaveErrorMessage } from "@/lib/provider-errors";
 import { getProviderInquiries, getUserLinkedProvider, upsertProviderForUser } from "@/lib/provider-server";
 import { providerProfileSchema } from "@/lib/validation/provider";
 
+export const runtime = "nodejs";
+
 async function assertProviderAccess() {
   const session = await getServerSession();
-  if (!session) return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
+  if (!session) return { error: jsonError("Please sign in to manage your facility profile.", 401) };
   const role = getUserRole(session);
   if (role !== "PROVIDER") {
-    return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
+    return { error: jsonError("You do not have access to the provider dashboard.", 403) };
   }
   return { session };
 }
@@ -17,10 +21,10 @@ export async function GET() {
   try {
     const auth = await assertProviderAccess();
     if (auth.error) return auth.error;
-    const provider = await getUserLinkedProvider(auth.session.user.id);
+    const provider = await getUserLinkedProvider(auth.session!.user.id);
     const inquiries = provider ? await getProviderInquiries(provider.id) : [];
 
-    return NextResponse.json({
+    return jsonOk({
       provider,
       inquiries: inquiries.map((match) => ({
         id: match.id,
@@ -33,9 +37,7 @@ export async function GET() {
       }))
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unable to load provider profile.";
-    const status = message.includes("Forbidden") ? 403 : message.includes("Unauthorized") ? 401 : 500;
-    return NextResponse.json({ error: message }, { status });
+    return handleApiError(error, "provider_dashboard_read");
   }
 }
 
@@ -43,24 +45,25 @@ export async function PATCH(request: Request) {
   try {
     const auth = await assertProviderAccess();
     if (auth.error) return auth.error;
-    const body = await request.json();
+
+    const body = await readJsonBody(request);
     const parsed = providerProfileSchema.safeParse(body);
 
     if (!parsed.success) {
       const fieldErrors = parsed.error.flatten().fieldErrors;
       const firstFieldError = Object.values(fieldErrors).flat()[0];
-      return NextResponse.json(
-        { error: firstFieldError || "Invalid profile data.", issues: parsed.error.flatten() },
-        { status: 400 }
-      );
+      return jsonError(firstFieldError || "Please check your facility profile details.", 400, {
+        issues: parsed.error.flatten()
+      });
     }
 
-    const provider = await upsertProviderForUser(auth.session.user.id, auth.session.user.email, parsed.data);
+    const provider = await upsertProviderForUser(auth.session!.user.id, auth.session!.user.email, parsed.data);
 
-    return NextResponse.json(provider);
+    return jsonOk(provider);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unable to save provider profile.";
-    const status = message.includes("Forbidden") ? 403 : message.includes("Unauthorized") ? 401 : 500;
-    return NextResponse.json({ error: message }, { status: 500 });
+    logError("provider_profile_save", {
+      message: error instanceof Error ? error.message : "Unknown provider save error"
+    });
+    return jsonError(providerSaveErrorMessage(error), 400);
   }
 }

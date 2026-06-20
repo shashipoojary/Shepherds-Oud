@@ -1,5 +1,5 @@
 import type { AppRole } from "@/lib/auth-server";
-import { isPrelaunch } from "@/lib/content";
+import { isPrelaunch, publicRoutes } from "@/lib/prelaunch";
 
 export const PROVIDER_LOGIN_PATH = "/provider/login";
 export const PROVIDER_DASHBOARD_PATH = "/provider";
@@ -39,17 +39,17 @@ export type NavItem = { label: string; href: string };
 
 /** Base links shown to everyone — kept short and clear for seniors. */
 export function buildNavItems(role?: AppRole, signedIn = false): NavItem[] {
-  const items: NavItem[] = [{ label: "Home", href: "/" }];
+  const items: NavItem[] = [{ label: "Home", href: publicRoutes.home }];
 
   if (isPrelaunch) {
-    items.push({ label: "Join waitlist", href: "/register" });
+    items.push({ label: "Join waitlist", href: publicRoutes.waitlist });
   } else {
-    items.push({ label: "Start intake", href: "/family/intake" });
-    items.push({ label: "Join waitlist", href: "/register" });
+    items.push({ label: "Start intake", href: publicRoutes.intake });
+    items.push({ label: "Join waitlist", href: publicRoutes.waitlist });
   }
 
   if (!signedIn) {
-    items.push({ label: "For facilities", href: "/register/facility" });
+    items.push({ label: "For facilities", href: publicRoutes.waitlistFacility });
     return items;
   }
 

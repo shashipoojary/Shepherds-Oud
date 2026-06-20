@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { SectionHeader } from "@/components/ui/section-header";
 import { brand } from "@/lib/brand";
 import { homeContent, isPrelaunch, ubuntuTagline } from "@/lib/content";
+import { publicRoutes } from "@/lib/prelaunch";
 
 const providerSteps = [
   { icon: UserCheck, ...homeContent.providerSteps[0] },
@@ -18,8 +19,8 @@ const providerSteps = [
 export default function HomePage() {
   const heroTitle = isPrelaunch ? "Guided eldercare navigation — opening soon" : "Find the right care for your loved one";
   const heroIntro = isPrelaunch ? homeContent.intro : homeContent.intro;
-  const primaryHref = isPrelaunch ? "/register" : "/family/intake";
-  const primaryLabel = isPrelaunch ? "Join the waitlist" : "Start guided intake";
+  const primaryHref = publicRoutes.familyPrimary;
+  const primaryLabel = publicRoutes.familyPrimaryLabel;
 
   return (
     <>
@@ -44,7 +45,7 @@ export default function HomePage() {
               </Button>
               {!isPrelaunch ? (
                 <Button asChild variant="outline" size="lg" className="w-full">
-                  <Link href="/register">Join the waitlist</Link>
+                  <Link href={publicRoutes.waitlist}>Join the waitlist</Link>
                 </Button>
               ) : null}
             </ButtonRow>
@@ -66,7 +67,7 @@ export default function HomePage() {
                   ? "Register your interest. When we launch, a Care Guide will personally review your case and support every decision."
                   : "Share your situation with a guided intake. A Care Guide reviews your case and supports your family through placement."
               }
-              href={isPrelaunch ? "/register/family" : "/family/intake"}
+              href={isPrelaunch ? publicRoutes.waitlistFamily : publicRoutes.intake}
               cta={isPrelaunch ? "Register interest" : "Start intake"}
             />
             <AudienceCard
@@ -84,8 +85,8 @@ export default function HomePage() {
                   ? "One clear path until launch: join the waitlist and we will reach out when guided navigation is ready."
                   : "Care Guide assigned → assessment → care plan → matched providers → tracked visits → placement → follow-up."
               }
-              href={isPrelaunch ? "/register" : "/family/intake"}
-              cta={isPrelaunch ? "Join waitlist" : "See how it works"}
+              href={isPrelaunch ? publicRoutes.waitlist : publicRoutes.intake}
+              cta={isPrelaunch ? "Join waitlist" : "Start intake"}
             />
           </div>
         </section>
@@ -103,6 +104,7 @@ export default function HomePage() {
           </div>
         </section>
 
+        {isPrelaunch ? (
         <section className="bg-brand-cream px-4 py-14 sm:px-6 lg:px-[max(2rem,calc((100vw-1040px)/2))]">
           <SectionHeader label="Pre-launch" title={homeContent.prelaunch.title} description={homeContent.prelaunch.description} />
           <div className="mx-auto grid max-w-4xl gap-5 md:grid-cols-2">
@@ -113,7 +115,7 @@ export default function HomePage() {
                 Register your interest and we will reach out when guided care navigation is ready for your family.
               </p>
               <Button asChild className="mt-5">
-                <Link href="/register/family">{homeContent.prelaunch.familyCta}</Link>
+                <Link href={publicRoutes.waitlistFamily}>{homeContent.prelaunch.familyCta}</Link>
               </Button>
             </Card>
             <Card hover className="bg-brand-beige-light/30">
@@ -123,11 +125,38 @@ export default function HomePage() {
                 We are preparing for launch. Register your facility now and we will reach out when you can list your services.
               </p>
               <Button asChild className="mt-5 w-full">
-                <Link href="/register/facility">{homeContent.prelaunch.facilityCta}</Link>
+                <Link href={publicRoutes.waitlistFacility}>{homeContent.prelaunch.facilityCta}</Link>
               </Button>
             </Card>
           </div>
         </section>
+        ) : (
+        <section className="bg-brand-cream px-4 py-14 sm:px-6 lg:px-[max(2rem,calc((100vw-1040px)/2))]">
+          <SectionHeader label="Get started" title={homeContent.live.title} description={homeContent.live.description} />
+          <div className="mx-auto grid max-w-4xl gap-5 md:grid-cols-2">
+            <Card hover>
+              <p className="section-label">Families and seniors</p>
+              <h3 className="mt-2 text-h3 font-semibold">Ready to begin?</h3>
+              <p className="mt-2 text-body text-ink/75">
+                Complete your guided intake and a Care Guide will personally review your family&apos;s situation.
+              </p>
+              <Button asChild className="mt-5">
+                <Link href={publicRoutes.intake}>{homeContent.live.familyCta}</Link>
+              </Button>
+            </Card>
+            <Card hover className="bg-brand-beige-light/30">
+              <p className="section-label">Care facilities</p>
+              <h3 className="mt-2 text-h3 font-semibold">List your services</h3>
+              <p className="mt-2 text-body text-ink/75">
+                Register your facility and receive matched family inquiries through your provider dashboard.
+              </p>
+              <Button asChild className="mt-5 w-full">
+                <Link href={publicRoutes.waitlistFacility}>{homeContent.live.facilityCta}</Link>
+              </Button>
+            </Card>
+          </div>
+        </section>
+        )}
 
         <section className="bg-brand-green-dark px-4 py-14 text-center text-white sm:px-6">
           <p className="mx-auto max-w-2xl text-xl italic leading-relaxed">&quot;{ubuntuTagline}&quot;</p>

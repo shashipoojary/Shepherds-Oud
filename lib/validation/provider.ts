@@ -9,6 +9,11 @@ const optionalText = z
     return trimmed.length ? trimmed : undefined;
   });
 
+const optionalCount = z
+  .union([z.number(), z.null()])
+  .optional()
+  .transform((value) => (value == null ? undefined : value));
+
 export const providerProfileSchema = z.object({
   name: z.string().trim().min(2, "Facility name must be at least 2 characters."),
   type: z.string().min(1),
@@ -22,8 +27,12 @@ export const providerProfileSchema = z.object({
     .transform((value) => (value && value.length ? value : undefined)),
   phone: optionalText,
   website: optionalText,
-  bedsTotal: z.number().int().min(0).nullable().optional(),
-  bedsOpen: z.number().int().min(0).nullable().optional(),
+  bedsTotal: optionalCount.pipe(
+    z.number().int("Total beds must be a whole number (0 or more).").min(0, "Total beds cannot be negative.").optional()
+  ),
+  bedsOpen: optionalCount.pipe(
+    z.number().int("Available beds must be a whole number (0 or more).").min(0, "Available beds cannot be negative.").optional()
+  ),
   availabilityStatus: optionalText,
   waitlistText: optionalText,
   services: z.array(z.string()).default([]),
@@ -31,10 +40,21 @@ export const providerProfileSchema = z.object({
   languages: z.array(z.string()).default([]),
   dementiaCapacity: optionalText,
   fundingTypes: z.array(z.string()).default([]),
-  responseTimeHours: z.number().int().min(1).max(168).nullable().optional(),
+  responseTimeHours: optionalCount.pipe(
+    z
+      .number()
+      .int("Response time must be a whole number of hours.")
+      .min(1, "Response time must be at least 1 hour.")
+      .max(168, "Response time cannot be more than 168 hours (1 week).")
+      .optional()
+  ),
   visitAvailability: optionalText,
-  priceMin: z.number().int().min(0).nullable().optional(),
-  priceMax: z.number().int().min(0).nullable().optional()
+  priceMin: optionalCount.pipe(
+    z.number().int().min(0, "Minimum price cannot be negative.").optional()
+  ),
+  priceMax: optionalCount.pipe(
+    z.number().int().min(0, "Maximum price cannot be negative.").optional()
+  )
 });
 
 export type ProviderProfileInput = z.infer<typeof providerProfileSchema>;

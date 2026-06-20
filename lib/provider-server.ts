@@ -10,15 +10,10 @@ export async function getUserLinkedProvider(userId: string) {
   return user?.linkedProvider ?? null;
 }
 
-export async function upsertProviderForUser(userId: string, userEmail: string, input: ProviderProfileInput) {
+function buildProviderData(input: ProviderProfileInput, user: { name: string | null }, userEmail: string) {
   const area = [input.city, input.province].filter(Boolean).join(", ") || "Netherlands";
-  const user = await prisma.user.findUnique({ where: { id: userId } });
 
-  if (!user) {
-    throw new Error("User not found.");
-  }
-
-  const data = {
+  return {
     name: input.name,
     type: input.type,
     area,
@@ -29,8 +24,8 @@ export async function upsertProviderForUser(userId: string, userEmail: string, i
     email: input.email || userEmail,
     phone: input.phone || null,
     website: input.website || null,
-    bedsTotal: input.bedsTotal ?? null,
-    bedsOpen: input.bedsOpen ?? null,
+    ...(input.bedsTotal != null ? { bedsTotal: input.bedsTotal } : {}),
+    ...(input.bedsOpen != null ? { bedsOpen: input.bedsOpen } : {}),
     availabilityStatus: input.availabilityStatus || null,
     waitlistText: input.waitlistText || null,
     services: input.services,
@@ -38,11 +33,21 @@ export async function upsertProviderForUser(userId: string, userEmail: string, i
     languages: input.languages,
     dementiaCapacity: input.dementiaCapacity || null,
     fundingTypes: input.fundingTypes,
-    responseTimeHours: input.responseTimeHours ?? null,
+    ...(input.responseTimeHours != null ? { responseTimeHours: input.responseTimeHours } : {}),
     visitAvailability: input.visitAvailability || null,
-    priceMin: input.priceMin ?? null,
-    priceMax: input.priceMax ?? null
+    ...(input.priceMin != null ? { priceMin: input.priceMin } : {}),
+    ...(input.priceMax != null ? { priceMax: input.priceMax } : {})
   };
+}
+
+export async function upsertProviderForUser(userId: string, userEmail: string, input: ProviderProfileInput) {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+
+  if (!user) {
+    throw new Error("User not found.");
+  }
+
+  const data = buildProviderData(input, user, userEmail);
 
   if (user.linkedProviderId) {
     return prisma.provider.update({

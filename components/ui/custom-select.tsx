@@ -29,7 +29,7 @@ export function CustomSelect({ label, value, placeholder = "Select...", options,
   }, []);
 
   return (
-    <div ref={ref} className={cn("relative", className)}>
+    <div ref={ref} className={cn("relative", open && "z-40", className)}>
       {label ? <span className="mb-1.5 block text-sm font-medium text-neutral-900">{label}</span> : null}
       <button
         type="button"
@@ -42,7 +42,7 @@ export function CustomSelect({ label, value, placeholder = "Select...", options,
       </button>
 
       {open ? (
-        <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-30 overflow-hidden rounded-lg border border-stone-200 bg-white shadow-panel">
+        <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 max-h-60 overflow-y-auto rounded-lg border border-stone-200 bg-white shadow-panel">
           {options.map((option) => (
             <button
               key={option}

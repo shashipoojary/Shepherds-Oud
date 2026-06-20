@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { SiteHeader } from "@/components/site-header";
 import { AuthLoginForm } from "@/components/auth-login-form";
+import { isPrelaunch, publicRoutes } from "@/lib/prelaunch";
 
 export default function LoginPage() {
   return (
@@ -23,8 +24,8 @@ export default function LoginPage() {
 
           <p className="mt-6 text-center text-sm text-neutral-500">
             Looking for care?{" "}
-            <Link href="/family/intake" className="font-medium text-brand-amber hover:text-brand-amber-mid">
-              Start the family intake
+            <Link href={isPrelaunch ? publicRoutes.waitlistFamily : publicRoutes.intake} className="font-medium text-brand-amber hover:text-brand-amber-mid">
+              {isPrelaunch ? "Join the family waitlist" : "Start the family intake"}
             </Link>
           </p>
         </section>

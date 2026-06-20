@@ -1,7 +1,14 @@
-/** When true, the public site shows waitlist-first messaging until full launch. Set NEXT_PUBLIC_PRELAUNCH=false when live. */
-export const isPrelaunch = process.env.NEXT_PUBLIC_PRELAUNCH !== "false";
+import {
+  decisionMakerRelationshipOptions,
+  relationshipToSeniorOptions
+} from "@/lib/intake-field-utils";
+import { isPrelaunch } from "@/lib/prelaunch";
+
+export { isPrelaunch } from "@/lib/prelaunch";
 
 export const ubuntuTagline = "No family should carry eldercare decisions alone.";
+
+export { decisionMakerRelationshipOptions, INTAKE_OTHER_OPTION, relationshipToSeniorOptions } from "@/lib/intake-field-utils";
 
 export const homeContent = {
   badge: isPrelaunch ? "Preparing for nationwide launch" : "Netherlands eldercare platform",
@@ -63,7 +70,9 @@ export const intakeSteps = [
       {
         type: "select",
         label: "Your relationship to the senior",
-        options: ["Child", "Spouse or partner", "Sibling", "Other family member", "Professional caregiver"]
+        options: relationshipToSeniorOptions,
+        allowsOther: true,
+        otherPlaceholder: "Please describe your relationship"
       },
       { type: "text", label: "Preferred city or province", placeholder: "e.g. Utrecht, Noord-Brabant" }
     ]
@@ -103,7 +112,9 @@ export const intakeSteps = [
       {
         type: "select",
         label: "Decision-maker relationship",
-        options: ["Child", "Spouse or partner", "Sibling", "Other family member", "Legal representative", "Shared family decision"]
+        options: decisionMakerRelationshipOptions,
+        allowsOther: true,
+        otherPlaceholder: "Please describe the decision-maker role"
       },
       {
         type: "chips",
@@ -138,7 +149,7 @@ export const intakeSteps = [
         label: "Monthly budget range",
         options: ["Under EUR 1,500", "EUR 1,500 - EUR 2,500", "EUR 2,500 - EUR 4,000", "EUR 4,000 - EUR 6,000", "Above EUR 6,000"]
       },
-      { type: "chips", label: "Preferred languages", options: ["Dutch", "English", "Arabic", "Turkish", "French", "Other"] },
+      { type: "chips", label: "Preferred languages", options: ["Dutch", "English", "Arabic", "Turkish", "French", "Other"], allowsOther: true, otherPlaceholder: "Which language?" },
       {
         type: "chips",
         label: "Additional needs",
