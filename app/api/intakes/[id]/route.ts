@@ -1,16 +1,17 @@
-import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { countVisibleMatchesForIntake } from "@/lib/data/matches";
 import { getServerSession, getUserRole } from "@/lib/auth-server";
 import {
   assessmentComplete,
   canTransitionIntakeStatus,
-  normalizeIntakeStatus,
-  type IntakeStatus
+  normalizeIntakeStatus
 } from "@/lib/intake-workflow";
 import { sendIntakeStatusEmail } from "@/lib/email/intake-status-email";
+import { handleApiError, jsonError, jsonOk, rateLimitResponse, readJsonBody, runInBackground } from "@/lib/api-helpers";
 import { intakeSchema } from "@/lib/validation/intake";
 import { adminIntakeUpdateSchema } from "@/lib/validation/intake-admin";
+
+export const runtime = "nodejs";
 
 function nextStatusAfterFamilyUpdate(current: string) {
   const status = normalizeIntakeStatus(current);
@@ -39,77 +40,94 @@ const familyIntakeSelect = {
 } as const;
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+  const limited = rateLimitResponse(_request, "intake-read", 120, 60 * 1000);
+  if (limited) return limited;
 
-  if (!process.env.DATABASE_URL) {
-    return NextResponse.json({
-      id,
-      status: "NEW",
-      contactName: "Demo family",
-      preferredArea: "Netherlands",
-      careTypes: ["Assisted living"],
-      urgency: "Within 1 month",
-      ageRange: "80-89",
-      matchCount: 0,
-      careGuide: { name: "Demo Care Guide", email: "guide@shepherdsoud.nl" },
-      carePathway: null
+  try {
+    const { id } = await params;
+
+    if (id.length > 64) {
+      return jsonError("Invalid intake reference.", 400);
+    }
+
+    if (!process.env.DATABASE_URL) {
+      return jsonOk({
+        id,
+        status: "NEW",
+        contactName: "Demo family",
+        preferredArea: "Netherlands",
+        careTypes: ["Assisted living"],
+        urgency: "Within 1 month",
+        ageRange: "80-89",
+        matchCount: 0,
+        careGuide: { name: "Demo Care Guide", email: "guide@shepherdsoud.nl" },
+        carePathway: null,
+        carePlanSummary: null
+      });
+    }
+
+    const intake = await prisma.intake.findUnique({
+      where: { id },
+      select: familyIntakeSelect
     });
+
+    if (!intake) {
+      return jsonError("Intake not found.", 404);
+    }
+
+    const matchCount = await countVisibleMatchesForIntake(id);
+
+    return jsonOk({
+      ...intake,
+      status: normalizeIntakeStatus(intake.status),
+      careGuide: intake.careGuide
+        ? { name: intake.careGuide.name || "Your Care Guide", email: intake.careGuide.email }
+        : null,
+      matchCount
+    });
+  } catch (error) {
+    return handleApiError(error, "intake_read");
   }
-
-  const intake = await prisma.intake.findUnique({
-    where: { id },
-    select: familyIntakeSelect
-  });
-
-  if (!intake) {
-    return NextResponse.json({ error: "Intake not found." }, { status: 404 });
-  }
-
-  const matchCount = await countVisibleMatchesForIntake(id);
-
-  return NextResponse.json({
-    ...intake,
-    status: normalizeIntakeStatus(intake.status),
-    careGuide: intake.careGuide
-      ? { name: intake.careGuide.name || "Your Care Guide", email: intake.careGuide.email }
-      : null,
-    matchCount
-  });
 }
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const limited = rateLimitResponse(request, "intake-update", 30, 60 * 60 * 1000);
+  if (limited) return limited;
+
   try {
     const { id } = await params;
-    const body = await request.json();
+
+    if (id.length > 64) {
+      return jsonError("Invalid intake reference.", 400);
+    }
+
+    const body = await readJsonBody(request);
 
     if (isAdminUpdate(body)) {
       const session = await getServerSession();
       if (!session || getUserRole(session) !== "ADMIN") {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        return jsonError("Forbidden", 403);
       }
 
       const parsed = adminIntakeUpdateSchema.safeParse(body);
       if (!parsed.success) {
-        return NextResponse.json({ error: "Invalid update.", issues: parsed.error.flatten() }, { status: 400 });
+        return jsonError("Invalid update.", 400, { issues: parsed.error.flatten() });
       }
 
       const existing = await prisma.intake.findUnique({ where: { id } });
       if (!existing) {
-        return NextResponse.json({ error: "Intake not found." }, { status: 404 });
+        return jsonError("Intake not found.", 404);
       }
 
       const currentStatus = normalizeIntakeStatus(existing.status);
       const nextStatus = parsed.data.status;
 
       if (nextStatus && !canTransitionIntakeStatus(currentStatus, nextStatus)) {
-        return NextResponse.json(
-          { error: `Cannot change case status from ${currentStatus} to ${nextStatus}.` },
-          { status: 400 }
-        );
+        return jsonError(`Cannot change case status from ${currentStatus} to ${nextStatus}.`, 400);
       }
 
       if (nextStatus === "MATCHED" && !assessmentComplete({ carePathway: parsed.data.carePathway ?? existing.carePathway })) {
-        return NextResponse.json({ error: "Select a recommended care pathway before completing assessment." }, { status: 400 });
+        return jsonError("Select a recommended care pathway before completing assessment.", 400);
       }
 
       const intake = await prisma.intake.update({
@@ -138,40 +156,39 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
       const normalizedStatus = normalizeIntakeStatus(intake.status);
       if (nextStatus && nextStatus !== currentStatus) {
-        try {
-          await sendIntakeStatusEmail({
+        void runInBackground(
+          sendIntakeStatusEmail({
             contactName: intake.contactName,
             email: intake.email,
             intakeId: intake.id,
             status: normalizedStatus,
             carePathway: intake.carePathway,
             careGuide: intake.careGuide
-          });
-        } catch {
-          // Email is non-blocking.
-        }
+          }),
+          "intake_status_email"
+        );
       }
 
-      return NextResponse.json({ ...intake, status: normalizedStatus });
+      return jsonOk({ ...intake, status: normalizedStatus });
     }
 
     const parsed = intakeSchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json({ error: "Invalid intake", issues: parsed.error.flatten() }, { status: 400 });
+      return jsonError("Invalid intake", 400, { issues: parsed.error.flatten() });
     }
 
     if (!process.env.DATABASE_URL) {
-      return NextResponse.json({ id, status: "NEW", mode: "demo" });
+      return jsonOk({ id, status: "NEW", mode: "demo" });
     }
 
     const existing = await prisma.intake.findUnique({ where: { id } });
     if (!existing) {
-      return NextResponse.json({ error: "Intake not found." }, { status: 404 });
+      return jsonError("Intake not found.", 404);
     }
 
     const existingStatus = normalizeIntakeStatus(existing.status);
     if (existingStatus === "PLACED" || existingStatus === "CLOSED") {
-      return NextResponse.json({ error: "This request is closed and cannot be updated." }, { status: 409 });
+      return jsonError("This request is closed and cannot be updated.", 409);
     }
 
     const intake = await prisma.intake.update({
@@ -183,11 +200,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       select: { id: true, status: true }
     });
 
-    return NextResponse.json({ ...intake, status: normalizeIntakeStatus(intake.status), mode: "updated" });
+    return jsonOk({ ...intake, status: normalizeIntakeStatus(intake.status), mode: "updated" });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unable to update intake.";
-    const code = message.includes("Forbidden") ? 403 : message.includes("Unauthorized") ? 401 : 500;
-    return NextResponse.json({ error: message }, { status: code });
+    return handleApiError(error, "intake_update");
   }
 }
 

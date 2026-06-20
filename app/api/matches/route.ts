@@ -4,38 +4,53 @@ import { getMatchesForIntake } from "@/lib/data/matches";
 import { getServerSession, getUserRole } from "@/lib/auth-server";
 import { canCreateMatches, normalizeIntakeStatus } from "@/lib/intake-workflow";
 import { createMatchSchema } from "@/lib/validation/match";
+import { handleApiError, jsonError, jsonOk, rateLimitResponse, readJsonBody } from "@/lib/api-helpers";
+
+export const runtime = "nodejs";
 
 async function assertAdmin() {
   const session = await getServerSession();
-  if (!session) return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
-  if (getUserRole(session) !== "ADMIN") return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
+  if (!session) return { error: jsonError("Unauthorized", 401) };
+  if (getUserRole(session) !== "ADMIN") return { error: jsonError("Forbidden", 403) };
   return { session };
 }
 
 export async function GET(request: Request) {
-  const intakeId = new URL(request.url).searchParams.get("intakeId");
+  const limited = rateLimitResponse(request, "matches-read", 120, 60 * 1000);
+  if (limited) return limited;
 
-  if (!intakeId) {
-    return NextResponse.json({ error: "intakeId is required." }, { status: 400 });
+  try {
+    const intakeId = new URL(request.url).searchParams.get("intakeId");
+
+    if (!intakeId) {
+      return jsonError("intakeId is required.", 400);
+    }
+
+    if (intakeId.length > 64) {
+      return jsonError("Invalid intake reference.", 400);
+    }
+
+    if (!process.env.DATABASE_URL) {
+      return jsonOk([]);
+    }
+
+    const matches = await getMatchesForIntake(intakeId);
+    return jsonOk(matches, 200);
+  } catch (error) {
+    return handleApiError(error, "matches_read");
   }
-
-  if (!process.env.DATABASE_URL) {
-    return NextResponse.json([]);
-  }
-
-  const matches = await getMatchesForIntake(intakeId);
-  return NextResponse.json(matches);
 }
 
 export async function POST(request: Request) {
   try {
     const auth = await assertAdmin();
     if (auth.error) return auth.error;
-    const body = await request.json();
+
+    const body = await readJsonBody(request);
     const parsed = createMatchSchema.safeParse(body);
 
     if (!parsed.success) {
-      return NextResponse.json({ error: "Invalid match data.", issues: parsed.error.flatten() }, { status: 400 });
+      return jsonError("Invalid match data.", 400, { issues: parsed.error.flatten() });
     }
 
     const { intakeId, providerId, score, notes } = parsed.data;
@@ -46,14 +61,11 @@ export async function POST(request: Request) {
     ]);
 
     if (!intake || !provider) {
-      return NextResponse.json({ error: "Intake or provider not found." }, { status: 404 });
+      return jsonError("Intake or provider not found.", 404);
     }
 
     if (!canCreateMatches(intake.status, intake.carePathway)) {
-      return NextResponse.json(
-        { error: "Complete the family assessment and select a care pathway before creating matches." },
-        { status: 400 }
-      );
+      return jsonError("Complete the family assessment and select a care pathway before creating matches.", 400);
     }
 
     const match = await prisma.match.upsert({
@@ -81,10 +93,8 @@ export async function POST(request: Request) {
       });
     }
 
-    return NextResponse.json(match, { status: 201 });
+    return jsonOk(match, 201);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unable to create match.";
-    const status = message.includes("Forbidden") ? 403 : message.includes("Unauthorized") ? 401 : 500;
-    return NextResponse.json({ error: message }, { status });
+    return handleApiError(error, "matches_create");
   }
 }

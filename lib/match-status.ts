@@ -1,11 +1,15 @@
-const familyVisibleStatuses = new Set([
+const familyVisibleStatusList = [
   "SUGGESTED",
   "CONTACTED",
   "VISIT_REQUESTED",
   "CALLBACK_REQUESTED",
   "ACCEPTED",
   "PLACED"
-]);
+] as const;
+
+export const familyVisibleMatchStatuses = familyVisibleStatusList;
+
+const familyVisibleStatuses = new Set<string>(familyVisibleStatusList);
 
 const matchPriority: Record<string, number> = {
   VISIT_REQUESTED: 0,

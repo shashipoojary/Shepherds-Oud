@@ -3,11 +3,11 @@ import { compareMatchPriority } from "@/lib/match-status";
 import { normalizeIntakeStatus } from "@/lib/intake-workflow";
 
 export async function getAdminDashboardData() {
-  const [totalFamilies, activeCases, placements, providerCount, intakes, providers, matches, waitlist, careGuides] =
-    await Promise.all([
-    prisma.intake.count(),
-    prisma.intake.count({ where: { status: { notIn: ["PLACED", "CLOSED"] } } }),
-    prisma.intake.count({ where: { status: "PLACED" } }),
+  const [statusGroups, providerCount, intakes, providers, matches, waitlist, careGuides] = await Promise.all([
+    prisma.intake.groupBy({
+      by: ["status"],
+      _count: { _all: true }
+    }),
     prisma.provider.count(),
     prisma.intake.findMany({
       orderBy: { createdAt: "desc" },
@@ -119,6 +119,14 @@ export async function getAdminDashboardData() {
       select: { id: true, name: true, email: true }
     })
   ]);
+
+  const totalFamilies = statusGroups.reduce((sum, group) => sum + group._count._all, 0);
+  const placements = statusGroups
+    .filter((group) => group.status === "PLACED")
+    .reduce((sum, group) => sum + group._count._all, 0);
+  const activeCases = statusGroups
+    .filter((group) => !["PLACED", "CLOSED"].includes(group.status))
+    .reduce((sum, group) => sum + group._count._all, 0);
 
   return {
     stats: [

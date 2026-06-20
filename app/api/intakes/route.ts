@@ -3,47 +3,63 @@ import { sendBrevoEmail } from "@/lib/email/brevo";
 import { resolveDefaultCareGuideId } from "@/lib/care-guide";
 import { normalizeIntakeStatus } from "@/lib/intake-workflow";
 import { intakeSchema } from "@/lib/validation/intake";
+import { handleApiError, jsonError, jsonOk, rateLimitResponse, readJsonBody, runInBackground } from "@/lib/api-helpers";
+
+export const runtime = "nodejs";
 
 export async function POST(request: Request) {
-  const body = await request.json();
-  const parsed = intakeSchema.safeParse(body);
+  const limited = rateLimitResponse(request, "intake-create", 8, 60 * 60 * 1000);
+  if (limited) return limited;
 
-  if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid intake", issues: parsed.error.flatten() }, { status: 400 });
-  }
+  try {
+    const body = await readJsonBody(request);
+    const parsed = intakeSchema.safeParse(body);
 
-  if (!process.env.DATABASE_URL) {
-    await notifyIntake(parsed.data.contactName, parsed.data.email, "demo-intake", null);
-    return NextResponse.json({ id: "demo-intake", status: "received", mode: "demo" }, { status: 201 });
-  }
-
-  const { prisma } = await import("@/lib/db");
-  const careGuideId = await resolveDefaultCareGuideId();
-
-  const intake = await prisma.intake.create({
-    data: {
-      ...parsed.data,
-      careGuideId,
-      status: careGuideId ? "ASSESSMENT" : "NEW"
-    },
-    include: {
-      careGuide: { select: { name: true, email: true } }
+    if (!parsed.success) {
+      return jsonError("Invalid intake", 400, { issues: parsed.error.flatten() });
     }
-  });
 
-  await notifyIntake(parsed.data.contactName, parsed.data.email, intake.id, intake.careGuide);
+    if (!process.env.DATABASE_URL) {
+      void runInBackground(
+        notifyIntake(parsed.data.contactName, parsed.data.email, "demo-intake", null),
+        "intake_confirmation_email"
+      );
+      return jsonOk({ id: "demo-intake", status: "received", mode: "demo" }, 201);
+    }
 
-  return NextResponse.json(
-    {
-      id: intake.id,
-      status: normalizeIntakeStatus(intake.status),
-      careGuide: intake.careGuide
-        ? { name: intake.careGuide.name || "Your Care Guide", email: intake.careGuide.email }
-        : null,
-      mode: "database"
-    },
-    { status: 201 }
-  );
+    const { prisma } = await import("@/lib/db");
+    const careGuideId = await resolveDefaultCareGuideId();
+
+    const intake = await prisma.intake.create({
+      data: {
+        ...parsed.data,
+        careGuideId,
+        status: careGuideId ? "ASSESSMENT" : "NEW"
+      },
+      include: {
+        careGuide: { select: { name: true, email: true } }
+      }
+    });
+
+    void runInBackground(
+      notifyIntake(parsed.data.contactName, parsed.data.email, intake.id, intake.careGuide),
+      "intake_confirmation_email"
+    );
+
+    return jsonOk(
+      {
+        id: intake.id,
+        status: normalizeIntakeStatus(intake.status),
+        careGuide: intake.careGuide
+          ? { name: intake.careGuide.name || "Your Care Guide", email: intake.careGuide.email }
+          : null,
+        mode: "database"
+      },
+      201
+    );
+  } catch (error) {
+    return handleApiError(error, "intake_create");
+  }
 }
 
 async function notifyIntake(
@@ -57,7 +73,7 @@ async function notifyIntake(
     ? `<p>Your Care Guide is <strong>${careGuide.name || "from Shepherds Oud"}</strong> (${careGuide.email}). They will support you through every step.</p>`
     : "<p>A Care Guide will be assigned to support you through every step.</p>";
 
-  await Promise.all([
+  await Promise.allSettled([
     sendBrevoEmail({
       to: [{ email, name }],
       subject: "We received your Shepherds Oud care request",

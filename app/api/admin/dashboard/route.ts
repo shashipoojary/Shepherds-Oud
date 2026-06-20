@@ -1,13 +1,20 @@
-import { NextResponse } from "next/server";
 import { getAdminDashboardData } from "@/lib/data/admin";
 import { getServerSession, getUserRole } from "@/lib/auth-server";
+import { handleApiError, jsonError, jsonOk } from "@/lib/api-helpers";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const session = await getServerSession();
-  if (!session || getUserRole(session) !== "ADMIN") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  try {
+    const session = await getServerSession();
+    if (!session || getUserRole(session) !== "ADMIN") {
+      return jsonError("Forbidden", 403);
+    }
 
-  const data = await getAdminDashboardData();
-  return NextResponse.json(data);
+    const data = await getAdminDashboardData();
+    return jsonOk(data);
+  } catch (error) {
+    return handleApiError(error, "admin_dashboard");
+  }
 }
