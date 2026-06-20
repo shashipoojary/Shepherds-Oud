@@ -15,7 +15,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { IconActionButton } from "@/components/ui/icon-action-button";
 import { RefreshButton } from "@/components/ui/refresh-button";
-import { DetailList, PanelSection, SlidePanel, StatusPill, TagList } from "@/components/ui/slide-panel";
+import { DetailList, PanelSection, panelNoticeTone, SlidePanel, StatusPill, TagList, usePanelMessage } from "@/components/ui/slide-panel";
 import { StatGrid } from "@/components/ui/stat-grid";
 import type { AdminDashboardData } from "@/lib/data/admin";
 import { recordAction } from "@/lib/client/actions";
@@ -189,7 +189,7 @@ export function AdminDashboardClient({ data: initialData }: { data: AdminDashboa
 
           {tab === "providers" ? (
             data.providerList.length ? (
-              <ProvidersTable providers={data.providerList} setMessage={setMessage} />
+              <ProvidersTable providers={data.providerList} />
             ) : (
               <EmptyState title="No providers yet" description="Approved care facilities will appear here once added to the database." />
             )
@@ -241,7 +241,13 @@ function FamiliesTable({
     });
   }, [families]);
 
-  async function patchIntake(id: string, body: Record<string, unknown>, name: string, successMessage: string) {
+  async function patchIntake(
+    id: string,
+    body: Record<string, unknown>,
+    name: string,
+    successMessage: string,
+    notify: (message: string) => void = setMessage
+  ) {
     setPendingId(id);
     try {
       const response = await fetch(`/api/intakes/${id}`, {
@@ -304,17 +310,23 @@ function FamiliesTable({
         });
       }
 
-      setMessage(successMessage);
+      notify(successMessage);
       await onSync();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : `Could not update ${name}. Please try again.`);
+      notify(error instanceof Error ? error.message : `Could not update ${name}. Please try again.`);
     } finally {
       setPendingId(null);
     }
   }
 
-  async function updateStatus(id: string, status: IntakeStatus, name: string) {
-    await patchIntake(id, { status }, name, `${name} marked as ${adminIntakeStatusLabel(status).toLowerCase()}.`);
+  async function updateStatus(id: string, status: IntakeStatus, name: string, notify?: (message: string) => void) {
+    await patchIntake(
+      id,
+      { status },
+      name,
+      `${name} marked as ${adminIntakeStatusLabel(status).toLowerCase()}.`,
+      notify
+    );
   }
 
   return (
@@ -378,7 +390,6 @@ function FamiliesTable({
         onClose={() => setSelected(null)}
         onUpdateStatus={updateStatus}
         onPatchIntake={patchIntake}
-        onMatchCreated={setMessage}
         onSync={onSync}
         pendingId={pendingId}
       />
@@ -393,7 +404,6 @@ function FamilyDetailPanel({
   onClose,
   onUpdateStatus,
   onPatchIntake,
-  onMatchCreated,
   onSync,
   pendingId
 }: {
@@ -401,12 +411,18 @@ function FamilyDetailPanel({
   providers: ProviderOption[];
   careGuides: CareGuideOption[];
   onClose: () => void;
-  onUpdateStatus: (id: string, status: IntakeStatus, name: string) => Promise<void>;
-  onPatchIntake: (id: string, body: Record<string, unknown>, name: string, successMessage: string) => Promise<void>;
-  onMatchCreated: (message: string) => void;
+  onUpdateStatus: (id: string, status: IntakeStatus, name: string, notify?: (message: string) => void) => Promise<void>;
+  onPatchIntake: (
+    id: string,
+    body: Record<string, unknown>,
+    name: string,
+    successMessage: string,
+    notify?: (message: string) => void
+  ) => Promise<void>;
   onSync: () => Promise<boolean>;
   pendingId: string | null;
 }) {
+  const { message: panelMessage, setMessage: setPanelMessage, clearMessage: clearPanelMessage } = usePanelMessage();
   const [providerId, setProviderId] = useState("");
   const [score, setScore] = useState("85");
   const [matchNotes, setMatchNotes] = useState("");
@@ -426,6 +442,7 @@ function FamilyDetailPanel({
 
   useEffect(() => {
     if (!family) return;
+    clearPanelMessage();
     setCareGuideId(family.careGuideId || "");
     setCarePathway(family.carePathway || "");
     setAssessmentNotes(family.assessmentNotes || "");
@@ -443,7 +460,7 @@ function FamilyDetailPanel({
     if (!family) return;
     setPendingAction(status);
     try {
-      await onUpdateStatus(family.id, status, family.name);
+      await onUpdateStatus(family.id, status, family.name, setPanelMessage);
     } finally {
       setPendingAction(null);
       if (status === "CLOSED") {
@@ -458,18 +475,19 @@ function FamilyDetailPanel({
       family.id,
       { careGuideId, ...(family.status === "NEW" ? { status: "CARE_GUIDE_ASSIGNED" } : {}) },
       family.name,
-      `Care Guide assigned for ${family.name}.`
+      `Care Guide assigned for ${family.name}.`,
+      setPanelMessage
     );
   }
 
   async function saveAssessment(advanceTo?: IntakeStatus) {
     if (!family || !carePathway) {
-      onMatchCreated("Select a recommended care pathway before saving the assessment.");
+      setPanelMessage("Select a recommended care pathway before saving the assessment.");
       return;
     }
 
     if (advanceTo === "CARE_PLAN" && !carePlanSummary.trim()) {
-      onMatchCreated("Add a care plan summary before publishing the care plan.");
+      setPanelMessage("Add a care plan summary before publishing the care plan.");
       return;
     }
 
@@ -489,7 +507,8 @@ function FamilyDetailPanel({
           ? `Care plan published for ${family.name}.`
           : advanceTo === "MATCHED"
             ? `${family.name} marked as matched.`
-            : `Assessment saved for ${family.name}.`
+            : `Assessment saved for ${family.name}.`,
+        setPanelMessage
       );
     } finally {
       setSavingAssessment(false);
@@ -498,7 +517,7 @@ function FamilyDetailPanel({
 
   async function saveVisitSchedule() {
     if (!family || !visitScheduledAt) {
-      onMatchCreated("Set a visit or callback date and time before saving.");
+      setPanelMessage("Set a visit or callback date and time before saving.");
       return;
     }
 
@@ -514,7 +533,8 @@ function FamilyDetailPanel({
           status: "VISIT_SCHEDULED"
         },
         family.name,
-        `Visit scheduled for ${family.name}.`
+        `Visit scheduled for ${family.name}.`,
+        setPanelMessage
       );
     } finally {
       setSavingVisit(false);
@@ -524,7 +544,7 @@ function FamilyDetailPanel({
   async function createMatch() {
     if (!family || !providerId) return;
     if (!matchingAllowed) {
-      onMatchCreated("Complete the assessment and select a care pathway before creating matches.");
+      setPanelMessage("Complete the assessment and select a care pathway before creating matches.");
       return;
     }
 
@@ -554,12 +574,12 @@ function FamilyDetailPanel({
         payload: { intakeId: family.id, providerId, score: Number(score) }
       });
 
-      onMatchCreated(`Match created for ${family.name}. They can now see this provider on their results page.`);
+      setPanelMessage(`Match created for ${family.name}. They can now see this provider on their results page.`);
       setProviderId("");
       setMatchNotes("");
       await onSync();
     } catch (error) {
-      onMatchCreated(error instanceof Error ? error.message : `Could not create match for ${family.name}.`);
+      setPanelMessage(error instanceof Error ? error.message : `Could not create match for ${family.name}.`);
     } finally {
       setCreatingMatch(false);
     }
@@ -579,6 +599,8 @@ function FamilyDetailPanel({
       size="xl"
       title={family?.name || "Family intake"}
       subtitle={family ? `${family.location} · ${family.urgency}` : "Care intake details"}
+      notice={panelMessage}
+      noticeTone={panelNoticeTone(panelMessage)}
     >
       {family ? (
         <div className="space-y-6">
@@ -915,11 +937,9 @@ function FamilyDetailPanel({
 }
 
 function ProvidersTable({
-  providers,
-  setMessage
+  providers
 }: {
   providers: AdminDashboardData["providerList"];
-  setMessage: (message: string) => void;
 }) {
   const [selected, setSelected] = useState<AdminDashboardData["providerList"][number] | null>(null);
 
@@ -953,20 +973,24 @@ function ProvidersTable({
         </tbody>
       </table>
 
-      <ProviderDetailPanel provider={selected} onClose={() => setSelected(null)} setMessage={setMessage} />
+      <ProviderDetailPanel provider={selected} onClose={() => setSelected(null)} />
     </>
   );
 }
 
 function ProviderDetailPanel({
   provider,
-  onClose,
-  setMessage
+  onClose
 }: {
   provider: AdminDashboardData["providerList"][number] | null;
   onClose: () => void;
-  setMessage: (message: string) => void;
 }) {
+  const { message: panelMessage, setMessage: setPanelMessage, clearMessage: clearPanelMessage } = usePanelMessage();
+
+  useEffect(() => {
+    if (!provider) clearPanelMessage();
+  }, [provider, clearPanelMessage]);
+
   const priceRange = provider ? formatProviderPriceRange(provider.priceMin, provider.priceMax) : null;
   const bedsSummary =
     provider && (provider.bedsOpen != null || provider.bedsTotal != null)
@@ -980,6 +1004,8 @@ function ProviderDetailPanel({
       size="xl"
       title={provider?.name || "Provider"}
       subtitle={provider ? `${provider.type} · ${provider.area}` : "Facility profile"}
+      notice={panelMessage}
+      noticeTone={panelNoticeTone(panelMessage)}
     >
       {provider ? (
         <div className="space-y-6">
@@ -1110,7 +1136,7 @@ function ProviderDetailPanel({
                     variant="outline"
                     onClick={() => {
                       void navigator.clipboard.writeText(provider.id);
-                      setMessage(`Copied provider ID for ${provider.name}.`);
+                      setPanelMessage(`Copied provider ID for ${provider.name}.`);
                     }}
                   >
                     Copy ID
@@ -1167,7 +1193,7 @@ function InquiriesTable({
   );
   const followUpCount = rows.filter((item) => isAdminActionNeeded(item.statusRaw)).length;
 
-  async function updateMatchStatus(id: string, status: MatchStatus) {
+  async function updateMatchStatus(id: string, status: MatchStatus, notify: (message: string) => void = setMessage) {
     setPendingActionKey(`${id}:${status}`);
     setPendingId(id);
     try {
@@ -1206,10 +1232,10 @@ function InquiriesTable({
             }
           : current
       );
-      setMessage(`Inquiry updated to ${adminMatchStatusLabel(updated.status).toLowerCase()}.`);
+      notify(`Inquiry updated to ${adminMatchStatusLabel(updated.status).toLowerCase()}.`);
       await onSync();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Could not update inquiry.");
+      notify(error instanceof Error ? error.message : "Could not update inquiry.");
     } finally {
       setPendingId(null);
       setPendingActionKey(null);
@@ -1303,7 +1329,7 @@ function InquiriesTable({
         pendingId={pendingId}
         pendingActionKey={pendingActionKey}
         onClose={() => setSelected(null)}
-        onUpdateStatus={updateMatchStatus}
+        onUpdateStatus={(id, status, notify) => updateMatchStatus(id, status, notify)}
       />
       <ConfirmDialog
         open={Boolean(confirmClose)}
@@ -1334,11 +1360,20 @@ function InquiryDetailPanel({
   pendingId: string | null;
   pendingActionKey: string | null;
   onClose: () => void;
-  onUpdateStatus: (id: string, status: MatchStatus) => Promise<void>;
+  onUpdateStatus: (id: string, status: MatchStatus, notify?: (message: string) => void) => Promise<void>;
 }) {
+  const { message: panelMessage, setMessage: setPanelMessage, clearMessage: clearPanelMessage } = usePanelMessage();
   const isPending = inquiry ? pendingId === inquiry.id : false;
   const [confirmClose, setConfirmClose] = useState(false);
   const hint = inquiry ? adminInquiryHint(inquiry.statusRaw) : "";
+
+  useEffect(() => {
+    if (!inquiry) clearPanelMessage();
+  }, [inquiry, clearPanelMessage]);
+
+  async function updateFromPanel(id: string, status: MatchStatus) {
+    await onUpdateStatus(id, status, setPanelMessage);
+  }
 
   const details = inquiry
     ? [
@@ -1364,6 +1399,8 @@ function InquiryDetailPanel({
       size="wide"
       title={inquiry?.family || "Inquiry"}
       subtitle={inquiry ? `${inquiry.provider} · ${adminMatchStatusLabel(inquiry.statusRaw)}` : "Match details"}
+      notice={panelMessage}
+      noticeTone={panelNoticeTone(panelMessage)}
     >
       {inquiry ? (
         <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_260px]">
@@ -1403,14 +1440,14 @@ function InquiryDetailPanel({
               inquiry.statusRaw === "CALLBACK_REQUESTED" ||
               inquiry.statusRaw === "ACCEPTED") && (
               <PanelSection step={4} title={adminInquiryActionMeta("CONTACTED").label} description={adminInquiryActionMeta("CONTACTED").description}>
-                <Button size="sm" disabled={isPending} onClick={() => void onUpdateStatus(inquiry.id, "CONTACTED")}>
+                <Button size="sm" disabled={isPending} onClick={() => void updateFromPanel(inquiry.id, "CONTACTED")}>
                   {pendingActionKey === `${inquiry.id}:CONTACTED` ? "Saving..." : "Confirm"}
                 </Button>
               </PanelSection>
             )}
             {inquiry.statusRaw !== "PLACED" && inquiry.statusRaw !== "CLOSED" ? (
               <PanelSection step={5} title={adminInquiryActionMeta("PLACED").label} description={adminInquiryActionMeta("PLACED").description}>
-                <Button size="sm" variant="outline" disabled={isPending} onClick={() => void onUpdateStatus(inquiry.id, "PLACED")}>
+                <Button size="sm" variant="outline" disabled={isPending} onClick={() => void updateFromPanel(inquiry.id, "PLACED")}>
                   {pendingActionKey === `${inquiry.id}:PLACED` ? "Saving..." : "Confirm"}
                 </Button>
               </PanelSection>
@@ -1435,7 +1472,7 @@ function InquiryDetailPanel({
         onCancel={() => setConfirmClose(false)}
         onConfirm={() => {
           if (!inquiry) return;
-          void onUpdateStatus(inquiry.id, "CLOSED");
+          void updateFromPanel(inquiry.id, "CLOSED");
           setConfirmClose(false);
         }}
       />
@@ -1454,7 +1491,7 @@ function WaitlistTable({
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [selected, setSelected] = useState<WaitlistEntry | null>(null);
 
-  async function markContacted(id: string, name: string) {
+  async function markContacted(id: string, name: string, notify: (message: string) => void = setMessage) {
     setPendingId(id);
     try {
       const response = await fetch(`/api/waitlist/${id}`, {
@@ -1480,9 +1517,9 @@ function WaitlistTable({
         payload: { id, name }
       });
 
-      setMessage(`${name} marked as contacted. Status updated in the waitlist.`);
+      notify(`${name} marked as contacted. Status updated in the waitlist.`);
     } catch {
-      setMessage(`Could not mark ${name} as contacted. Please try again.`);
+      notify(`Could not mark ${name} as contacted. Please try again.`);
     } finally {
       setPendingId(null);
     }
@@ -1559,12 +1596,17 @@ function WaitlistDetailPanel({
 }: {
   entry: WaitlistEntry | null;
   onClose: () => void;
-  onMarkContacted: (id: string, name: string) => Promise<void>;
+  onMarkContacted: (id: string, name: string, notify?: (message: string) => void) => Promise<void>;
   pendingId: string | null;
 }) {
+  const { message: panelMessage, setMessage: setPanelMessage, clearMessage: clearPanelMessage } = usePanelMessage();
   const isContacted = entry?.status === "CONTACTED";
   const isPending = entry ? pendingId === entry.id : false;
   const isFamily = entry?.type === "FAMILY";
+
+  useEffect(() => {
+    if (!entry) clearPanelMessage();
+  }, [entry, clearPanelMessage]);
 
   return (
     <SlidePanel
@@ -1573,6 +1615,8 @@ function WaitlistDetailPanel({
       size="xl"
       title={entry?.name || "Waitlist entry"}
       subtitle={entry ? `${entry.type} registration · ${entry.location}` : undefined}
+      notice={panelMessage}
+      noticeTone={panelNoticeTone(panelMessage)}
     >
       {entry ? (
         <div className="space-y-6">
@@ -1687,6 +1731,7 @@ function WaitlistDetailPanel({
                     variant="outline"
                     onClick={() => {
                       void navigator.clipboard.writeText(entry.id);
+                      setPanelMessage("Entry ID copied.");
                     }}
                   >
                     Copy ID
@@ -1699,7 +1744,7 @@ function WaitlistDetailPanel({
                   <Button
                     className="w-full"
                     disabled={isContacted || isPending}
-                    onClick={() => void onMarkContacted(entry.id, entry.name)}
+                    onClick={() => void onMarkContacted(entry.id, entry.name, setPanelMessage)}
                   >
                     {isPending ? "Saving..." : isContacted ? "Contacted" : "Mark contacted"}
                   </Button>

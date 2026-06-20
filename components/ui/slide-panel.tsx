@@ -1,9 +1,44 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "@/lib/core/utils";
+
+export type PanelNoticeTone = "success" | "error";
+
+export function panelNoticeTone(message: string): PanelNoticeTone {
+  return /^(Could not|Cannot|Select a|Add a|Complete the|Set a)/i.test(message) ? "error" : "success";
+}
+
+export function usePanelMessage() {
+  const [message, setMessage] = useState("");
+  const clearMessage = useCallback(() => setMessage(""), []);
+
+  useEffect(() => {
+    if (!message) return;
+    const timer = window.setTimeout(() => setMessage(""), 4000);
+    return () => window.clearTimeout(timer);
+  }, [message]);
+
+  return { message, setMessage, clearMessage };
+}
+
+export function PanelNotice({ message, tone = "success" }: { message: string; tone?: PanelNoticeTone }) {
+  if (!message) return null;
+
+  return (
+    <div
+      className={cn(
+        "rounded-lg px-4 py-3 text-sm leading-6 shadow-sm",
+        tone === "error" ? "bg-red-50 text-red-800 ring-1 ring-red-100" : "bg-brand-green-pale/40 text-brand-green-dark ring-1 ring-brand-green-pale/60"
+      )}
+      role="status"
+    >
+      {message}
+    </div>
+  );
+}
 
 type SlidePanelProps = {
   open: boolean;
@@ -11,10 +46,21 @@ type SlidePanelProps = {
   title: string;
   subtitle?: string;
   size?: "default" | "wide" | "xl";
+  notice?: string;
+  noticeTone?: PanelNoticeTone;
   children: React.ReactNode;
 };
 
-export function SlidePanel({ open, onClose, title, subtitle, size = "default", children }: SlidePanelProps) {
+export function SlidePanel({
+  open,
+  onClose,
+  title,
+  subtitle,
+  size = "default",
+  notice,
+  noticeTone = "success",
+  children
+}: SlidePanelProps) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -76,7 +122,14 @@ export function SlidePanel({ open, onClose, title, subtitle, size = "default", c
             <X className="h-4 w-4" />
           </button>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-5 sm:py-5 lg:px-6 lg:py-6">{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-5 sm:py-5 lg:px-6 lg:py-6">
+          {notice ? (
+            <div className="sticky top-0 z-10 -mt-1 mb-4 bg-white pb-1 pt-1">
+              <PanelNotice message={notice} tone={noticeTone} />
+            </div>
+          ) : null}
+          {children}
+        </div>
       </aside>
     </>,
     document.body
