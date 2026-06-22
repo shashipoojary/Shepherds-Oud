@@ -3,9 +3,7 @@ import { getServerSession, getUserRole } from "@/lib/auth/server";
 import { getUserLinkedProvider } from "@/lib/providers/server";
 import { updateMatchSchema } from "@/lib/validation/match";
 import { syncIntakeCaseFromMatch } from "@/lib/domain/intake-case-sync";
-import { sendIntakeStatusEmail } from "@/lib/email/intake-status-email";
-import { sendProviderInquiryEmail, sendProviderResponseEmails } from "@/lib/email/provider-inquiry-email";
-import { normalizeIntakeStatus } from "@/lib/domain/intake-workflow";
+import { sendProviderInquiryEmail } from "@/lib/email/provider-inquiry-email";
 import { familyRequestNote } from "@/lib/domain/match-status";
 import { handleApiError, jsonError, jsonOk, readJsonBody, runInBackground } from "@/lib/core/api-helpers";
 import {
@@ -123,48 +121,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     }
 
     if (actor === "provider" && (nextStatus === "ACCEPTED" || nextStatus === "DECLINED")) {
-      const synced = await syncIntakeCaseFromMatch(existing.intakeId, nextStatus);
-
-      void runInBackground(
-        sendProviderResponseEmails({
-          providerName: existing.provider.name,
-          familyName: existing.intake.contactName,
-          accepted: nextStatus === "ACCEPTED"
-        }),
-        "provider_response_advisor_email"
-      );
-
-      if (synced) {
-        const intake = await prisma.intake.findUnique({
-          where: { id: existing.intakeId },
-          select: {
-            id: true,
-            contactName: true,
-            email: true,
-            status: true,
-            carePathway: true,
-            visitProviderName: true,
-            visitScheduledAt: true,
-            careGuide: { select: { name: true, email: true } }
-          }
-        });
-
-        if (intake) {
-          void runInBackground(
-            sendIntakeStatusEmail({
-              contactName: intake.contactName,
-              email: intake.email,
-              intakeId: intake.id,
-              status: normalizeIntakeStatus(intake.status),
-              carePathway: intake.carePathway,
-              careGuide: intake.careGuide,
-              visitProviderName: intake.visitProviderName,
-              visitScheduledAt: intake.visitScheduledAt
-            }),
-            "provider_response_status_email"
-          );
-        }
-      }
+      await syncIntakeCaseFromMatch(existing.intakeId, nextStatus);
     }
 
     return jsonOk(match);

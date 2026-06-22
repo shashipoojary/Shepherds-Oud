@@ -1,41 +1,28 @@
 import { normalizeIntakeStatus } from "@/lib/domain/intake-workflow";
 
 /**
- * Family status emails — only milestones families need in their inbox.
- * Skips noisy steps (assessment tweaks, placement in progress, etc.).
+ * Email volume policy — keep inboxes usable at scale (e.g. 50+ families).
+ *
+ * Family journey: max ~3 emails per case
+ *   1. Intake received (first)
+ *   2. Provider shortlist ready / MATCHED (one middle milestone)
+ *   3. Care arranged / PLACED (last)
+ *
+ * Everything else (assessment, care plan, visit tweaks, provider replies,
+ * follow-ups) is shown on the dashboard only — no email.
+ *
+ * Provider: magic-link sign-in + visit/callback request (action required).
+ * Advisor: new intake only (review everything else in admin).
+ * Waitlist: confirmation to registrant only.
  */
-const FAMILY_STATUS_EMAILS = new Set([
-  "CARE_PLAN",
-  "MATCHED",
-  "VISIT_SCHEDULED",
-  "PROVIDER_RESPONSE",
-  "PLACED",
-  "FOLLOW_UP_7",
-  "FOLLOW_UP_30",
-  "FOLLOW_UP_90"
-]);
+const FAMILY_STATUS_EMAILS = new Set(["MATCHED", "PLACED"]);
 
 export function shouldSendFamilyStatusEmail(status: string) {
   return FAMILY_STATUS_EMAILS.has(normalizeIntakeStatus(status));
 }
 
-/** Advisor inbox — high-signal operational alerts only (not every admin click). */
-export type AdvisorAlertKind =
-  | "new_intake"
-  | "waitlist_signup"
-  | "family_visit_request"
-  | "family_callback_request"
-  | "provider_accepted"
-  | "provider_declined";
+export type AdvisorAlertKind = "new_intake";
 
 export function advisorAlertSubject(kind: AdvisorAlertKind, detail: string) {
-  const subjects: Record<AdvisorAlertKind, string> = {
-    new_intake: `New care intake: ${detail}`,
-    waitlist_signup: `New waitlist registration: ${detail}`,
-    family_visit_request: `Visit requested: ${detail}`,
-    family_callback_request: `Callback requested: ${detail}`,
-    provider_accepted: `Provider accepted inquiry: ${detail}`,
-    provider_declined: `Provider declined inquiry: ${detail}`
-  };
-  return subjects[kind];
+  return kind === "new_intake" ? `New care intake: ${detail}` : `Shepherds Oud alert: ${detail}`;
 }
