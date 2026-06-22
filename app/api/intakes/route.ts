@@ -38,13 +38,14 @@ export async function POST(request: Request) {
     }
 
     if (!process.env.DATABASE_URL) {
-      void runInBackground(
-        sendIntakeConfirmationEmails({
-          contactName: parsed.data.contactName,
-          email: parsed.data.email,
-          intakeId: "demo-intake",
-          careGuide: null
-        }),
+      runInBackground(
+        () =>
+          sendIntakeConfirmationEmails({
+            contactName: parsed.data.contactName,
+            email: parsed.data.email,
+            intakeId: "demo-intake",
+            careGuide: null
+          }),
         "intake_confirmation_email"
       );
       return jsonOk({ id: "demo-intake", status: "CARE_GUIDE_ASSIGNED", mode: "demo" }, 201);
@@ -64,13 +65,14 @@ export async function POST(request: Request) {
       }
     });
 
-    void runInBackground(
-      sendIntakeConfirmationEmails({
-        contactName: parsed.data.contactName,
-        email: parsed.data.email,
-        intakeId: intake.id,
-        careGuide: intake.careGuide
-      }),
+    runInBackground(
+      () =>
+        sendIntakeConfirmationEmails({
+          contactName: parsed.data.contactName,
+          email: parsed.data.email,
+          intakeId: intake.id,
+          careGuide: intake.careGuide
+        }),
       "intake_confirmation_email"
     );
 

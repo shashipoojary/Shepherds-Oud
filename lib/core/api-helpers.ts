@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { logError } from "@/lib/core/logger";
 import { checkRateLimit, getClientIp } from "@/lib/core/rate-limit";
 
@@ -78,12 +78,14 @@ export function handleApiError(error: unknown, context: string) {
   return jsonError("Something went wrong. Please try again.", 500);
 }
 
-export async function runInBackground(task: Promise<unknown>, context: string) {
-  try {
-    await task;
-  } catch (error) {
-    logError(context, {
-      message: error instanceof Error ? error.message : "Background task failed"
-    });
-  }
+export function runInBackground(task: () => Promise<unknown>, context: string) {
+  after(async () => {
+    try {
+      await task();
+    } catch (error) {
+      logError(context, {
+        message: error instanceof Error ? error.message : "Background task failed"
+      });
+    }
+  });
 }

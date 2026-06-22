@@ -18,12 +18,13 @@ export async function POST(request: Request) {
     }
 
     if (!process.env.DATABASE_URL) {
-      void runInBackground(
-        sendWaitlistConfirmationEmails({
-          contactName: parsed.data.contactName,
-          email: parsed.data.email,
-          type: parsed.data.type
-        }),
+      runInBackground(
+        () =>
+          sendWaitlistConfirmationEmails({
+            contactName: parsed.data.contactName,
+            email: parsed.data.email,
+            type: parsed.data.type
+          }),
         "waitlist_confirmation_email"
       );
       return jsonOk({ id: "demo-waitlist", mode: "demo" }, 201);
@@ -32,12 +33,13 @@ export async function POST(request: Request) {
     const { prisma } = await import("@/lib/core/db");
     const entry = await prisma.waitlistEntry.create({ data: parsed.data });
 
-    void runInBackground(
-      sendWaitlistConfirmationEmails({
-        contactName: parsed.data.contactName,
-        email: parsed.data.email,
-        type: parsed.data.type
-      }),
+    runInBackground(
+      () =>
+        sendWaitlistConfirmationEmails({
+          contactName: parsed.data.contactName,
+          email: parsed.data.email,
+          type: parsed.data.type
+        }),
       "waitlist_confirmation_email"
     );
 

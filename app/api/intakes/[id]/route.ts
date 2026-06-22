@@ -213,17 +213,18 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
       const normalizedStatus = normalizeIntakeStatus(intake.status);
       if (nextStatus && nextStatus !== currentStatus) {
-        void runInBackground(
-          sendIntakeStatusEmail({
-            contactName: intake.contactName,
-            email: intake.email,
-            intakeId: intake.id,
-            status: normalizedStatus,
-            carePathway: intake.carePathway,
-            careGuide: intake.careGuide,
-            visitProviderName: intake.visitProviderName,
-            visitScheduledAt: intake.visitScheduledAt
-          }),
+        runInBackground(
+          () =>
+            sendIntakeStatusEmail({
+              contactName: intake.contactName,
+              email: intake.email,
+              intakeId: intake.id,
+              status: normalizedStatus,
+              carePathway: intake.carePathway,
+              careGuide: intake.careGuide,
+              visitProviderName: intake.visitProviderName,
+              visitScheduledAt: intake.visitScheduledAt
+            }),
           "intake_status_email"
         );
       }

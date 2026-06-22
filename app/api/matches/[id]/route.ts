@@ -105,17 +105,19 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       }
     });
 
-    if (isFamilyAction && existing.provider.email) {
-      void runInBackground(
-        sendProviderInquiryEmail({
-          providerEmail: existing.provider.email,
-          providerName: existing.provider.name,
-          familyName: existing.intake.contactName,
-          familyArea: existing.intake.preferredArea,
-          familyCare: existing.intake.careTypes.join(", ") || "Not specified",
-          familyUrgency: existing.intake.urgency,
-          requestType: nextStatus as "VISIT_REQUESTED" | "CALLBACK_REQUESTED"
-        }),
+    const providerEmail = existing.provider.email;
+    if (isFamilyAction && providerEmail) {
+      runInBackground(
+        () =>
+          sendProviderInquiryEmail({
+            providerEmail,
+            providerName: existing.provider.name,
+            familyName: existing.intake.contactName,
+            familyArea: existing.intake.preferredArea,
+            familyCare: existing.intake.careTypes.join(", ") || "Not specified",
+            familyUrgency: existing.intake.urgency,
+            requestType: nextStatus as "VISIT_REQUESTED" | "CALLBACK_REQUESTED"
+          }),
         "provider_inquiry_email"
       );
     }
