@@ -1,10 +1,9 @@
 import { Prisma } from "@prisma/client";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth/config";
-import { sendBrevoEmail } from "@/lib/email/brevo";
 import { getUserRole } from "@/lib/auth/server";
 import { actionSchema } from "@/lib/validation/action";
-import { handleApiError, jsonError, jsonOk, readJsonBody, runInBackground } from "@/lib/core/api-helpers";
+import { handleApiError, jsonError, jsonOk, readJsonBody } from "@/lib/core/api-helpers";
 
 export const runtime = "nodejs";
 
@@ -32,7 +31,6 @@ export async function POST(request: Request) {
     }
 
     if (!process.env.DATABASE_URL) {
-      void runInBackground(notifyAction(parsed.data.label), "action_notification_email");
       return jsonOk({ id: `demo-${Date.now()}`, mode: "demo", action: parsed.data }, 201);
     }
 
@@ -47,25 +45,8 @@ export async function POST(request: Request) {
       }
     });
 
-    void runInBackground(notifyAction(parsed.data.label), "action_notification_email");
-
     return jsonOk({ id: action.id, mode: "database" }, 201);
   } catch (error) {
     return handleApiError(error, "action_create");
   }
-}
-
-async function notifyAction(label: string) {
-  const advisorEmail = process.env.ADVISOR_EMAIL;
-
-  if (!advisorEmail) {
-    return;
-  }
-
-  await sendBrevoEmail({
-    to: [{ email: advisorEmail, name: "Shepherds Oud Care Guide team" }],
-    subject: "Shepherds Oud action recorded",
-    htmlContent: `<p>${label}</p>`,
-    textContent: label
-  });
 }

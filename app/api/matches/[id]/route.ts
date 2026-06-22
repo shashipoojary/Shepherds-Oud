@@ -4,6 +4,7 @@ import { getUserLinkedProvider } from "@/lib/providers/server";
 import { updateMatchSchema } from "@/lib/validation/match";
 import { syncIntakeCaseFromMatch } from "@/lib/domain/intake-case-sync";
 import { sendIntakeStatusEmail } from "@/lib/email/intake-status-email";
+import { sendProviderInquiryEmail, sendProviderResponseEmails } from "@/lib/email/provider-inquiry-email";
 import { normalizeIntakeStatus } from "@/lib/domain/intake-workflow";
 import { familyRequestNote } from "@/lib/domain/match-status";
 import { handleApiError, jsonError, jsonOk, readJsonBody, runInBackground } from "@/lib/core/api-helpers";
@@ -33,7 +34,17 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
     const existing = await prisma.match.findUnique({
       where: { id },
-      include: { provider: true }
+      include: {
+        provider: true,
+        intake: {
+          select: {
+            contactName: true,
+            preferredArea: true,
+            careTypes: true,
+            urgency: true
+          }
+        }
+      }
     });
 
     if (!existing) {
@@ -96,8 +107,33 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       }
     });
 
+    if (isFamilyAction && existing.provider.email) {
+      void runInBackground(
+        sendProviderInquiryEmail({
+          providerEmail: existing.provider.email,
+          providerName: existing.provider.name,
+          familyName: existing.intake.contactName,
+          familyArea: existing.intake.preferredArea,
+          familyCare: existing.intake.careTypes.join(", ") || "Not specified",
+          familyUrgency: existing.intake.urgency,
+          requestType: nextStatus as "VISIT_REQUESTED" | "CALLBACK_REQUESTED"
+        }),
+        "provider_inquiry_email"
+      );
+    }
+
     if (actor === "provider" && (nextStatus === "ACCEPTED" || nextStatus === "DECLINED")) {
       const synced = await syncIntakeCaseFromMatch(existing.intakeId, nextStatus);
+
+      void runInBackground(
+        sendProviderResponseEmails({
+          providerName: existing.provider.name,
+          familyName: existing.intake.contactName,
+          accepted: nextStatus === "ACCEPTED"
+        }),
+        "provider_response_advisor_email"
+      );
+
       if (synced) {
         const intake = await prisma.intake.findUnique({
           where: { id: existing.intakeId },
@@ -126,37 +162,6 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
               visitScheduledAt: intake.visitScheduledAt
             }),
             "provider_response_status_email"
-          );
-        }
-      }
-    }
-
-    if (actor === "admin" && (nextStatus === "CONTACTED" || nextStatus === "PLACED")) {
-      const synced = await syncIntakeCaseFromMatch(existing.intakeId, nextStatus);
-      if (synced) {
-        const intake = await prisma.intake.findUnique({
-          where: { id: existing.intakeId },
-          select: {
-            id: true,
-            contactName: true,
-            email: true,
-            status: true,
-            carePathway: true,
-            careGuide: { select: { name: true, email: true } }
-          }
-        });
-
-        if (intake) {
-          void runInBackground(
-            sendIntakeStatusEmail({
-              contactName: intake.contactName,
-              email: intake.email,
-              intakeId: intake.id,
-              status: normalizeIntakeStatus(intake.status),
-              carePathway: intake.carePathway,
-              careGuide: intake.careGuide
-            }),
-            "match_sync_status_email"
           );
         }
       }

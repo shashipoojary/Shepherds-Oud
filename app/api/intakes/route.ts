@@ -1,8 +1,7 @@
-import { sendBrevoEmail } from "@/lib/email/brevo";
-import { ubuntuTagline } from "@/lib/config/content";
 import { isPrelaunch } from "@/lib/config/prelaunch";
 import { resolveDefaultCareGuideId } from "@/lib/domain/care-guide";
 import { normalizeIntakeStatus } from "@/lib/domain/intake-workflow";
+import { sendIntakeConfirmationEmails } from "@/lib/email/intake-confirmation-email";
 import { intakeSchema } from "@/lib/validation/intake";
 import { handleApiError, jsonError, jsonOk, rateLimitResponse, readJsonBody, runInBackground } from "@/lib/core/api-helpers";
 
@@ -40,7 +39,12 @@ export async function POST(request: Request) {
 
     if (!process.env.DATABASE_URL) {
       void runInBackground(
-        notifyIntake(parsed.data.contactName, parsed.data.email, "demo-intake", null),
+        sendIntakeConfirmationEmails({
+          contactName: parsed.data.contactName,
+          email: parsed.data.email,
+          intakeId: "demo-intake",
+          careGuide: null
+        }),
         "intake_confirmation_email"
       );
       return jsonOk({ id: "demo-intake", status: "CARE_GUIDE_ASSIGNED", mode: "demo" }, 201);
@@ -61,7 +65,12 @@ export async function POST(request: Request) {
     });
 
     void runInBackground(
-      notifyIntake(parsed.data.contactName, parsed.data.email, intake.id, intake.careGuide),
+      sendIntakeConfirmationEmails({
+        contactName: parsed.data.contactName,
+        email: parsed.data.email,
+        intakeId: intake.id,
+        careGuide: intake.careGuide
+      }),
       "intake_confirmation_email"
     );
 
@@ -79,33 +88,4 @@ export async function POST(request: Request) {
   } catch (error) {
     return handleApiError(error, "intake_create");
   }
-}
-
-async function notifyIntake(
-  name: string,
-  email: string,
-  intakeId: string,
-  careGuide: { name: string | null; email: string } | null
-) {
-  const advisorEmail = process.env.ADVISOR_EMAIL;
-  const guideLine = careGuide
-    ? `<p>Your Care Guide is <strong>${careGuide.name || "from Shepherds Oud"}</strong> (${careGuide.email}). They will personally review your case and guide your family through each decision.</p>`
-    : "<p>A Care Guide will be assigned shortly to personally review your case and guide your family through each decision.</p>";
-
-  await Promise.allSettled([
-    sendBrevoEmail({
-      to: [{ email, name }],
-      subject: "We received your Shepherds Oud care request",
-      htmlContent: `<p>Hello ${name},</p><p>We received your care request. Your reference is <strong>${intakeId}</strong>.</p>${guideLine}<p><em>${ubuntuTagline}</em></p>`,
-      textContent: `Hello ${name}, we received your care request. Reference: ${intakeId}. ${ubuntuTagline}`
-    }),
-    advisorEmail
-      ? sendBrevoEmail({
-          to: [{ email: advisorEmail, name: "Shepherds Oud Care Guide team" }],
-          subject: `New care intake: ${name}`,
-          htmlContent: `<p>A new intake was submitted by ${name}.</p><p>Reference: <strong>${intakeId}</strong></p>`,
-          textContent: `A new intake was submitted by ${name}. Reference: ${intakeId}.`
-        })
-      : Promise.resolve({ mode: "demo" as const, skipped: true })
-  ]);
 }

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { sendBrevoEmail } from "@/lib/email/brevo";
+import { sendWaitlistConfirmationEmails } from "@/lib/email/waitlist-confirmation-email";
 import { waitlistSchema } from "@/lib/validation/waitlist";
 import { handleApiError, jsonError, jsonOk, rateLimitResponse, readJsonBody, runInBackground } from "@/lib/core/api-helpers";
 
@@ -19,7 +19,11 @@ export async function POST(request: Request) {
 
     if (!process.env.DATABASE_URL) {
       void runInBackground(
-        notifyWaitlist(parsed.data.contactName, parsed.data.email, parsed.data.type),
+        sendWaitlistConfirmationEmails({
+          contactName: parsed.data.contactName,
+          email: parsed.data.email,
+          type: parsed.data.type
+        }),
         "waitlist_confirmation_email"
       );
       return jsonOk({ id: "demo-waitlist", mode: "demo" }, 201);
@@ -29,7 +33,11 @@ export async function POST(request: Request) {
     const entry = await prisma.waitlistEntry.create({ data: parsed.data });
 
     void runInBackground(
-      notifyWaitlist(parsed.data.contactName, parsed.data.email, parsed.data.type),
+      sendWaitlistConfirmationEmails({
+        contactName: parsed.data.contactName,
+        email: parsed.data.email,
+        type: parsed.data.type
+      }),
       "waitlist_confirmation_email"
     );
 
@@ -37,26 +45,4 @@ export async function POST(request: Request) {
   } catch (error) {
     return handleApiError(error, "waitlist_create");
   }
-}
-
-async function notifyWaitlist(name: string, email: string, type: "FAMILY" | "FACILITY") {
-  const advisorEmail = process.env.ADVISOR_EMAIL;
-  const label = type === "FAMILY" ? "family" : "facility";
-
-  await Promise.allSettled([
-    sendBrevoEmail({
-      to: [{ email, name }],
-      subject: "Thanks for joining the Shepherds Oud waitlist",
-      htmlContent: `<p>Hello ${name},</p><p>Thank you for registering your ${label} interest with Shepherds Oud. We will contact you as soon as the platform is ready.</p>`,
-      textContent: `Hello ${name}, thank you for registering your ${label} interest with Shepherds Oud.`
-    }),
-    advisorEmail
-      ? sendBrevoEmail({
-          to: [{ email: advisorEmail, name: "Shepherds Oud Care Guide team" }],
-          subject: `New ${label} waitlist registration: ${name}`,
-          htmlContent: `<p>A new ${label} waitlist registration was submitted by ${name} (${email}).</p>`,
-          textContent: `A new ${label} waitlist registration was submitted by ${name} (${email}).`
-        })
-      : Promise.resolve({ mode: "demo" as const, skipped: true })
-  ]);
 }

@@ -1,4 +1,5 @@
 import { sendBrevoEmail } from "@/lib/email/brevo";
+import { shouldSendFamilyStatusEmail } from "@/lib/email/email-policy";
 import { renderTransactionalEmail } from "@/lib/email/transactional-template";
 import { intakeStatusLabel, normalizeIntakeStatus } from "@/lib/domain/intake-workflow";
 
@@ -15,6 +16,11 @@ export async function sendIntakeStatusEmail(input: {
   visitScheduledAt?: Date | null;
 }) {
   const status = normalizeIntakeStatus(input.status);
+
+  if (!shouldSendFamilyStatusEmail(status)) {
+    return { skipped: true as const };
+  }
+
   const guideName = input.careGuide?.name || "Your Care Guide";
   const dashboardUrl = `${appUrl}/family/dashboard`;
   const visitWhen = input.visitScheduledAt
@@ -28,22 +34,6 @@ export async function sendIntakeStatusEmail(input: {
     : null;
 
   const messages: Partial<Record<string, { title: string; paragraphs: string[] }>> = {
-    CARE_GUIDE_ASSIGNED: {
-      title: "Your Care Guide is assigned",
-      paragraphs: [
-        `Hello ${input.contactName},`,
-        `${guideName} is now personally reviewing your case. They will guide your family through assessment, care planning, and placement.`,
-        "No family should carry eldercare decisions alone — your Care Guide is here for shared decision support."
-      ]
-    },
-    ASSESSMENT: {
-      title: "Your assessment has started",
-      paragraphs: [
-        `Hello ${input.contactName},`,
-        `${guideName} is reviewing your loved one's needs, mobility, dementia care, and family decision context.`,
-        "We will update you when your care plan is ready on your dashboard."
-      ]
-    },
     CARE_PLAN: {
       title: "Your care plan is ready",
       paragraphs: [
@@ -78,14 +68,6 @@ export async function sendIntakeStatusEmail(input: {
         `Hello ${input.contactName},`,
         "A care provider has responded to your request. Your Care Guide will help your family decide the next step.",
         "Check your dashboard for the latest update."
-      ]
-    },
-    PLACEMENT_IN_PROGRESS: {
-      title: "Placement is in progress",
-      paragraphs: [
-        `Hello ${input.contactName},`,
-        "Your family is moving forward with placement. Your Care Guide remains available if you need support.",
-        "Check your dashboard for the latest updates."
       ]
     },
     PLACED: {
@@ -130,8 +112,7 @@ export async function sendIntakeStatusEmail(input: {
     eyebrow: "Your guided care journey",
     title: content.title,
     paragraphs: content.paragraphs,
-    ctaLabel: "Open your dashboard",
-    ctaUrl: dashboardUrl,
+    cta: { label: "Open your dashboard", url: dashboardUrl },
     footerNote: `Reference ${input.intakeId.slice(0, 8).toUpperCase()} · Status: ${intakeStatusLabel(status)}`
   });
 

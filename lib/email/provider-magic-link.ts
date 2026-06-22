@@ -22,8 +22,7 @@ export async function sendProviderMagicLinkEmail(email: string, url: string) {
       "Click the button below to sign in securely. This link works with any email address, including Apple, Microsoft, Gmail, and your facility domain.",
       "For your security, this link can only be used once and expires in 15 minutes."
     ],
-    ctaLabel: "Open facility dashboard",
-    ctaUrl: url,
+    cta: { label: "Open facility dashboard", url },
     footerNote: "If you did not request this email, you can safely ignore it. No changes will be made to your account."
   });
 
