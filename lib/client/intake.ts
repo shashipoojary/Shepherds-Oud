@@ -121,6 +121,51 @@ export function getStoredIntake(): StoredIntake | null {
   }
 }
 
+type IntakeApiSnapshot = {
+  status: string;
+  matchCount?: number;
+  careGuide?: CareGuideInfo | null;
+  carePathway?: string | null;
+  carePlanSummary?: string | null;
+  visitScheduledAt?: string | null;
+  visitType?: string | null;
+  visitProviderName?: string | null;
+  visitNotes?: string | null;
+};
+
+function mergeIntakeSnapshot(stored: StoredIntake, data: IntakeApiSnapshot): StoredIntake {
+  return {
+    ...stored,
+    status: data.status,
+    matchCount: data.matchCount ?? stored.matchCount ?? 0,
+    careGuide: data.careGuide ?? stored.careGuide,
+    carePathway: data.carePathway ?? stored.carePathway,
+    carePlanSummary: data.carePlanSummary ?? stored.carePlanSummary,
+    visitScheduledAt: data.visitScheduledAt ?? stored.visitScheduledAt,
+    visitType: data.visitType ?? stored.visitType,
+    visitProviderName: data.visitProviderName ?? stored.visitProviderName,
+    visitNotes: data.visitNotes ?? stored.visitNotes
+  };
+}
+
+/** Load the device intake and merge the latest status from the API (for family timeline pages). */
+export async function refreshStoredIntakeFromApi(): Promise<StoredIntake | null> {
+  const stored = getStoredIntake();
+  if (!stored) return null;
+
+  try {
+    const response = await fetch(`/api/intakes/${stored.id}`);
+    if (!response.ok) return stored;
+
+    const data = (await response.json()) as IntakeApiSnapshot;
+    const updated = mergeIntakeSnapshot(stored, data);
+    saveStoredIntake(updated);
+    return updated;
+  } catch {
+    return stored;
+  }
+}
+
 export function formatVisitSchedule(intake: Pick<StoredIntake, "visitScheduledAt" | "visitType" | "visitProviderName" | "visitNotes">) {
   if (!intake.visitScheduledAt) return null;
   const date = new Date(intake.visitScheduledAt);

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getStoredIntake, type StoredIntake } from "@/lib/client/intake";
+import { getStoredIntake, refreshStoredIntakeFromApi, type StoredIntake } from "@/lib/client/intake";
 import { CareJourneyTimeline } from "@/components/family/care-journey-timeline";
 import { Button } from "@/components/ui/button";
 import { ButtonRow } from "@/components/ui/button-row";
@@ -10,9 +10,32 @@ import { ubuntuTagline } from "@/lib/config/content";
 
 export function FamilySuccessClient() {
   const [intake, setIntake] = useState<StoredIntake | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setIntake(getStoredIntake());
+    let active = true;
+
+    async function load() {
+      const updated = await refreshStoredIntakeFromApi();
+      if (active) {
+        setIntake(updated ?? getStoredIntake());
+        setLoading(false);
+      }
+    }
+
+    void load();
+
+    function handleFocus() {
+      void refreshStoredIntakeFromApi().then((updated) => {
+        if (active && updated) setIntake(updated);
+      });
+    }
+
+    window.addEventListener("focus", handleFocus);
+    return () => {
+      active = false;
+      window.removeEventListener("focus", handleFocus);
+    };
   }, []);
 
   return (
@@ -44,7 +67,7 @@ export function FamilySuccessClient() {
           </ButtonRow>
         </section>
 
-        {intake ? <CareJourneyTimeline status={intake.status} careGuide={intake.careGuide} /> : null}
+        {loading ? null : intake ? <CareJourneyTimeline status={intake.status} careGuide={intake.careGuide} /> : null}
       </div>
     </main>
   );

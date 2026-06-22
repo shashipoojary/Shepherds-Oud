@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { BedDouble, Check, CircleDollarSign, Loader2, MapPin } from "lucide-react";
-import { getStoredIntake, saveStoredIntake, type StoredIntake } from "@/lib/client/intake";
+import { getStoredIntake, refreshStoredIntakeFromApi, type StoredIntake } from "@/lib/client/intake";
 import { requestMatchAction } from "@/lib/client/match-request";
 import { familyMatchNextStep, matchStatusLabel, isFamilyActionableMatchStatus } from "@/lib/domain/match-status";
 import { IntakeSummaryCard } from "@/components/family/intake-summary-card";
@@ -17,14 +17,6 @@ import { ResultsSkeleton } from "@/components/ui/results-skeleton";
 import type { ProviderMatch } from "@/lib/core/types";
 
 const filters = ["All options", "Available now", "Memory care", "Home care"] as const;
-
-type IntakeMeta = {
-  status: string;
-  matchCount: number;
-  careGuide?: { name: string; email: string } | null;
-  carePathway?: string | null;
-  carePlanSummary?: string | null;
-};
 
 type PendingAction = {
   matchId: string;
@@ -135,22 +127,12 @@ export function ResultsPageClient() {
       if (!current) return;
 
       try {
-        const [intakeResponse, matchesResponse] = await Promise.all([
-          fetch(`/api/intakes/${current.id}`),
+        const [updated, matchesResponse] = await Promise.all([
+          refreshStoredIntakeFromApi(),
           fetch(`/api/matches?intakeId=${current.id}`)
         ]);
 
-        if (intakeResponse.ok) {
-          const intakeData = (await intakeResponse.json()) as IntakeMeta;
-          const updated: StoredIntake = {
-            ...current,
-            status: intakeData.status,
-            matchCount: intakeData.matchCount,
-            careGuide: intakeData.careGuide ?? current.careGuide,
-            carePathway: intakeData.carePathway ?? current.carePathway,
-            carePlanSummary: intakeData.carePlanSummary ?? current.carePlanSummary
-          };
-          saveStoredIntake(updated);
+        if (updated) {
           setIntake(updated);
         }
 

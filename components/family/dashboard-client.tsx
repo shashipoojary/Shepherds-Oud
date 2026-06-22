@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { getStoredIntake, saveStoredIntake, type StoredIntake } from "@/lib/client/intake";
+import { refreshStoredIntakeFromApi, type StoredIntake } from "@/lib/client/intake";
 import { CareJourneyTimeline } from "@/components/family/care-journey-timeline";
 import { FamilyActiveMatches } from "@/components/family/active-matches";
 import { IntakeSummaryCard } from "@/components/family/intake-summary-card";
@@ -18,50 +18,10 @@ export function FamilyDashboardClient() {
   const [refreshing, setRefreshing] = useState(false);
 
   const refreshStatus = useCallback(async () => {
-    const stored = getStoredIntake();
-    if (!stored) {
-      setIntake(null);
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const response = await fetch(`/api/intakes/${stored.id}`);
-      if (response.ok) {
-        const data = (await response.json()) as {
-          status: string;
-          matchCount?: number;
-          careGuide?: { name: string; email: string } | null;
-          carePathway?: string | null;
-          carePlanSummary?: string | null;
-          visitScheduledAt?: string | null;
-          visitType?: string | null;
-          visitProviderName?: string | null;
-          visitNotes?: string | null;
-        };
-        const updated: StoredIntake = {
-          ...stored,
-          status: data.status,
-          matchCount: data.matchCount ?? 0,
-          careGuide: data.careGuide ?? stored.careGuide,
-          carePathway: data.carePathway ?? stored.carePathway,
-          carePlanSummary: data.carePlanSummary ?? stored.carePlanSummary,
-          visitScheduledAt: data.visitScheduledAt ?? stored.visitScheduledAt,
-          visitType: data.visitType ?? stored.visitType,
-          visitProviderName: data.visitProviderName ?? stored.visitProviderName,
-          visitNotes: data.visitNotes ?? stored.visitNotes
-        };
-        saveStoredIntake(updated);
-        setIntake(updated);
-      } else {
-        setIntake(stored);
-      }
-    } catch {
-      setIntake(stored);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
+    const updated = await refreshStoredIntakeFromApi();
+    setIntake(updated);
+    setLoading(false);
+    setRefreshing(false);
   }, []);
 
   useEffect(() => {
