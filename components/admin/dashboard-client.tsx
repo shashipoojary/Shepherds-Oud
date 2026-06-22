@@ -304,13 +304,17 @@ function FamiliesTable({
       });
 
       if (body.status) {
-        await recordAction({
-          type: "intake_status_updated",
-          targetType: "intake",
-          targetId: id,
-          label: `Updated ${name} to ${body.status}.`,
-          payload: { id, status: body.status, name }
-        });
+        try {
+          await recordAction({
+            type: "intake_status_updated",
+            targetType: "intake",
+            targetId: id,
+            label: `Updated ${name} to ${body.status}.`,
+            payload: { id, status: body.status, name }
+          });
+        } catch {
+          // Action log is optional; the intake update already succeeded.
+        }
       }
 
       notify(successMessage);
@@ -396,6 +400,7 @@ function FamiliesTable({
         onPatchIntake={patchIntake}
         onSync={onSync}
         pendingId={pendingId}
+        setGlobalMessage={setMessage}
       />
     </>
   );
@@ -409,7 +414,8 @@ function FamilyDetailPanel({
   onUpdateStatus,
   onPatchIntake,
   onSync,
-  pendingId
+  pendingId,
+  setGlobalMessage
 }: {
   family: FamilyEntry | null;
   providers: ProviderOption[];
@@ -425,8 +431,15 @@ function FamilyDetailPanel({
   ) => Promise<void>;
   onSync: () => Promise<boolean>;
   pendingId: string | null;
+  setGlobalMessage: (message: string) => void;
 }) {
   const { message: panelMessage, setMessage: setPanelMessage, clearMessage: clearPanelMessage } = usePanelMessage();
+  const previousFamilyIdRef = useRef<string | null>(null);
+
+  function notifyPanel(message: string) {
+    setPanelMessage(message);
+    setGlobalMessage(message);
+  }
   const [providerId, setProviderId] = useState("");
   const [score, setScore] = useState("85");
   const [matchNotes, setMatchNotes] = useState("");
@@ -445,8 +458,16 @@ function FamilyDetailPanel({
   const [savingVisit, setSavingVisit] = useState(false);
 
   useEffect(() => {
-    if (!family) return;
-    clearPanelMessage();
+    if (!family) {
+      previousFamilyIdRef.current = null;
+      return;
+    }
+
+    if (previousFamilyIdRef.current !== family.id) {
+      previousFamilyIdRef.current = family.id;
+      clearPanelMessage();
+    }
+
     setCareGuideId(family.careGuideId || "");
     setCarePathway(family.carePathway || "");
     setAssessmentNotes(family.assessmentNotes || "");
@@ -455,7 +476,7 @@ function FamilyDetailPanel({
     setVisitType((family.visitType as "VISIT" | "CALLBACK") || "");
     setVisitProviderName(family.visitProviderName || "");
     setVisitNotes(family.visitNotes || "");
-  }, [family]);
+  }, [family, clearPanelMessage]);
 
   const isPending = family ? pendingId === family.id : false;
   const matchingAllowed = family ? canCreateMatches(family.status, carePathway || family.carePathway) : false;
@@ -464,7 +485,7 @@ function FamilyDetailPanel({
     if (!family) return;
     setPendingAction(status);
     try {
-      await onUpdateStatus(family.id, status, family.name, setPanelMessage);
+      await onUpdateStatus(family.id, status, family.name, notifyPanel);
     } finally {
       setPendingAction(null);
       if (status === "CLOSED") {
@@ -480,18 +501,18 @@ function FamilyDetailPanel({
       { careGuideId, ...(family.status === "NEW" ? { status: "CARE_GUIDE_ASSIGNED" } : {}) },
       family.name,
       `Care Guide assigned for ${family.name}.`,
-      setPanelMessage
+      notifyPanel
     );
   }
 
   async function saveAssessment(advanceTo?: IntakeStatus) {
     if (!family || !carePathway) {
-      setPanelMessage("Select a recommended care pathway before saving the assessment.");
+      notifyPanel("Select a recommended care pathway before saving the assessment.");
       return;
     }
 
     if (advanceTo === "CARE_PLAN" && !carePlanSummary.trim()) {
-      setPanelMessage("Add a care plan summary before publishing the care plan.");
+      notifyPanel("Add a care plan summary before publishing the care plan.");
       return;
     }
 
@@ -512,7 +533,7 @@ function FamilyDetailPanel({
           : advanceTo === "MATCHED"
             ? `${family.name} marked as matched.`
             : `Assessment saved for ${family.name}.`,
-        setPanelMessage
+        notifyPanel
       );
     } finally {
       setSavingAssessment(false);
@@ -521,7 +542,7 @@ function FamilyDetailPanel({
 
   async function saveVisitSchedule() {
     if (!family || !visitScheduledAt) {
-      setPanelMessage("Set a visit or callback date and time before saving.");
+      notifyPanel("Set a visit or callback date and time before saving.");
       return;
     }
 
@@ -538,7 +559,7 @@ function FamilyDetailPanel({
         },
         family.name,
         `Visit scheduled for ${family.name}.`,
-        setPanelMessage
+        notifyPanel
       );
     } finally {
       setSavingVisit(false);
@@ -548,7 +569,7 @@ function FamilyDetailPanel({
   async function createMatch() {
     if (!family || !providerId) return;
     if (!matchingAllowed) {
-      setPanelMessage("Complete the assessment and select a care pathway before creating matches.");
+      notifyPanel("Complete the assessment and select a care pathway before creating matches.");
       return;
     }
 
@@ -570,20 +591,24 @@ function FamilyDetailPanel({
         throw new Error(data.error || "Could not create match.");
       }
 
-      await recordAction({
-        type: "match_created",
-        targetType: "intake",
-        targetId: family.id,
-        label: `Matched ${family.name} with a provider.`,
-        payload: { intakeId: family.id, providerId, score: Number(score) }
-      });
+      try {
+        await recordAction({
+          type: "match_created",
+          targetType: "intake",
+          targetId: family.id,
+          label: `Matched ${family.name} with a provider.`,
+          payload: { intakeId: family.id, providerId, score: Number(score) }
+        });
+      } catch {
+        // Action log is optional; the match already succeeded.
+      }
 
-      setPanelMessage(`Match created for ${family.name}. They can now see this provider on their results page.`);
+      notifyPanel(`Match created for ${family.name}. They can now see this provider on their results page.`);
       setProviderId("");
       setMatchNotes("");
       await onSync();
     } catch (error) {
-      setPanelMessage(error instanceof Error ? error.message : `Could not create match for ${family.name}.`);
+      notifyPanel(error instanceof Error ? error.message : `Could not create match for ${family.name}.`);
     } finally {
       setCreatingMatch(false);
     }
@@ -1539,13 +1564,17 @@ function WaitlistTable({
       );
       setSelected((current) => (current?.id === id ? { ...current, status: "CONTACTED" } : current));
 
-      await recordAction({
-        type: "waitlist_contacted",
-        targetType: "waitlist",
-        targetId: id,
-        label: `Marked ${name} as contacted.`,
-        payload: { id, name }
-      });
+      try {
+        await recordAction({
+          type: "waitlist_contacted",
+          targetType: "waitlist",
+          targetId: id,
+          label: `Marked ${name} as contacted.`,
+          payload: { id, name }
+        });
+      } catch {
+        // Action log is optional; the waitlist update already succeeded.
+      }
 
       notify(`${name} marked as contacted. Status updated in the waitlist.`);
     } catch {
