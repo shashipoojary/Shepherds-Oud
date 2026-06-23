@@ -210,7 +210,7 @@ export function AdminDashboardClient({ data: initialData }: { data: AdminDashboa
             data.waitlist.length ? (
               <WaitlistTable entries={data.waitlist} setMessage={setMessage} />
             ) : (
-              <EmptyState title="No waitlist registrations yet" description="Pre-launch family and facility sign-ups will appear here." />
+              <EmptyState title="No waitlist registrations yet" description="Family and facility pre-launch sign-ups appear here only — not in Families or Providers." />
             )
           ) : null}
         </div>
@@ -1649,7 +1649,7 @@ function WaitlistTable({
 
             return (
               <tr key={entry.id} className="cursor-pointer hover:bg-cream" onClick={() => setSelected(entry)}>
-                <td className="px-4 py-3 text-sm text-neutral-600">{entry.type}</td>
+                <td className="px-4 py-3 text-sm text-neutral-600">{entry.type === "FACILITY" ? "Facility" : "Family"}</td>
                 <td className="px-4 py-3 text-sm font-semibold">{entry.name}</td>
                 <td className="px-4 py-3 text-sm text-neutral-600">{entry.email}</td>
                 <td className="px-4 py-3 text-sm text-neutral-600">{entry.location}</td>

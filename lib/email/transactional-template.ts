@@ -1,5 +1,5 @@
 import { brand } from "@/lib/config/brand";
-import { emailBrandMarkSvg } from "@/lib/email/brand-mark";
+import { emailBrandMarkHtml } from "@/lib/email/brand-mark";
 
 const colors = {
   cream: "#f7f4f0",
@@ -66,7 +66,7 @@ export function renderTransactionalEmail({
       <p class="email-link" style="margin:0 0 24px;font-size:13px;line-height:1.6;word-break:break-all;color:${colors.greenDark};"><a href="${safeCtaUrl}" style="color:${colors.amberDark};text-decoration:underline;">${safeCtaUrl}</a></p>`
     : "";
 
-  const brandMark = emailBrandMarkSvg(52);
+  const brandMark = emailBrandMarkHtml(appUrl, 52);
 
   return `<!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">

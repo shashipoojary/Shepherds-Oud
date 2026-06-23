@@ -150,7 +150,7 @@ export function AuthLoginForm({ intent }: AuthLoginFormProps) {
         </Button>
 
         <p className="text-center text-xs leading-5 text-neutral-500">
-          Use any work email — Apple, Microsoft, Gmail, or your facility domain. Administrator accounts still use Google sign-in.
+          Use your facility work email — Gmail, Microsoft, Apple, or your own domain.
         </p>
       </div>
     );
@@ -174,7 +174,7 @@ export function AuthLoginForm({ intent }: AuthLoginFormProps) {
       </Button>
 
       <p className="text-center text-xs leading-5 text-neutral-500">
-        Administrator access is limited to approved team accounts configured in ADMIN_EMAILS.
+        Administrator access is limited to approved Care Guide accounts.
       </p>
     </div>
   );

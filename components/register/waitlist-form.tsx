@@ -6,7 +6,6 @@ import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CustomSelect } from "@/components/ui/custom-select";
 import { careTypeOptions, dutchProvinces, facilityTypes } from "@/lib/config/content";
-import { familyPostWaitlistPath } from "@/lib/config/prelaunch";
 
 type WaitlistFormProps = {
   type: "FAMILY" | "FACILITY";
@@ -86,7 +85,7 @@ export function WaitlistForm({ type }: WaitlistFormProps) {
         throw new Error("Registration failed");
       }
 
-      router.push(type === "FAMILY" ? familyPostWaitlistPath() : "/register/success?type=facility");
+      router.push(type === "FAMILY" ? "/register/success?type=family" : "/register/success?type=facility");
     } catch {
       setError("We could not save your registration. Please try again.");
       setLoading(false);

@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { SiteHeader } from "@/components/layout/site-header";
 import { Button } from "@/components/ui/button";
 import { ButtonLabel } from "@/components/ui/button-label";
@@ -9,10 +8,6 @@ import { isPrelaunch, publicRoutes } from "@/lib/config/prelaunch";
 export default async function RegisterSuccessPage({ searchParams }: { searchParams: Promise<{ type?: string }> }) {
   const params = await searchParams;
   const isFacility = params.type === "facility";
-
-  if (!isPrelaunch && !isFacility) {
-    redirect(`${publicRoutes.intake}?from=waitlist`);
-  }
 
   return (
     <>

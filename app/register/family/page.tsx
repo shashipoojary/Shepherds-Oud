@@ -13,7 +13,7 @@ export default function FamilyRegisterPage() {
           <p className="mt-3 text-sm leading-7 text-neutral-600">
             {isPrelaunch
               ? "Tell us about your situation anywhere in the Netherlands. We will reach out when Shepherds Oud is ready to help."
-              : "Prefer a short registration first? Join the waitlist and we will take you to the full guided intake next."}
+              : "Register your interest and we will reach out. When you are ready for full guided navigation, you can start a care intake separately."}
           </p>
           <div className="mt-8">
             <WaitlistForm type="FAMILY" />
