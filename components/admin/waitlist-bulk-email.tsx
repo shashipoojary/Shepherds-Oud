@@ -110,7 +110,7 @@ export function WaitlistBulkEmailBar({ onNotify }: WaitlistBulkEmailBarProps) {
 
   return (
     <>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand-green-pale/60 bg-brand-green-pale/15 px-4 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand-green-pale/60 bg-white px-4 py-4 shadow-soft sm:px-5">
         <div>
           <p className="text-sm font-semibold text-brand-green-dark">Platform launch announcement</p>
           <p className="mt-1 text-sm text-ink/70">

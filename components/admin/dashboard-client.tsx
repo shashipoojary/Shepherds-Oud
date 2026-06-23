@@ -175,7 +175,13 @@ export function AdminDashboardClient({ data: initialData }: { data: AdminDashboa
 
       {message ? <div className="mt-4 rounded-lg bg-brand-green-pale/30 px-5 py-4 text-sm text-brand-green-dark">{message}</div> : null}
 
-      <div className="mt-6 rounded-xl bg-white shadow-soft">
+      {tab === "waitlist" ? (
+        <div className="mt-6">
+          <WaitlistBulkEmailBar onNotify={setMessage} />
+        </div>
+      ) : null}
+
+      <div className={cn("rounded-xl bg-white shadow-soft", tab === "waitlist" ? "mt-4" : "mt-6")}>
         <div className="overflow-x-auto">
           {tab === "families" ? (
             data.families.length ? (
@@ -208,14 +214,11 @@ export function AdminDashboardClient({ data: initialData }: { data: AdminDashboa
           ) : null}
 
           {tab === "waitlist" ? (
-            <>
-              <WaitlistBulkEmailBar onNotify={setMessage} />
-              {data.waitlist.length ? (
-                <WaitlistTable entries={data.waitlist} setMessage={setMessage} />
-              ) : (
-                <EmptyState title="No waitlist registrations yet" description="Family and facility pre-launch sign-ups appear here only — not in Families or Providers." />
-              )}
-            </>
+            data.waitlist.length ? (
+              <WaitlistTable entries={data.waitlist} setMessage={setMessage} />
+            ) : (
+              <EmptyState title="No waitlist registrations yet" description="Family and facility pre-launch sign-ups appear here only — not in Families or Providers." />
+            )
           ) : null}
         </div>
       </div>
