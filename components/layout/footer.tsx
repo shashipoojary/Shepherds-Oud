@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { BrandLogo } from "@/components/shared/brand-logo";
 import { brand } from "@/lib/config/brand";
+import { legalFooterLinks } from "@/lib/config/legal";
 import { getIsPrelaunch, getPublicRoutes } from "@/lib/config/prelaunch";
 
 function footerLinks(prelaunch: boolean) {
@@ -28,7 +29,7 @@ export function Footer() {
   return (
     <footer className="bg-brand-green-dark text-white">
       <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
-        <div className="grid gap-8 md:grid-cols-[1.2fr_1fr] md:items-start">
+        <div className="grid gap-8 md:grid-cols-[1.2fr_1fr_0.8fr] md:items-start">
           <div>
             <BrandLogo variant="footer" showTagline tone="light" href="/" />
             <p className="mt-4 max-w-sm text-sm leading-[1.7] text-white/80">
@@ -43,6 +44,15 @@ export function Footer() {
 
           <nav className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-2" aria-label="Footer navigation">
             {links.map((link) => (
+              <Link key={link.href} href={link.href} className="text-sm leading-relaxed text-white/80 hover:text-brand-amber">
+                {link.label}
+              </Link>
+            ))}
+          </nav>
+
+          <nav className="grid gap-3" aria-label="Legal">
+            <p className="text-xs font-semibold uppercase tracking-wide text-white/50">Legal</p>
+            {legalFooterLinks.map((link) => (
               <Link key={link.href} href={link.href} className="text-sm leading-relaxed text-white/80 hover:text-brand-amber">
                 {link.label}
               </Link>

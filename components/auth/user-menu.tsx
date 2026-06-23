@@ -9,7 +9,7 @@ import { authClient } from "@/lib/auth/client";
 import { Button } from "@/components/ui/button";
 import type { AppRole } from "@/lib/auth/server";
 import { dashboardHref, PROVIDER_LOGIN_PATH, roleLabel } from "@/lib/auth/routes";
-import { usePublicRoutes } from "@/components/layout/prelaunch-context";
+import { usePrelaunch, usePublicRoutes } from "@/components/layout/prelaunch-context";
 
 type AuthUserMenuProps = {
   variant?: "desktop" | "mobile";
@@ -18,6 +18,8 @@ type AuthUserMenuProps = {
 
 export function MobileNavProfile({ onNavigate }: { onNavigate?: () => void }) {
   const router = useRouter();
+  const isPrelaunch = usePrelaunch();
+  const publicRoutes = usePublicRoutes();
   const [signingOut, setSigningOut] = useState(false);
   const { data: session, isPending } = authClient.useSession();
   const role = session?.user.role as AppRole | undefined;
@@ -48,6 +50,22 @@ export function MobileNavProfile({ onNavigate }: { onNavigate?: () => void }) {
   }
 
   if (!session) {
+    if (isPrelaunch) {
+      return (
+        <div className="rounded-card border border-[var(--card-border)] bg-brand-cream p-4">
+          <p className="text-sm font-medium text-ink">Care facilities</p>
+          <p className="mt-1 text-xs leading-relaxed text-ink/60">
+            Provider sign-in opens at launch. Register your facility interest now and we will contact you when onboarding is ready.
+          </p>
+          <Button asChild className="mt-4 w-full" size="sm">
+            <Link href={publicRoutes.waitlistFacility} onClick={onNavigate}>
+              Register your facility
+            </Link>
+          </Button>
+        </div>
+      );
+    }
+
     return (
       <div className="rounded-card border border-[var(--card-border)] bg-brand-cream p-4">
         <p className="text-sm font-medium text-ink">Your account</p>
@@ -80,11 +98,19 @@ export function MobileNavProfile({ onNavigate }: { onNavigate?: () => void }) {
       </div>
 
       <div className="mt-4 grid gap-2">
-        <Button asChild variant="outline" size="sm" className="w-full justify-center">
-          <LoadingLink href={dashboardHref(role)} onNavigate={onNavigate}>
-            Open dashboard
-          </LoadingLink>
-        </Button>
+        {!(isPrelaunch && role === "PROVIDER") ? (
+          <Button asChild variant="outline" size="sm" className="w-full justify-center">
+            <LoadingLink href={dashboardHref(role)} onNavigate={onNavigate}>
+              Open dashboard
+            </LoadingLink>
+          </Button>
+        ) : (
+          <Button asChild variant="outline" size="sm" className="w-full justify-center">
+            <Link href={publicRoutes.waitlistFacility} onClick={onNavigate}>
+              Register your facility
+            </Link>
+          </Button>
+        )}
         <Button type="button" variant="ghost" size="sm" className="w-full justify-center" onClick={signOut} disabled={signingOut}>
           {signingOut ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
           {signingOut ? "Signing out..." : "Sign out"}
@@ -96,6 +122,8 @@ export function MobileNavProfile({ onNavigate }: { onNavigate?: () => void }) {
 
 export function AuthUserMenu({ variant = "desktop", onNavigate }: AuthUserMenuProps) {
   const router = useRouter();
+  const isPrelaunch = usePrelaunch();
+  const publicRoutes = usePublicRoutes();
   const menuRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
@@ -137,6 +165,10 @@ export function AuthUserMenu({ variant = "desktop", onNavigate }: AuthUserMenuPr
   }
 
   if (!session) {
+    if (isPrelaunch) {
+      return null;
+    }
+
     return (
       <Button asChild size="sm" variant="outline" className="border-white/35 text-white hover:bg-white/10">
         <Link href={PROVIDER_LOGIN_PATH}>Facility sign in</Link>
@@ -170,16 +202,29 @@ export function AuthUserMenu({ variant = "desktop", onNavigate }: AuthUserMenuPr
             <p className="mt-2 inline-flex rounded bg-brand-green-pale/40 px-2.5 py-1 text-xs font-medium text-brand-green-dark">{roleLabel(role)}</p>
           </div>
           <div className="grid gap-1 pt-3">
-            <LoadingLink
-              href={dashboardHref(role)}
-              onNavigate={() => {
-                setOpen(false);
-                onNavigate?.();
-              }}
-              className="rounded-lg px-3 py-2 text-sm text-ink hover:bg-brand-cream hover:text-brand-amber"
-            >
-              Open dashboard
-            </LoadingLink>
+            {!(isPrelaunch && role === "PROVIDER") ? (
+              <LoadingLink
+                href={dashboardHref(role)}
+                onNavigate={() => {
+                  setOpen(false);
+                  onNavigate?.();
+                }}
+                className="rounded-lg px-3 py-2 text-sm text-ink hover:bg-brand-cream hover:text-brand-amber"
+              >
+                Open dashboard
+              </LoadingLink>
+            ) : (
+              <Link
+                href={publicRoutes.waitlistFacility}
+                onClick={() => {
+                  setOpen(false);
+                  onNavigate?.();
+                }}
+                className="rounded-lg px-3 py-2 text-sm text-ink hover:bg-brand-cream hover:text-brand-amber"
+              >
+                Register your facility
+              </Link>
+            )}
             <button
               type="button"
               onClick={signOut}

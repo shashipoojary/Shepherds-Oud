@@ -19,12 +19,12 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: "*",
-        allow: ["/", "/family/intake", "/register", "/register/"],
+        allow: ["/", "/family/intake", "/register", "/register/", "/privacy", "/terms"],
         disallow: [...DISALLOWED_PATHS]
       },
       {
         userAgent: "Googlebot",
-        allow: ["/", "/family/intake", "/register", "/register/"],
+        allow: ["/", "/family/intake", "/register", "/register/", "/privacy", "/terms"],
         disallow: [...DISALLOWED_PATHS]
       }
     ],

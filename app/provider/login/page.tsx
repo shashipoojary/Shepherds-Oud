@@ -1,9 +1,11 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { SiteHeader } from "@/components/layout/site-header";
 import { AuthLoginForm } from "@/components/auth/login-form";
 import { Button } from "@/components/ui/button";
 import { noIndexMetadata } from "@/lib/config/seo";
+import { getIsPrelaunch, getPublicRoutes } from "@/lib/config/prelaunch";
 
 export const metadata = {
   ...noIndexMetadata,
@@ -11,6 +13,10 @@ export const metadata = {
 };
 
 export default function ProviderLoginPage() {
+  if (getIsPrelaunch()) {
+    redirect(getPublicRoutes(true).waitlistFacility);
+  }
+
   return (
     <>
       <SiteHeader />

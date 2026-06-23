@@ -30,6 +30,10 @@ export function isFamilyFlowPath(pathname: string) {
   return familyFlowPaths.some((path) => pathname === path || pathname.startsWith(`${path}/`));
 }
 
+export function isProviderPath(pathname: string) {
+  return pathname === "/provider" || pathname.startsWith("/provider/");
+}
+
 export function prelaunchFamilyRedirect(pathname: string) {
   return pathname.startsWith("/family/intake") ? "/register/family" : "/register";
 }
