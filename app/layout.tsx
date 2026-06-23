@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { DM_Sans, Outfit } from "next/font/google";
+import { PrelaunchProvider } from "@/components/layout/prelaunch-context";
+import { getIsPrelaunch } from "@/lib/config/prelaunch";
 import "./globals.css";
 
 const brandFont = Outfit({
@@ -24,9 +26,13 @@ export const viewport: Viewport = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const isPrelaunch = getIsPrelaunch();
+
   return (
     <html lang="en" className={`${brandFont.variable} ${bodyFont.variable}`}>
-      <body>{children}</body>
+      <body>
+        <PrelaunchProvider value={isPrelaunch}>{children}</PrelaunchProvider>
+      </body>
     </html>
   );
 }

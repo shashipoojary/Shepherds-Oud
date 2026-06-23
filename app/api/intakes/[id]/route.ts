@@ -10,7 +10,7 @@ import {
 } from "@/lib/domain/intake-workflow";
 import { sendIntakeStatusEmail } from "@/lib/email/intake-status-email";
 import { handleApiError, jsonError, jsonOk, rateLimitResponse, readJsonBody, runInBackground } from "@/lib/core/api-helpers";
-import { isPrelaunch } from "@/lib/config/prelaunch";
+import { getIsPrelaunch } from "@/lib/config/prelaunch";
 import { intakeSchema } from "@/lib/validation/intake";
 import { adminIntakeUpdateSchema } from "@/lib/validation/intake-admin";
 
@@ -232,7 +232,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       return jsonOk({ ...intake, status: normalizedStatus });
     }
 
-    if (isPrelaunch) {
+    if (getIsPrelaunch()) {
       return jsonError("Guided intake is not open yet. Please join the waitlist.", 403);
     }
 

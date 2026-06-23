@@ -8,8 +8,8 @@ import { LoadingLink } from "@/components/shared/loading-link";
 import { authClient } from "@/lib/auth/client";
 import { Button } from "@/components/ui/button";
 import type { AppRole } from "@/lib/auth/server";
-import { dashboardHref, roleLabel } from "@/lib/auth/routes";
-import { publicRoutes } from "@/lib/config/prelaunch";
+import { dashboardHref, PROVIDER_LOGIN_PATH, roleLabel } from "@/lib/auth/routes";
+import { usePublicRoutes } from "@/components/layout/prelaunch-context";
 
 type AuthUserMenuProps = {
   variant?: "desktop" | "mobile";
@@ -51,10 +51,10 @@ export function MobileNavProfile({ onNavigate }: { onNavigate?: () => void }) {
     return (
       <div className="rounded-card border border-[var(--card-border)] bg-brand-cream p-4">
         <p className="text-sm font-medium text-ink">Your account</p>
-        <p className="mt-1 text-xs leading-relaxed text-ink/60">Sign in to access your dashboard and manage your facility profile.</p>
+        <p className="mt-1 text-xs leading-relaxed text-ink/60">Facility sign-in to manage your profile, availability, and inquiries.</p>
         <Button asChild className="mt-4 w-full" size="sm">
-          <Link href="/login" onClick={onNavigate}>
-            Sign in
+          <Link href={PROVIDER_LOGIN_PATH} onClick={onNavigate}>
+            Facility sign in
           </Link>
         </Button>
       </div>
@@ -139,7 +139,7 @@ export function AuthUserMenu({ variant = "desktop", onNavigate }: AuthUserMenuPr
   if (!session) {
     return (
       <Button asChild size="sm" variant="outline" className="border-white/35 text-white hover:bg-white/10">
-        <Link href="/login">Sign in</Link>
+        <Link href={PROVIDER_LOGIN_PATH}>Facility sign in</Link>
       </Button>
     );
   }
@@ -198,6 +198,7 @@ export function AuthUserMenu({ variant = "desktop", onNavigate }: AuthUserMenuPr
 
 export function GetStartedButton({ onNavigate, className = "" }: { onNavigate?: () => void; className?: string }) {
   const { data: session, isPending } = authClient.useSession();
+  const publicRoutes = usePublicRoutes();
 
   if (isPending || session) {
     return null;

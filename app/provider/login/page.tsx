@@ -3,9 +3,11 @@ import { Suspense } from "react";
 import { SiteHeader } from "@/components/layout/site-header";
 import { AuthLoginForm } from "@/components/auth/login-form";
 import { Button } from "@/components/ui/button";
+import { noIndexMetadata } from "@/lib/config/seo";
 
 export const metadata = {
-  title: "List your facility | Shepherds Oud"
+  ...noIndexMetadata,
+  title: "Facility sign in | Shepherds Oud"
 };
 
 export default function ProviderLoginPage() {

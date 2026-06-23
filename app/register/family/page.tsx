@@ -1,8 +1,9 @@
 import { SiteHeader } from "@/components/layout/site-header";
 import { WaitlistForm } from "@/components/register/waitlist-form";
-import { isPrelaunch } from "@/lib/config/prelaunch";
+import { getIsPrelaunch } from "@/lib/config/prelaunch";
 
 export default function FamilyRegisterPage() {
+  const isPrelaunch = getIsPrelaunch();
   return (
     <>
       <SiteHeader />

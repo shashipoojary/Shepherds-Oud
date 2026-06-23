@@ -3,11 +3,16 @@ import { SiteHeader } from "@/components/layout/site-header";
 import { Button } from "@/components/ui/button";
 import { ButtonLabel } from "@/components/ui/button-label";
 import { ButtonRow } from "@/components/ui/button-row";
-import { isPrelaunch, publicRoutes } from "@/lib/config/prelaunch";
+import { noIndexMetadata } from "@/lib/config/seo";
+import { getIsPrelaunch, getPublicRoutes } from "@/lib/config/prelaunch";
+
+export const metadata = noIndexMetadata;
 
 export default async function RegisterSuccessPage({ searchParams }: { searchParams: Promise<{ type?: string }> }) {
   const params = await searchParams;
   const isFacility = params.type === "facility";
+  const isPrelaunch = getIsPrelaunch();
+  const publicRoutes = getPublicRoutes(isPrelaunch);
 
   return (
     <>

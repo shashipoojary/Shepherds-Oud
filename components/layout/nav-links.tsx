@@ -3,6 +3,7 @@
 import { authClient } from "@/lib/auth/client";
 import type { AppRole } from "@/lib/auth/server";
 import { buildNavItems } from "@/lib/auth/routes";
+import { usePrelaunch } from "@/components/layout/prelaunch-context";
 import { LoadingLink } from "@/components/shared/loading-link";
 
 type RoleAwareNavProps = {
@@ -11,14 +12,16 @@ type RoleAwareNavProps = {
 };
 
 export function RoleAwareNav({ variant = "desktop", onNavigate }: RoleAwareNavProps) {
+  const prelaunch = usePrelaunch();
   const { data: session, isPending } = authClient.useSession();
   const role = session?.user.role as AppRole | undefined;
-  const items = buildNavItems(role, Boolean(session));
+  const items = buildNavItems(role, Boolean(session), prelaunch);
+  const fallbackItems = buildNavItems(undefined, false, prelaunch);
 
   if (variant === "mobile") {
     return (
       <div className="grid gap-1">
-        {(isPending ? buildNavItems() : items).map((item) => (
+        {(isPending ? fallbackItems : items).map((item) => (
           <LoadingLink
             key={item.href}
             href={item.href}
@@ -34,7 +37,7 @@ export function RoleAwareNav({ variant = "desktop", onNavigate }: RoleAwareNavPr
 
   return (
     <>
-      {(isPending ? buildNavItems() : items).map((item) => (
+      {(isPending ? fallbackItems : items).map((item) => (
         <LoadingLink
           key={item.href}
           href={item.href}

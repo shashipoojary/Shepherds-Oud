@@ -1,4 +1,4 @@
-import { isPrelaunch } from "@/lib/config/prelaunch";
+import { getIsPrelaunch } from "@/lib/config/prelaunch";
 import { resolveDefaultCareGuideId } from "@/lib/domain/care-guide";
 import { normalizeIntakeStatus } from "@/lib/domain/intake-workflow";
 import { sendIntakeConfirmationEmails } from "@/lib/email/intake-confirmation-email";
@@ -22,7 +22,7 @@ function intakeCreateData(data: ReturnType<typeof intakeSchema.parse>) {
 }
 
 export async function POST(request: Request) {
-  if (isPrelaunch) {
+  if (getIsPrelaunch()) {
     return jsonError("Guided intake is not open yet. Please join the waitlist.", 403);
   }
 

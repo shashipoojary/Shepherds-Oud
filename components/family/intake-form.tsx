@@ -4,7 +4,7 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { intakeSteps } from "@/lib/config/content";
-import { isPrelaunch } from "@/lib/config/prelaunch";
+import { usePrelaunch } from "@/components/layout/prelaunch-context";
 import {
   clearIntakeDraft,
   fieldKeyFor,
@@ -47,6 +47,7 @@ function IntakeFormRouter() {
 
 function IntakeFormContent({ isUpdateMode, fromWaitlist }: { isUpdateMode: boolean; fromWaitlist: boolean }) {
   const router = useRouter();
+  const isPrelaunch = usePrelaunch();
 
   const [stepIndex, setStepIndex] = useState(0);
   const [form, setForm] = useState<FormState>({});

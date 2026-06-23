@@ -1,5 +1,5 @@
 import type { AppRole } from "@/lib/auth/server";
-import { isPrelaunch, publicRoutes } from "@/lib/config/prelaunch";
+import { getIsPrelaunch, getPublicRoutes } from "@/lib/config/prelaunch";
 
 export const PROVIDER_LOGIN_PATH = "/provider/login";
 export const PROVIDER_DASHBOARD_PATH = "/provider";
@@ -38,10 +38,11 @@ export function postLoginHref(role: AppRole | undefined, requestedCallback?: str
 export type NavItem = { label: string; href: string };
 
 /** Base links shown to everyone — kept short and clear for seniors. */
-export function buildNavItems(role?: AppRole, signedIn = false): NavItem[] {
+export function buildNavItems(role?: AppRole, signedIn = false, prelaunch = getIsPrelaunch()): NavItem[] {
+  const publicRoutes = getPublicRoutes(prelaunch);
   const items: NavItem[] = [{ label: "Home", href: publicRoutes.home }];
 
-  if (isPrelaunch) {
+  if (prelaunch) {
     items.push({ label: "Join waitlist", href: publicRoutes.waitlist });
   } else {
     items.push({ label: "Start intake", href: publicRoutes.intake });
@@ -55,15 +56,15 @@ export function buildNavItems(role?: AppRole, signedIn = false): NavItem[] {
 
   if (role === "PROVIDER") {
     items.push({ label: "My facility", href: PROVIDER_DASHBOARD_PATH });
-  } else if (role === "ADMIN") {
-    items.push({ label: "Admin", href: "/admin" });
   }
 
   return items;
 }
 
 /** @deprecated Use buildNavItems instead */
-export const publicNavItems = buildNavItems();
+export function publicNavItems(prelaunch = getIsPrelaunch()) {
+  return buildNavItems(undefined, false, prelaunch);
+}
 
 /** @deprecated Use buildNavItems instead */
 export function navItemsForRole(role: AppRole | undefined, signedIn: boolean): NavItem[] {

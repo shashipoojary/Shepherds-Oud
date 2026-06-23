@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { getSessionCookie } from "better-auth/cookies";
-import { isFamilyFlowPath, isPrelaunch, prelaunchFamilyRedirect } from "@/lib/config/prelaunch";
+import { isFamilyFlowPath, getIsPrelaunch, prelaunchFamilyRedirect } from "@/lib/config/prelaunch";
 import { securityHeaders } from "@/lib/core/security-headers";
 
 const publicProviderPaths = new Set(["/provider/login"]);
@@ -31,7 +31,7 @@ export function proxy(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-request-id", crypto.randomUUID());
 
-  if (isPrelaunch && isFamilyFlowPath(pathname)) {
+  if (getIsPrelaunch() && isFamilyFlowPath(pathname)) {
     const redirectUrl = new URL(prelaunchFamilyRedirect(pathname), request.url);
     return applySecurityHeaders(NextResponse.redirect(redirectUrl));
   }

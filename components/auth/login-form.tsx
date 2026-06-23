@@ -19,7 +19,7 @@ function errorMessage(code: string | null, isProvider: boolean) {
   }
 
   if (code === "oauth") {
-    return "Google sign-in failed. Confirm your Supabase tables exist and the Google redirect URI is https://shepherds-oud.vercel.app/api/auth/callback/google.";
+    return "Google sign-in could not be completed. Please try again or contact support.";
   }
 
   if (code === "magic-link") {

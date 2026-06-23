@@ -1,24 +1,30 @@
 import Link from "next/link";
 import { BrandLogo } from "@/components/shared/brand-logo";
 import { brand } from "@/lib/config/brand";
-import { isPrelaunch } from "@/lib/config/content";
-import { publicRoutes } from "@/lib/config/prelaunch";
+import { getIsPrelaunch, getPublicRoutes } from "@/lib/config/prelaunch";
 
-const links = isPrelaunch
-  ? [
-      { label: "Home", href: publicRoutes.home },
-      { label: "Join waitlist", href: publicRoutes.waitlist },
-      { label: "Register as a family", href: publicRoutes.waitlistFamily },
-      { label: "Register a facility", href: publicRoutes.waitlistFacility }
-    ]
-  : [
-      { label: "Home", href: publicRoutes.home },
-      { label: "Start intake", href: publicRoutes.intake },
-      { label: "Join waitlist", href: publicRoutes.waitlist },
-      { label: "Register a facility", href: publicRoutes.waitlistFacility }
-    ];
+function footerLinks(prelaunch: boolean) {
+  const publicRoutes = getPublicRoutes(prelaunch);
+
+  return prelaunch
+    ? [
+        { label: "Home", href: publicRoutes.home },
+        { label: "Join waitlist", href: publicRoutes.waitlist },
+        { label: "Register as a family", href: publicRoutes.waitlistFamily },
+        { label: "Register a facility", href: publicRoutes.waitlistFacility }
+      ]
+    : [
+        { label: "Home", href: publicRoutes.home },
+        { label: "Start intake", href: publicRoutes.intake },
+        { label: "Join waitlist", href: publicRoutes.waitlist },
+        { label: "Register a facility", href: publicRoutes.waitlistFacility }
+      ];
+}
 
 export function Footer() {
+  const isPrelaunch = getIsPrelaunch();
+  const links = footerLinks(isPrelaunch);
+
   return (
     <footer className="bg-brand-green-dark text-white">
       <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">

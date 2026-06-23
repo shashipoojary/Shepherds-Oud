@@ -2,19 +2,24 @@ import {
   decisionMakerRelationshipOptions,
   relationshipToSeniorOptions
 } from "@/lib/domain/intake-field-utils";
-import { isPrelaunch } from "@/lib/config/prelaunch";
+import { getIsPrelaunch } from "@/lib/config/prelaunch";
 
-export { isPrelaunch } from "@/lib/config/prelaunch";
+export { getIsPrelaunch } from "@/lib/config/prelaunch";
 
 export const ubuntuTagline = "No family should carry eldercare decisions alone.";
 
 export { decisionMakerRelationshipOptions, INTAKE_OTHER_OPTION, relationshipToSeniorOptions } from "@/lib/domain/intake-field-utils";
 
+export function homeHeroCopy(prelaunch = getIsPrelaunch()) {
+  return {
+    badge: prelaunch ? "Preparing for nationwide launch" : "Netherlands eldercare platform",
+    intro: prelaunch
+      ? "Shepherds Oud is a guided care navigation service — not a directory. Register your interest and a Care Guide will support your family when we open in your area."
+      : "We help families across the Netherlands find the right eldercare — with a dedicated Care Guide, clearer guidance, and shared decision support at every step."
+  };
+}
+
 export const homeContent = {
-  badge: isPrelaunch ? "Preparing for nationwide launch" : "Netherlands eldercare platform",
-  intro: isPrelaunch
-    ? "Shepherds Oud is a guided care navigation service — not a directory. Register your interest and a Care Guide will support your family when we open in your area."
-    : "We help families across the Netherlands find the right eldercare — with a dedicated Care Guide, clearer guidance, and shared decision support at every step.",
   familySteps: [
     {
       title: "Tell us about your situation",

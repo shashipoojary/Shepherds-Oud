@@ -8,8 +8,8 @@ import { ButtonRow } from "@/components/ui/button-row";
 import { Card } from "@/components/ui/card";
 import { SectionHeader } from "@/components/ui/section-header";
 import { brand } from "@/lib/config/brand";
-import { homeContent, isPrelaunch, ubuntuTagline } from "@/lib/config/content";
-import { publicRoutes } from "@/lib/config/prelaunch";
+import { homeContent, homeHeroCopy, ubuntuTagline } from "@/lib/config/content";
+import { getIsPrelaunch, getPublicRoutes } from "@/lib/config/prelaunch";
 
 const providerSteps = [
   { icon: UserCheck, ...homeContent.providerSteps[0] },
@@ -18,8 +18,10 @@ const providerSteps = [
 ];
 
 export default function HomePage() {
+  const isPrelaunch = getIsPrelaunch();
+  const publicRoutes = getPublicRoutes(isPrelaunch);
+  const hero = homeHeroCopy(isPrelaunch);
   const heroTitle = isPrelaunch ? "Guided eldercare navigation — opening soon" : "Find the right care for your loved one";
-  const heroIntro = isPrelaunch ? homeContent.intro : homeContent.intro;
   const primaryHref = publicRoutes.familyPrimary;
   const primaryLabel = publicRoutes.familyPrimaryLabel;
 
@@ -29,7 +31,7 @@ export default function HomePage() {
       <main>
         <section className="bg-white px-4 py-16 sm:px-6 sm:py-20">
           <div className="mx-auto max-w-3xl text-center">
-            <span className="section-label inline-flex rounded bg-brand-green-pale/40 px-3 py-1">{homeContent.badge}</span>
+            <span className="section-label inline-flex rounded bg-brand-green-pale/40 px-3 py-1">{hero.badge}</span>
             <h1 className="mx-auto mt-5 max-w-[680px] font-brand text-hero font-bold text-ink">{heroTitle}</h1>
             <p className="mx-auto mt-4 max-w-xl text-lg italic text-brand-amber">{ubuntuTagline}</p>
             <p className="mx-auto mt-3 max-w-xl text-body text-ink/80">
@@ -37,7 +39,7 @@ export default function HomePage() {
                 ? "Shepherds Oud is a human-guided care navigation service for families across the Netherlands — not a care directory."
                 : "Shepherds Oud connects families with a dedicated Care Guide and matched eldercare providers."}
             </p>
-            <p className="mx-auto mt-3 max-w-[560px] text-body text-ink/70">{heroIntro}</p>
+            <p className="mx-auto mt-3 max-w-[560px] text-body text-ink/70">{hero.intro}</p>
             <ButtonRow className="mx-auto mt-8 max-w-lg" columns={isPrelaunch ? 1 : 2}>
               <Button asChild className="w-full">
                 <Link href={primaryHref} className="inline-flex items-center justify-center gap-1.5">
@@ -79,9 +81,13 @@ export default function HomePage() {
             <AudienceCard
               icon={<Home className="h-5 w-5" />}
               title="For care facilities"
-              text="Register your facility interest and we will contact you when provider onboarding opens in your area."
-              href="/register/facility"
-              cta="Register your facility"
+              text={
+                isPrelaunch
+                  ? "Register your facility interest and we will contact you when provider onboarding opens in your area."
+                  : "List your facility and receive matched family inquiries through your provider dashboard."
+              }
+              href={publicRoutes.waitlistFacility}
+              cta={isPrelaunch ? "Register your facility" : "List your facility"}
             />
             <AudienceCard
               icon={<ClipboardList className="h-5 w-5" />}
@@ -178,8 +184,8 @@ export default function HomePage() {
           </div>
           <div className="mx-auto mt-8 max-w-md">
             <Button asChild className="w-full">
-              <Link href="/register/facility" className="inline-flex items-center justify-center gap-1.5">
-                Register your care facility
+              <Link href={publicRoutes.waitlistFacility} className="inline-flex items-center justify-center gap-1.5">
+                {isPrelaunch ? "Register your care facility" : "List your care facility"}
                 <ArrowRight className="h-3.5 w-3.5 shrink-0" />
               </Link>
             </Button>
