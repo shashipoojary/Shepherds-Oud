@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getStoredIntake, refreshStoredIntakeFromApi, type StoredIntake } from "@/lib/client/intake";
 import { CareJourneyTimeline } from "@/components/family/care-journey-timeline";
+import { IntakeSummaryCard } from "@/components/family/intake-summary-card";
 import { Button } from "@/components/ui/button";
 import { ButtonRow } from "@/components/ui/button-row";
 import { ubuntuTagline } from "@/lib/config/content";
@@ -67,7 +68,14 @@ export function FamilySuccessClient() {
           </ButtonRow>
         </section>
 
-        {loading ? null : intake ? <CareJourneyTimeline status={intake.status} careGuide={intake.careGuide} /> : null}
+        {loading ? null : intake ? (
+          <>
+            <CareJourneyTimeline status={intake.status} careGuide={intake.careGuide} />
+            {intake.carePathway || intake.carePlanSummary || intake.visitScheduledAt ? (
+              <IntakeSummaryCard intake={intake} compact showCareGuide={false} />
+            ) : null}
+          </>
+        ) : null}
       </div>
     </main>
   );

@@ -505,14 +505,53 @@ function FamilyDetailPanel({
     );
   }
 
-  async function saveAssessment(advanceTo?: IntakeStatus) {
+  async function saveAndShareWithFamily() {
     if (!family || !carePathway) {
-      notifyPanel("Select a recommended care pathway before saving the assessment.");
+      notifyPanel("Select a recommended care pathway before saving.");
       return;
     }
 
-    if (advanceTo === "CARE_PLAN" && !carePlanSummary.trim()) {
-      notifyPanel("Add a care plan summary before publishing the care plan.");
+    let nextStatus: IntakeStatus | undefined;
+    let successMessage: string;
+
+    if (carePlanSummary.trim() && !["CARE_PLAN", "MATCHED", "VISIT_SCHEDULED", "PROVIDER_RESPONSE", "PLACEMENT_IN_PROGRESS", "PLACED"].includes(normalizedStatus)) {
+      nextStatus = "CARE_PLAN";
+      successMessage = `Care plan published for ${family.name}. The family dashboard now shows the pathway and plan.`;
+    } else if (family.status === "CARE_GUIDE_ASSIGNED") {
+      nextStatus = "ASSESSMENT";
+      successMessage = `Assessment saved for ${family.name}. The family timeline now shows assessment in progress.`;
+    } else {
+      successMessage = `Care plan details saved for ${family.name}.`;
+    }
+
+    setSavingAssessment(true);
+    try {
+      await onPatchIntake(
+        family.id,
+        {
+          careGuideId: careGuideId || family.careGuideId || null,
+          carePathway,
+          assessmentNotes,
+          carePlanSummary,
+          ...(nextStatus ? { status: nextStatus } : {})
+        },
+        family.name,
+        successMessage,
+        notifyPanel
+      );
+    } finally {
+      setSavingAssessment(false);
+    }
+  }
+
+  async function markShortlistReady() {
+    if (!family || !carePathway) {
+      notifyPanel("Select a care pathway before marking the shortlist ready.");
+      return;
+    }
+
+    if (!carePlanSummary.trim()) {
+      notifyPanel("Publish a care plan summary before marking providers matched.");
       return;
     }
 
@@ -525,14 +564,10 @@ function FamilyDetailPanel({
           carePathway,
           assessmentNotes,
           carePlanSummary,
-          ...(advanceTo ? { status: advanceTo } : family.status === "CARE_GUIDE_ASSIGNED" ? { status: "ASSESSMENT" } : {})
+          status: "MATCHED"
         },
         family.name,
-        advanceTo === "CARE_PLAN"
-          ? `Care plan published for ${family.name}.`
-          : advanceTo === "MATCHED"
-            ? `${family.name} marked as matched.`
-            : `Assessment saved for ${family.name}.`,
+        `${family.name} marked as matched. The family can now view providers on their shortlist.`,
         notifyPanel
       );
     } finally {
@@ -546,6 +581,8 @@ function FamilyDetailPanel({
       return;
     }
 
+    const canAdvanceToVisitScheduled = ["MATCHED", "VISIT_SCHEDULED"].includes(normalizedStatus);
+
     setSavingVisit(true);
     try {
       await onPatchIntake(
@@ -555,10 +592,12 @@ function FamilyDetailPanel({
           visitType: visitType || null,
           visitProviderName: visitProviderName || null,
           visitNotes: visitNotes || null,
-          status: "VISIT_SCHEDULED"
+          ...(canAdvanceToVisitScheduled ? { status: "VISIT_SCHEDULED" as const } : {})
         },
         family.name,
-        `Visit scheduled for ${family.name}.`,
+        canAdvanceToVisitScheduled
+          ? `Visit scheduled for ${family.name}. The family dashboard now shows the appointment.`
+          : `Visit details updated for ${family.name}.`,
         notifyPanel
       );
     } finally {
@@ -604,8 +643,6 @@ function FamilyDetailPanel({
       }
 
       notifyPanel(`Match created for ${family.name}. They can now see this provider on their results page.`);
-      setProviderId("");
-      setMatchNotes("");
       await onSync();
     } catch (error) {
       notifyPanel(error instanceof Error ? error.message : `Could not create match for ${family.name}.`);
@@ -657,26 +694,25 @@ function FamilyDetailPanel({
             </div>
           </StatusPill>
 
-          <div className="rounded-xl border border-stone-200 bg-brand-cream/20 px-4 py-4 sm:px-5">
-            <p className="section-label">Family journey progress</p>
-            <p className="mt-1 text-sm font-semibold text-ink">
+          <PanelSection title="Family journey progress" description="What the family sees on their dashboard timeline.">
+            <p className="text-sm font-semibold text-ink">
               Step {Math.min(currentStepIndex + 1, visibleJourneySteps.length)} of {visibleJourneySteps.length} ·{" "}
               {adminIntakeStatusLabel(family.status)}
             </p>
             <p className="mt-1 text-sm leading-6 text-neutral-600">
               {visibleJourneySteps.find((step) => step.status === normalizedStatus)?.hint}
             </p>
-          </div>
+          </PanelSection>
 
-          <details className="group rounded-xl border border-stone-200 bg-white open:shadow-sm">
-            <summary className="cursor-pointer list-none px-4 py-4 text-sm font-semibold text-ink marker:content-none sm:px-5 [&::-webkit-details-marker]:hidden">
+          <details className="group border-t border-stone-100 pt-5">
+            <summary className="cursor-pointer list-none text-sm font-semibold text-ink marker:content-none [&::-webkit-details-marker]:hidden">
               <span className="flex items-center justify-between gap-3">
-                Step 1 · Intake details
-                <span className="text-xs font-normal text-neutral-500 group-open:hidden">Show family submission</span>
+                Intake details
+                <span className="text-xs font-normal text-neutral-500 group-open:hidden">Show submission</span>
                 <span className="hidden text-xs font-normal text-neutral-500 group-open:inline">Hide</span>
               </span>
             </summary>
-            <div className="space-y-5 border-t border-stone-100 px-4 py-5 sm:px-5">
+            <div className="mt-5 space-y-5">
               <PanelSection title="Contact">
                 <DetailList
                   columns={1}
@@ -741,19 +777,13 @@ function FamilyDetailPanel({
             </div>
           </details>
 
-          <div className="overflow-hidden rounded-xl border border-stone-200 bg-white">
-            <div className="border-b border-stone-100 bg-brand-cream/15 px-4 py-4 sm:px-5">
-              <p className="section-label">Care coordination workflow</p>
-              <p className="mt-1 text-sm text-neutral-600">Work through each step in order — the family dashboard updates when you save.</p>
-            </div>
-
-            <AdminWorkflowStep
+          <div className="space-y-6 border-t border-stone-100 pt-6">
+            <PanelSection
               step={2}
               title="Assign Care Guide"
-              description="A named Care Guide reviews the case and supports the family through decisions."
-              current={normalizedStatus === "NEW" || normalizedStatus === "CARE_GUIDE_ASSIGNED"}
-              complete={currentStepIndex >= 1}
+              description="Assign a named guide — the family timeline moves to “Care Guide assigned”."
             >
+              <div className="space-y-3">
               <label className="grid gap-2 text-sm font-medium">
                 Care Guide
                 <select
@@ -769,18 +799,20 @@ function FamilyDetailPanel({
                   ))}
                 </select>
               </label>
-              <Button type="button" className={adminActionClass} disabled={!careGuideId || isPending} onClick={() => void saveCareGuide()}>
-                Assign Care Guide
-              </Button>
-            </AdminWorkflowStep>
+              <AdminPanelActions>
+                <Button type="button" size="sm" disabled={!careGuideId || isPending} onClick={() => void saveCareGuide()}>
+                  {isPending ? "Saving..." : "Assign Care Guide"}
+                </Button>
+              </AdminPanelActions>
+              </div>
+            </PanelSection>
 
-            <AdminWorkflowStep
+            <PanelSection
               step={3}
               title="Assessment & care plan"
-              description="Review intake details, save assessment notes, then publish the care plan for the family."
-              current={["CARE_GUIDE_ASSIGNED", "ASSESSMENT", "CARE_PLAN"].includes(normalizedStatus)}
-              complete={currentStepIndex >= 3}
+              description="One save shares pathway and plan with the family. Use “Mark shortlist ready” when providers should appear on their results page."
             >
+              <div className="space-y-3">
               <label className="grid gap-2 text-sm font-medium">
                 Recommended care pathway
                 <select value={carePathway} onChange={(event) => setCarePathway(event.target.value)} className={adminFieldClass}>
@@ -810,30 +842,31 @@ function FamilyDetailPanel({
                   placeholder="Brief plan: recommended next steps and why this pathway fits."
                 />
               </label>
-              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-                <Button type="button" variant="outline" className={adminActionClass} disabled={savingAssessment || isPending} onClick={() => void saveAssessment()}>
-                  {savingAssessment ? "Saving..." : "Save assessment"}
+              <AdminPanelActions>
+                <Button type="button" size="sm" disabled={savingAssessment || isPending} onClick={() => void saveAndShareWithFamily()}>
+                  {savingAssessment ? "Saving..." : "Save & share with family"}
                 </Button>
-                {["ASSESSMENT", "CARE_GUIDE_ASSIGNED"].includes(family.status) ? (
-                  <Button type="button" className={adminActionClass} disabled={savingAssessment || isPending || !carePlanSummary.trim()} onClick={() => void saveAssessment("CARE_PLAN")}>
-                    Publish care plan
+                {!["MATCHED", "VISIT_SCHEDULED", "PROVIDER_RESPONSE", "PLACEMENT_IN_PROGRESS", "PLACED", "CLOSED"].includes(normalizedStatus) ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={savingAssessment || isPending || !carePlanSummary.trim()}
+                    onClick={() => void markShortlistReady()}
+                  >
+                    Mark shortlist ready
                   </Button>
                 ) : null}
-                {["CARE_PLAN", "ASSESSMENT"].includes(family.status) ? (
-                  <Button type="button" className={adminActionClass} disabled={savingAssessment || isPending || !carePathway} onClick={() => void saveAssessment("MATCHED")}>
-                    Mark matched
-                  </Button>
-                ) : null}
+              </AdminPanelActions>
               </div>
-            </AdminWorkflowStep>
+            </PanelSection>
 
-            <AdminWorkflowStep
+            <PanelSection
               step={4}
               title="Create provider match"
-              description="Add suitable providers to the family shortlist once the care plan is published."
-              current={normalizedStatus === "CARE_PLAN" || normalizedStatus === "MATCHED"}
-              complete={currentStepIndex >= 4}
+              description="Add providers to the family shortlist. Your entries stay here so you can review or add another match."
             >
+              <div className="space-y-3">
               <label className="grid gap-2 text-sm font-medium">
                 Provider
                 <select
@@ -871,18 +904,24 @@ function FamilyDetailPanel({
                   className={`${adminFieldClass} min-h-20`}
                 />
               </label>
-              <Button type="button" className={adminActionClass} disabled={!providerId || creatingMatch || !matchingAllowed} onClick={() => void createMatch()}>
-                {creatingMatch ? "Creating..." : "Create match"}
-              </Button>
-            </AdminWorkflowStep>
+              <AdminPanelActions>
+                <Button type="button" size="sm" disabled={!providerId || creatingMatch || !matchingAllowed} onClick={() => void createMatch()}>
+                  {creatingMatch ? "Creating..." : "Create match"}
+                </Button>
+              </AdminPanelActions>
+              </div>
+            </PanelSection>
 
-            <AdminWorkflowStep
+            <PanelSection
               step={5}
               title="Schedule visit or callback"
-              description="Record the visit or callback date — the family sees this on their dashboard."
-              current={normalizedStatus === "MATCHED" || normalizedStatus === "VISIT_SCHEDULED"}
-              complete={currentStepIndex >= 5}
+              description={
+                ["MATCHED", "VISIT_SCHEDULED"].includes(normalizedStatus)
+                  ? "Saving advances the family timeline to “Visit scheduled” and shows the appointment on their dashboard."
+                  : "Visit details are saved for the family dashboard. Status is not moved backward if the case has already progressed."
+              }
             >
+              <div className="space-y-3">
               <label className="grid gap-2 text-sm font-medium">
                 Visit or callback date & time
                 <input
@@ -922,40 +961,45 @@ function FamilyDetailPanel({
                   placeholder="Directions, contact person, what to bring..."
                 />
               </label>
-              <Button type="button" className={adminActionClass} disabled={savingVisit || isPending || !visitScheduledAt} onClick={() => void saveVisitSchedule()}>
-                {savingVisit ? "Saving..." : "Save visit & mark scheduled"}
-              </Button>
-            </AdminWorkflowStep>
-
-            <AdminWorkflowStep
-              step={6}
-              title="Advance case status"
-              description="Move the family through provider response, placement, follow-ups, or close the case."
-              current={currentStepIndex >= 6}
-              complete={normalizedStatus === "CLOSED"}
-            >
-              <div className="space-y-4">
-                {nextActions.map((action) => (
-                  <div key={action.status} className="rounded-lg border border-stone-100 bg-brand-cream/20 px-4 py-3">
-                    <Button
-                      className={adminActionClass}
-                      variant={action.status === "CLOSED" ? "outline" : "default"}
-                      disabled={isPending}
-                      onClick={() => {
-                        if (action.status === "CLOSED") {
-                          setConfirmCloseCase(true);
-                          return;
-                        }
-                        void handleCaseAction(action.status);
-                      }}
-                    >
-                      {isPending && pendingAction === action.status ? "Saving..." : action.label}
-                    </Button>
-                    <p className="mt-2 text-xs leading-5 text-neutral-500">{action.description}</p>
-                  </div>
-                ))}
+              <AdminPanelActions>
+                <Button type="button" size="sm" disabled={savingVisit || isPending || !visitScheduledAt} onClick={() => void saveVisitSchedule()}>
+                  {savingVisit
+                    ? "Saving..."
+                    : ["MATCHED", "VISIT_SCHEDULED"].includes(normalizedStatus)
+                      ? "Save visit & mark scheduled"
+                      : "Update visit details"}
+                </Button>
+              </AdminPanelActions>
               </div>
-            </AdminWorkflowStep>
+            </PanelSection>
+
+            {nextActions.length ? (
+              <PanelSection step={6} title="Advance case status" description="Use when the case moves to placement, follow-ups, or closure.">
+                <div className="space-y-4">
+                  {nextActions.map((action) => (
+                    <div key={action.status}>
+                      <AdminPanelActions>
+                        <Button
+                          size="sm"
+                          variant={action.status === "CLOSED" ? "outline" : "default"}
+                          disabled={isPending}
+                          onClick={() => {
+                            if (action.status === "CLOSED") {
+                              setConfirmCloseCase(true);
+                              return;
+                            }
+                            void handleCaseAction(action.status);
+                          }}
+                        >
+                          {isPending && pendingAction === action.status ? "Saving..." : action.label}
+                        </Button>
+                      </AdminPanelActions>
+                      <p className="mt-2 text-xs leading-5 text-neutral-500">{action.description}</p>
+                    </div>
+                  ))}
+                </div>
+              </PanelSection>
+            ) : null}
           </div>
 
           <PanelSection title="Case record">
@@ -1818,50 +1862,7 @@ function WaitlistDetailPanel({
 }
 
 const adminFieldClass = "rounded-lg border border-stone-200 bg-white px-3 py-2.5 text-sm outline-brand-amber";
-const adminActionClass = "w-full sm:w-auto";
 
-function AdminWorkflowStep({
-  step,
-  title,
-  description,
-  current = false,
-  complete = false,
-  children
-}: {
-  step: number;
-  title: string;
-  description?: string;
-  current?: boolean;
-  complete?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <section
-      className={cn(
-        "border-t border-stone-100 px-4 py-5 sm:px-5",
-        current && "bg-brand-amber/[0.04]",
-        complete && !current && "bg-brand-green-pale/10"
-      )}
-    >
-      <div className="flex items-start gap-3">
-        <span
-          className={cn(
-            "grid h-8 w-8 shrink-0 place-items-center rounded-full text-xs font-bold",
-            current
-              ? "bg-brand-amber text-white"
-              : complete
-                ? "bg-brand-green-dark text-white"
-                : "bg-stone-200 text-stone-600"
-          )}
-        >
-          {step}
-        </span>
-        <div className="min-w-0 flex-1">
-          <h3 className="text-sm font-semibold text-ink">{title}</h3>
-          {description ? <p className="mt-1 text-sm leading-6 text-neutral-500">{description}</p> : null}
-          <div className="mt-4 grid gap-3">{children}</div>
-        </div>
-      </div>
-    </section>
-  );
+function AdminPanelActions({ children }: { children: React.ReactNode }) {
+  return <div className="flex flex-wrap gap-2">{children}</div>;
 }
