@@ -10,6 +10,7 @@ import {
   X
 } from "lucide-react";
 import { AdminResetDataButton } from "@/components/admin/reset-data-button";
+import { WaitlistBulkEmailBar } from "@/components/admin/waitlist-bulk-email";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -207,11 +208,14 @@ export function AdminDashboardClient({ data: initialData }: { data: AdminDashboa
           ) : null}
 
           {tab === "waitlist" ? (
-            data.waitlist.length ? (
-              <WaitlistTable entries={data.waitlist} setMessage={setMessage} />
-            ) : (
-              <EmptyState title="No waitlist registrations yet" description="Family and facility pre-launch sign-ups appear here only — not in Families or Providers." />
-            )
+            <>
+              <WaitlistBulkEmailBar onNotify={setMessage} />
+              {data.waitlist.length ? (
+                <WaitlistTable entries={data.waitlist} setMessage={setMessage} />
+              ) : (
+                <EmptyState title="No waitlist registrations yet" description="Family and facility pre-launch sign-ups appear here only — not in Families or Providers." />
+              )}
+            </>
           ) : null}
         </div>
       </div>
