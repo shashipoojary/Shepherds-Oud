@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/core/db";
+import { canAccessIntake } from "@/lib/auth/case-access";
 import { getMatchesForIntake } from "@/lib/data/matches";
 import { getServerSession, getUserRole } from "@/lib/auth/server";
 import { canCreateMatches, normalizeIntakeStatus } from "@/lib/domain/intake-workflow";
@@ -30,8 +31,26 @@ export async function GET(request: Request) {
       return jsonError("Invalid intake reference.", 400);
     }
 
+    const session = await getServerSession();
+    if (!session) {
+      return jsonError("Unauthorized", 401);
+    }
+
     if (!process.env.DATABASE_URL) {
       return jsonOk([]);
+    }
+
+    const intake = await prisma.intake.findUnique({
+      where: { id: intakeId },
+      select: { id: true, userId: true, careGuideId: true }
+    });
+
+    if (!intake) {
+      return jsonError("Intake not found.", 404);
+    }
+
+    if (!canAccessIntake(session, intake)) {
+      return jsonError("Forbidden", 403);
     }
 
     const matches = await getMatchesForIntake(intakeId);

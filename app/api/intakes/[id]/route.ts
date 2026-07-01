@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/core/db";
+import { canAccessIntake, canOwnIntake } from "@/lib/auth/case-access";
 import { countVisibleMatchesForIntake } from "@/lib/data/matches";
 import { getServerSession, getUserRole } from "@/lib/auth/server";
 import {
@@ -52,6 +53,8 @@ const familyIntakeSelect = {
   visitType: true,
   visitProviderName: true,
   visitNotes: true,
+  userId: true,
+  careGuideId: true,
   createdAt: true,
   careGuide: {
     select: {
@@ -70,6 +73,11 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 
     if (id.length > 64) {
       return jsonError("Invalid intake reference.", 400);
+    }
+
+    const session = await getServerSession();
+    if (!session) {
+      return jsonError("Unauthorized", 401);
     }
 
     if (!process.env.DATABASE_URL) {
@@ -101,15 +109,20 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       return jsonError("Intake not found.", 404);
     }
 
+    if (!canAccessIntake(session, intake)) {
+      return jsonError("Forbidden", 403);
+    }
+
     const matchCount = await countVisibleMatchesForIntake(id);
+    const { userId: _userId, careGuideId: _careGuideId, ...familyIntake } = intake;
 
     return jsonOk({
-      ...intake,
-      status: normalizeIntakeStatus(intake.status),
-      careGuide: intake.careGuide
-        ? { name: intake.careGuide.name || "Your Care Guide", email: intake.careGuide.email }
+      ...familyIntake,
+      status: normalizeIntakeStatus(familyIntake.status),
+      careGuide: familyIntake.careGuide
+        ? { name: familyIntake.careGuide.name || "Your Care Guide", email: familyIntake.careGuide.email }
         : null,
-      visitScheduledAt: intake.visitScheduledAt?.toISOString() ?? null,
+      visitScheduledAt: familyIntake.visitScheduledAt?.toISOString() ?? null,
       matchCount
     });
   } catch (error) {
@@ -248,6 +261,15 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const existing = await prisma.intake.findUnique({ where: { id } });
     if (!existing) {
       return jsonError("Intake not found.", 404);
+    }
+
+    const session = await getServerSession();
+    if (!session) {
+      return jsonError("Unauthorized", 401);
+    }
+
+    if (!canOwnIntake(session, existing)) {
+      return jsonError("Forbidden", 403);
     }
 
     const existingStatus = normalizeIntakeStatus(existing.status);

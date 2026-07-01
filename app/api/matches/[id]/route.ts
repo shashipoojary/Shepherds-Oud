@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/core/db";
+import { canAccessIntake } from "@/lib/auth/case-access";
 import { getServerSession, getUserRole } from "@/lib/auth/server";
 import { getUserLinkedProvider } from "@/lib/providers/server";
 import { updateMatchSchema } from "@/lib/validation/match";
@@ -36,6 +37,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         provider: true,
         intake: {
           select: {
+            userId: true,
+            careGuideId: true,
             contactName: true,
             preferredArea: true,
             careTypes: true,
@@ -61,6 +64,12 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       }
       if (existing.intakeId !== intakeId) {
         return jsonError("This match does not belong to your care request.", 403);
+      }
+      if (!session) {
+        return jsonError("Unauthorized", 401);
+      }
+      if (!canAccessIntake(session, existing.intake)) {
+        return jsonError("Forbidden", 403);
       }
       actor = "family";
     } else if (!session) {
