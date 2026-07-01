@@ -1,4 +1,4 @@
-import { getServerSession, getUserRole } from "@/lib/auth/server";
+import { getServerSession } from "@/lib/auth/server";
 import { prisma } from "@/lib/core/db";
 import { jsonError, jsonOk, handleApiError } from "@/lib/core/api-helpers";
 import { countVisibleMatchesForIntake } from "@/lib/data/matches";
@@ -11,10 +11,6 @@ export async function GET() {
     const session = await getServerSession();
     if (!session) {
       return jsonError("Unauthorized", 401);
-    }
-
-    if (getUserRole(session) !== "FAMILY") {
-      return jsonError("Forbidden", 403);
     }
 
     const intakes = await prisma.intake.findMany({

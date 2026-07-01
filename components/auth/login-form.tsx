@@ -36,8 +36,10 @@ type AuthLoginFormProps = {
 export function AuthLoginForm({ intent }: AuthLoginFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const callbackParam = searchParams.get("callbackUrl");
+  const familyDestination = callbackParam?.startsWith("/family") ? callbackParam : "/family/dashboard";
   const requestedDestination =
-    intent === "provider" ? PROVIDER_DASHBOARD_PATH : intent === "family" ? "/family/dashboard" : searchParams.get("callbackUrl");
+    intent === "provider" ? PROVIDER_DASHBOARD_PATH : intent === "family" ? familyDestination : callbackParam;
   const isProvider = intent === "provider" || requestedDestination?.startsWith(PROVIDER_DASHBOARD_PATH);
   const isFamily = intent === "family" || requestedDestination?.startsWith("/family");
   const callbackUrl = requestedDestination

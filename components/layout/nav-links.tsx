@@ -1,6 +1,7 @@
 "use client";
 
 import { authClient } from "@/lib/auth/client";
+import { usePathname } from "next/navigation";
 import type { AppRole } from "@/lib/auth/server";
 import { buildNavItems } from "@/lib/auth/routes";
 import { usePrelaunch } from "@/components/layout/prelaunch-context";
@@ -13,8 +14,10 @@ type RoleAwareNavProps = {
 
 export function RoleAwareNav({ variant = "desktop", onNavigate }: RoleAwareNavProps) {
   const prelaunch = usePrelaunch();
+  const pathname = usePathname();
   const { data: session, isPending } = authClient.useSession();
-  const role = session?.user.role as AppRole | undefined;
+  const sessionRole = session?.user.role as AppRole | undefined;
+  const role = pathname.startsWith("/family") && session ? "FAMILY" : sessionRole;
   const items = buildNavItems(role, Boolean(session), prelaunch);
   const fallbackItems = buildNavItems(undefined, false, prelaunch);
 

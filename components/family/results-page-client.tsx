@@ -231,18 +231,20 @@ export function ResultsPageClient() {
   if (!intake && authRequired) {
     return (
       <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
-        <EmptyState
-          title="Sign in to view your matches"
-          description="For privacy, your shortlist opens only after email or Google sign-in."
-        />
-        <ButtonRow className="mt-4 max-w-md">
-          <Button asChild className="w-full">
-            <Link href="/family/login">Sign in</Link>
-          </Button>
-          <Button asChild variant="outline" className="w-full">
-            <Link href="/family/intake">Start new request</Link>
-          </Button>
-        </ButtonRow>
+        <section className="mx-auto max-w-xl rounded-2xl bg-white p-6 text-center shadow-soft sm:p-8">
+          <EmptyState
+            title="Sign in to view your matches"
+            description="For privacy, your shortlist opens only after email or Google sign-in."
+          />
+          <ButtonRow className="mx-auto mt-5 max-w-md">
+            <Button asChild className="w-full">
+              <Link href="/family/login?callbackUrl=/family/results">Sign in</Link>
+            </Button>
+            <Button asChild variant="outline" className="w-full">
+              <Link href="/family/login?callbackUrl=/family/intake">Start new request</Link>
+            </Button>
+          </ButtonRow>
+        </section>
       </main>
     );
   }
@@ -250,13 +252,15 @@ export function ResultsPageClient() {
   if (!intake) {
     return (
       <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
-        <EmptyState
-          title="Complete your intake first"
-          description="Tell us about your situation so we can prepare a shortlist of care providers. No account needed — we save your request on this device."
-        />
-        <Button asChild className="mt-4">
-          <Link href="/family/intake">Start intake</Link>
-        </Button>
+        <section className="mx-auto max-w-xl rounded-2xl bg-white p-6 text-center shadow-soft sm:p-8">
+          <EmptyState
+            title="Complete your intake first"
+            description="Tell us about your situation so your Care Guide can prepare provider matches."
+          />
+          <Button asChild className="mt-5">
+            <Link href="/family/login?callbackUrl=/family/intake">Start intake</Link>
+          </Button>
+        </section>
       </main>
     );
   }

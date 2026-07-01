@@ -54,7 +54,7 @@ export async function POST(request: Request) {
 
     const { prisma } = await import("@/lib/core/db");
     const session = await getServerSession();
-    const ownerId = session && getUserRole(session) === "FAMILY" ? session.user.id : null;
+    const ownerId = session && getUserRole(session) !== "ADMIN" ? session.user.id : null;
     const careGuideId = await resolveDefaultCareGuideId();
 
     const intake = await prisma.intake.create({

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { ChevronDown, Loader2, LogOut, UserRound } from "lucide-react";
 import { LoadingLink } from "@/components/shared/loading-link";
 import { authClient } from "@/lib/auth/client";
@@ -18,11 +18,13 @@ type AuthUserMenuProps = {
 
 export function MobileNavProfile({ onNavigate }: { onNavigate?: () => void }) {
   const router = useRouter();
+  const pathname = usePathname();
   const isPrelaunch = usePrelaunch();
   const publicRoutes = usePublicRoutes();
   const [signingOut, setSigningOut] = useState(false);
   const { data: session, isPending } = authClient.useSession();
-  const role = session?.user.role as AppRole | undefined;
+  const sessionRole = session?.user.role as AppRole | undefined;
+  const role = pathname.startsWith("/family") && session ? "FAMILY" : sessionRole;
 
   async function signOut() {
     setSigningOut(true);
@@ -122,13 +124,15 @@ export function MobileNavProfile({ onNavigate }: { onNavigate?: () => void }) {
 
 export function AuthUserMenu({ variant = "desktop", onNavigate }: AuthUserMenuProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const isPrelaunch = usePrelaunch();
   const publicRoutes = usePublicRoutes();
   const menuRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const { data: session, isPending } = authClient.useSession();
-  const role = session?.user.role as AppRole | undefined;
+  const sessionRole = session?.user.role as AppRole | undefined;
+  const role = pathname.startsWith("/family") && session ? "FAMILY" : sessionRole;
 
   useEffect(() => {
     function handleClick(event: MouseEvent) {

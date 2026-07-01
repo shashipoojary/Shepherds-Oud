@@ -211,7 +211,7 @@ function IntakeFormContent({ isUpdateMode, fromWaitlist }: { isUpdateMode: boole
     clearIntakeDraft();
     setForm({});
     setStepIndex(0);
-    router.push("/family/success");
+    router.push("/family/dashboard");
   }
 
   if (!ready) {
