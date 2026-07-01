@@ -12,15 +12,14 @@
 - Next.js Route Handlers for first production API surface.
 - PostgreSQL as the production database.
 - Prisma ORM for schema, migrations, and typed database access.
-- Auth.js, Clerk, or Supabase Auth for family, provider, and admin roles once authentication is implemented.
+- Better Auth for family, provider, and admin roles.
 - Zod for API validation.
 
 ## Recommended Services
 
 - Vercel for app hosting.
-- Neon or Supabase Postgres for managed database.
-- Resend for transactional email.
-- UploadThing or S3-compatible storage for future documents.
+- Neon Postgres for managed database.
+- Brevo for transactional email.
 - Sentry for production error monitoring.
 
 ## Domain Model

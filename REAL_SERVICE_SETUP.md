@@ -1,10 +1,10 @@
 # Connecting Shepherds Oud To The Production Stack
 
-The chosen stack is Vercel, Supabase, Better Auth, Brevo, and Tailwind CSS.
+The chosen stack is Vercel, Neon PostgreSQL, Better Auth, Brevo, and Tailwind CSS.
 
 ## 1. Database
 
-Use Supabase PostgreSQL.
+Use Neon PostgreSQL.
 
 1. Create a PostgreSQL database.
 2. Copy `.env.example` to `.env.local`.
@@ -23,20 +23,7 @@ The first real endpoint is already wired:
 - writes to the `Intake` table when `DATABASE_URL` exists
 - falls back to demo mode when no database is configured
 
-## 2. Supabase Storage
-
-Create a private Supabase Storage bucket named `documents`, then set:
-
-```bash
-NEXT_PUBLIC_SUPABASE_URL="https://PROJECT_REF.supabase.co"
-NEXT_PUBLIC_SUPABASE_ANON_KEY="..."
-SUPABASE_SERVICE_ROLE_KEY="..."
-SUPABASE_STORAGE_BUCKET="documents"
-```
-
-Server helpers live in `lib/supabase.ts`.
-
-## 3. Replace Mock Reads
+## 2. Replace Mock Reads
 
 Current demo screens read from `lib/content.ts`.
 
@@ -47,7 +34,7 @@ Replace these with Prisma reads:
 - provider dashboard: `prisma.provider.update` for availability
 - admin dashboard: `prisma.intake.findMany`, `prisma.provider.findMany`, `prisma.match.findMany`
 
-## 4. Authentication
+## 3. Authentication
 
 This repo uses Better Auth.
 
@@ -84,7 +71,7 @@ Protect these route groups once auth is added:
 - `/provider`
 - `/admin`
 
-## 5. Email Notifications
+## 4. Email Notifications
 
 Use Brevo for transactional email.
 
@@ -111,7 +98,7 @@ Recommended notifications:
 - care advisor alert
 - provider inquiry alert
 
-## 6. Buttons And Actions
+## 5. Buttons And Actions
 
 Admin and provider buttons call:
 
@@ -125,17 +112,17 @@ Run this after adding or changing the database:
 npx prisma migrate deploy
 ```
 
-## 7. Deployment On Vercel
+## 6. Deployment On Vercel
 
 Vercel is the simplest deployment target.
 
 1. Push repo to GitHub.
 2. Import project into Vercel.
 3. Add the environment variables from `.env.example`.
-4. Attach Supabase Postgres.
+4. Attach Neon Postgres.
 5. Run Prisma migration in deployment pipeline or manually before launch.
 
-## 8. Production Matching Logic
+## 7. Production Matching Logic
 
 Start with rule-based scoring:
 
