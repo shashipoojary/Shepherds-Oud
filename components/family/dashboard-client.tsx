@@ -1,10 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { getSessionFamilyIntakes, type StoredIntake } from "@/lib/client/intake";
+import { useSearchParams } from "next/navigation";
+import { selectFamilyIntake, withIntakeId } from "@/lib/client/case-selection";
+import { getSessionFamilyIntakes, type FamilyIntake } from "@/lib/client/intake";
 import { CareJourneyTimeline } from "@/components/family/care-journey-timeline";
 import { FamilyActiveMatches } from "@/components/family/active-matches";
+import { FamilyCasePicker } from "@/components/family/case-picker";
 import { IntakeSummaryCard } from "@/components/family/intake-summary-card";
 import { Button } from "@/components/ui/button";
 import { ButtonRow } from "@/components/ui/button-row";
@@ -13,7 +16,17 @@ import { RefreshButton } from "@/components/ui/refresh-button";
 import { FamilyDashboardSkeleton } from "@/components/ui/results-skeleton";
 
 export function FamilyDashboardClient() {
-  const [intake, setIntake] = useState<StoredIntake | null>(null);
+  return (
+    <Suspense fallback={<FamilyDashboardSkeleton />}>
+      <FamilyDashboardContent />
+    </Suspense>
+  );
+}
+
+function FamilyDashboardContent() {
+  const searchParams = useSearchParams();
+  const requestedIntakeId = searchParams.get("intakeId");
+  const [intakes, setIntakes] = useState<FamilyIntake[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -21,14 +34,13 @@ export function FamilyDashboardClient() {
     const sessionIntakes = await getSessionFamilyIntakes();
 
     if (sessionIntakes.status === "ok") {
-      const latest = sessionIntakes.intakes[0] ?? null;
-      setIntake(latest);
+      setIntakes(sessionIntakes.intakes);
       setLoading(false);
       setRefreshing(false);
       return;
     }
 
-    setIntake(null);
+    setIntakes([]);
     setLoading(false);
     setRefreshing(false);
   }, []);
@@ -44,6 +56,22 @@ export function FamilyDashboardClient() {
 
   if (loading) {
     return <FamilyDashboardSkeleton />;
+  }
+
+  const selection = selectFamilyIntake(intakes, requestedIntakeId);
+  const intake = selection.state === "selected" ? selection.intake : null;
+
+  if (selection.state === "needs-picker" || selection.state === "not-found") {
+    return (
+      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
+        {selection.state === "not-found" ? (
+          <div className="mb-5 rounded-xl border border-brand-amber/30 bg-brand-cream px-4 py-3 text-sm text-brand-amber-dark">
+            We could not find that care request on your account. Choose one of your saved requests below.
+          </div>
+        ) : null}
+        <FamilyCasePicker intakes={intakes} />
+      </main>
+    );
   }
 
   return (
@@ -63,7 +91,7 @@ export function FamilyDashboardClient() {
           {intake ? (
             <>
               <Button asChild className="w-full">
-                <Link href="/family/intake?update=1">Update your request</Link>
+                <Link href={withIntakeId("/family/intake?update=1", intake.id)}>Update your request</Link>
               </Button>
               <Button asChild variant="outline" className="w-full">
                 <Link href="/family/intake">Start new request</Link>

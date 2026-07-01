@@ -5,11 +5,12 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { intakeSteps } from "@/lib/config/content";
 import { usePrelaunch } from "@/components/layout/prelaunch-context";
+import { selectFamilyIntake, withIntakeId } from "@/lib/client/case-selection";
 import {
   fieldKeyFor,
   getSessionFamilyIntakes,
   intakeToForm,
-  type StoredIntake
+  type FamilyIntake
 } from "@/lib/client/intake";
 import {
   chipFieldComplete,
@@ -38,13 +39,22 @@ export function IntakeForm() {
 function IntakeFormRouter() {
   const searchParams = useSearchParams();
   const isUpdateMode = searchParams.get("update") === "1";
+  const requestedIntakeId = searchParams.get("intakeId");
   const fromWaitlist = searchParams.get("from") === "waitlist";
-  const mode = isUpdateMode ? "update" : "new";
+  const mode = isUpdateMode ? `update-${requestedIntakeId || "missing"}` : "new";
 
-  return <IntakeFormContent key={mode} isUpdateMode={isUpdateMode} fromWaitlist={fromWaitlist} />;
+  return <IntakeFormContent key={mode} isUpdateMode={isUpdateMode} requestedIntakeId={requestedIntakeId} fromWaitlist={fromWaitlist} />;
 }
 
-function IntakeFormContent({ isUpdateMode, fromWaitlist }: { isUpdateMode: boolean; fromWaitlist: boolean }) {
+function IntakeFormContent({
+  isUpdateMode,
+  requestedIntakeId,
+  fromWaitlist
+}: {
+  isUpdateMode: boolean;
+  requestedIntakeId: string | null;
+  fromWaitlist: boolean;
+}) {
   const router = useRouter();
   const isPrelaunch = usePrelaunch();
 
@@ -53,7 +63,7 @@ function IntakeFormContent({ isUpdateMode, fromWaitlist }: { isUpdateMode: boole
   const [status, setStatus] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [ready, setReady] = useState(false);
-  const [existingIntake, setExistingIntake] = useState<StoredIntake | null>(null);
+  const [existingIntake, setExistingIntake] = useState<FamilyIntake | null>(null);
 
   const step = intakeSteps[stepIndex];
   const isFinal = stepIndex === intakeSteps.length - 1;
@@ -77,7 +87,8 @@ function IntakeFormContent({ isUpdateMode, fromWaitlist }: { isUpdateMode: boole
       }
 
       const result = await getSessionFamilyIntakes();
-      const intake = result.status === "ok" ? (result.intakes[0] ?? null) : null;
+      const selection = result.status === "ok" ? selectFamilyIntake(result.intakes, requestedIntakeId) : { state: "none" as const, intake: null };
+      const intake = selection.state === "selected" ? selection.intake : null;
 
       if (!active) return;
 
@@ -86,6 +97,11 @@ function IntakeFormContent({ isUpdateMode, fromWaitlist }: { isUpdateMode: boole
         setForm(intakeToForm(intake));
       } else {
         setForm({});
+        if (selection.state === "needs-picker") {
+          setStatus("Choose the care request you want to update from your dashboard.");
+        } else if (selection.state === "not-found") {
+          setStatus("We could not find that care request on your account. Choose a saved request from your dashboard.");
+        }
       }
       setReady(true);
     }
@@ -101,7 +117,7 @@ function IntakeFormContent({ isUpdateMode, fromWaitlist }: { isUpdateMode: boole
     return () => {
       active = false;
     };
-  }, [isUpdateMode]);
+  }, [isUpdateMode, requestedIntakeId]);
 
   const canContinue = useMemo(() => {
     const required = step.fields.filter((field) => field.type !== "notice" && field.type !== "textarea" && field.type !== "date");
@@ -137,7 +153,7 @@ function IntakeFormContent({ isUpdateMode, fromWaitlist }: { isUpdateMode: boole
 
   async function submit() {
     if (isUpdateMode && !existingIntake) {
-      setStatus("No saved request found on this device. Start a new intake instead.");
+      setStatus("Choose the care request you want to update from your dashboard.");
       return;
     }
 
@@ -199,9 +215,12 @@ function IntakeFormContent({ isUpdateMode, fromWaitlist }: { isUpdateMode: boole
       return;
     }
 
+    const saved = (await response.json().catch(() => ({}))) as { id?: string };
+    const savedIntakeId = isUpdating ? existingIntake!.id : saved.id;
+
     setForm({});
     setStepIndex(0);
-    router.push("/family/dashboard");
+    router.push(savedIntakeId ? withIntakeId("/family/dashboard", savedIntakeId) : "/family/dashboard");
   }
 
   if (!ready) {
@@ -254,10 +273,10 @@ function IntakeFormContent({ isUpdateMode, fromWaitlist }: { isUpdateMode: boole
         ) : null}
 
         {isUpdateMode && !existingIntake ? (
-          <div className="mb-5 rounded-lg bg-brand-beige-light/40 px-4 py-3 text-sm text-brand-amber-dark">
-            No saved request on this device.{" "}
-            <Link href="/family/intake" className="font-semibold underline underline-offset-2">
-              Start a new intake
+            <div className="mb-5 rounded-lg bg-brand-beige-light/40 px-4 py-3 text-sm text-brand-amber-dark">
+            Choose the care request you want to update.{" "}
+            <Link href="/family/dashboard" className="font-semibold underline underline-offset-2">
+              Open your requests
             </Link>
           </div>
         ) : null}

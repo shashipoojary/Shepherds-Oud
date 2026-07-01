@@ -3,7 +3,7 @@ export type CareGuideInfo = {
   email: string;
 };
 
-export type StoredIntake = {
+export type FamilyIntake = {
   id: string;
   contactName: string;
   email: string;
@@ -56,7 +56,7 @@ import {
   splitSelectForForm
 } from "@/lib/domain/intake-field-utils";
 
-export function intakeToForm(intake: StoredIntake): Record<string, string | string[]> {
+export function intakeToForm(intake: FamilyIntake): Record<string, string | string[]> {
   const relationship = splitSelectForForm(intake.relationship, relationshipToSeniorOptions);
   const decisionMakerRelationship = splitSelectForForm(intake.decisionMakerRelationship, decisionMakerRelationshipOptions);
   const languages = splitChipsForForm(intake.languages, languageOptions);
@@ -91,7 +91,7 @@ export function intakeToForm(intake: StoredIntake): Record<string, string | stri
 
 export async function getSessionFamilyIntakes(): Promise<{
   status: "ok" | "unauthorized" | "error";
-  intakes: StoredIntake[];
+  intakes: FamilyIntake[];
 }> {
   try {
     const response = await fetch("/api/family/intakes");
@@ -104,13 +104,13 @@ export async function getSessionFamilyIntakes(): Promise<{
       return { status: "error", intakes: [] };
     }
 
-    return { status: "ok", intakes: (await response.json()) as StoredIntake[] };
+    return { status: "ok", intakes: (await response.json()) as FamilyIntake[] };
   } catch {
     return { status: "error", intakes: [] };
   }
 }
 
-export function formatVisitSchedule(intake: Pick<StoredIntake, "visitScheduledAt" | "visitType" | "visitProviderName" | "visitNotes">) {
+export function formatVisitSchedule(intake: Pick<FamilyIntake, "visitScheduledAt" | "visitType" | "visitProviderName" | "visitNotes">) {
   if (!intake.visitScheduledAt) return null;
   const date = new Date(intake.visitScheduledAt);
   if (Number.isNaN(date.getTime())) return null;

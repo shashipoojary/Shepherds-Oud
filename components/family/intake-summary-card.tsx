@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { intakeStatusHint, intakeStatusLabel, formatVisitSchedule, type StoredIntake } from "@/lib/client/intake";
+import { intakeStatusHint, intakeStatusLabel, formatVisitSchedule, type FamilyIntake } from "@/lib/client/intake";
 import { Button } from "@/components/ui/button";
 import { CareGuideCard } from "@/components/shared/care-guide-card";
 
@@ -53,7 +53,7 @@ export function IntakeSummaryCard({
   showActions = false,
   showCareGuide = true
 }: {
-  intake: StoredIntake;
+  intake: FamilyIntake;
   compact?: boolean;
   showActions?: boolean;
   showCareGuide?: boolean;

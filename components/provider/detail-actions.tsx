@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Check, Heart, Loader2 } from "lucide-react";
+import { selectFamilyIntake, withIntakeId } from "@/lib/client/case-selection";
 import { getSessionFamilyIntakes } from "@/lib/client/intake";
 import { isProviderSaved, toggleSavedProvider } from "@/lib/client/favourites";
 import { requestMatchAction } from "@/lib/client/match-request";
@@ -14,11 +16,23 @@ import type { ProviderMatch } from "@/lib/core/types";
 type PendingAction = "visit" | "callback" | "favourite" | null;
 
 export function ProviderDetailActions({ providerId, providerName }: { providerId: string; providerName: string }) {
+  return (
+    <Suspense fallback={<ProviderDetailActionsSkeleton />}>
+      <ProviderDetailActionsContent providerId={providerId} providerName={providerName} />
+    </Suspense>
+  );
+}
+
+function ProviderDetailActionsContent({ providerId, providerName }: { providerId: string; providerName: string }) {
+  const searchParams = useSearchParams();
+  const requestedIntakeId = searchParams.get("intakeId");
   const [matchId, setMatchId] = useState<string | null>(null);
   const [matchStatus, setMatchStatus] = useState<string | null>(null);
   const [intakeId, setIntakeId] = useState<string | null>(null);
   const [loadingContext, setLoadingContext] = useState(true);
   const [hasIntake, setHasIntake] = useState(false);
+  const [needsCaseSelection, setNeedsCaseSelection] = useState(false);
+  const [caseNotFound, setCaseNotFound] = useState(false);
   const [pending, setPending] = useState<PendingAction>(null);
   const [message, setMessage] = useState("");
   const [messageTone, setMessageTone] = useState<"success" | "error" | "info">("info");
@@ -31,12 +45,18 @@ export function ProviderDetailActions({ providerId, providerName }: { providerId
 
     async function loadContext() {
       const result = await getSessionFamilyIntakes();
-      const intake = result.status === "ok" ? (result.intakes[0] ?? null) : null;
+      const ownedIntakes = result.status === "ok" ? result.intakes : [];
+      const selection = selectFamilyIntake(ownedIntakes, requestedIntakeId);
+      const intake = selection.state === "selected" ? selection.intake : null;
 
       if (!active) return;
 
-      setHasIntake(Boolean(intake));
+      setHasIntake(ownedIntakes.length > 0);
+      setNeedsCaseSelection(selection.state === "needs-picker");
+      setCaseNotFound(selection.state === "not-found");
       setIntakeId(intake?.id ?? null);
+      setMatchId(null);
+      setMatchStatus(null);
 
       if (!intake) {
         setLoadingContext(false);
@@ -62,7 +82,7 @@ export function ProviderDetailActions({ providerId, providerName }: { providerId
     return () => {
       active = false;
     };
-  }, [providerId]);
+  }, [providerId, requestedIntakeId]);
 
   useEffect(() => {
     if (!message) return;
@@ -123,13 +143,7 @@ export function ProviderDetailActions({ providerId, providerName }: { providerId
   const canRequest = Boolean(matchId) && !accepted && !coordinated && !placed;
 
   if (loadingContext) {
-    return (
-      <div className="mt-5 space-y-2">
-        <div className="h-11 animate-pulse rounded-lg bg-sage-200/60" />
-        <div className="h-11 animate-pulse rounded-lg bg-sage-100" />
-        <div className="h-9 animate-pulse rounded-lg bg-sage-100/80" />
-      </div>
-    );
+    return <ProviderDetailActionsSkeleton />;
   }
 
   return (
@@ -139,6 +153,18 @@ export function ProviderDetailActions({ providerId, providerName }: { providerId
           tone="info"
           className="mt-4"
           message="Complete your intake to request visits or callbacks from matched providers."
+        />
+      ) : needsCaseSelection ? (
+        <ActionFeedback
+          tone="info"
+          className="mt-4"
+          message="Choose a care request first, then open this provider from that request's matches."
+        />
+      ) : caseNotFound ? (
+        <ActionFeedback
+          tone="error"
+          className="mt-4"
+          message="We could not find that care request on your account. Open this provider from one of your saved requests."
         />
       ) : !matchId ? (
         <ActionFeedback
@@ -157,10 +183,10 @@ export function ProviderDetailActions({ providerId, providerName }: { providerId
       {inProgress ? (
         <div className="mt-5 flex flex-col gap-2">
           <Button asChild className="w-full">
-            <Link href="/family/results">Back to all matches</Link>
+            <Link href={intakeId ? withIntakeId("/family/results", intakeId) : "/family/results"}>Back to all matches</Link>
           </Button>
           <Button asChild variant="outline" className="w-full">
-            <Link href="/family/dashboard">Your dashboard</Link>
+            <Link href={intakeId ? withIntakeId("/family/dashboard", intakeId) : "/family/dashboard"}>Your dashboard</Link>
           </Button>
           <Button variant="ghost" className="w-full" disabled={pending === "favourite"} onClick={handleFavourite}>
             {pending === "favourite" ? (
@@ -247,9 +273,23 @@ export function ProviderDetailActions({ providerId, providerName }: { providerId
             <Button asChild variant="ghost" className="w-full">
               <Link href="/family/intake">Start intake</Link>
             </Button>
+          ) : needsCaseSelection || caseNotFound ? (
+            <Button asChild variant="ghost" className="w-full">
+              <Link href="/family/dashboard">Choose care request</Link>
+            </Button>
           ) : null}
         </div>
       )}
     </>
+  );
+}
+
+function ProviderDetailActionsSkeleton() {
+  return (
+    <div className="mt-5 space-y-2">
+      <div className="h-11 animate-pulse rounded-lg bg-sage-200/60" />
+      <div className="h-11 animate-pulse rounded-lg bg-sage-100" />
+      <div className="h-9 animate-pulse rounded-lg bg-sage-100/80" />
+    </div>
   );
 }

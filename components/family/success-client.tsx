@@ -1,17 +1,32 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import { getSessionFamilyIntakes, type StoredIntake } from "@/lib/client/intake";
+import { useSearchParams } from "next/navigation";
+import { selectFamilyIntake, withIntakeId } from "@/lib/client/case-selection";
+import { getSessionFamilyIntakes, type FamilyIntake } from "@/lib/client/intake";
 import { CareJourneyTimeline } from "@/components/family/care-journey-timeline";
+import { FamilyCasePicker } from "@/components/family/case-picker";
 import { IntakeSummaryCard } from "@/components/family/intake-summary-card";
 import { Button } from "@/components/ui/button";
 import { ButtonRow } from "@/components/ui/button-row";
 import { ubuntuTagline } from "@/lib/config/content";
 
 export function FamilySuccessClient() {
-  const [intake, setIntake] = useState<StoredIntake | null>(null);
+  return (
+    <Suspense fallback={null}>
+      <FamilySuccessContent />
+    </Suspense>
+  );
+}
+
+function FamilySuccessContent() {
+  const searchParams = useSearchParams();
+  const requestedIntakeId = searchParams.get("intakeId");
+  const [intakes, setIntakes] = useState<FamilyIntake[]>([]);
+  const [selectionState, setSelectionState] = useState<ReturnType<typeof selectFamilyIntake>>({ state: "none", intake: null });
   const [loading, setLoading] = useState(true);
+  const intake = selectionState.state === "selected" ? selectionState.intake : null;
 
   useEffect(() => {
     let active = true;
@@ -19,7 +34,9 @@ export function FamilySuccessClient() {
     async function load() {
       const result = await getSessionFamilyIntakes();
       if (active) {
-        setIntake(result.status === "ok" ? (result.intakes[0] ?? null) : null);
+        const ownedIntakes = result.status === "ok" ? result.intakes : [];
+        setIntakes(ownedIntakes);
+        setSelectionState(selectFamilyIntake(ownedIntakes, requestedIntakeId));
         setLoading(false);
       }
     }
@@ -28,7 +45,10 @@ export function FamilySuccessClient() {
 
     function handleFocus() {
       void getSessionFamilyIntakes().then((result) => {
-        if (active && result.status === "ok") setIntake(result.intakes[0] ?? null);
+        if (active && result.status === "ok") {
+          setIntakes(result.intakes);
+          setSelectionState(selectFamilyIntake(result.intakes, requestedIntakeId));
+        }
       });
     }
 
@@ -37,7 +57,20 @@ export function FamilySuccessClient() {
       active = false;
       window.removeEventListener("focus", handleFocus);
     };
-  }, []);
+  }, [requestedIntakeId]);
+
+  if (!loading && (selectionState.state === "needs-picker" || selectionState.state === "not-found")) {
+    return (
+      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
+        {selectionState.state === "not-found" ? (
+          <div className="mb-5 rounded-xl border border-brand-amber/30 bg-brand-cream px-4 py-3 text-sm text-brand-amber-dark">
+            We could not find that care request on your account. Choose one of your saved requests below.
+          </div>
+        ) : null}
+        <FamilyCasePicker intakes={intakes} />
+      </main>
+    );
+  }
 
   return (
     <main className="px-4 py-10 sm:px-6">
@@ -60,10 +93,10 @@ export function FamilySuccessClient() {
           ) : null}
           <ButtonRow className="mx-auto mt-7 max-w-lg">
             <Button asChild className="w-full">
-              <Link href="/family/dashboard">Your care journey</Link>
+              <Link href={intake ? withIntakeId("/family/dashboard", intake.id) : "/family/dashboard"}>Your care journey</Link>
             </Button>
             <Button asChild variant="ghost" className="w-full">
-              <Link href="/family/results">View matches</Link>
+              <Link href={intake ? withIntakeId("/family/results", intake.id) : "/family/results"}>View matches</Link>
             </Button>
           </ButtonRow>
         </section>

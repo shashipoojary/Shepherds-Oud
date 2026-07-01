@@ -1,11 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { BedDouble, Check, CircleDollarSign, Loader2, MapPin } from "lucide-react";
-import { getSessionFamilyIntakes, type StoredIntake } from "@/lib/client/intake";
+import { selectFamilyIntake, withIntakeId } from "@/lib/client/case-selection";
+import { getSessionFamilyIntakes, type FamilyIntake } from "@/lib/client/intake";
 import { requestMatchAction } from "@/lib/client/match-request";
 import { familyMatchNextStep, matchStatusLabel, isFamilyActionableMatchStatus } from "@/lib/domain/match-status";
+import { FamilyCasePicker } from "@/components/family/case-picker";
 import { IntakeSummaryCard } from "@/components/family/intake-summary-card";
 import { ActionFeedback } from "@/components/ui/action-feedback";
 import { availabilityBadgeVariant, Badge } from "@/components/ui/badge";
@@ -28,7 +31,7 @@ type RowFeedback = {
   tone: "success" | "error";
 };
 
-function emptyStateCopy(intake: StoredIntake, loadError: boolean) {
+function emptyStateCopy(intake: FamilyIntake, loadError: boolean) {
   if (loadError) {
     return {
       title: "Could not load your shortlist",
@@ -102,37 +105,53 @@ function isPending(pending: PendingAction | null, matchId: string | undefined, t
 }
 
 export function ResultsPageClient() {
+  return (
+    <Suspense fallback={<ResultsSkeleton />}>
+      <ResultsPageContent />
+    </Suspense>
+  );
+}
+
+function ResultsPageContent() {
+  const searchParams = useSearchParams();
+  const requestedIntakeId = searchParams.get("intakeId");
   const [activeFilter, setActiveFilter] = useState<(typeof filters)[number]>("All options");
   const [globalMessage, setGlobalMessage] = useState("");
   const [globalTone, setGlobalTone] = useState<"success" | "error">("success");
   const [providers, setProviders] = useState<ProviderMatch[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
-  const [intake, setIntake] = useState<StoredIntake | null>(null);
+  const [intakes, setIntakes] = useState<FamilyIntake[]>([]);
+  const [selectionState, setSelectionState] = useState<ReturnType<typeof selectFamilyIntake>>({ state: "none", intake: null });
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   const [rowFeedback, setRowFeedback] = useState<Record<string, RowFeedback>>({});
   const recommended = providers[0];
+  const intake = selectionState.state === "selected" ? selectionState.intake : null;
 
   useEffect(() => {
     async function loadMatches() {
       try {
+        setLoading(true);
+        setProviders([]);
         const sessionIntakes = await getSessionFamilyIntakes();
 
         if (sessionIntakes.status !== "ok") {
-          setIntake(null);
+          setIntakes([]);
+          setSelectionState({ state: "none", intake: null });
           setLoading(false);
           return;
         }
 
-        const current = sessionIntakes.intakes[0] ?? null;
-        setIntake(current);
+        setIntakes(sessionIntakes.intakes);
+        const selected = selectFamilyIntake(sessionIntakes.intakes, requestedIntakeId);
+        setSelectionState(selected);
 
-        if (!current) {
+        if (selected.state !== "selected") {
           setLoading(false);
           return;
         }
 
-        const matchesResponse = await fetch(`/api/matches?intakeId=${current.id}`);
+        const matchesResponse = await fetch(`/api/matches?intakeId=${selected.intake.id}`);
 
         if (matchesResponse.ok) {
           setProviders((await matchesResponse.json()) as ProviderMatch[]);
@@ -148,7 +167,7 @@ export function ResultsPageClient() {
     }
 
     void loadMatches();
-  }, []);
+  }, [requestedIntakeId]);
 
   useEffect(() => {
     if (!globalMessage) return;
@@ -225,6 +244,27 @@ export function ResultsPageClient() {
     setPendingAction(null);
   }
 
+  if (loading) {
+    return <ResultsSkeleton />;
+  }
+
+  if (selectionState.state === "needs-picker" || selectionState.state === "not-found") {
+    return (
+      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
+        {selectionState.state === "not-found" ? (
+          <div className="mb-5 rounded-xl border border-brand-amber/30 bg-brand-cream px-4 py-3 text-sm text-brand-amber-dark">
+            We could not find that care request on your account. Choose a request to view its matches.
+          </div>
+        ) : null}
+        <FamilyCasePicker
+          intakes={intakes}
+          title="Choose a care request"
+          description="Matches are prepared for each care request separately."
+        />
+      </main>
+    );
+  }
+
   if (!intake) {
     return (
       <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
@@ -241,16 +281,12 @@ export function ResultsPageClient() {
     );
   }
 
-  if (loading) {
-    return <ResultsSkeleton />;
-  }
-
   if (!providers.length) {
     const copy = emptyStateCopy(intake, loadError);
 
     return (
       <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
-        <Link href="/family/dashboard" className="mb-4 inline-flex text-sm text-ink/60 hover:text-brand-amber">
+        <Link href={withIntakeId("/family/dashboard", intake.id)} className="mb-4 inline-flex text-sm text-ink/60 hover:text-brand-amber">
           ← Your dashboard
         </Link>
         <IntakeSummaryCard intake={intake} compact />
@@ -278,7 +314,7 @@ export function ResultsPageClient() {
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
-      <Link href="/family/dashboard" className="mb-4 inline-flex text-sm text-ink/60 hover:text-brand-amber">
+      <Link href={withIntakeId("/family/dashboard", intake.id)} className="mb-4 inline-flex text-sm text-ink/60 hover:text-brand-amber">
         ← Your dashboard
       </Link>
 
@@ -384,12 +420,12 @@ export function ResultsPageClient() {
               </>
             ) : (
               <Button asChild className="w-full">
-                <Link href="/family/dashboard">Your dashboard</Link>
+                <Link href={withIntakeId("/family/dashboard", intake.id)}>Your dashboard</Link>
               </Button>
             )}
 
             <Button asChild variant="ghost" className="w-full">
-              <Link href={`/providers/${recommended.id}`}>Read full profile</Link>
+              <Link href={withIntakeId(`/providers/${recommended.id}`, intake.id)}>Read full profile</Link>
             </Button>
           </aside>
         </div>
@@ -431,6 +467,7 @@ export function ResultsPageClient() {
               <CompareRow
                 key={provider.id}
                 provider={provider}
+                intakeId={intake.id}
                 pendingAction={pendingAction}
                 feedback={provider.matchId ? rowFeedback[provider.matchId] : undefined}
                 onAction={handleProviderAction}
@@ -458,11 +495,13 @@ function Fact({ icon: Icon, label }: { icon: typeof MapPin; label: string }) {
 
 function CompareRow({
   provider,
+  intakeId,
   pendingAction,
   feedback,
   onAction
 }: {
   provider: ProviderMatch;
+  intakeId: string;
   pendingAction: PendingAction | null;
   feedback?: RowFeedback;
   onAction: (provider: ProviderMatch, status: "VISIT_REQUESTED" | "CALLBACK_REQUESTED") => void;
@@ -501,7 +540,7 @@ function CompareRow({
 
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:shrink-0">
           <Button asChild size="sm" variant="outline" className="w-full sm:min-w-[132px]">
-            <Link href={`/providers/${provider.id}`}>Profile</Link>
+              <Link href={withIntakeId(`/providers/${provider.id}`, intakeId)}>Profile</Link>
           </Button>
           {!accepted ? (
             <>
