@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { BedDouble, Check, CircleDollarSign, Loader2, MapPin } from "lucide-react";
-import { getStoredIntake, refreshStoredIntakeFromApi, type StoredIntake } from "@/lib/client/intake";
+import { getSessionFamilyIntakes, getStoredIntake, saveStoredIntake, type StoredIntake } from "@/lib/client/intake";
 import { requestMatchAction } from "@/lib/client/match-request";
 import { familyMatchNextStep, matchStatusLabel, isFamilyActionableMatchStatus } from "@/lib/domain/match-status";
 import { IntakeSummaryCard } from "@/components/family/intake-summary-card";
@@ -108,33 +108,34 @@ export function ResultsPageClient() {
   const [providers, setProviders] = useState<ProviderMatch[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
+  const [authRequired, setAuthRequired] = useState(false);
   const [intake, setIntake] = useState<StoredIntake | null>(null);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   const [rowFeedback, setRowFeedback] = useState<Record<string, RowFeedback>>({});
   const recommended = providers[0];
 
   useEffect(() => {
-    const stored = getStoredIntake();
-    setIntake(stored);
-
-    if (!stored) {
-      setLoading(false);
-      return;
-    }
-
     async function loadMatches() {
-      const current = stored;
-      if (!current) return;
-
       try {
-        const [updated, matchesResponse] = await Promise.all([
-          refreshStoredIntakeFromApi(),
-          fetch(`/api/matches?intakeId=${current.id}`)
-        ]);
+        const sessionIntakes = await getSessionFamilyIntakes();
 
-        if (updated) {
-          setIntake(updated);
+        if (sessionIntakes.status !== "ok") {
+          setAuthRequired(Boolean(getStoredIntake()));
+          setIntake(null);
+          setLoading(false);
+          return;
         }
+
+        const current = sessionIntakes.intakes[0] ?? null;
+        setIntake(current);
+
+        if (!current) {
+          setLoading(false);
+          return;
+        }
+
+        saveStoredIntake(current);
+        const matchesResponse = await fetch(`/api/matches?intakeId=${current.id}`);
 
         if (matchesResponse.ok) {
           setProviders((await matchesResponse.json()) as ProviderMatch[]);
@@ -225,6 +226,25 @@ export function ResultsPageClient() {
     setGlobalTone("success");
     setGlobalMessage(successText);
     setPendingAction(null);
+  }
+
+  if (!intake && authRequired) {
+    return (
+      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
+        <EmptyState
+          title="Sign in to view your matches"
+          description="For privacy, your shortlist opens only after email or Google sign-in."
+        />
+        <ButtonRow className="mt-4 max-w-md">
+          <Button asChild className="w-full">
+            <Link href="/family/login">Sign in</Link>
+          </Button>
+          <Button asChild variant="outline" className="w-full">
+            <Link href="/family/intake">Start new request</Link>
+          </Button>
+        </ButtonRow>
+      </main>
+    );
   }
 
   if (!intake) {

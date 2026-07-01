@@ -5,9 +5,15 @@ import { nextCookies } from "better-auth/next-js";
 import { magicLink } from "better-auth/plugins";
 import { prisma } from "@/lib/core/db";
 import { isAdminEmail, resolveRole, resolveRoleForUser } from "@/lib/auth/roles";
+import { sendFamilyMagicLinkEmail } from "@/lib/email/family-magic-link";
 import { sendProviderMagicLinkEmail } from "@/lib/email/provider-magic-link";
 
 const appUrl = process.env.BETTER_AUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
+function isFamilyMagicLink(url: string) {
+  const decoded = decodeURIComponent(url);
+  return decoded.includes("/family/dashboard") || decoded.includes("/family/login");
+}
 
 export const auth = betterAuth({
   secret: process.env.BETTER_AUTH_SECRET || "development-only-better-auth-secret-change-in-production",
@@ -77,6 +83,11 @@ export const auth = betterAuth({
       sendMagicLink: async ({ email, url }) => {
         if (isAdminEmail(email)) {
           throw new Error("Administrator accounts must sign in with Google.");
+        }
+
+        if (isFamilyMagicLink(url)) {
+          await sendFamilyMagicLinkEmail(email, url);
+          return;
         }
 
         await sendProviderMagicLinkEmail(email, url);

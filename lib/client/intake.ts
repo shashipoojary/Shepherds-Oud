@@ -133,6 +133,27 @@ type IntakeApiSnapshot = {
   visitNotes?: string | null;
 };
 
+export async function getSessionFamilyIntakes(): Promise<{
+  status: "ok" | "unauthorized" | "error";
+  intakes: StoredIntake[];
+}> {
+  try {
+    const response = await fetch("/api/family/intakes");
+
+    if (response.status === 401) {
+      return { status: "unauthorized", intakes: [] };
+    }
+
+    if (!response.ok) {
+      return { status: "error", intakes: [] };
+    }
+
+    return { status: "ok", intakes: (await response.json()) as StoredIntake[] };
+  } catch {
+    return { status: "error", intakes: [] };
+  }
+}
+
 function mergeIntakeSnapshot(stored: StoredIntake, data: IntakeApiSnapshot): StoredIntake {
   return {
     ...stored,

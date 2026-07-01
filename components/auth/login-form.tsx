@@ -30,14 +30,16 @@ function errorMessage(code: string | null, isProvider: boolean) {
 }
 
 type AuthLoginFormProps = {
-  intent?: "provider" | "admin";
+  intent?: "family" | "provider" | "admin";
 };
 
 export function AuthLoginForm({ intent }: AuthLoginFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const requestedDestination = intent === "provider" ? PROVIDER_DASHBOARD_PATH : searchParams.get("callbackUrl");
+  const requestedDestination =
+    intent === "provider" ? PROVIDER_DASHBOARD_PATH : intent === "family" ? "/family/dashboard" : searchParams.get("callbackUrl");
   const isProvider = intent === "provider" || requestedDestination?.startsWith(PROVIDER_DASHBOARD_PATH);
+  const isFamily = intent === "family" || requestedDestination?.startsWith("/family");
   const callbackUrl = requestedDestination
     ? `/login/continue?callbackUrl=${encodeURIComponent(requestedDestination)}`
     : "/login/continue";
@@ -70,7 +72,7 @@ export function AuthLoginForm({ intent }: AuthLoginFormProps) {
       const { error: signInError } = await authClient.signIn.magicLink({
         email: trimmed,
         callbackURL: callbackUrl,
-        errorCallbackURL: "/provider/login?error=magic-link"
+        errorCallbackURL: isFamily ? "/family/login?error=magic-link" : "/provider/login?error=magic-link"
       });
 
       if (signInError) {
@@ -89,7 +91,7 @@ export function AuthLoginForm({ intent }: AuthLoginFormProps) {
     }
   }
 
-  if (isProvider) {
+  if (isProvider || isFamily) {
     return (
       <div className="grid gap-4">
         {message ? (
@@ -103,7 +105,7 @@ export function AuthLoginForm({ intent }: AuthLoginFormProps) {
             autoComplete="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            placeholder="you@facility.nl"
+            placeholder={isFamily ? "you@example.com" : "you@facility.nl"}
             className="rounded-lg border border-stone-200 px-3 py-2.5 text-sm font-normal outline-brand-amber"
           />
         </label>

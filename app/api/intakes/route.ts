@@ -1,3 +1,4 @@
+import { getServerSession, getUserRole } from "@/lib/auth/server";
 import { getIsPrelaunch } from "@/lib/config/prelaunch";
 import { resolveDefaultCareGuideId } from "@/lib/domain/care-guide";
 import { normalizeIntakeStatus } from "@/lib/domain/intake-workflow";
@@ -52,11 +53,14 @@ export async function POST(request: Request) {
     }
 
     const { prisma } = await import("@/lib/core/db");
+    const session = await getServerSession();
+    const ownerId = session && getUserRole(session) === "FAMILY" ? session.user.id : null;
     const careGuideId = await resolveDefaultCareGuideId();
 
     const intake = await prisma.intake.create({
       data: {
         ...intakeCreateData(parsed.data),
+        ...(ownerId ? { userId: ownerId } : {}),
         careGuideId,
         status: careGuideId ? "CARE_GUIDE_ASSIGNED" : "NEW"
       },
