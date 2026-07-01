@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { getSessionFamilyIntakes, getStoredIntake, saveStoredIntake, type StoredIntake } from "@/lib/client/intake";
+import { getSessionFamilyIntakes, type StoredIntake } from "@/lib/client/intake";
 import { CareJourneyTimeline } from "@/components/family/care-journey-timeline";
 import { FamilyActiveMatches } from "@/components/family/active-matches";
 import { IntakeSummaryCard } from "@/components/family/intake-summary-card";
@@ -16,25 +16,18 @@ export function FamilyDashboardClient() {
   const [intake, setIntake] = useState<StoredIntake | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [authRequired, setAuthRequired] = useState(false);
 
   const refreshStatus = useCallback(async () => {
     const sessionIntakes = await getSessionFamilyIntakes();
 
     if (sessionIntakes.status === "ok") {
       const latest = sessionIntakes.intakes[0] ?? null;
-      if (latest) {
-        saveStoredIntake(latest);
-      }
-      setAuthRequired(false);
       setIntake(latest);
       setLoading(false);
       setRefreshing(false);
       return;
     }
 
-    const stored = getStoredIntake();
-    setAuthRequired(Boolean(stored));
     setIntake(null);
     setLoading(false);
     setRefreshing(false);
@@ -91,25 +84,10 @@ export function FamilyDashboardClient() {
             <IntakeSummaryCard intake={intake} showCareGuide={false} />
             <FamilyActiveMatches key={`${intake.id}-${intake.matchCount}`} intakeId={intake.id} />
           </>
-        ) : authRequired ? (
-          <div className="rounded-2xl bg-white shadow-soft">
-            <EmptyState
-              title="Sign in to view your case"
-              description="For privacy, your care request now opens only after email or Google sign-in."
-            />
-            <div className="flex flex-col gap-3 px-6 pb-6 sm:flex-row">
-              <Button asChild>
-                <Link href="/family/login">Sign in</Link>
-              </Button>
-              <Button asChild variant="outline">
-                <Link href="/family/intake">Start new request</Link>
-              </Button>
-            </div>
-          </div>
         ) : (
           <div className="rounded-2xl bg-white shadow-soft">
             <EmptyState
-              title="No request saved on this device yet"
+              title="No care request yet"
               description="Complete the intake form to create your care request. A Care Guide will be assigned to support your family."
             />
           </div>

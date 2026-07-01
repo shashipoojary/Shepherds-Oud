@@ -38,9 +38,6 @@ export type StoredIntake = {
   submittedAt: string;
 };
 
-const STORAGE_KEY = "shepherds:last-intake";
-const DRAFT_KEY = "shepherds:intake-draft";
-
 const languageOptions = ["Dutch", "English", "Arabic", "Turkish", "French", "Other"] as const;
 
 export { intakeStatusHint, intakeStatusLabel, JOURNEY_STEPS } from "@/lib/domain/intake-workflow";
@@ -59,25 +56,7 @@ import {
   splitSelectForForm
 } from "@/lib/domain/intake-field-utils";
 
-/** Clears any legacy draft saved in localStorage from older builds. */
-export function clearIntakeDraft() {
-  if (typeof window === "undefined") return;
-  window.localStorage.removeItem(DRAFT_KEY);
-  window.sessionStorage.removeItem(DRAFT_KEY);
-}
-
-export function clearStoredIntake() {
-  if (typeof window === "undefined") return;
-  window.localStorage.removeItem(STORAGE_KEY);
-  clearIntakeDraft();
-}
-
-export function saveStoredIntake(intake: StoredIntake) {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(intake));
-}
-
-export function storedIntakeToForm(intake: StoredIntake): Record<string, string | string[]> {
+export function intakeToForm(intake: StoredIntake): Record<string, string | string[]> {
   const relationship = splitSelectForForm(intake.relationship, relationshipToSeniorOptions);
   const decisionMakerRelationship = splitSelectForForm(intake.decisionMakerRelationship, decisionMakerRelationshipOptions);
   const languages = splitChipsForForm(intake.languages, languageOptions);
@@ -110,29 +89,6 @@ export function storedIntakeToForm(intake: StoredIntake): Record<string, string 
   };
 }
 
-export function getStoredIntake(): StoredIntake | null {
-  if (typeof window === "undefined") return null;
-  const raw = window.localStorage.getItem(STORAGE_KEY);
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw) as StoredIntake;
-  } catch {
-    return null;
-  }
-}
-
-type IntakeApiSnapshot = {
-  status: string;
-  matchCount?: number;
-  careGuide?: CareGuideInfo | null;
-  carePathway?: string | null;
-  carePlanSummary?: string | null;
-  visitScheduledAt?: string | null;
-  visitType?: string | null;
-  visitProviderName?: string | null;
-  visitNotes?: string | null;
-};
-
 export async function getSessionFamilyIntakes(): Promise<{
   status: "ok" | "unauthorized" | "error";
   intakes: StoredIntake[];
@@ -151,39 +107,6 @@ export async function getSessionFamilyIntakes(): Promise<{
     return { status: "ok", intakes: (await response.json()) as StoredIntake[] };
   } catch {
     return { status: "error", intakes: [] };
-  }
-}
-
-function mergeIntakeSnapshot(stored: StoredIntake, data: IntakeApiSnapshot): StoredIntake {
-  return {
-    ...stored,
-    status: data.status,
-    matchCount: data.matchCount ?? stored.matchCount ?? 0,
-    careGuide: data.careGuide ?? stored.careGuide,
-    carePathway: data.carePathway ?? stored.carePathway,
-    carePlanSummary: data.carePlanSummary ?? stored.carePlanSummary,
-    visitScheduledAt: data.visitScheduledAt ?? stored.visitScheduledAt,
-    visitType: data.visitType ?? stored.visitType,
-    visitProviderName: data.visitProviderName ?? stored.visitProviderName,
-    visitNotes: data.visitNotes ?? stored.visitNotes
-  };
-}
-
-/** Load the device intake and merge the latest status from the API (for family timeline pages). */
-export async function refreshStoredIntakeFromApi(): Promise<StoredIntake | null> {
-  const stored = getStoredIntake();
-  if (!stored) return null;
-
-  try {
-    const response = await fetch(`/api/intakes/${stored.id}`);
-    if (!response.ok) return stored;
-
-    const data = (await response.json()) as IntakeApiSnapshot;
-    const updated = mergeIntakeSnapshot(stored, data);
-    saveStoredIntake(updated);
-    return updated;
-  } catch {
-    return stored;
   }
 }
 

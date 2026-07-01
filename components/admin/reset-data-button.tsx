@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Loader2, Trash2 } from "lucide-react";
-import { clearStoredIntake } from "@/lib/client/intake";
 import { clearSavedProviders } from "@/lib/client/favourites";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -27,7 +26,6 @@ export function AdminResetDataButton() {
         throw new Error(data.error || "Reset failed.");
       }
 
-      clearStoredIntake();
       clearSavedProviders();
       router.refresh();
     } catch (error) {

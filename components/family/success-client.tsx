@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getStoredIntake, refreshStoredIntakeFromApi, type StoredIntake } from "@/lib/client/intake";
+import { getSessionFamilyIntakes, type StoredIntake } from "@/lib/client/intake";
 import { CareJourneyTimeline } from "@/components/family/care-journey-timeline";
 import { IntakeSummaryCard } from "@/components/family/intake-summary-card";
 import { Button } from "@/components/ui/button";
@@ -17,9 +17,9 @@ export function FamilySuccessClient() {
     let active = true;
 
     async function load() {
-      const updated = await refreshStoredIntakeFromApi();
+      const result = await getSessionFamilyIntakes();
       if (active) {
-        setIntake(updated ?? getStoredIntake());
+        setIntake(result.status === "ok" ? (result.intakes[0] ?? null) : null);
         setLoading(false);
       }
     }
@@ -27,8 +27,8 @@ export function FamilySuccessClient() {
     void load();
 
     function handleFocus() {
-      void refreshStoredIntakeFromApi().then((updated) => {
-        if (active && updated) setIntake(updated);
+      void getSessionFamilyIntakes().then((result) => {
+        if (active && result.status === "ok") setIntake(result.intakes[0] ?? null);
       });
     }
 

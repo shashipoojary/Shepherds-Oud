@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Check, Heart, Loader2 } from "lucide-react";
-import { getStoredIntake } from "@/lib/client/intake";
+import { getSessionFamilyIntakes } from "@/lib/client/intake";
 import { isProviderSaved, toggleSavedProvider } from "@/lib/client/favourites";
 import { requestMatchAction } from "@/lib/client/match-request";
 import { familyMatchNextStep, isFamilyActionableMatchStatus, matchStatusLabel } from "@/lib/domain/match-status";
@@ -16,6 +16,7 @@ type PendingAction = "visit" | "callback" | "favourite" | null;
 export function ProviderDetailActions({ providerId, providerName }: { providerId: string; providerName: string }) {
   const [matchId, setMatchId] = useState<string | null>(null);
   const [matchStatus, setMatchStatus] = useState<string | null>(null);
+  const [intakeId, setIntakeId] = useState<string | null>(null);
   const [loadingContext, setLoadingContext] = useState(true);
   const [hasIntake, setHasIntake] = useState(false);
   const [pending, setPending] = useState<PendingAction>(null);
@@ -26,32 +27,41 @@ export function ProviderDetailActions({ providerId, providerName }: { providerId
   useEffect(() => {
     setSaved(isProviderSaved(providerId));
 
-    const intake = getStoredIntake();
-    setHasIntake(Boolean(intake));
+    let active = true;
 
-    if (!intake) {
-      setLoadingContext(false);
-      return;
-    }
+    async function loadContext() {
+      const result = await getSessionFamilyIntakes();
+      const intake = result.status === "ok" ? (result.intakes[0] ?? null) : null;
 
-    const currentIntake = intake;
+      if (!active) return;
 
-    async function loadMatch() {
+      setHasIntake(Boolean(intake));
+      setIntakeId(intake?.id ?? null);
+
+      if (!intake) {
+        setLoadingContext(false);
+        return;
+      }
+
       try {
-        const response = await fetch(`/api/matches?intakeId=${currentIntake.id}`);
+        const response = await fetch(`/api/matches?intakeId=${intake.id}`);
         if (!response.ok) return;
         const matches = (await response.json()) as ProviderMatch[];
         const match = matches.find((item) => item.id === providerId);
-        if (match?.matchId) {
+        if (match?.matchId && active) {
           setMatchId(match.matchId);
           setMatchStatus(match.matchStatus || null);
         }
       } finally {
-        setLoadingContext(false);
+        if (active) setLoadingContext(false);
       }
     }
 
-    void loadMatch();
+    void loadContext();
+
+    return () => {
+      active = false;
+    };
   }, [providerId]);
 
   useEffect(() => {
@@ -61,8 +71,7 @@ export function ProviderDetailActions({ providerId, providerName }: { providerId
   }, [message]);
 
   async function handleRequest(status: "VISIT_REQUESTED" | "CALLBACK_REQUESTED") {
-    const intake = getStoredIntake();
-    if (!intake?.id) {
+    if (!intakeId) {
       setMessageTone("error");
       setMessage("Complete the intake form first so we can link your request to this provider.");
       return;
@@ -77,7 +86,7 @@ export function ProviderDetailActions({ providerId, providerName }: { providerId
     setPending(status === "VISIT_REQUESTED" ? "visit" : "callback");
     setMessage("");
 
-    const result = await requestMatchAction({ matchId, intakeId: intake.id, status });
+    const result = await requestMatchAction({ matchId, intakeId, status });
 
     if (!result.ok) {
       setMessageTone("error");

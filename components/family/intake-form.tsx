@@ -6,11 +6,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { intakeSteps } from "@/lib/config/content";
 import { usePrelaunch } from "@/components/layout/prelaunch-context";
 import {
-  clearIntakeDraft,
   fieldKeyFor,
-  getStoredIntake,
-  saveStoredIntake,
-  storedIntakeToForm
+  getSessionFamilyIntakes,
+  intakeToForm,
+  type StoredIntake
 } from "@/lib/client/intake";
 import {
   chipFieldComplete,
@@ -54,7 +53,7 @@ function IntakeFormContent({ isUpdateMode, fromWaitlist }: { isUpdateMode: boole
   const [status, setStatus] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [ready, setReady] = useState(false);
-  const [existingIntake, setExistingIntake] = useState<ReturnType<typeof getStoredIntake>>(null);
+  const [existingIntake, setExistingIntake] = useState<StoredIntake | null>(null);
 
   const step = intakeSteps[stepIndex];
   const isFinal = stepIndex === intakeSteps.length - 1;
@@ -62,20 +61,46 @@ function IntakeFormContent({ isUpdateMode, fromWaitlist }: { isUpdateMode: boole
   const isUpdating = isUpdateMode && Boolean(existingIntake?.id);
 
   useEffect(() => {
-    const stored = getStoredIntake();
-    setExistingIntake(stored);
-    clearIntakeDraft();
+    let active = true;
+
     setStatus("");
     setSubmitting(false);
 
-    if (isUpdateMode && stored) {
-      setForm(storedIntakeToForm(stored));
-    } else {
+    async function loadExistingIntake() {
+      if (!isUpdateMode) {
+        if (!active) return;
+        setExistingIntake(null);
+        setForm({});
+        setStepIndex(0);
+        setReady(true);
+        return;
+      }
+
+      const result = await getSessionFamilyIntakes();
+      const intake = result.status === "ok" ? (result.intakes[0] ?? null) : null;
+
+      if (!active) return;
+
+      setExistingIntake(intake);
+      if (intake) {
+        setForm(intakeToForm(intake));
+      } else {
+        setForm({});
+      }
+      setReady(true);
+    }
+
+    if (!isUpdateMode) {
+      setExistingIntake(null);
       setForm({});
       setStepIndex(0);
     }
 
-    setReady(true);
+    void loadExistingIntake();
+
+    return () => {
+      active = false;
+    };
   }, [isUpdateMode]);
 
   const canContinue = useMemo(() => {
@@ -174,41 +199,6 @@ function IntakeFormContent({ isUpdateMode, fromWaitlist }: { isUpdateMode: boole
       return;
     }
 
-    const result = (await response.json()) as {
-      id: string;
-      status: string;
-      careGuide?: { name: string; email: string } | null;
-    };
-    saveStoredIntake({
-      id: result.id,
-      contactName: payload.contactName,
-      email: payload.email,
-      phone: payload.phone,
-      relationship: payload.relationship,
-      preferredArea: payload.preferredArea,
-      ageRange: payload.ageRange,
-      careTypes: payload.careTypes,
-      urgency: payload.urgency,
-      budget: payload.budget,
-      languages: payload.languages,
-      additionalNeeds: payload.additionalNeeds,
-      livingSituation: payload.livingSituation,
-      moveInTimeline: payload.moveInTimeline,
-      mobility: payload.mobility,
-      dementiaNeeds: payload.dementiaNeeds,
-      hospitalDischargeDate: payload.hospitalDischargeDate || null,
-      decisionMakerName: payload.decisionMakerName,
-      decisionMakerRelationship: payload.decisionMakerRelationship,
-      emotionalSupportNeeds: payload.emotionalSupportNeeds,
-      supportTypes: payload.supportTypes,
-      notes: payload.notes,
-      status: result.status || "NEW",
-      careGuide: result.careGuide ?? null,
-      matchCount: isUpdating ? (existingIntake?.matchCount ?? 0) : 0,
-      submittedAt: isUpdating ? (existingIntake?.submittedAt ?? new Date().toISOString()) : new Date().toISOString()
-    });
-
-    clearIntakeDraft();
     setForm({});
     setStepIndex(0);
     router.push("/family/dashboard");
