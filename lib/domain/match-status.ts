@@ -31,7 +31,7 @@ export function compareMatchPriority(a: string, b: string) {
 }
 
 export function isProviderActionNeeded(status: string) {
-  return ["VISIT_REQUESTED", "CALLBACK_REQUESTED", "SUGGESTED"].includes(status);
+  return ["VISIT_REQUESTED", "CALLBACK_REQUESTED"].includes(status);
 }
 
 export function isAdminActionNeeded(status: string) {

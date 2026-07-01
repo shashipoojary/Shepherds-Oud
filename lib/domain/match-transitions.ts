@@ -22,7 +22,7 @@ const transitions: Record<MatchActor, Record<MatchStatus, MatchStatus[]>> = {
     CLOSED: []
   },
   provider: {
-    SUGGESTED: ["ACCEPTED", "DECLINED"],
+    SUGGESTED: [],
     VISIT_REQUESTED: ["ACCEPTED", "DECLINED"],
     CALLBACK_REQUESTED: ["ACCEPTED", "DECLINED"],
     CONTACTED: [],

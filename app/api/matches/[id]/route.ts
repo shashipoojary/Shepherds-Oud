@@ -17,6 +17,7 @@ import {
 
 const guestFamilyStatuses = ["VISIT_REQUESTED", "CALLBACK_REQUESTED"] as const;
 const providerStatuses = ["ACCEPTED", "DECLINED"] as const;
+const providerActionableStatuses = ["VISIT_REQUESTED", "CALLBACK_REQUESTED"] as const;
 
 export const runtime = "nodejs";
 
@@ -84,6 +85,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         }
         if (!providerStatuses.includes(status as (typeof providerStatuses)[number])) {
           return jsonError("Forbidden", 403);
+        }
+        if (!providerActionableStatuses.includes(currentStatus as (typeof providerActionableStatuses)[number])) {
+          return jsonError("Providers can only respond after a family requests a visit or callback.", 400);
         }
         actor = "provider";
       } else if (role === "ADMIN") {

@@ -1,6 +1,16 @@
 import { prisma } from "@/lib/core/db";
 import type { ProviderProfileInput } from "@/lib/validation/provider";
 
+export const providerVisibleMatchStatuses = [
+  "VISIT_REQUESTED",
+  "CALLBACK_REQUESTED",
+  "CONTACTED",
+  "ACCEPTED",
+  "DECLINED",
+  "PLACED",
+  "CLOSED"
+] as const;
+
 export async function getUserLinkedProvider(userId: string) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -68,7 +78,10 @@ export async function upsertProviderForUser(userId: string, userEmail: string, i
 
 export async function getProviderInquiries(providerId: string) {
   return prisma.match.findMany({
-    where: { providerId },
+    where: {
+      providerId,
+      status: { in: [...providerVisibleMatchStatuses] }
+    },
     orderBy: { createdAt: "desc" },
     include: {
       intake: {
