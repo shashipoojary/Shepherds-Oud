@@ -4,7 +4,7 @@ import { dash } from "@better-auth/infra";
 import { nextCookies } from "better-auth/next-js";
 import { magicLink } from "better-auth/plugins";
 import { prisma } from "@/lib/core/db";
-import { isAdminEmail, resolveRole } from "@/lib/auth/roles";
+import { isAdminEmail, resolveRole, resolveRoleForUser } from "@/lib/auth/roles";
 import { sendProviderMagicLinkEmail } from "@/lib/email/provider-magic-link";
 
 const appUrl = process.env.BETTER_AUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
@@ -41,14 +41,14 @@ export const auth = betterAuth({
         after: async (session) => {
           const user = await prisma.user.findUnique({
             where: { id: session.userId },
-            select: { id: true, email: true, role: true }
+            select: { id: true, email: true, role: true, linkedProviderId: true }
           });
 
           if (!user?.email) {
             return;
           }
 
-          const role = resolveRole(user.email);
+          const role = await resolveRoleForUser(user);
 
           if (user.role !== role) {
             await prisma.user.update({

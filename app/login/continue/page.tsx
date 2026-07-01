@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getServerSession } from "@/lib/auth/server";
-import { isAdminEmail, resolveRole } from "@/lib/auth/roles";
+import { isAdminEmail, isProviderEmail, resolveRoleForUser } from "@/lib/auth/roles";
 import { postLoginHref, PROVIDER_DASHBOARD_PATH } from "@/lib/auth/routes";
 import { prisma } from "@/lib/core/db";
 
@@ -26,7 +26,10 @@ export default async function LoginContinuePage({ searchParams }: { searchParams
   }
 
   const destination = destinationFromCallback(callbackUrl);
-  let role = resolveRole(session.user.email);
+  let role = await resolveRoleForUser({
+    id: session.user.id,
+    email: session.user.email
+  });
 
   if (session.user.role !== role) {
     await prisma.user.update({
@@ -37,8 +40,8 @@ export default async function LoginContinuePage({ searchParams }: { searchParams
 
   const isProviderLogin = destination?.startsWith(PROVIDER_DASHBOARD_PATH);
 
-  // Only assign provider role for explicit facility sign-in, and never override admins.
-  if (isProviderLogin && !isAdminEmail(session.user.email) && role !== "ADMIN") {
+  // Only assign provider role for explicit facility sign-in when the email is approved.
+  if (isProviderLogin && !isAdminEmail(session.user.email) && isProviderEmail(session.user.email) && role !== "ADMIN") {
     if (role !== "PROVIDER") {
       await prisma.user.update({
         where: { id: session.user.id },

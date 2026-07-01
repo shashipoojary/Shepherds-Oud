@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth/config";
-import { resolveRole } from "@/lib/auth/roles";
+import { resolveRoleForUser } from "@/lib/auth/roles";
 import { prisma } from "@/lib/core/db";
 
 export type AppRole = "FAMILY" | "PROVIDER" | "ADMIN";
@@ -9,7 +9,10 @@ export type AppRole = "FAMILY" | "PROVIDER" | "ADMIN";
 type Session = NonNullable<Awaited<ReturnType<typeof auth.api.getSession>>>;
 
 async function syncUserRole(session: Session) {
-  const resolvedRole = resolveRole(session.user.email);
+  const resolvedRole = await resolveRoleForUser({
+    id: session.user.id,
+    email: session.user.email
+  });
 
   if (session.user.role === resolvedRole) {
     return { session, role: resolvedRole };
@@ -46,7 +49,8 @@ export async function getServerSession() {
 }
 
 export function getUserRole(session: Session) {
-  return resolveRole(session.user.email);
+  const role = session.user.role;
+  return role === "ADMIN" || role === "PROVIDER" || role === "FAMILY" ? role : "FAMILY";
 }
 
 export async function requireSession(callbackUrl: string) {
