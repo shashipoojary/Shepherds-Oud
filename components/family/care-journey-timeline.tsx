@@ -8,11 +8,13 @@ import { cn } from "@/lib/core/utils";
 export function CareJourneyTimeline({
   status,
   careGuide,
-  compact = false
+  compact = false,
+  showCarePlanLink = false
 }: {
   status: string;
   careGuide?: CareGuideInfo | null;
   compact?: boolean;
+  showCarePlanLink?: boolean;
 }) {
   const currentIndex = journeyStepIndex(status);
   const normalized = normalizeIntakeStatus(status);
@@ -78,6 +80,14 @@ export function CareJourneyTimeline({
                 {isCurrent ? (
                   <div className="mt-3 rounded-xl border border-brand-green-dark/20 bg-brand-green-pale/15 px-4 py-3 sm:px-5 sm:py-4">
                     <p className="text-sm leading-7 text-neutral-700">{step.hint}</p>
+                    {showCarePlanLink && step.status === "CARE_PLAN" ? (
+                      <p className="mt-3 text-sm leading-6 text-neutral-700">
+                        <a href="#care-guide-plan" className="font-semibold text-brand-amber underline underline-offset-4 hover:text-brand-amber-mid">
+                          View the recommended pathway and plan details
+                        </a>
+                        .
+                      </p>
+                    ) : null}
                     {showGuide ? (
                       <p className="mt-3 text-sm font-medium text-brand-green-dark">
                         {careGuide.name} ·{" "}
