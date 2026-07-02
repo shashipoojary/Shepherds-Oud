@@ -93,6 +93,8 @@ type FormState = {
 
 type DashboardData = {
   provider: ProviderRecord | null;
+  profileComplete: boolean;
+  profileMissingRequirements: string[];
   inquiries: Inquiry[];
 };
 
@@ -182,6 +184,10 @@ async function readApiError(response: Response) {
 export function ProviderDashboardClient({ initialData }: { initialData?: DashboardData }) {
   const [form, setForm] = useState<FormState>(() => toForm(initialData?.provider ?? null));
   const [inquiries, setInquiries] = useState<Inquiry[]>(initialData?.inquiries ?? []);
+  const [profileComplete, setProfileComplete] = useState(initialData?.profileComplete ?? false);
+  const [profileMissingRequirements, setProfileMissingRequirements] = useState<string[]>(
+    initialData?.profileMissingRequirements ?? []
+  );
   const [loading, setLoading] = useState(!initialData);
   const [message, setMessage] = useState("");
   const [messageTone, setMessageTone] = useState<"success" | "error">("success");
@@ -203,6 +209,8 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
         const data = (await response.json()) as DashboardData;
         setForm(toForm(data.provider));
         setInquiries(data.inquiries);
+        setProfileComplete(data.profileComplete);
+        setProfileMissingRequirements(data.profileMissingRequirements);
         setProviderId(data.provider?.id ?? null);
         setMessageTone("success");
         setMessage("Dashboard updated.");
@@ -228,6 +236,8 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
           const data = (await response.json()) as DashboardData;
           setForm(toForm(data.provider));
           setInquiries(data.inquiries);
+          setProfileComplete(data.profileComplete);
+          setProfileMissingRequirements(data.profileMissingRequirements);
           setProviderId(data.provider?.id ?? null);
         } else {
           setMessageTone("error");
@@ -348,11 +358,20 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
         return;
       }
 
-      const provider = (await response.json()) as ProviderRecord;
+      const data = (await response.json()) as DashboardData;
+      const provider = data.provider;
+      if (!provider) {
+        setMessageTone("error");
+        setMessage("Could not read the saved provider profile.");
+        return;
+      }
       setForm(toForm(provider));
       setProviderId(provider.id);
+      setProfileComplete(data.profileComplete);
+      setProfileMissingRequirements(data.profileMissingRequirements);
+      setInquiries(data.inquiries ?? []);
       setMessageTone("success");
-      setMessage("Facility profile saved.");
+      setMessage(data.profileComplete ? "Facility profile saved. You can now receive care requests." : "Facility profile saved. Complete the remaining items to receive care requests.");
 
       try {
         await recordAction({
@@ -455,11 +474,34 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
       <StatGrid
         stats={[
           [bedsDisplay, "Available beds"],
-          [String(newInquiries), "Action needed"],
+          [profileComplete ? String(newInquiries) : "Locked", "Action needed"],
           [form.availabilityStatus, "Availability"],
-          [form.services.length ? String(form.services.length) : "—", "Services listed"]
+          [profileComplete ? "Complete" : `${profileMissingRequirements.length} missing`, "Profile status"]
         ]}
       />
+
+      {!profileComplete ? (
+        <section className="mt-5 rounded-card border border-brand-amber/35 bg-brand-beige-light/40 p-5 shadow-soft">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <h2 className="font-semibold text-ink">Complete your facility profile</h2>
+              <p className="mt-1 max-w-2xl text-sm leading-6 text-ink/70">
+                Your profile is saved, but care requests stay locked until families and Care Guides have enough information to assess fit.
+              </p>
+            </div>
+            <span className="w-fit rounded-full bg-white px-3 py-1 text-xs font-semibold text-brand-amber-dark">
+              {profileMissingRequirements.length} item{profileMissingRequirements.length === 1 ? "" : "s"} left
+            </span>
+          </div>
+          <ul className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {profileMissingRequirements.map((item) => (
+              <li key={item} className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-ink/75">
+                {item}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       <div className="mt-5 grid gap-5 xl:grid-cols-[1fr_420px]">
         <section className="flex min-h-[26rem] max-h-[min(44rem,calc(100dvh-5.5rem))] flex-col overflow-hidden rounded-card border border-[var(--card-border)] bg-white p-4 shadow-soft sm:min-h-[18rem] sm:max-h-[min(32rem,calc(100dvh-12rem))] sm:p-5">
@@ -478,7 +520,14 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
               ) : null}
             </div>
           </div>
-          {inquiries.length ? (
+          {!profileComplete ? (
+            <div className="mt-4">
+              <EmptyState
+                title="Complete your profile to receive care requests"
+                description="Care requests are hidden until your facility profile has contact details, services, care levels, and availability."
+              />
+            </div>
+          ) : inquiries.length ? (
             <div
               className="scroll-area mt-4 min-h-0 flex-1 basis-0"
               role="region"

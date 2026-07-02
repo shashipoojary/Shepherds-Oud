@@ -2,6 +2,7 @@ import { prisma } from "@/lib/core/db";
 import { canAccessIntake } from "@/lib/auth/case-access";
 import { getServerSession, getUserRole } from "@/lib/auth/server";
 import { getUserLinkedProvider } from "@/lib/providers/server";
+import { isProviderProfileComplete } from "@/lib/providers/completeness";
 import { updateMatchSchema } from "@/lib/validation/match";
 import { syncIntakeCaseFromMatch } from "@/lib/domain/intake-case-sync";
 import { sendProviderInquiryEmail } from "@/lib/email/provider-inquiry-email";
@@ -82,6 +83,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         const linked = await getUserLinkedProvider(session.user.id);
         if (!linked || linked.id !== existing.providerId) {
           return jsonError("Forbidden", 403);
+        }
+        if (!isProviderProfileComplete(linked)) {
+          return jsonError("Complete your facility profile before responding to care requests.", 400);
         }
         if (!providerStatuses.includes(status as (typeof providerStatuses)[number])) {
           return jsonError("Forbidden", 403);

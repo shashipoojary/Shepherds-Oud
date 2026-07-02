@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/core/db";
 import type { ProviderProfileInput } from "@/lib/validation/provider";
+import { getProviderProfileMissingRequirements, isProviderProfileComplete } from "@/lib/providers/completeness";
 
 export const providerVisibleMatchStatuses = [
   "VISIT_REQUESTED",
@@ -77,6 +78,11 @@ export async function upsertProviderForUser(userId: string, userEmail: string, i
 }
 
 export async function getProviderInquiries(providerId: string) {
+  const provider = await prisma.provider.findUnique({ where: { id: providerId } });
+  if (!isProviderProfileComplete(provider)) {
+    return [];
+  }
+
   return prisma.match.findMany({
     where: {
       providerId,
@@ -102,10 +108,14 @@ export async function getProviderInquiries(providerId: string) {
 
 export async function getProviderDashboardData(userId: string) {
   const provider = await getUserLinkedProvider(userId);
-  const inquiries = provider ? await getProviderInquiries(provider.id) : [];
+  const profileMissingRequirements = getProviderProfileMissingRequirements(provider);
+  const profileComplete = profileMissingRequirements.length === 0;
+  const inquiries = provider && profileComplete ? await getProviderInquiries(provider.id) : [];
 
   return {
     provider,
+    profileComplete,
+    profileMissingRequirements,
     inquiries: inquiries.map((match) => ({
       id: match.id,
       score: match.score,

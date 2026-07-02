@@ -3,6 +3,7 @@ import { logError } from "@/lib/core/logger";
 import { handleApiError, jsonError, jsonOk, readJsonBody } from "@/lib/core/api-helpers";
 import { providerSaveErrorMessage } from "@/lib/providers/errors";
 import { getProviderInquiries, getUserLinkedProvider, upsertProviderForUser } from "@/lib/providers/server";
+import { getProviderProfileMissingRequirements } from "@/lib/providers/completeness";
 import { providerProfileSchema } from "@/lib/validation/provider";
 
 export const runtime = "nodejs";
@@ -22,10 +23,14 @@ export async function GET() {
     const auth = await assertProviderAccess();
     if (auth.error) return auth.error;
     const provider = await getUserLinkedProvider(auth.session!.user.id);
-    const inquiries = provider ? await getProviderInquiries(provider.id) : [];
+    const profileMissingRequirements = getProviderProfileMissingRequirements(provider);
+    const profileComplete = profileMissingRequirements.length === 0;
+    const inquiries = provider && profileComplete ? await getProviderInquiries(provider.id) : [];
 
     return jsonOk({
       provider,
+      profileComplete,
+      profileMissingRequirements,
       inquiries: inquiries.map((match) => ({
         id: match.id,
         score: match.score,
@@ -58,8 +63,14 @@ export async function PATCH(request: Request) {
     }
 
     const provider = await upsertProviderForUser(auth.session!.user.id, auth.session!.user.email, parsed.data);
+    const profileMissingRequirements = getProviderProfileMissingRequirements(provider);
 
-    return jsonOk(provider);
+    return jsonOk({
+      provider,
+      profileComplete: profileMissingRequirements.length === 0,
+      profileMissingRequirements,
+      inquiries: []
+    });
   } catch (error) {
     logError("provider_profile_save", {
       message: error instanceof Error ? error.message : "Unknown provider save error"
