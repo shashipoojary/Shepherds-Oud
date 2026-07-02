@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getServerSession } from "@/lib/auth/server";
-import { isAdminEmail, isProviderEmail, resolveRoleForUser } from "@/lib/auth/roles";
+import { isAdminEmail, resolveRoleForUser } from "@/lib/auth/roles";
 import { postLoginHref, PROVIDER_DASHBOARD_PATH } from "@/lib/auth/routes";
 import { prisma } from "@/lib/core/db";
 import { acceptProviderInviteForUser } from "@/lib/providers/invite";
@@ -60,8 +60,8 @@ export default async function LoginContinuePage({ searchParams }: { searchParams
     }
   }
 
-  // Only assign provider role for explicit facility sign-in when the email is approved.
-  if (isProviderLogin && !isAdminEmail(session.user.email) && isProviderEmail(session.user.email) && role !== "ADMIN") {
+  // Explicit facility sign-in should land in provider onboarding, even before a profile exists.
+  if (isProviderLogin && !isAdminEmail(session.user.email) && role !== "ADMIN") {
     if (role !== "PROVIDER") {
       await prisma.user.update({
         where: { id: session.user.id },

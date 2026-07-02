@@ -55,6 +55,10 @@ export async function resolveRoleForUser(user: {
     return "ADMIN";
   }
 
+  if (user.role === "PROVIDER") {
+    return "PROVIDER";
+  }
+
   const role = resolveRole(user.email);
 
   if (role !== "FAMILY") {
