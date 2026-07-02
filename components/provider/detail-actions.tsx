@@ -26,6 +26,7 @@ export function ProviderDetailActions({ providerId, providerName }: { providerId
 function ProviderDetailActionsContent({ providerId, providerName }: { providerId: string; providerName: string }) {
   const searchParams = useSearchParams();
   const requestedIntakeId = searchParams.get("intakeId");
+  const fromDashboard = searchParams.get("from") === "dashboard";
   const [matchId, setMatchId] = useState<string | null>(null);
   const [matchStatus, setMatchStatus] = useState<string | null>(null);
   const [intakeId, setIntakeId] = useState<string | null>(null);
@@ -141,6 +142,8 @@ function ProviderDetailActionsContent({ providerId, providerName }: { providerId
   const placed = matchStatus === "PLACED";
   const inProgress = isFamilyActionableMatchStatus(matchStatus || undefined) && (accepted || coordinated || placed);
   const canRequest = Boolean(matchId) && !accepted && !coordinated && !placed;
+  const dashboardHref = intakeId ? `${withIntakeId("/family/dashboard", intakeId)}#provider-updates` : "/family/dashboard#provider-updates";
+  const resultsHref = intakeId ? withIntakeId("/family/results", intakeId) : "/family/results";
 
   if (loadingContext) {
     return <ProviderDetailActionsSkeleton />;
@@ -183,11 +186,13 @@ function ProviderDetailActionsContent({ providerId, providerName }: { providerId
       {inProgress ? (
         <div className="mt-5 flex flex-col gap-2">
           <Button asChild className="w-full">
-            <Link href={intakeId ? withIntakeId("/family/results", intakeId) : "/family/results"}>Back to all matches</Link>
+            <Link href={fromDashboard ? dashboardHref : resultsHref}>{fromDashboard ? "Back to your dashboard" : "Back to all matches"}</Link>
           </Button>
-          <Button asChild variant="outline" className="w-full">
-            <Link href={intakeId ? withIntakeId("/family/dashboard", intakeId) : "/family/dashboard"}>Your dashboard</Link>
-          </Button>
+          {!fromDashboard ? (
+            <Button asChild variant="outline" className="w-full">
+              <Link href={dashboardHref}>Your dashboard</Link>
+            </Button>
+          ) : null}
           <Button variant="ghost" className="w-full" disabled={pending === "favourite"} onClick={handleFavourite}>
             {pending === "favourite" ? (
               <>

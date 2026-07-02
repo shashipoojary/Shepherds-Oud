@@ -60,6 +60,7 @@ function FamilyDashboardContent() {
 
   const selection = selectFamilyIntake(intakes, requestedIntakeId);
   const intake = selection.state === "selected" ? selection.intake : null;
+  const matchCount = intake?.matchCount ?? 0;
 
   if (selection.state === "needs-picker" || selection.state === "not-found") {
     return (
@@ -112,6 +113,8 @@ function FamilyDashboardContent() {
               status={intake.status}
               careGuide={intake.careGuide}
               showCarePlanLink={Boolean(intake.carePathway || intake.carePlanSummary)}
+              matchesHref={matchCount > 0 ? withIntakeId("/family/results", intake.id) : null}
+              visitDetailsHref={intake.visitScheduledAt ? "#care-guide-plan" : null}
             />
             <IntakeSummaryCard intake={intake} showCareGuide={false} />
             <FamilyActiveMatches key={`${intake.id}-${intake.matchCount}`} intakeId={intake.id} />

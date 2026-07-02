@@ -154,9 +154,9 @@ export function getAdminCaseNextAction(intake: IntakeForNextAction, matches: Mat
 
   if (status === "PLACEMENT_IN_PROGRESS") {
     return intakeAction("PLACED", {
-      label: "Confirm placement",
-      description: "Record placement once the family commits to a provider.",
-      instruction: "Use section 6 to confirm placement, then the follow-up schedule begins.",
+      label: "Confirm care arranged",
+      description: "Use once admission, move-in, or home-care start details are secured.",
+      instruction: "Use section 6 to confirm care is arranged, then the follow-up schedule begins.",
       target: "Section 6 - Advance case status"
     });
   }

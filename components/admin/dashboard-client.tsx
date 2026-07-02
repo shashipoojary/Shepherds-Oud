@@ -1522,15 +1522,15 @@ function InquiriesTable({
     <>
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-100 px-4 py-3">
         <div>
-          <p className="text-sm font-semibold text-ink">Provider follow-up queue</p>
+          <p className="text-sm font-semibold text-ink">{showHistory ? "All provider match records" : "Provider follow-up queue"}</p>
           <p className="text-xs leading-5 text-neutral-500">
             {showHistory
-              ? "Showing every match record, including suggested, declined, placed, and closed history."
-              : "Showing visit requests, callback requests, accepted responses, and coordinated follow-ups."}
+              ? "Showing every match record, including suggested matches and closed history."
+              : "Only showing matches that need provider or Care Guide follow-up."}
           </p>
         </div>
         <Button type="button" size="sm" variant="outline" onClick={() => setShowHistory((current) => !current)}>
-          {showHistory ? "Hide history" : "Show full history"}
+          {showHistory ? "Back to follow-up queue" : "Show all matches"}
         </Button>
       </div>
 
@@ -1715,8 +1715,8 @@ function InquiryDetailPanel({
                 <li>Create a match — family sees the provider on their shortlist.</li>
                 <li>Family requests a visit or callback.</li>
                 <li>Provider accepts or declines.</li>
-                <li>Mark coordinated after arranging the visit or call.</li>
-                <li>Record placement when the family commits, or close the inquiry.</li>
+                <li>Mark the visit or call as arranged after timing is agreed.</li>
+                <li>Record the chosen provider when the family commits, or close the inquiry.</li>
               </ol>
             </PanelSection>
 
@@ -1759,7 +1759,7 @@ function InquiryDetailPanel({
                   {pendingActionKey === `${inquiry.id}:PLACED` ? "Saving..." : "Confirm"}
                 </Button>
                 {inquiry.statusRaw === "ACCEPTED" || inquiry.statusRaw === "CONTACTED" ? null : (
-                  <p className="mt-2 text-xs leading-5 text-neutral-500">Coordinate with the provider before recording placement.</p>
+                  <p className="mt-2 text-xs leading-5 text-neutral-500">Arrange the visit or call before recording the chosen provider.</p>
                 )}
               </PanelSection>
             ) : null}

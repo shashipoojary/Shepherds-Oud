@@ -6,20 +6,32 @@ import { availabilityBadgeVariant, Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { getProviderById } from "@/lib/data/providers";
 
-export default async function ProviderDetailPage({ params }: { params: Promise<{ providerId: string }> }) {
+export default async function ProviderDetailPage({
+  params,
+  searchParams
+}: {
+  params: Promise<{ providerId: string }>;
+  searchParams?: Promise<{ intakeId?: string; from?: string }>;
+}) {
   const { providerId } = await params;
+  const query = await searchParams;
   const provider = await getProviderById(providerId);
 
   if (!provider) {
     notFound();
   }
 
+  const intakeQuery = query?.intakeId ? `?intakeId=${encodeURIComponent(query.intakeId)}` : "";
+  const fromDashboard = query?.from === "dashboard";
+  const backHref = fromDashboard ? `/family/dashboard${intakeQuery}#provider-updates` : `/family/results${intakeQuery}`;
+  const backLabel = fromDashboard ? "Back to your dashboard" : "Back to matches";
+
   return (
     <>
       <SiteHeader />
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-        <Link href="/family/results" className="text-sm text-ink/60 hover:text-brand-amber">
-          Back to results
+        <Link href={backHref} className="text-sm text-ink/60 hover:text-brand-amber">
+          {backLabel}
         </Link>
         <article className="mt-5 overflow-hidden rounded-card border border-[var(--card-border)] bg-white shadow-panel">
           <header className="bg-brand-green-dark p-8 text-white">

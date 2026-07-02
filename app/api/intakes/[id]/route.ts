@@ -10,6 +10,7 @@ import {
   normalizeIntakeStatus
 } from "@/lib/domain/intake-workflow";
 import { sendIntakeStatusEmail } from "@/lib/email/intake-status-email";
+import { sendProviderStatusEmail } from "@/lib/email/provider-status-email";
 import { handleApiError, jsonError, jsonOk, rateLimitResponse, readJsonBody, runInBackground } from "@/lib/core/api-helpers";
 import { getIsPrelaunch } from "@/lib/config/prelaunch";
 import { intakeSchema } from "@/lib/validation/intake";
@@ -225,7 +226,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       });
 
       const normalizedStatus = normalizeIntakeStatus(intake.status);
-      if (nextStatus && nextStatus !== currentStatus) {
+      const shouldNotifyVisitSchedule = Boolean(
+        intake.visitScheduledAt && (nextStatus === "VISIT_SCHEDULED" || parsed.data.visitScheduledAt !== undefined)
+      );
+
+      if (nextStatus && nextStatus !== currentStatus && normalizedStatus !== "VISIT_SCHEDULED") {
         runInBackground(
           () =>
             sendIntakeStatusEmail({
@@ -240,6 +245,58 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
             }),
           "intake_status_email"
         );
+      }
+
+      if (shouldNotifyVisitSchedule) {
+        runInBackground(async () => {
+          await sendIntakeStatusEmail({
+            contactName: intake.contactName,
+            email: intake.email,
+            intakeId: intake.id,
+            status: "VISIT_SCHEDULED",
+            carePathway: intake.carePathway,
+            careGuide: intake.careGuide,
+            visitProviderName: intake.visitProviderName,
+            visitScheduledAt: intake.visitScheduledAt
+          });
+
+          const providerMatches = await prisma.match.findMany({
+            where: {
+              intakeId: intake.id,
+              status: { in: ["ACCEPTED", "CONTACTED", "PLACED"] }
+            },
+            include: {
+              provider: {
+                select: {
+                  name: true,
+                  email: true
+                }
+              }
+            }
+          });
+
+          const providerName = intake.visitProviderName?.trim().toLowerCase();
+          const targetedMatches =
+            providerName && providerMatches.some((match) => match.provider.name.trim().toLowerCase() === providerName)
+              ? providerMatches.filter((match) => match.provider.name.trim().toLowerCase() === providerName)
+              : providerMatches;
+
+          await Promise.all(
+            targetedMatches
+              .filter((match) => match.provider.email)
+              .map((match) =>
+                sendProviderStatusEmail({
+                  providerEmail: match.provider.email || "",
+                  providerName: match.provider.name,
+                  familyName: intake.contactName,
+                  kind: "visit_scheduled",
+                  visitScheduledAt: intake.visitScheduledAt,
+                  visitType: intake.visitType,
+                  visitNotes: intake.visitNotes
+                })
+              )
+          );
+        }, "visit_schedule_email");
       }
 
       return jsonOk({ ...intake, status: normalizedStatus });

@@ -9,12 +9,16 @@ export function CareJourneyTimeline({
   status,
   careGuide,
   compact = false,
-  showCarePlanLink = false
+  showCarePlanLink = false,
+  matchesHref,
+  visitDetailsHref
 }: {
   status: string;
   careGuide?: CareGuideInfo | null;
   compact?: boolean;
   showCarePlanLink?: boolean;
+  matchesHref?: string | null;
+  visitDetailsHref?: string | null;
 }) {
   const currentIndex = journeyStepIndex(status);
   const normalized = normalizeIntakeStatus(status);
@@ -84,6 +88,22 @@ export function CareJourneyTimeline({
                       <p className="mt-3 text-sm leading-6 text-neutral-700">
                         <a href="#care-guide-plan" className="font-semibold text-brand-amber underline underline-offset-4 hover:text-brand-amber-mid">
                           View the recommended pathway and plan details
+                        </a>
+                        .
+                      </p>
+                    ) : null}
+                    {matchesHref && step.status === "MATCHED" ? (
+                      <p className="mt-3 text-sm leading-6 text-neutral-700">
+                        <a href={matchesHref} className="font-semibold text-brand-amber underline underline-offset-4 hover:text-brand-amber-mid">
+                          Review the providers on your shortlist
+                        </a>
+                        .
+                      </p>
+                    ) : null}
+                    {visitDetailsHref && (step.status === "VISIT_SCHEDULED" || step.status === "PROVIDER_RESPONSE") ? (
+                      <p className="mt-3 text-sm leading-6 text-neutral-700">
+                        <a href={visitDetailsHref} className="font-semibold text-brand-amber underline underline-offset-4 hover:text-brand-amber-mid">
+                          View the scheduled visit or callback details
                         </a>
                         .
                       </p>

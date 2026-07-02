@@ -172,12 +172,12 @@ export function adminIntakeActionMeta(status: IntakeStatus) {
       };
     case "PLACEMENT_IN_PROGRESS":
       return {
-        label: "Placement in progress",
-        description: "The family is moving forward with admission or move-in."
+        label: "Care arrangement in progress",
+        description: "The family chose a provider. Confirm once care is fully arranged."
       };
     case "PLACED":
       return {
-        label: "Record placement",
+        label: "Confirm care arranged",
         description: "Care has been secured for the family."
       };
     case "FOLLOW_UP_7":

@@ -22,7 +22,11 @@ export async function sendIntakeStatusEmail(input: {
   }
 
   const guideName = input.careGuide?.name || "Your Care Guide";
-  const dashboardUrl = `${appUrl}/family/dashboard`;
+  const dashboardUrl = `${appUrl}/family/dashboard?intakeId=${encodeURIComponent(input.intakeId)}`;
+  const visitWhen =
+    input.visitScheduledAt && !Number.isNaN(input.visitScheduledAt.getTime())
+      ? input.visitScheduledAt.toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })
+      : "the agreed time";
 
   const messages: Partial<Record<string, { title: string; paragraphs: string[] }>> = {
     MATCHED: {
@@ -32,6 +36,15 @@ export async function sendIntakeStatusEmail(input: {
         "Matched providers are now on your shortlist — the main update in your guided journey.",
         `${guideName} is here if you have questions while you compare options together.`,
         "Open your dashboard to review matches and request visits."
+      ]
+    },
+    VISIT_SCHEDULED: {
+      title: "Your visit or callback is scheduled",
+      paragraphs: [
+        `Hello ${input.contactName},`,
+        `${guideName} has scheduled the next step${input.visitProviderName ? ` with ${input.visitProviderName}` : ""}.`,
+        `Timing: ${visitWhen}.`,
+        "Open your dashboard to review the details and any notes from your Care Guide."
       ]
     },
     PLACED: {

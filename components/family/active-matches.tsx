@@ -9,6 +9,7 @@ import {
   matchStatusBadgeClass,
   matchStatusLabel
 } from "@/lib/domain/match-status";
+import { withIntakeId } from "@/lib/client/case-selection";
 import { Button } from "@/components/ui/button";
 import type { ProviderMatch } from "@/lib/core/types";
 
@@ -49,19 +50,19 @@ export function FamilyActiveMatches({ intakeId }: { intakeId: string }) {
   const suggested = matches.filter((match) => !isFamilyActionableMatchStatus(match.matchStatus));
 
   return (
-    <section className="mt-5 space-y-4">
+    <section id="provider-updates" className="mt-5 scroll-mt-24 space-y-4">
       {active.length ? (
         <div className="rounded-2xl border border-brand-amber/25 bg-brand-amber/5 p-5 shadow-soft">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <p className="section-label">Needs your attention</p>
-              <h2 className="mt-1 text-lg font-semibold text-ink">Provider updates</h2>
+              <p className="section-label">Provider response</p>
+              <h2 className="mt-1 text-lg font-semibold text-ink">Your Care Guide is coordinating next steps</h2>
               <p className="mt-1 text-sm text-neutral-600">
-                Open a provider to see full details. Request visits or callbacks from your matches page.
+                These are updates from providers you selected. Your Care Guide will arrange the visit, callback, or next decision with you.
               </p>
             </div>
             <Button asChild size="sm" variant="outline">
-              <Link href="/family/results">All matches</Link>
+              <Link href={withIntakeId("/family/results", intakeId)}>View shortlist</Link>
             </Button>
           </div>
 
@@ -86,8 +87,8 @@ export function FamilyActiveMatches({ intakeId }: { intakeId: string }) {
                     ) : null}
                   </div>
                   <Button asChild size="sm" className="shrink-0">
-                    <Link href={`/providers/${match.id}`}>
-                      Open provider <ArrowRight className="h-4 w-4" />
+                    <Link href={withIntakeId(`/providers/${match.id}?from=dashboard`, intakeId)}>
+                      Review provider <ArrowRight className="h-4 w-4" />
                     </Link>
                   </Button>
                 </div>
@@ -105,7 +106,7 @@ export function FamilyActiveMatches({ intakeId }: { intakeId: string }) {
           </h2>
           <p className="mt-1 text-sm text-neutral-600">Review options and request a visit or callback when you are ready.</p>
           <Button asChild className="mt-4">
-            <Link href="/family/results">
+            <Link href={withIntakeId("/family/results", intakeId)}>
               View matches <ArrowRight className="h-4 w-4" />
             </Link>
           </Button>

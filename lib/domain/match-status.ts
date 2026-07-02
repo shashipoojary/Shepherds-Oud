@@ -134,13 +134,13 @@ export function adminInquiryActionMeta(status: MatchAdminAction) {
   switch (status) {
     case "CONTACTED":
       return {
-        label: "Mark coordinated",
-        description: "You arranged the visit or call with the family and provider."
+        label: "Mark visit/call arranged",
+        description: "Use after you have agreed the visit or callback timing with the family and provider."
       };
     case "PLACED":
       return {
-        label: "Record placement",
-        description: "The family chose this provider. Updates their match status."
+        label: "Record chosen provider",
+        description: "Use when the family decides to move forward with this provider."
       };
     case "CLOSED":
       return {
@@ -235,6 +235,19 @@ export function providerInquiryActionMessage(status: string, familyName: string,
 }
 
 export function adminInquiryHint(status: string) {
+  const updatedHints: Record<string, string> = {
+    SUGGESTED: "Step 1 done - family can see this provider. Wait for them to request a visit or callback.",
+    VISIT_REQUESTED: "Step 2 - family requested a visit. Provider should accept or decline in their dashboard.",
+    CALLBACK_REQUESTED: "Step 2 - family requested a callback. Provider should accept or decline in their dashboard.",
+    ACCEPTED: "Step 3 - provider accepted. Call both sides, arrange timing, then mark the visit or call as arranged.",
+    CONTACTED: "Step 4 - visit or call arranged. Record the chosen provider when the family commits, or close the inquiry.",
+    DECLINED: "Provider declined. Offer the family another match from the Families tab.",
+    PLACED: "Provider choice recorded. The family sees placement in progress on their dashboard.",
+    CLOSED: "This inquiry is closed."
+  };
+
+  if (updatedHints[status]) return updatedHints[status];
+
   switch (status) {
     case "SUGGESTED":
       return "Step 1 done — family can see this provider. Wait for them to request a visit or callback.";

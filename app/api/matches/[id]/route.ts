@@ -6,6 +6,7 @@ import { isProviderProfileComplete } from "@/lib/providers/completeness";
 import { updateMatchSchema } from "@/lib/validation/match";
 import { syncIntakeCaseFromMatch } from "@/lib/domain/intake-case-sync";
 import { sendProviderInquiryEmail } from "@/lib/email/provider-inquiry-email";
+import { sendProviderStatusEmail } from "@/lib/email/provider-status-email";
 import { familyRequestNote } from "@/lib/domain/match-status";
 import { handleApiError, jsonError, jsonOk, readJsonBody, runInBackground } from "@/lib/core/api-helpers";
 import {
@@ -42,6 +43,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
             userId: true,
             careGuideId: true,
             contactName: true,
+            email: true,
             preferredArea: true,
             careTypes: true,
             urgency: true
@@ -139,8 +141,21 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       );
     }
 
-    if (actor === "provider" && (nextStatus === "ACCEPTED" || nextStatus === "DECLINED")) {
+    if ((actor === "provider" && (nextStatus === "ACCEPTED" || nextStatus === "DECLINED")) || (actor === "admin" && nextStatus === "PLACED")) {
       await syncIntakeCaseFromMatch(existing.intakeId, nextStatus);
+    }
+
+    if (actor === "admin" && nextStatus === "PLACED" && providerEmail) {
+      runInBackground(
+        () =>
+          sendProviderStatusEmail({
+            providerEmail,
+            providerName: existing.provider.name,
+            familyName: existing.intake.contactName,
+            kind: "care_chosen"
+          }),
+        "provider_care_chosen_email"
+      );
     }
 
     return jsonOk(match);

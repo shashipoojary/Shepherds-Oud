@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { withIntakeId } from "@/lib/client/case-selection";
 import { intakeStatusHint, intakeStatusLabel, formatVisitSchedule, type FamilyIntake } from "@/lib/client/intake";
 import { Button } from "@/components/ui/button";
 import { CareGuideCard } from "@/components/shared/care-guide-card";
@@ -124,7 +125,7 @@ export function IntakeSummaryCard({
           {showActions && hasMatches ? (
             <div className="mt-5">
               <Button asChild size="sm">
-                <Link href="/family/results">
+                <Link href={withIntakeId("/family/results", intake.id)}>
                   View matches <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
@@ -222,16 +223,14 @@ export function IntakeSummaryCard({
                 {intake.matchCount} provider match{intake.matchCount === 1 ? "" : "es"} on your shortlist.
               </p>
               <Button asChild size="sm" variant="outline">
-                <Link href="/family/results">
+                <Link href={withIntakeId("/family/results", intake.id)}>
                   View matches <ArrowRight className="h-3.5 w-3.5" />
                 </Link>
               </Button>
             </div>
           ) : null}
 
-          <p className="text-xs leading-5 text-neutral-500">
-            No login required. We saved this on your device so you can return to your request anytime.
-          </p>
+          <p className="text-xs leading-5 text-neutral-500">Your request is saved to your account so you can return from any device.</p>
         </div>
       </article>
     </div>
