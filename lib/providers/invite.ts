@@ -71,22 +71,7 @@ export async function acceptProviderInviteForUser(input: {
   await prisma.$transaction(async (tx) => {
     if (!providerId && waitlistEntry?.type === "FACILITY") {
       const provider = await tx.provider.create({
-        data: {
-          name: waitlistEntry.facilityName?.trim() || waitlistEntry.contactName || email,
-          type: waitlistEntry.facilityType?.trim() || "Care facility",
-          area: [waitlistEntry.city, waitlistEntry.province].filter(Boolean).join(", ") || "Netherlands",
-          city: waitlistEntry.city || null,
-          province: waitlistEntry.province || null,
-          description: waitlistEntry.message || "",
-          contactName: waitlistEntry.contactName || existingUser?.name || null,
-          email,
-          phone: waitlistEntry.phone || null,
-          bedsTotal: waitlistEntry.bedsTotal || null,
-          services: waitlistEntry.services,
-          careLevels: [],
-          languages: [],
-          fundingTypes: []
-        }
+        data: providerDataFromWaitlistEntry(waitlistEntry, email, existingUser?.name)
       });
       providerId = provider.id;
     }
@@ -101,7 +86,7 @@ export async function acceptProviderInviteForUser(input: {
       data: { role: "PROVIDER", linkedProviderId: providerId || undefined }
     });
 
-    if (invite.waitlistEntryId) {
+    if (invite.waitlistEntryId && waitlistEntry?.status !== "CLOSED") {
       await tx.waitlistEntry.update({
         where: { id: invite.waitlistEntryId },
         data: { status: "CONVERTED" }
@@ -110,6 +95,92 @@ export async function acceptProviderInviteForUser(input: {
   });
 
   return { ok: true as const, inviteId: invite.id, providerId };
+}
+
+function providerDataFromWaitlistEntry(waitlistEntry: {
+  contactName: string;
+  facilityName: string | null;
+  facilityType: string | null;
+  city: string | null;
+  province: string | null;
+  message: string | null;
+  phone: string | null;
+  bedsTotal: number | null;
+  services: string[];
+}, email: string, fallbackName?: string | null) {
+  return {
+    name: waitlistEntry.facilityName?.trim() || waitlistEntry.contactName || email,
+    type: waitlistEntry.facilityType?.trim() || "Care facility",
+    area: [waitlistEntry.city, waitlistEntry.province].filter(Boolean).join(", ") || "Netherlands",
+    city: waitlistEntry.city || null,
+    province: waitlistEntry.province || null,
+    description: waitlistEntry.message || "",
+    contactName: waitlistEntry.contactName || fallbackName || null,
+    email,
+    phone: waitlistEntry.phone || null,
+    bedsTotal: waitlistEntry.bedsTotal || null,
+    services: waitlistEntry.services,
+    careLevels: [],
+    languages: [],
+    fundingTypes: []
+  };
+}
+
+export async function ensureAcceptedProviderInvitesHaveProfiles() {
+  const invites = await prisma.providerInvite.findMany({
+    where: {
+      status: "ACCEPTED",
+      providerId: null,
+      waitlistEntry: { type: "FACILITY" }
+    },
+    include: { waitlistEntry: true }
+  });
+
+  for (const invite of invites) {
+    if (!invite.waitlistEntry) continue;
+    const email = invite.email.trim().toLowerCase();
+    const user = await prisma.user.findUnique({
+      where: { email },
+      select: { id: true, name: true, linkedProviderId: true }
+    });
+    let provider = user?.linkedProviderId
+      ? await prisma.provider.findUnique({ where: { id: user.linkedProviderId } })
+      : null;
+
+    if (!provider) {
+      provider = await prisma.provider.findFirst({ where: { email } });
+    }
+
+    await prisma.$transaction(async (tx) => {
+      let providerId = provider?.id || null;
+
+      if (!providerId) {
+        const created = await tx.provider.create({
+          data: providerDataFromWaitlistEntry(invite.waitlistEntry!, email, user?.name)
+        });
+        providerId = created.id;
+      }
+
+      await tx.providerInvite.update({
+        where: { id: invite.id },
+        data: { providerId }
+      });
+
+      if (user) {
+        await tx.user.update({
+          where: { id: user.id },
+          data: { role: "PROVIDER", linkedProviderId: providerId }
+        });
+      }
+
+      if (invite.waitlistEntryId && invite.waitlistEntry!.status !== "CLOSED") {
+        await tx.waitlistEntry.update({
+          where: { id: invite.waitlistEntryId },
+          data: { status: "CONVERTED" }
+        });
+      }
+    });
+  }
 }
 
 export async function createProviderInvite(input: {

@@ -2,8 +2,11 @@ import { prisma } from "@/lib/core/db";
 import { displayVisitAvailability } from "@/lib/config/content";
 import { compareMatchPriority } from "@/lib/domain/match-status";
 import { normalizeIntakeStatus } from "@/lib/domain/intake-workflow";
+import { ensureAcceptedProviderInvitesHaveProfiles } from "@/lib/providers/invite";
 
 export async function getAdminDashboardData() {
+  await ensureAcceptedProviderInvitesHaveProfiles();
+
   const [statusGroups, providerCount, intakes, providers, matches, waitlist, careGuides] = await Promise.all([
     prisma.intake.groupBy({
       by: ["status"],
@@ -287,8 +290,9 @@ export async function getAdminDashboardData() {
       services: entry.services,
       location: [entry.city, entry.province].filter(Boolean).join(", ") || "—",
       status:
-        entry.providerInvites.length > 0 ||
-        (entry.type === "FACILITY" && providerEmails.has(entry.email.trim().toLowerCase()))
+        entry.status !== "CLOSED" &&
+        (entry.providerInvites.length > 0 ||
+          (entry.type === "FACILITY" && providerEmails.has(entry.email.trim().toLowerCase())))
           ? "CONVERTED"
           : entry.status,
       createdAt: entry.createdAt.toLocaleDateString("en-GB"),
