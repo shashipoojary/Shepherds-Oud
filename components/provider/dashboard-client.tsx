@@ -481,21 +481,21 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
       />
 
       {!profileComplete ? (
-        <section className="mt-5 rounded-card border border-brand-amber/35 bg-brand-beige-light/40 p-5 shadow-soft">
+        <section className="mt-5 rounded-lg bg-brand-amber/10 px-5 py-4">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
               <h2 className="font-semibold text-ink">Complete your facility profile</h2>
               <p className="mt-1 max-w-2xl text-sm leading-6 text-ink/70">
-                Your profile is saved, but care requests stay locked until families and Care Guides have enough information to assess fit.
+                Care requests stay locked until families and Care Guides have enough information to assess fit.
               </p>
             </div>
-            <span className="w-fit rounded-full bg-white px-3 py-1 text-xs font-semibold text-brand-amber-dark">
+            <span className="w-fit rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-brand-amber-dark">
               {profileMissingRequirements.length} item{profileMissingRequirements.length === 1 ? "" : "s"} left
             </span>
           </div>
-          <ul className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          <ul className="mt-4 flex flex-wrap gap-2">
             {profileMissingRequirements.map((item) => (
-              <li key={item} className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-ink/75">
+              <li key={item} className="rounded-full bg-white/80 px-3 py-1.5 text-xs font-medium text-ink/75">
                 {item}
               </li>
             ))}

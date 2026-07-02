@@ -3,6 +3,7 @@ import { displayVisitAvailability } from "@/lib/config/content";
 import { compareMatchPriority } from "@/lib/domain/match-status";
 import { normalizeIntakeStatus } from "@/lib/domain/intake-workflow";
 import { ensureAcceptedProviderInvitesHaveProfiles } from "@/lib/providers/invite";
+import { getProviderProfileMissingRequirements } from "@/lib/providers/completeness";
 
 export async function getAdminDashboardData() {
   await ensureAcceptedProviderInvitesHaveProfiles();
@@ -209,7 +210,9 @@ export async function getAdminDashboardData() {
       updatedAt: intake.updatedAt.toLocaleDateString("en-GB"),
       updatedAtIso: intake.updatedAt.toISOString()
     })),
-    providerList: providers.map((provider) => ({
+    providerList: providers.map((provider) => {
+      const profileMissingRequirements = getProviderProfileMissingRequirements(provider);
+      return {
       id: provider.id,
       name: provider.name,
       type: provider.type,
@@ -234,11 +237,14 @@ export async function getAdminDashboardData() {
       visitAvailability: displayVisitAvailability(provider.visitAvailability),
       priceMin: provider.priceMin,
       priceMax: provider.priceMax,
+      profileComplete: profileMissingRequirements.length === 0,
+      profileMissingRequirements,
       createdAt: provider.createdAt.toLocaleDateString("en-GB"),
       createdAtIso: provider.createdAt.toISOString(),
       updatedAt: provider.updatedAt.toLocaleDateString("en-GB"),
       updatedAtIso: provider.updatedAt.toISOString()
-    })),
+    };
+    }),
     inquiries: matches
       .map((match) => ({
         id: match.id,
@@ -283,7 +289,7 @@ export async function getAdminDashboardData() {
       bedsTotal: entry.bedsTotal,
       services: entry.services,
       location: [entry.city, entry.province].filter(Boolean).join(", ") || "—",
-      status: entry.status,
+      status: entry.providerInvites.length ? "CONVERTED" : entry.status,
       createdAt: entry.createdAt.toLocaleDateString("en-GB"),
       createdAtIso: entry.createdAt.toISOString(),
       updatedAt: entry.updatedAt.toLocaleDateString("en-GB"),

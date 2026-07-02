@@ -4,6 +4,7 @@ import { canAccessIntake } from "@/lib/auth/case-access";
 import { getMatchesForIntake } from "@/lib/data/matches";
 import { getServerSession, getUserRole } from "@/lib/auth/server";
 import { canCreateMatches, normalizeIntakeStatus } from "@/lib/domain/intake-workflow";
+import { isProviderProfileComplete } from "@/lib/providers/completeness";
 import { createMatchSchema } from "@/lib/validation/match";
 import { handleApiError, jsonError, jsonOk, rateLimitResponse, readJsonBody } from "@/lib/core/api-helpers";
 
@@ -85,6 +86,10 @@ export async function POST(request: Request) {
 
     if (!canCreateMatches(intake.status, intake.carePathway)) {
       return jsonError("Complete the family assessment and select a care pathway before creating matches.", 400);
+    }
+
+    if (!isProviderProfileComplete(provider)) {
+      return jsonError("This provider is locked until their facility profile is complete.", 400);
     }
 
     const match = await prisma.match.upsert({

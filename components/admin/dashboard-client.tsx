@@ -539,6 +539,8 @@ function FamilyDetailPanel({
     ? "Select a care pathway before creating provider matches."
     : !carePlanComplete({ carePlanSummary: carePlanSummary || family?.carePlanSummary || null })
       ? "Publish the care plan summary before creating provider matches."
+      : providerId && providers.find((provider) => provider.id === providerId)?.profileComplete === false
+        ? "This provider is locked until their facility profile is complete."
       : !matchingAllowed
         ? "Move the case to the care-plan stage before creating matches."
         : "";
@@ -983,7 +985,8 @@ function FamilyDetailPanel({
                   <option value="">Select provider</option>
                   {providers.map((provider) => (
                     <option key={provider.id} value={provider.id}>
-                      {provider.name} — {provider.area}
+                      {provider.name} - {provider.area}
+                      {provider.profileComplete ? "" : " (locked)"}
                     </option>
                   ))}
                 </select>
@@ -1194,7 +1197,26 @@ function ProvidersTable({
         <tbody className="divide-y divide-stone-200">
           {providers.map((provider) => (
             <tr key={provider.id} className="cursor-pointer hover:bg-cream" onClick={() => setSelected(provider)}>
-              <td className="px-4 py-3 text-sm font-semibold">{provider.name}</td>
+              <td className="px-4 py-3 text-sm font-semibold">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span>{provider.name}</span>
+                  <span
+                    className={cn(
+                      "rounded-full px-2.5 py-1 text-[11px] font-semibold leading-none",
+                      provider.profileComplete
+                        ? "bg-brand-green-pale/70 text-brand-green-dark"
+                        : "bg-brand-amber/15 text-brand-amber-dark ring-1 ring-brand-amber/25"
+                    )}
+                  >
+                    {provider.profileComplete ? "Active" : "Provider locked"}
+                  </span>
+                </div>
+                {!provider.profileComplete ? (
+                  <span className="mt-1 block text-xs font-normal text-neutral-500">
+                    Complete profile before matching
+                  </span>
+                ) : null}
+              </td>
               <td className="px-4 py-3 text-sm text-neutral-600">{provider.type}</td>
               <td className="px-4 py-3 text-sm text-neutral-600">{provider.area}</td>
               <td className="px-4 py-3 text-sm text-neutral-600">
@@ -1245,6 +1267,19 @@ function ProviderDetailPanel({
     >
       {provider ? (
         <div className="space-y-6">
+          {!provider.profileComplete ? (
+            <div className="rounded-xl border border-brand-amber/25 bg-brand-amber/10 px-4 py-3">
+              <p className="text-sm font-semibold text-brand-amber-dark">Provider locked</p>
+              <p className="mt-1 text-sm leading-6 text-neutral-700">
+                Admin cannot send family requests to this provider until the facility profile is complete.
+              </p>
+              {provider.profileMissingRequirements.length ? (
+                <p className="mt-2 text-xs leading-5 text-neutral-600">
+                  Missing: {provider.profileMissingRequirements.join(", ")}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
           <StatusPill>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <div>
@@ -2152,3 +2187,4 @@ const adminFieldClass = "rounded-lg border border-stone-200 bg-white px-3 py-2.5
 function AdminPanelActions({ children }: { children: React.ReactNode }) {
   return <div className="flex flex-wrap gap-2">{children}</div>;
 }
+
