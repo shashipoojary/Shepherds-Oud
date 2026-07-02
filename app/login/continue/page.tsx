@@ -60,15 +60,8 @@ export default async function LoginContinuePage({ searchParams }: { searchParams
     }
   }
 
-  // Explicit facility sign-in should land in provider onboarding, even before a profile exists.
-  if (isProviderLogin && !isAdminEmail(session.user.email) && role !== "ADMIN") {
-    if (role !== "PROVIDER") {
-      await prisma.user.update({
-        where: { id: session.user.id },
-        data: { role: "PROVIDER" }
-      });
-      role = "PROVIDER";
-    }
+  if (isProviderLogin && role !== "PROVIDER") {
+    redirect("/provider/login?error=provider-pending");
   }
 
   redirect(postLoginHref(role, destination ?? callbackUrl));

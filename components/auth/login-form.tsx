@@ -34,6 +34,10 @@ function errorMessage(code: string | null, isProvider: boolean) {
     return "This invite belongs to a different email address. Sign in with the invited email or ask for a new invite.";
   }
 
+  if (code === "provider-pending") {
+    return "Your facility account is not approved yet. Use the invited email from Shepherds Oud, or join the facility waitlist so our team can review your provider profile.";
+  }
+
   return null;
 }
 
