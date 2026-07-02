@@ -1049,6 +1049,13 @@ function ProvidersTable({
 }) {
   const [selected, setSelected] = useState<AdminDashboardData["providerList"][number] | null>(null);
 
+  useEffect(() => {
+    setSelected((current) => {
+      if (!current) return null;
+      return providers.find((provider) => provider.id === current.id) ?? null;
+    });
+  }, [providers]);
+
   return (
     <>
       <table className="w-full min-w-[900px] border-collapse text-left">

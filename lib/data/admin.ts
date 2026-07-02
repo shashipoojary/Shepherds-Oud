@@ -154,6 +154,11 @@ export async function getAdminDashboardData() {
   const activeCases = statusGroups
     .filter((group) => group.status !== "CLOSED")
     .reduce((sum, group) => sum + group._count._all, 0);
+  const providerEmails = new Set(
+    providers
+      .map((provider) => provider.email?.trim().toLowerCase())
+      .filter((email): email is string => Boolean(email))
+  );
 
   return {
     stats: [
@@ -281,7 +286,11 @@ export async function getAdminDashboardData() {
       bedsTotal: entry.bedsTotal,
       services: entry.services,
       location: [entry.city, entry.province].filter(Boolean).join(", ") || "—",
-      status: entry.providerInvites.length > 0 ? "CONVERTED" : entry.status,
+      status:
+        entry.providerInvites.length > 0 ||
+        (entry.type === "FACILITY" && providerEmails.has(entry.email.trim().toLowerCase()))
+          ? "CONVERTED"
+          : entry.status,
       createdAt: entry.createdAt.toLocaleDateString("en-GB"),
       createdAtIso: entry.createdAt.toISOString(),
       updatedAt: entry.updatedAt.toLocaleDateString("en-GB"),
