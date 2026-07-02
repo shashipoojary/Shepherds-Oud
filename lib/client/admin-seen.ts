@@ -3,6 +3,12 @@ export type AdminTab = "families" | "providers" | "inquiries" | "waitlist";
 const STORAGE_KEY = "shepherds:admin-tab-seen";
 
 type SeenMap = Record<AdminTab, string>;
+type AdminSeenSnapshot = {
+  families: Array<{ createdAtIso: string; updatedAtIso?: string }>;
+  providerList: Array<{ createdAtIso: string; updatedAtIso?: string }>;
+  inquiries: Array<{ createdAtIso: string; updatedAtIso: string }>;
+  waitlist: Array<{ createdAtIso: string; updatedAtIso?: string }>;
+};
 
 const emptySeen = (): SeenMap => ({
   families: new Date(0).toISOString(),
@@ -32,32 +38,46 @@ function maxIso(values: string[]) {
   return values.reduce((latest, value) => (value > latest ? value : latest), values[0]);
 }
 
+function maxActivityIso(items: Array<{ createdAtIso: string; updatedAtIso?: string }>) {
+  return maxIso(items.flatMap((item) => [item.createdAtIso, item.updatedAtIso].filter(Boolean) as string[]));
+}
+
+function tabActivityIso(tab: AdminTab, snapshot: AdminSeenSnapshot) {
+  switch (tab) {
+    case "families":
+      return maxActivityIso(snapshot.families);
+    case "providers":
+      return maxActivityIso(snapshot.providerList);
+    case "inquiries":
+      return maxActivityIso(snapshot.inquiries);
+    case "waitlist":
+      return maxActivityIso(snapshot.waitlist);
+    default:
+      return new Date().toISOString();
+  }
+}
+
 export function getTabSeenAt(): SeenMap {
   return readSeen();
 }
 
-export function markTabSeen(tab: AdminTab) {
+export function markTabSeen(tab: AdminTab, snapshot?: AdminSeenSnapshot) {
   const map = readSeen();
-  map[tab] = new Date().toISOString();
+  map[tab] = snapshot ? tabActivityIso(tab, snapshot) : new Date().toISOString();
   writeSeen(map);
   return map;
 }
 
 /** First visit: treat current data as already seen so only future items badge. */
-export function initTabSeenFromData(snapshot: {
-  families: Array<{ createdAtIso: string }>;
-  providerList: Array<{ createdAtIso: string }>;
-  inquiries: Array<{ updatedAtIso: string }>;
-  waitlist: Array<{ createdAtIso: string }>;
-}) {
+export function initTabSeenFromData(snapshot: AdminSeenSnapshot) {
   if (typeof window === "undefined") return;
   if (window.localStorage.getItem(STORAGE_KEY)) return;
 
   writeSeen({
-    families: maxIso(snapshot.families.map((item) => item.createdAtIso)),
-    providers: maxIso(snapshot.providerList.map((item) => item.createdAtIso)),
-    inquiries: maxIso(snapshot.inquiries.map((item) => item.updatedAtIso)),
-    waitlist: maxIso(snapshot.waitlist.map((item) => item.createdAtIso))
+    families: tabActivityIso("families", snapshot),
+    providers: tabActivityIso("providers", snapshot),
+    inquiries: tabActivityIso("inquiries", snapshot),
+    waitlist: tabActivityIso("waitlist", snapshot)
   });
 }
 

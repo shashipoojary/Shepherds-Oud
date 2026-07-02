@@ -31,10 +31,13 @@ import {
   markTabSeen
 } from "@/lib/client/admin-seen";
 import { CARE_PATHWAYS } from "@/lib/domain/care-pathways";
+import { getAdminCaseNextAction } from "@/lib/domain/admin-case-next-action";
 import {
   adminIntakeActionMeta,
   adminIntakeStatusLabel,
+  assessmentComplete,
   canCreateMatches,
+  carePlanComplete,
   JOURNEY_STEPS,
   journeyStepIndex,
   nextIntakeActions,
@@ -66,13 +69,24 @@ type MatchStatus =
   | "PLACED"
   | "CLOSED";
 
+const inquiryCoordinationStatuses = new Set(["VISIT_REQUESTED", "CALLBACK_REQUESTED", "ACCEPTED", "CONTACTED"]);
+
+function groupInquiriesByIntake(inquiries: InquiryEntry[]) {
+  const grouped = new Map<string, InquiryEntry[]>();
+  for (const inquiry of inquiries) {
+    const current = grouped.get(inquiry.intakeId) ?? [];
+    current.push(inquiry);
+    grouped.set(inquiry.intakeId, current);
+  }
+  return grouped;
+}
+
 export function AdminDashboardClient({ data: initialData }: { data: AdminDashboardData }) {
   const [data, setData] = useState(initialData);
   const [tab, setTab] = useState<AdminTab>("families");
   const [message, setMessage] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const [tabSeenAt, setTabSeenAt] = useState(getTabSeenAt);
-  const initializedSeen = useRef(false);
 
   useEffect(() => {
     setData(initialData);
@@ -80,16 +94,12 @@ export function AdminDashboardClient({ data: initialData }: { data: AdminDashboa
 
   useEffect(() => {
     initTabSeenFromData(initialData);
-    if (!initializedSeen.current) {
-      initializedSeen.current = true;
-      setTabSeenAt(markTabSeen("families"));
-    }
   }, [initialData]);
 
   useEffect(() => {
-    const seen = markTabSeen(tab);
+    const seen = markTabSeen(tab, data);
     setTabSeenAt(seen);
-  }, [tab]);
+  }, [tab, data]);
 
   const tabBadges = useMemo(
     () => ({
@@ -187,6 +197,7 @@ export function AdminDashboardClient({ data: initialData }: { data: AdminDashboa
             data.families.length ? (
               <FamiliesTable
                 families={data.families}
+                inquiries={data.inquiries}
                 providers={data.providerList}
                 careGuides={data.careGuides}
                 setMessage={setMessage}
@@ -201,7 +212,7 @@ export function AdminDashboardClient({ data: initialData }: { data: AdminDashboa
             data.providerList.length ? (
               <ProvidersTable providers={data.providerList} />
             ) : (
-              <EmptyState title="No providers yet" description="Approved care facilities will appear here once added to the database." />
+              <EmptyState title="No active providers yet" description="Providers appear here after invitation acceptance or profile creation." />
             )
           ) : null}
 
@@ -209,7 +220,10 @@ export function AdminDashboardClient({ data: initialData }: { data: AdminDashboa
             data.inquiries.length ? (
               <InquiriesTable inquiries={data.inquiries} setMessage={setMessage} onSync={syncDashboard} />
             ) : (
-              <EmptyState title="No matches or inquiries yet" description="When families are matched to providers, those records will show here." />
+              <EmptyState
+                title="No provider follow-up needed"
+                description="Visit requests, callback requests, and accepted provider responses will appear here."
+              />
             )
           ) : null}
 
@@ -228,12 +242,14 @@ export function AdminDashboardClient({ data: initialData }: { data: AdminDashboa
 
 function FamiliesTable({
   families,
+  inquiries,
   providers,
   careGuides,
   setMessage,
   onSync
 }: {
   families: FamilyEntry[];
+  inquiries: InquiryEntry[];
   providers: ProviderOption[];
   careGuides: CareGuideOption[];
   setMessage: (message: string) => void;
@@ -242,6 +258,7 @@ function FamiliesTable({
   const [rows, setRows] = useState(families);
   const [selected, setSelected] = useState<FamilyEntry | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const matchesByIntakeId = useMemo(() => groupInquiriesByIntake(inquiries), [inquiries]);
 
   useEffect(() => {
     setRows(families);
@@ -354,6 +371,7 @@ function FamiliesTable({
             <th className="hidden px-4 py-3 lg:table-cell">Urgency</th>
             <th className="hidden px-4 py-3 lg:table-cell">Care Guide</th>
             <th className="min-w-[8.5rem] whitespace-nowrap px-4 py-3">Status</th>
+            <th className="min-w-[15rem] px-4 py-3">Next action</th>
             <th className="whitespace-nowrap px-4 py-3">Actions</th>
           </tr>
         </thead>
@@ -361,6 +379,7 @@ function FamiliesTable({
           {rows.map((family) => {
             const isPending = pendingId === family.id;
             const assignMeta = adminIntakeActionMeta("CARE_GUIDE_ASSIGNED");
+            const nextAction = getAdminCaseNextAction(family, matchesByIntakeId.get(family.id) ?? []);
             return (
               <tr key={family.id} className="cursor-pointer hover:bg-cream" onClick={() => setSelected(family)}>
                 <td className="px-4 py-3 text-sm">
@@ -376,6 +395,23 @@ function FamiliesTable({
                   <span className="inline-flex whitespace-nowrap rounded-full bg-sage-100 px-3 py-1 text-xs font-semibold leading-none text-sage-700">
                     {adminIntakeStatusLabel(family.status)}
                   </span>
+                </td>
+                <td className="px-4 py-3">
+                  <div className="max-w-[17rem]">
+                    <span
+                      className={cn(
+                        "inline-flex rounded-full px-2.5 py-1 text-xs font-semibold leading-none",
+                        nextAction.severity === "action"
+                          ? "bg-brand-amber/15 text-brand-amber-dark ring-1 ring-brand-amber/25"
+                          : nextAction.severity === "waiting"
+                            ? "bg-brand-cream text-ink/70 ring-1 ring-stone-200"
+                            : "bg-brand-green-pale/70 text-brand-green-dark"
+                      )}
+                    >
+                      {nextAction.label}
+                    </span>
+                    <p className="mt-1 text-xs leading-5 text-neutral-500">{nextAction.description}</p>
+                  </div>
                 </td>
                 <td className="whitespace-nowrap px-4 py-3" onClick={(event) => event.stopPropagation()}>
                   <div className="flex items-center gap-1">
@@ -400,6 +436,7 @@ function FamiliesTable({
 
       <FamilyDetailPanel
         family={selected}
+        matches={selected ? matchesByIntakeId.get(selected.id) ?? [] : []}
         providers={providers}
         careGuides={careGuides}
         onClose={() => setSelected(null)}
@@ -415,6 +452,7 @@ function FamiliesTable({
 
 function FamilyDetailPanel({
   family,
+  matches,
   providers,
   careGuides,
   onClose,
@@ -425,6 +463,7 @@ function FamilyDetailPanel({
   setGlobalMessage
 }: {
   family: FamilyEntry | null;
+  matches: InquiryEntry[];
   providers: ProviderOption[];
   careGuides: CareGuideOption[];
   onClose: () => void;
@@ -487,6 +526,23 @@ function FamilyDetailPanel({
 
   const isPending = family ? pendingId === family.id : false;
   const matchingAllowed = family ? canCreateMatches(family.status, carePathway || family.carePathway) : false;
+  const nextAction = family ? getAdminCaseNextAction(family, matches) : null;
+  const normalizedStatus = family ? normalizeIntakeStatus(family.status) : "NEW";
+  const hasMatches = matches.length > 0;
+  const hasFamilyRequestedMatch = matches.some((match) => match.statusRaw === "VISIT_REQUESTED" || match.statusRaw === "CALLBACK_REQUESTED");
+  const hasAcceptedOrContactedMatch = matches.some((match) => match.statusRaw === "ACCEPTED" || match.statusRaw === "CONTACTED" || match.statusRaw === "PLACED");
+  const visitSchedulingAllowed =
+    hasFamilyRequestedMatch || hasAcceptedOrContactedMatch || ["VISIT_SCHEDULED", "PROVIDER_RESPONSE", "PLACEMENT_IN_PROGRESS", "PLACED"].includes(normalizedStatus);
+  const placementActionAllowed = hasAcceptedOrContactedMatch || ["PROVIDER_RESPONSE", "PLACEMENT_IN_PROGRESS", "PLACED"].includes(normalizedStatus);
+  const createMatchDisabledReason = !assessmentComplete({ carePathway: carePathway || family?.carePathway || null })
+    ? "Select a care pathway before creating provider matches."
+    : !carePlanComplete({ carePlanSummary: carePlanSummary || family?.carePlanSummary || null })
+      ? "Publish the care plan summary before creating provider matches."
+      : !matchingAllowed
+        ? "Move the case to the care-plan stage before creating matches."
+        : "";
+  const shortlistDisabledReason = !hasMatches ? "Create at least one provider match before marking the shortlist ready." : "";
+  const visitDisabledReason = !visitSchedulingAllowed ? "Wait until the family requests a visit/callback or a provider accepts before scheduling." : "";
 
   async function handleCaseAction(status: IntakeStatus) {
     if (!family) return;
@@ -614,8 +670,8 @@ function FamilyDetailPanel({
 
   async function createMatch() {
     if (!family || !providerId) return;
-    if (!matchingAllowed) {
-      notifyPanel("Complete the assessment and select a care pathway before creating matches.");
+    if (createMatchDisabledReason) {
+      notifyPanel(createMatchDisabledReason);
       return;
     }
 
@@ -665,7 +721,6 @@ function FamilyDetailPanel({
       })
     : [];
   const currentStepIndex = family ? journeyStepIndex(family.status) : 0;
-  const normalizedStatus = family ? normalizeIntakeStatus(family.status) : "NEW";
   const visibleJourneySteps = JOURNEY_STEPS.filter((step) => step.status !== "CLOSED");
 
   return (
@@ -710,6 +765,28 @@ function FamilyDetailPanel({
               {visibleJourneySteps.find((step) => step.status === normalizedStatus)?.hint}
             </p>
           </PanelSection>
+
+          {nextAction ? (
+            <PanelSection title="Next action" description={nextAction.description}>
+              <div className="flex flex-wrap items-center gap-3">
+                <span
+                  className={cn(
+                    "inline-flex rounded-full px-3 py-1 text-xs font-semibold",
+                    nextAction.severity === "action"
+                      ? "bg-brand-amber/15 text-brand-amber-dark ring-1 ring-brand-amber/25"
+                      : nextAction.severity === "waiting"
+                        ? "bg-brand-cream text-ink/70 ring-1 ring-stone-200"
+                        : "bg-brand-green-pale/70 text-brand-green-dark"
+                  )}
+                >
+                  {nextAction.label}
+                </span>
+                <span className="text-xs font-medium uppercase tracking-wide text-neutral-400">
+                  {nextAction.tab === "inquiries" ? "Inquiries queue" : "Families command center"}
+                </span>
+              </div>
+            </PanelSection>
+          ) : null}
 
           <details className="group border-t border-stone-100 pt-5">
             <summary className="cursor-pointer list-none text-sm font-semibold text-ink marker:content-none [&::-webkit-details-marker]:hidden">
@@ -858,13 +935,14 @@ function FamilyDetailPanel({
                     type="button"
                     size="sm"
                     variant="outline"
-                    disabled={savingAssessment || isPending || !carePlanSummary.trim()}
+                    disabled={savingAssessment || isPending || !carePlanSummary.trim() || Boolean(shortlistDisabledReason)}
                     onClick={() => void markShortlistReady()}
                   >
                     Mark shortlist ready
                   </Button>
                 ) : null}
               </AdminPanelActions>
+              {shortlistDisabledReason ? <p className="text-xs leading-5 text-neutral-500">{shortlistDisabledReason}</p> : null}
               </div>
             </PanelSection>
 
@@ -912,10 +990,16 @@ function FamilyDetailPanel({
                 />
               </label>
               <AdminPanelActions>
-                <Button type="button" size="sm" disabled={!providerId || creatingMatch || !matchingAllowed} onClick={() => void createMatch()}>
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={!providerId || creatingMatch || Boolean(createMatchDisabledReason)}
+                  onClick={() => void createMatch()}
+                >
                   {creatingMatch ? "Creating..." : "Create match"}
                 </Button>
               </AdminPanelActions>
+              {createMatchDisabledReason ? <p className="text-xs leading-5 text-neutral-500">{createMatchDisabledReason}</p> : null}
               </div>
             </PanelSection>
 
@@ -934,6 +1018,7 @@ function FamilyDetailPanel({
                 <input
                   type="datetime-local"
                   value={visitScheduledAt}
+                  disabled={!visitSchedulingAllowed}
                   onChange={(event) => setVisitScheduledAt(event.target.value)}
                   className={adminFieldClass}
                 />
@@ -942,6 +1027,7 @@ function FamilyDetailPanel({
                 Type
                 <select
                   value={visitType}
+                  disabled={!visitSchedulingAllowed}
                   onChange={(event) => setVisitType(event.target.value as "VISIT" | "CALLBACK" | "")}
                   className={adminFieldClass}
                 >
@@ -954,6 +1040,7 @@ function FamilyDetailPanel({
                 Provider / facility
                 <input
                   value={visitProviderName}
+                  disabled={!visitSchedulingAllowed}
                   onChange={(event) => setVisitProviderName(event.target.value)}
                   className={adminFieldClass}
                   placeholder="Provider name"
@@ -963,13 +1050,19 @@ function FamilyDetailPanel({
                 Visit notes
                 <textarea
                   value={visitNotes}
+                  disabled={!visitSchedulingAllowed}
                   onChange={(event) => setVisitNotes(event.target.value)}
                   className={`${adminFieldClass} min-h-20`}
                   placeholder="Directions, contact person, what to bring..."
                 />
               </label>
               <AdminPanelActions>
-                <Button type="button" size="sm" disabled={savingVisit || isPending || !visitScheduledAt} onClick={() => void saveVisitSchedule()}>
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={savingVisit || isPending || !visitScheduledAt || !visitSchedulingAllowed}
+                  onClick={() => void saveVisitSchedule()}
+                >
                   {savingVisit
                     ? "Saving..."
                     : ["MATCHED", "VISIT_SCHEDULED"].includes(normalizedStatus)
@@ -977,19 +1070,28 @@ function FamilyDetailPanel({
                       : "Update visit details"}
                 </Button>
               </AdminPanelActions>
+              {visitDisabledReason ? <p className="text-xs leading-5 text-neutral-500">{visitDisabledReason}</p> : null}
               </div>
             </PanelSection>
 
             {nextActions.length ? (
               <PanelSection step={6} title="Advance case status" description="Use when the case moves to placement, follow-ups, or closure.">
                 <div className="space-y-4">
-                  {nextActions.map((action) => (
+                  {nextActions.map((action) => {
+                    const disabledReason =
+                      action.status === "VISIT_SCHEDULED" && !visitSchedulingAllowed
+                        ? "Wait until the family requests a visit/callback or a provider accepts before scheduling."
+                        : (action.status === "PLACEMENT_IN_PROGRESS" || action.status === "PLACED") && !placementActionAllowed
+                          ? "Coordinate with an accepted provider before recording placement."
+                          : "";
+
+                    return (
                     <div key={action.status}>
                       <AdminPanelActions>
                         <Button
                           size="sm"
                           variant={action.status === "CLOSED" ? "outline" : "default"}
-                          disabled={isPending}
+                          disabled={isPending || Boolean(disabledReason)}
                           onClick={() => {
                             if (action.status === "CLOSED") {
                               setConfirmCloseCase(true);
@@ -1001,9 +1103,10 @@ function FamilyDetailPanel({
                           {isPending && pendingAction === action.status ? "Saving..." : action.label}
                         </Button>
                       </AdminPanelActions>
-                      <p className="mt-2 text-xs leading-5 text-neutral-500">{action.description}</p>
+                      <p className="mt-2 text-xs leading-5 text-neutral-500">{disabledReason || action.description}</p>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </PanelSection>
             ) : null}
@@ -1291,6 +1394,7 @@ function InquiriesTable({
   const [pendingActionKey, setPendingActionKey] = useState<string | null>(null);
   const [selected, setSelected] = useState<InquiryEntry | null>(null);
   const [confirmClose, setConfirmClose] = useState<InquiryEntry | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
 
   useEffect(() => {
     setRows(inquiries);
@@ -1300,11 +1404,15 @@ function InquiriesTable({
     });
   }, [inquiries]);
 
-  const sortedInquiries = useMemo(
-    () => [...rows].sort((a, b) => compareMatchPriority(a.statusRaw, b.statusRaw)),
-    [rows]
+  const visibleRows = useMemo(
+    () => (showHistory ? rows : rows.filter((item) => inquiryCoordinationStatuses.has(item.statusRaw))),
+    [rows, showHistory]
   );
-  const followUpCount = rows.filter((item) => isAdminActionNeeded(item.statusRaw)).length;
+  const sortedInquiries = useMemo(
+    () => [...visibleRows].sort((a, b) => compareMatchPriority(a.statusRaw, b.statusRaw)),
+    [visibleRows]
+  );
+  const followUpCount = visibleRows.filter((item) => isAdminActionNeeded(item.statusRaw) || item.statusRaw === "CONTACTED").length;
 
   async function updateMatchStatus(id: string, status: MatchStatus, notify: (message: string) => void = setMessage) {
     setPendingActionKey(`${id}:${status}`);
@@ -1357,6 +1465,20 @@ function InquiriesTable({
 
   return (
     <>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-100 px-4 py-3">
+        <div>
+          <p className="text-sm font-semibold text-ink">Provider follow-up queue</p>
+          <p className="text-xs leading-5 text-neutral-500">
+            {showHistory
+              ? "Showing every match record, including suggested, declined, placed, and closed history."
+              : "Showing visit requests, callback requests, accepted responses, and coordinated follow-ups."}
+          </p>
+        </div>
+        <Button type="button" size="sm" variant="outline" onClick={() => setShowHistory((current) => !current)}>
+          {showHistory ? "Hide history" : "Show full history"}
+        </Button>
+      </div>
+
       {followUpCount ? (
         <div className="flex items-center gap-2.5 border-b border-brand-amber/15 bg-brand-amber/5 px-4 py-2.5 text-sm text-brand-amber-dark">
           <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-amber text-xs font-bold text-white">
@@ -1367,6 +1489,17 @@ function InquiriesTable({
           </span>
         </div>
       ) : null}
+
+      {!sortedInquiries.length ? (
+        <EmptyState
+          title={showHistory ? "No inquiries yet" : "No provider follow-up needed"}
+          description={
+            showHistory
+              ? "When families are matched to providers, those records will show here."
+              : "Visit requests, callback requests, and accepted provider responses will appear here."
+          }
+        />
+      ) : (
 
       <table className="w-full min-w-[980px] border-collapse text-left">
         <thead className="bg-cream text-xs uppercase tracking-wide text-neutral-500">
@@ -1383,6 +1516,7 @@ function InquiriesTable({
           {sortedInquiries.map((inquiry) => {
             const isPending = pendingId === inquiry.id;
             const needsFollowUp = isAdminActionNeeded(inquiry.statusRaw);
+            const placementReady = inquiry.statusRaw === "ACCEPTED" || inquiry.statusRaw === "CONTACTED";
 
             return (
               <tr
@@ -1410,7 +1544,7 @@ function InquiriesTable({
                         onClick={() => void updateMatchStatus(inquiry.id, "CONTACTED")}
                       />
                     ) : null}
-                    {inquiry.statusRaw !== "PLACED" && inquiry.statusRaw !== "CLOSED" ? (
+                    {placementReady ? (
                       <IconActionButton
                         label={adminInquiryActionMeta("PLACED").label}
                         icon={Building2}
@@ -1436,6 +1570,7 @@ function InquiriesTable({
           })}
         </tbody>
       </table>
+      )}
 
       <InquiryDetailPanel
         inquiry={selected}
@@ -1560,9 +1695,17 @@ function InquiryDetailPanel({
             )}
             {inquiry.statusRaw !== "PLACED" && inquiry.statusRaw !== "CLOSED" ? (
               <PanelSection step={5} title={adminInquiryActionMeta("PLACED").label} description={adminInquiryActionMeta("PLACED").description}>
-                <Button size="sm" variant="outline" disabled={isPending} onClick={() => void updateFromPanel(inquiry.id, "PLACED")}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={isPending || !(inquiry.statusRaw === "ACCEPTED" || inquiry.statusRaw === "CONTACTED")}
+                  onClick={() => void updateFromPanel(inquiry.id, "PLACED")}
+                >
                   {pendingActionKey === `${inquiry.id}:PLACED` ? "Saving..." : "Confirm"}
                 </Button>
+                {inquiry.statusRaw === "ACCEPTED" || inquiry.statusRaw === "CONTACTED" ? null : (
+                  <p className="mt-2 text-xs leading-5 text-neutral-500">Coordinate with the provider before recording placement.</p>
+                )}
               </PanelSection>
             ) : null}
             {inquiry.statusRaw !== "CLOSED" ? (
