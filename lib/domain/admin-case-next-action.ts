@@ -10,6 +10,8 @@ export type AdminCaseNextAction = {
   key: string;
   label: string;
   description: string;
+  instruction: string;
+  target: string;
   tab: "families" | "inquiries";
   severity: "action" | "waiting" | "done";
   disabledReason?: string;
@@ -46,6 +48,8 @@ function intakeAction(status: IntakeStatus, overrides: Partial<AdminCaseNextActi
     key: status,
     label: meta.label,
     description: meta.description,
+    instruction: `Use the "${meta.label}" action in this panel.`,
+    target: "Case actions",
     tab: "families",
     severity: "action",
     ...overrides
@@ -61,30 +65,42 @@ export function getAdminCaseNextAction(intake: IntakeForNextAction, matches: Mat
       key: "CLOSED",
       label: "No action",
       description: "This case is closed and kept for records.",
+      instruction: "No follow-up is needed unless the family reopens the request.",
+      target: "Case record",
       tab: "families",
       severity: "done"
     };
   }
 
   if (status === "NEW" && !intake.careGuideId) {
-    return intakeAction("CARE_GUIDE_ASSIGNED");
+    return intakeAction("CARE_GUIDE_ASSIGNED", {
+      instruction: "Open section 2, choose the Care Guide, then click Assign Care Guide.",
+      target: "Section 2 - Assign Care Guide"
+    });
   }
 
   if (intake.careGuideId && !intake.carePathway) {
     return intakeAction("ASSESSMENT", {
       label: "Complete assessment",
-      description: "Choose the care pathway after reviewing the family's needs."
+      description: "Choose the care pathway after reviewing the family's needs.",
+      instruction: "Open section 3, select the care pathway, add assessment notes, then click Save assessment.",
+      target: "Section 3 - Assessment & care plan"
     });
   }
 
   if (intake.carePathway && !carePlanComplete({ carePlanSummary: intake.carePlanSummary })) {
-    return intakeAction("CARE_PLAN");
+    return intakeAction("CARE_PLAN", {
+      instruction: "Open section 3, add the family-facing care plan summary, then click Publish care plan.",
+      target: "Section 3 - Assessment & care plan"
+    });
   }
 
   if (carePlanComplete({ carePlanSummary: intake.carePlanSummary }) && matches.length === 0) {
     return intakeAction("MATCHED", {
       label: "Create provider match",
-      description: "Add at least one provider to the family's shortlist."
+      description: "The care plan is ready. The family needs at least one provider on their shortlist.",
+      instruction: "Open section 4, choose a provider, set the match score, then click Create match.",
+      target: "Section 4 - Create provider match"
     });
   }
 
@@ -93,6 +109,8 @@ export function getAdminCaseNextAction(intake: IntakeForNextAction, matches: Mat
       key: "PROVIDER_RESPONSE_NEEDED",
       label: "Provider response needed",
       description: "The family requested contact. Provider should accept or decline before coordination.",
+      instruction: "Go to the Inquiries tab and monitor the provider response before scheduling.",
+      target: "Inquiries tab",
       tab: "inquiries",
       severity: "action"
     };
@@ -103,6 +121,8 @@ export function getAdminCaseNextAction(intake: IntakeForNextAction, matches: Mat
       key: "COORDINATE_VISIT",
       label: "Coordinate visit/callback",
       description: adminInquiryHint("ACCEPTED"),
+      instruction: "Go to the Inquiries tab, open this inquiry, and mark it coordinated after arranging the visit or call.",
+      target: "Inquiries tab",
       tab: "inquiries",
       severity: "action"
     };
@@ -113,6 +133,8 @@ export function getAdminCaseNextAction(intake: IntakeForNextAction, matches: Mat
       key: "FOLLOW_UP_RECORD_PLACEMENT",
       label: "Follow up / record placement",
       description: adminInquiryHint("CONTACTED"),
+      instruction: "Go to the Inquiries tab, follow up with the family, then record placement if they commit.",
+      target: "Inquiries tab",
       tab: "inquiries",
       severity: "action"
     };
@@ -123,6 +145,8 @@ export function getAdminCaseNextAction(intake: IntakeForNextAction, matches: Mat
       key: "WAITING_FAMILY_REQUEST",
       label: "Wait for family request",
       description: "Shortlist is visible. Wait for the family to request a visit or callback.",
+      instruction: "No admin action yet. The next step starts when the family requests a visit or callback from results.",
+      target: "Family results",
       tab: "families",
       severity: "waiting"
     };
@@ -131,24 +155,38 @@ export function getAdminCaseNextAction(intake: IntakeForNextAction, matches: Mat
   if (status === "PLACEMENT_IN_PROGRESS") {
     return intakeAction("PLACED", {
       label: "Confirm placement",
-      description: "Record placement once the family commits to a provider."
+      description: "Record placement once the family commits to a provider.",
+      instruction: "Use section 6 to confirm placement, then the follow-up schedule begins.",
+      target: "Section 6 - Advance case status"
     });
   }
 
   if (status === "PLACED") {
-    return intakeAction("FOLLOW_UP_7");
+    return intakeAction("FOLLOW_UP_7", {
+      instruction: "Use section 6 to record the 7-day follow-up after checking in with the family.",
+      target: "Section 6 - Advance case status"
+    });
   }
 
   if (status === "FOLLOW_UP_7") {
-    return intakeAction("FOLLOW_UP_30");
+    return intakeAction("FOLLOW_UP_30", {
+      instruction: "Use section 6 to record the 30-day follow-up after checking in with the family.",
+      target: "Section 6 - Advance case status"
+    });
   }
 
   if (status === "FOLLOW_UP_30") {
-    return intakeAction("FOLLOW_UP_90");
+    return intakeAction("FOLLOW_UP_90", {
+      instruction: "Use section 6 to record the 90-day follow-up after checking in with the family.",
+      target: "Section 6 - Advance case status"
+    });
   }
 
   if (status === "FOLLOW_UP_90") {
-    return intakeAction("CLOSED");
+    return intakeAction("CLOSED", {
+      instruction: "Use section 6 to close the case once no further follow-up is needed.",
+      target: "Section 6 - Advance case status"
+    });
   }
 
   return intakeAction(status === "CARE_GUIDE_ASSIGNED" ? "ASSESSMENT" : status);

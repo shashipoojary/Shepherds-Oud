@@ -411,7 +411,7 @@ function FamiliesTable({
                     >
                       {nextAction.label}
                     </span>
-                    <p className="mt-1 text-xs leading-5 text-neutral-500">{nextAction.description}</p>
+                    <p className="mt-1 text-xs font-medium leading-5 text-ink">{nextAction.instruction}</p>
                   </div>
                 </td>
                 <td className="whitespace-nowrap px-4 py-3" onClick={(event) => event.stopPropagation()}>
@@ -773,25 +773,31 @@ function FamilyDetailPanel({
           </PanelSection>
 
           {nextAction ? (
-            <PanelSection title="Next action" description={nextAction.description}>
-              <div className="flex flex-wrap items-center gap-3">
-                <span
-                  className={cn(
-                    "inline-flex rounded-full px-3 py-1 text-xs font-semibold",
-                    nextAction.severity === "action"
-                      ? "bg-brand-amber/15 text-brand-amber-dark ring-1 ring-brand-amber/25"
-                      : nextAction.severity === "waiting"
-                        ? "bg-brand-cream text-ink/70 ring-1 ring-stone-200"
-                        : "bg-brand-green-pale/70 text-brand-green-dark"
-                  )}
-                >
-                  {nextAction.label}
-                </span>
-                <span className="text-xs font-medium uppercase tracking-wide text-neutral-400">
-                  {nextAction.tab === "inquiries" ? "Inquiries queue" : "Families command center"}
+            <div
+              className={cn(
+                "rounded-xl border px-4 py-4 shadow-sm",
+                nextAction.severity === "action"
+                  ? "border-brand-amber/30 bg-brand-amber/10"
+                  : nextAction.severity === "waiting"
+                    ? "border-stone-200 bg-brand-cream/70"
+                    : "border-brand-green-pale bg-brand-green-pale/30"
+              )}
+            >
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wide text-brand-amber-dark">Do this next</p>
+                  <h3 className="mt-1 text-base font-semibold text-ink">{nextAction.label}</h3>
+                </div>
+                <span className="inline-flex rounded-full bg-white px-3 py-1 text-xs font-semibold text-ink shadow-sm ring-1 ring-stone-200">
+                  {nextAction.target}
                 </span>
               </div>
-            </PanelSection>
+              <p className="mt-3 text-sm font-semibold leading-6 text-ink">{nextAction.instruction}</p>
+              <p className="mt-1 text-sm leading-6 text-neutral-600">{nextAction.description}</p>
+              <p className="mt-3 text-xs font-medium uppercase tracking-wide text-neutral-500">
+                {nextAction.tab === "inquiries" ? "Go to Inquiries when ready" : "Continue in this family case"}
+              </p>
+            </div>
           ) : null}
 
           <details className="group rounded-xl border border-stone-200 bg-white shadow-sm">
