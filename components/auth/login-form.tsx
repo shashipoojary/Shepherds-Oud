@@ -26,6 +26,14 @@ function errorMessage(code: string | null, isProvider: boolean) {
     return "That sign-in link is invalid or has expired. Request a new link below.";
   }
 
+  if (code === "invite") {
+    return "That provider invite is invalid or has expired. Ask the Shepherds Oud team to send a new invite.";
+  }
+
+  if (code === "invite-email") {
+    return "This invite belongs to a different email address. Sign in with the invited email or ask for a new invite.";
+  }
+
   return null;
 }
 
@@ -37,14 +45,20 @@ export function AuthLoginForm({ intent }: AuthLoginFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackParam = searchParams.get("callbackUrl");
+  const inviteParam = searchParams.get("invite");
   const familyDestination = callbackParam?.startsWith("/family") ? callbackParam : "/family/dashboard";
   const requestedDestination =
     intent === "provider" ? PROVIDER_DASHBOARD_PATH : intent === "family" ? familyDestination : callbackParam;
   const isProvider = intent === "provider" || requestedDestination?.startsWith(PROVIDER_DASHBOARD_PATH);
   const isFamily = intent === "family" || requestedDestination?.startsWith("/family");
-  const callbackUrl = requestedDestination
-    ? `/login/continue?callbackUrl=${encodeURIComponent(requestedDestination)}`
-    : "/login/continue";
+  const callbackUrlParams = new URLSearchParams();
+  if (requestedDestination) {
+    callbackUrlParams.set("callbackUrl", requestedDestination);
+  }
+  if (isProvider && inviteParam) {
+    callbackUrlParams.set("invite", inviteParam);
+  }
+  const callbackUrl = callbackUrlParams.size ? `/login/continue?${callbackUrlParams.toString()}` : "/login/continue";
   const error = searchParams.get("error");
   const message = errorMessage(error, Boolean(isProvider));
   const [loadingGoogle, setLoadingGoogle] = useState(false);

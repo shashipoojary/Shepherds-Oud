@@ -44,8 +44,20 @@ export async function POST(request: Request) {
       return jsonError("Provider invites can only be sent to facility waitlist entries.", 400);
     }
 
-    if (waitlistEntry.status === "CONVERTED" || waitlistEntry.status === "CLOSED") {
-      return jsonError("This waitlist entry is no longer eligible for provider invitation.", 400);
+    if (waitlistEntry.status !== "NEW") {
+      return jsonError("This facility has already been contacted. Provider invites are locked after the first outreach.", 409);
+    }
+
+    const existingInvite = await prisma.providerInvite.findFirst({
+      where: {
+        waitlistEntryId: waitlistEntry.id,
+        status: "PENDING"
+      },
+      select: { id: true }
+    });
+
+    if (existingInvite) {
+      return jsonError("A pending provider invite already exists for this facility.", 409);
     }
 
     const { invite, token } = await createProviderInvite({

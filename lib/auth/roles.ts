@@ -66,8 +66,28 @@ export async function resolveRoleForUser(user: {
 
   const existing = await prisma.user.findUnique({
     where: { id: user.id },
-    select: { linkedProviderId: true }
+    select: {
+      linkedProviderId: true,
+      email: true
+    }
   });
 
-  return existing?.linkedProviderId ? "PROVIDER" : "FAMILY";
+  if (existing?.linkedProviderId) {
+    return "PROVIDER";
+  }
+
+  const email = normalizeEmail(user.email || existing?.email || "");
+  if (!email) {
+    return "FAMILY";
+  }
+
+  const acceptedInvite = await prisma.providerInvite.findFirst({
+    where: {
+      email,
+      status: "ACCEPTED"
+    },
+    select: { id: true }
+  });
+
+  return acceptedInvite ? "PROVIDER" : "FAMILY";
 }

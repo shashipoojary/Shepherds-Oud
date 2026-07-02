@@ -1599,6 +1599,24 @@ function WaitlistTable({
   const [selected, setSelected] = useState<WaitlistEntry | null>(null);
   const [confirmInvite, setConfirmInvite] = useState<WaitlistEntry | null>(null);
 
+  function canInviteProvider(entry: WaitlistEntry) {
+    return entry.type === "FACILITY" && entry.status === "NEW";
+  }
+
+  function startProviderInvite(entry: WaitlistEntry, notify: (message: string) => void = setMessage) {
+    if (!canInviteProvider(entry)) {
+      notify(
+        entry.status === "CONTACTED"
+          ? "Provider invite is already sent or this facility has been contacted."
+          : "This waitlist entry is not eligible for a provider invite."
+      );
+      return;
+    }
+
+    setSelected(null);
+    setConfirmInvite(entry);
+  }
+
   async function markContacted(id: string, name: string, notify: (message: string) => void = setMessage) {
     setPendingId(id);
     try {
@@ -1647,7 +1665,8 @@ function WaitlistTable({
       });
 
       if (!response.ok) {
-        throw new Error("Could not send provider invite.");
+        const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(payload?.error || "Could not send provider invite.");
       }
 
       const payload = (await response.json()) as { id: string; emailMode?: string };
@@ -1671,8 +1690,8 @@ function WaitlistTable({
       }
 
       setMessage(`Provider invite sent to ${entry.email}.`);
-    } catch {
-      setMessage(`Could not send provider invite to ${entry.email}. Please try again.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : `Could not send provider invite to ${entry.email}. Please try again.`);
     } finally {
       setPendingInviteId(null);
       setConfirmInvite(null);
@@ -1697,6 +1716,7 @@ function WaitlistTable({
           {entries.map((entry) => {
             const isContacted = entry.status === "CONTACTED";
             const isPending = pendingId === entry.id;
+            const isInviteLocked = !canInviteProvider(entry);
 
             return (
               <tr key={entry.id} className="cursor-pointer hover:bg-cream" onClick={() => setSelected(entry)}>
@@ -1719,11 +1739,11 @@ function WaitlistTable({
                     <IconActionButton label="Open details" icon={ArrowUpRight} onClick={() => setSelected(entry)} />
                     {entry.type === "FACILITY" ? (
                       <IconActionButton
-                        label="Invite provider"
+                        label={isInviteLocked ? "Provider invite locked" : "Invite provider"}
                         icon={Building2}
                         loading={pendingInviteId === entry.id}
-                        disabled={pendingInviteId === entry.id || entry.status === "CONVERTED" || entry.status === "CLOSED"}
-                        onClick={() => setConfirmInvite(entry)}
+                        disabled={pendingInviteId === entry.id || isInviteLocked}
+                        onClick={() => startProviderInvite(entry)}
                       />
                     ) : null}
                     <IconActionButton
@@ -1745,7 +1765,7 @@ function WaitlistTable({
         entry={selected}
         onClose={() => setSelected(null)}
         onMarkContacted={markContacted}
-        onInviteProvider={(entry) => setConfirmInvite(entry)}
+        onInviteProvider={(entry, notify) => startProviderInvite(entry, notify)}
         pendingId={pendingId}
         pendingInviteId={pendingInviteId}
       />
@@ -1783,7 +1803,7 @@ function WaitlistDetailPanel({
   entry: WaitlistEntry | null;
   onClose: () => void;
   onMarkContacted: (id: string, name: string, notify?: (message: string) => void) => Promise<void>;
-  onInviteProvider: (entry: WaitlistEntry) => void;
+  onInviteProvider: (entry: WaitlistEntry, notify?: (message: string) => void) => void;
   pendingId: string | null;
   pendingInviteId: string | null;
 }) {
@@ -1919,10 +1939,10 @@ function WaitlistDetailPanel({
                     <Button
                       size="sm"
                       variant="outline"
-                      disabled={isInvitePending || entry.status === "CONVERTED" || entry.status === "CLOSED"}
-                      onClick={() => onInviteProvider(entry)}
+                      disabled={isInvitePending || entry.status !== "NEW"}
+                      onClick={() => onInviteProvider(entry, setPanelMessage)}
                     >
-                      {isInvitePending ? "Sending..." : "Invite provider"}
+                      {isInvitePending ? "Sending..." : entry.status === "NEW" ? "Invite provider" : "Invite locked"}
                     </Button>
                   ) : null}
                   <Button
