@@ -132,7 +132,12 @@ export async function getAdminDashboardData() {
         services: true,
         status: true,
         createdAt: true,
-        updatedAt: true
+        updatedAt: true,
+        providerInvites: {
+          where: { status: "ACCEPTED" },
+          select: { id: true },
+          take: 1
+        }
       }
     }),
     prisma.user.findMany({
@@ -276,7 +281,7 @@ export async function getAdminDashboardData() {
       bedsTotal: entry.bedsTotal,
       services: entry.services,
       location: [entry.city, entry.province].filter(Boolean).join(", ") || "—",
-      status: entry.status,
+      status: entry.providerInvites.length > 0 ? "CONVERTED" : entry.status,
       createdAt: entry.createdAt.toLocaleDateString("en-GB"),
       createdAtIso: entry.createdAt.toISOString(),
       updatedAt: entry.updatedAt.toLocaleDateString("en-GB"),

@@ -7,15 +7,18 @@ import { acceptProviderInviteForUser } from "@/lib/providers/invite";
 
 export const dynamic = "force-dynamic";
 
-function destinationFromCallback(callbackUrl?: string | null) {
-  if (!callbackUrl) return null;
+function loginContextFromCallback(callbackUrl?: string | null, invite?: string | null) {
+  if (!callbackUrl) return { destination: null, invite: invite || null };
 
   if (callbackUrl.startsWith("/login/continue?")) {
     const nested = new URL(callbackUrl, "http://localhost");
-    return nested.searchParams.get("callbackUrl");
+    return {
+      destination: nested.searchParams.get("callbackUrl"),
+      invite: invite || nested.searchParams.get("invite")
+    };
   }
 
-  return callbackUrl;
+  return { destination: callbackUrl, invite: invite || null };
 }
 
 export default async function LoginContinuePage({ searchParams }: { searchParams: Promise<{ callbackUrl?: string; invite?: string }> }) {
@@ -26,7 +29,7 @@ export default async function LoginContinuePage({ searchParams }: { searchParams
     redirect("/login");
   }
 
-  const destination = destinationFromCallback(callbackUrl);
+  const { destination, invite: providerInvite } = loginContextFromCallback(callbackUrl, invite);
   let role = await resolveRoleForUser({
     id: session.user.id,
     email: session.user.email,
@@ -42,9 +45,9 @@ export default async function LoginContinuePage({ searchParams }: { searchParams
 
   const isProviderLogin = destination?.startsWith(PROVIDER_DASHBOARD_PATH);
 
-  if (isProviderLogin && invite && !isAdminEmail(session.user.email)) {
+  if (isProviderLogin && providerInvite && !isAdminEmail(session.user.email)) {
     const accepted = await acceptProviderInviteForUser({
-      token: invite,
+      token: providerInvite,
       userId: session.user.id,
       email: session.user.email
     });
