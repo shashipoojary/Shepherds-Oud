@@ -19,6 +19,7 @@ export async function GET() {
         familyCount: 0,
         facilityCount: 0,
         totalCount: 0,
+        skippedContacted: 0,
         skippedConverted: 0,
         skippedClosed: 0,
         mode: "demo"

@@ -11,6 +11,7 @@ type LaunchPreview = {
   familyCount: number;
   facilityCount: number;
   totalCount: number;
+  skippedContacted: number;
   skippedConverted: number;
   skippedClosed: number;
 };
@@ -114,7 +115,7 @@ export function WaitlistBulkEmailBar({ onNotify }: WaitlistBulkEmailBarProps) {
         <div>
           <p className="text-sm font-semibold text-brand-green-dark">Platform launch announcement</p>
           <p className="mt-1 text-sm text-ink/70">
-            Send a one-time &quot;we are live&quot; email to all eligible waitlist families and facilities. Each group receives its own template. Emails are sent in small queued batches — not all at once.
+            Send a one-time &quot;we are live&quot; email to new waitlist families and facilities only. Contacted, converted, and closed entries are skipped.
           </p>
         </div>
         <Button type="button" size="sm" onClick={() => setOpen(true)}>
@@ -126,7 +127,7 @@ export function WaitlistBulkEmailBar({ onNotify }: WaitlistBulkEmailBarProps) {
       <ConfirmDialog
         open={open}
         title="Send launch announcement to the waitlist?"
-        description="This will email every eligible waitlist family and facility that is still NEW or CONTACTED. Converted and closed entries are skipped. This action cannot be undone."
+        description="This will email every eligible waitlist family and facility that is still NEW. Contacted, converted, and closed entries are skipped. This action cannot be undone."
         confirmLabel="Queue launch emails"
         tone="danger"
         pending={sending}
@@ -146,9 +147,9 @@ export function WaitlistBulkEmailBar({ onNotify }: WaitlistBulkEmailBarProps) {
                 <span className="font-semibold text-ink">{preview.facilityCount}</span> facilities ·{" "}
                 <span className="font-semibold text-ink">{preview.totalCount}</span> total emails
               </p>
-              {preview.skippedConverted || preview.skippedClosed ? (
+              {preview.skippedContacted || preview.skippedConverted || preview.skippedClosed ? (
                 <p className="mt-1 text-xs text-ink/60">
-                  Skipping {preview.skippedConverted} converted and {preview.skippedClosed} closed entries.
+                  Skipping {preview.skippedContacted} contacted, {preview.skippedConverted} converted, and {preview.skippedClosed} closed entries.
                 </p>
               ) : null}
             </div>

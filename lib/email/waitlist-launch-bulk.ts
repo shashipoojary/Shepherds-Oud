@@ -19,13 +19,14 @@ export type WaitlistLaunchPreview = {
   familyCount: number;
   facilityCount: number;
   totalCount: number;
+  skippedContacted: number;
   skippedConverted: number;
   skippedClosed: number;
 };
 
 export async function getWaitlistLaunchRecipients(): Promise<WaitlistLaunchRecipient[]> {
   const entries = await prisma.waitlistEntry.findMany({
-    where: { status: { in: ["NEW", "CONTACTED"] } },
+    where: { status: "NEW" },
     orderBy: { createdAt: "asc" },
     select: {
       id: true,
@@ -61,8 +62,9 @@ export async function getWaitlistLaunchRecipients(): Promise<WaitlistLaunchRecip
 }
 
 export async function getWaitlistLaunchPreview(): Promise<WaitlistLaunchPreview> {
-  const [recipients, skippedConverted, skippedClosed] = await Promise.all([
+  const [recipients, skippedContacted, skippedConverted, skippedClosed] = await Promise.all([
     getWaitlistLaunchRecipients(),
+    prisma.waitlistEntry.count({ where: { status: "CONTACTED" } }),
     prisma.waitlistEntry.count({ where: { status: "CONVERTED" } }),
     prisma.waitlistEntry.count({ where: { status: "CLOSED" } })
   ]);
@@ -74,6 +76,7 @@ export async function getWaitlistLaunchPreview(): Promise<WaitlistLaunchPreview>
     familyCount,
     facilityCount,
     totalCount: recipients.length,
+    skippedContacted,
     skippedConverted,
     skippedClosed
   };
