@@ -5,6 +5,7 @@ import {
   ArrowUpRight,
   Building2,
   CalendarCheck,
+  ChevronDown,
   ClipboardList,
   Mail,
   X
@@ -577,12 +578,17 @@ function FamilyDetailPanel({
     let nextStatus: IntakeStatus | undefined;
     let successMessage: string;
 
-    if (carePlanSummary.trim() && !["CARE_PLAN", "MATCHED", "VISIT_SCHEDULED", "PROVIDER_RESPONSE", "PLACEMENT_IN_PROGRESS", "PLACED"].includes(normalizedStatus)) {
-      nextStatus = "CARE_PLAN";
-      successMessage = `Care plan published for ${family.name}. The family dashboard now shows the pathway and plan.`;
-    } else if (family.status === "CARE_GUIDE_ASSIGNED") {
+    if (normalizedStatus === "NEW") {
+      notifyPanel("Assign a Care Guide before starting the assessment.");
+      return;
+    }
+
+    if (normalizedStatus === "CARE_GUIDE_ASSIGNED") {
       nextStatus = "ASSESSMENT";
       successMessage = `Assessment saved for ${family.name}. The family timeline now shows assessment in progress.`;
+    } else if (carePlanSummary.trim() && !["CARE_PLAN", "MATCHED", "VISIT_SCHEDULED", "PROVIDER_RESPONSE", "PLACEMENT_IN_PROGRESS", "PLACED"].includes(normalizedStatus)) {
+      nextStatus = "CARE_PLAN";
+      successMessage = `Care plan published for ${family.name}. The family dashboard now shows the pathway and plan.`;
     } else {
       successMessage = `Care plan details saved for ${family.name}.`;
     }
@@ -788,15 +794,23 @@ function FamilyDetailPanel({
             </PanelSection>
           ) : null}
 
-          <details className="group border-t border-stone-100 pt-5">
-            <summary className="cursor-pointer list-none text-sm font-semibold text-ink marker:content-none [&::-webkit-details-marker]:hidden">
-              <span className="flex items-center justify-between gap-3">
-                Intake details
-                <span className="text-xs font-normal text-neutral-500 group-open:hidden">Show submission</span>
-                <span className="hidden text-xs font-normal text-neutral-500 group-open:inline">Hide</span>
+          <details className="group rounded-xl border border-stone-200 bg-white shadow-sm">
+            <summary className="cursor-pointer list-none rounded-xl px-4 py-4 text-sm font-semibold text-ink transition hover:bg-brand-cream/60 marker:content-none [&::-webkit-details-marker]:hidden">
+              <span className="flex items-center justify-between gap-4">
+                <span>
+                  <span className="block">Intake details</span>
+                  <span className="mt-1 block text-xs font-normal leading-5 text-neutral-500">
+                    Review the family submission, care needs, decision context, and notes.
+                  </span>
+                </span>
+                <span className="inline-flex shrink-0 items-center gap-2 rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-semibold text-brand-amber shadow-sm">
+                  <span className="group-open:hidden">Show details</span>
+                  <span className="hidden group-open:inline">Hide details</span>
+                  <ChevronDown className="h-3.5 w-3.5 transition group-open:rotate-180" aria-hidden="true" />
+                </span>
               </span>
             </summary>
-            <div className="mt-5 space-y-5">
+            <div className="space-y-5 border-t border-stone-100 px-4 py-5">
               <PanelSection title="Contact">
                 <DetailList
                   columns={1}
@@ -928,7 +942,7 @@ function FamilyDetailPanel({
               </label>
               <AdminPanelActions>
                 <Button type="button" size="sm" disabled={savingAssessment || isPending} onClick={() => void saveAndShareWithFamily()}>
-                  {savingAssessment ? "Saving..." : "Save & share with family"}
+                  {savingAssessment ? "Saving..." : normalizedStatus === "ASSESSMENT" ? "Publish care plan" : "Save assessment"}
                 </Button>
                 {!["MATCHED", "VISIT_SCHEDULED", "PROVIDER_RESPONSE", "PLACEMENT_IN_PROGRESS", "PLACED", "CLOSED"].includes(normalizedStatus) ? (
                   <Button

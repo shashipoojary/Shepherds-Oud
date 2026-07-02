@@ -166,7 +166,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         nextStatus = "CARE_GUIDE_ASSIGNED";
       }
 
-      if (parsed.data.carePathway && parsed.data.assessmentNotes !== undefined && !nextStatus && ["CARE_GUIDE_ASSIGNED", "NEW"].includes(currentStatus)) {
+      if (parsed.data.carePathway && parsed.data.assessmentNotes !== undefined && !nextStatus && currentStatus === "CARE_GUIDE_ASSIGNED") {
         nextStatus = "ASSESSMENT";
       }
 

@@ -1,6 +1,5 @@
 import { getServerSession, getUserRole } from "@/lib/auth/server";
 import { getIsPrelaunch } from "@/lib/config/prelaunch";
-import { resolveDefaultCareGuideId } from "@/lib/domain/care-guide";
 import { normalizeIntakeStatus } from "@/lib/domain/intake-workflow";
 import { sendIntakeConfirmationEmails } from "@/lib/email/intake-confirmation-email";
 import { intakeSchema } from "@/lib/validation/intake";
@@ -49,20 +48,17 @@ export async function POST(request: Request) {
           }),
         "intake_confirmation_email"
       );
-      return jsonOk({ id: "demo-intake", status: "CARE_GUIDE_ASSIGNED", mode: "demo" }, 201);
+      return jsonOk({ id: "demo-intake", status: "NEW", mode: "demo" }, 201);
     }
 
     const { prisma } = await import("@/lib/core/db");
     const session = await getServerSession();
     const ownerId = session && getUserRole(session) !== "ADMIN" ? session.user.id : null;
-    const careGuideId = await resolveDefaultCareGuideId();
-
     const intake = await prisma.intake.create({
       data: {
         ...intakeCreateData(parsed.data),
         ...(ownerId ? { userId: ownerId } : {}),
-        careGuideId,
-        status: careGuideId ? "CARE_GUIDE_ASSIGNED" : "NEW"
+        status: "NEW"
       },
       include: {
         careGuide: { select: { name: true, email: true } }
