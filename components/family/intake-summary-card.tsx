@@ -194,7 +194,7 @@ export function IntakeSummaryCard({
           ) : null}
 
           {hasUpdates ? (
-            <section>
+            <section id="care-guide-plan" className="scroll-mt-24">
               <h3 className="text-sm font-semibold text-ink">Updates from your Care Guide</h3>
               <div className="mt-4 grid gap-4 lg:grid-cols-2">
                 {intake.carePathway ? (

@@ -9,19 +9,30 @@ export type AppRole = "FAMILY" | "PROVIDER" | "ADMIN";
 type Session = NonNullable<Awaited<ReturnType<typeof auth.api.getSession>>>;
 
 async function syncUserRole(session: Session) {
+  const provider =
+    session.user.email && session.user.role !== "ADMIN"
+      ? await prisma.provider.findFirst({
+          where: { email: { equals: session.user.email.trim().toLowerCase(), mode: "insensitive" } },
+          select: { id: true }
+        })
+      : null;
   const resolvedRole = await resolveRoleForUser({
     id: session.user.id,
     email: session.user.email,
-    role: session.user.role
+    role: session.user.role,
+    linkedProviderId: provider?.id
   });
 
-  if (session.user.role === resolvedRole) {
+  if (session.user.role === resolvedRole && !provider) {
     return { session, role: resolvedRole };
   }
 
   await prisma.user.update({
     where: { id: session.user.id },
-    data: { role: resolvedRole }
+    data: {
+      role: resolvedRole,
+      ...(provider && resolvedRole === "PROVIDER" ? { linkedProviderId: provider.id } : {})
+    }
   });
 
   return {
@@ -29,7 +40,8 @@ async function syncUserRole(session: Session) {
       ...session,
       user: {
         ...session.user,
-        role: resolvedRole
+        role: resolvedRole,
+        ...(provider && resolvedRole === "PROVIDER" ? { linkedProviderId: provider.id } : {})
       }
     },
     role: resolvedRole

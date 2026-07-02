@@ -99,5 +99,14 @@ export async function resolveRoleForUser(user: {
     select: { id: true }
   });
 
-  return acceptedInvite ? "PROVIDER" : "FAMILY";
+  if (acceptedInvite) {
+    return "PROVIDER";
+  }
+
+  const provider = await prisma.provider.findFirst({
+    where: { email: { equals: email, mode: "insensitive" } },
+    select: { id: true }
+  });
+
+  return provider ? "PROVIDER" : "FAMILY";
 }

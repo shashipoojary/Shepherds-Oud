@@ -90,6 +90,11 @@ function FamilyDashboardContent() {
         <ButtonRow className="mt-5 max-w-lg">
           {intake ? (
             <>
+              {intake.carePathway || intake.carePlanSummary ? (
+                <Button asChild variant="outline" className="w-full">
+                  <Link href="#care-guide-plan">View Care Guide plan</Link>
+                </Button>
+              ) : null}
               <Button asChild className="w-full">
                 <Link href={withIntakeId("/family/intake?update=1", intake.id)}>Update your request</Link>
               </Button>
@@ -109,6 +114,14 @@ function FamilyDashboardContent() {
         {intake ? (
           <>
             <CareJourneyTimeline status={intake.status} careGuide={intake.careGuide} />
+            {intake.carePathway || intake.carePlanSummary ? (
+              <div className="rounded-2xl border border-brand-amber/30 bg-brand-amber/10 px-5 py-4 shadow-soft">
+                <p className="text-sm font-semibold text-ink">Your Care Guide plan is ready</p>
+                <p className="mt-1 text-sm leading-6 text-neutral-700">
+                  We prepared the recommended pathway and next steps below. Use the button at the top anytime to jump back to it.
+                </p>
+              </div>
+            ) : null}
             <IntakeSummaryCard intake={intake} showCareGuide={false} />
             <FamilyActiveMatches key={`${intake.id}-${intake.matchCount}`} intakeId={intake.id} />
           </>
