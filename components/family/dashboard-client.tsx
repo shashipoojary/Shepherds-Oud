@@ -117,7 +117,7 @@ function FamilyDashboardContent() {
               visitDetailsHref={intake.visitScheduledAt ? "#care-guide-plan" : null}
             />
             <IntakeSummaryCard intake={intake} showCareGuide={false} />
-            <FamilyActiveMatches key={`${intake.id}-${intake.matchCount}`} intakeId={intake.id} />
+            <FamilyActiveMatches key={`${intake.id}-${intake.matchCount}`} intakeId={intake.id} intakeStatus={intake.status} />
           </>
         ) : (
           <div className="rounded-2xl bg-white shadow-soft">

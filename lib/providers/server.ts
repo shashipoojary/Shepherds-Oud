@@ -99,7 +99,12 @@ export async function getProviderInquiries(providerId: string) {
           urgency: true,
           ageRange: true,
           phone: true,
-          email: true
+          email: true,
+          status: true,
+          visitScheduledAt: true,
+          visitType: true,
+          visitProviderName: true,
+          visitNotes: true
         }
       }
     }
@@ -123,7 +128,10 @@ export async function getProviderDashboardData(userId: string) {
       notes: match.notes,
       declineReason: match.declineReason,
       createdAt: match.createdAt.toISOString(),
-      intake: match.intake
+      intake: {
+        ...match.intake,
+        visitScheduledAt: match.intake.visitScheduledAt?.toISOString() ?? null
+      }
     }))
   };
 }

@@ -230,6 +230,16 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         intake.visitScheduledAt && (nextStatus === "VISIT_SCHEDULED" || parsed.data.visitScheduledAt !== undefined)
       );
 
+      if (nextStatus && nextStatus !== currentStatus && normalizedStatus === "CLOSED") {
+        await prisma.match.updateMany({
+          where: {
+            intakeId: intake.id,
+            status: { not: "CLOSED" }
+          },
+          data: { status: "CLOSED" }
+        });
+      }
+
       if (nextStatus && nextStatus !== currentStatus && normalizedStatus !== "VISIT_SCHEDULED") {
         runInBackground(
           () =>

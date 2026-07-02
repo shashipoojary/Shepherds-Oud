@@ -65,6 +65,11 @@ type Inquiry = {
     ageRange: string;
     phone: string;
     email: string;
+    status: string;
+    visitScheduledAt: string | null;
+    visitType: string | null;
+    visitProviderName: string | null;
+    visitNotes: string | null;
   };
 };
 
@@ -165,6 +170,43 @@ function parseRequiredIntField(value: string): number | undefined | "invalid" {
     return "invalid";
   }
   return parsed;
+}
+
+function formatProviderVisit(inquiry: Inquiry) {
+  if (!inquiry.intake.visitScheduledAt) return null;
+  const date = new Date(inquiry.intake.visitScheduledAt);
+  if (Number.isNaN(date.getTime())) return null;
+  const when = date.toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" });
+  return `${inquiry.intake.visitType || "Visit or callback"} - ${when}${inquiry.intake.visitNotes ? ` - ${inquiry.intake.visitNotes}` : ""}`;
+}
+
+function providerNextStep(inquiry: Inquiry) {
+  const visit = formatProviderVisit(inquiry);
+
+  switch (inquiry.status) {
+    case "ACCEPTED":
+      return {
+        title: "Accepted - waiting for Care Guide",
+        description: "No extra action is needed right now. The Care Guide will arrange the visit or callback and update you here."
+      };
+    case "CONTACTED":
+      return {
+        title: "Visit or call arranged",
+        description: visit || "The Care Guide has coordinated the next step. Watch for timing details here or by email."
+      };
+    case "PLACED":
+      return {
+        title: "Family chose your facility",
+        description: "The family is moving forward with your facility. The Care Guide will coordinate final details."
+      };
+    case "CLOSED":
+      return {
+        title: "Inquiry closed",
+        description: "No further action is needed for this family."
+      };
+    default:
+      return null;
+  }
 }
 
 async function readApiError(response: Response) {
@@ -545,6 +587,7 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
                 const cardFeedback = inquiryFeedback[inquiry.id];
                 const banner = providerInquiryBanner(inquiry.status);
                 const activityNotes = providerMatchNotes(inquiry.notes);
+                const nextStep = providerNextStep(inquiry);
 
                 return (
                   <li
@@ -589,6 +632,13 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
                     </div>
 
                     {banner ? <p className="text-sm leading-6 text-ink/75">{banner}</p> : null}
+
+                    {nextStep ? (
+                      <div className="rounded-xl border border-brand-green-pale/70 bg-brand-green-pale/15 px-4 py-3">
+                        <p className="text-sm font-semibold text-brand-green-dark">{nextStep.title}</p>
+                        <p className="mt-1 text-sm leading-6 text-ink/70">{nextStep.description}</p>
+                      </div>
+                    ) : null}
 
                     {activityNotes ? (
                       <div>

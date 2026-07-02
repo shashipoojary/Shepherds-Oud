@@ -9,13 +9,15 @@ import {
   matchStatusBadgeClass,
   matchStatusLabel
 } from "@/lib/domain/match-status";
+import { normalizeIntakeStatus } from "@/lib/domain/intake-workflow";
 import { withIntakeId } from "@/lib/client/case-selection";
 import { Button } from "@/components/ui/button";
 import type { ProviderMatch } from "@/lib/core/types";
 
-export function FamilyActiveMatches({ intakeId }: { intakeId: string }) {
+export function FamilyActiveMatches({ intakeId, intakeStatus }: { intakeId: string; intakeStatus: string }) {
   const [matches, setMatches] = useState<ProviderMatch[]>([]);
   const [loading, setLoading] = useState(true);
+  const caseClosed = normalizeIntakeStatus(intakeStatus) === "CLOSED";
 
   const loadMatches = useCallback(async () => {
     setLoading(true);
@@ -32,6 +34,10 @@ export function FamilyActiveMatches({ intakeId }: { intakeId: string }) {
   useEffect(() => {
     void loadMatches();
   }, [loadMatches]);
+
+  if (caseClosed) {
+    return null;
+  }
 
   if (loading) {
     return (
