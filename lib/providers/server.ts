@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/core/db";
+import { normalizeIntakeStatus } from "@/lib/domain/intake-workflow";
 import type { ProviderProfileInput } from "@/lib/validation/provider";
 import { getProviderProfileMissingRequirements, isProviderProfileComplete } from "@/lib/providers/completeness";
 
@@ -124,7 +125,7 @@ export async function getProviderDashboardData(userId: string) {
     inquiries: inquiries.map((match) => ({
       id: match.id,
       score: match.score,
-      status: match.status,
+      status: normalizeIntakeStatus(match.intake.status) === "CLOSED" ? "CLOSED" : match.status,
       notes: match.notes,
       declineReason: match.declineReason,
       createdAt: match.createdAt.toISOString(),

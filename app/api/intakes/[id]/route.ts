@@ -114,12 +114,13 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       return jsonError("Forbidden", 403);
     }
 
-    const matchCount = await countVisibleMatchesForIntake(id);
     const { userId: _userId, careGuideId: _careGuideId, ...familyIntake } = intake;
+    const status = normalizeIntakeStatus(familyIntake.status);
+    const matchCount = status === "CLOSED" ? 0 : await countVisibleMatchesForIntake(id);
 
     return jsonOk({
       ...familyIntake,
-      status: normalizeIntakeStatus(familyIntake.status),
+      status,
       careGuide: familyIntake.careGuide
         ? { name: familyIntake.careGuide.name || "Your Care Guide", email: familyIntake.careGuide.email }
         : null,
@@ -188,57 +189,68 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       }
 
       const followUpField = nextStatus ? followUpTimestampField(nextStatus) : null;
+      const intakeData = {
+        ...(nextStatus ? { status: nextStatus } : {}),
+        ...(parsed.data.careGuideId !== undefined ? { careGuideId: parsed.data.careGuideId } : {}),
+        ...(parsed.data.carePathway !== undefined ? { carePathway: parsed.data.carePathway } : {}),
+        ...(parsed.data.assessmentNotes !== undefined ? { assessmentNotes: parsed.data.assessmentNotes } : {}),
+        ...(parsed.data.carePlanSummary !== undefined ? { carePlanSummary: parsed.data.carePlanSummary } : {}),
+        ...(parsed.data.visitScheduledAt !== undefined
+          ? { visitScheduledAt: parsed.data.visitScheduledAt ? new Date(parsed.data.visitScheduledAt) : null }
+          : {}),
+        ...(parsed.data.visitType !== undefined ? { visitType: parsed.data.visitType } : {}),
+        ...(parsed.data.visitProviderName !== undefined ? { visitProviderName: parsed.data.visitProviderName } : {}),
+        ...(parsed.data.visitNotes !== undefined ? { visitNotes: parsed.data.visitNotes } : {}),
+        ...(nextStatus === "VISIT_SCHEDULED" && parsed.data.visitScheduledAt === undefined && !existing.visitScheduledAt
+          ? { visitScheduledAt: new Date() }
+          : {}),
+        ...(followUpField ? { [followUpField]: new Date() } : {})
+      };
+      const intakeSelect = {
+        id: true,
+        status: true,
+        contactName: true,
+        email: true,
+        careGuideId: true,
+        carePathway: true,
+        assessmentNotes: true,
+        carePlanSummary: true,
+        visitScheduledAt: true,
+        visitType: true,
+        visitProviderName: true,
+        visitNotes: true,
+        careGuide: { select: { name: true, email: true } }
+      } as const;
+      const shouldCloseMatches = nextStatus && nextStatus !== currentStatus && nextStatus === "CLOSED";
 
-      const intake = await prisma.intake.update({
-        where: { id },
-        data: {
-          ...(nextStatus ? { status: nextStatus } : {}),
-          ...(parsed.data.careGuideId !== undefined ? { careGuideId: parsed.data.careGuideId } : {}),
-          ...(parsed.data.carePathway !== undefined ? { carePathway: parsed.data.carePathway } : {}),
-          ...(parsed.data.assessmentNotes !== undefined ? { assessmentNotes: parsed.data.assessmentNotes } : {}),
-          ...(parsed.data.carePlanSummary !== undefined ? { carePlanSummary: parsed.data.carePlanSummary } : {}),
-          ...(parsed.data.visitScheduledAt !== undefined
-            ? { visitScheduledAt: parsed.data.visitScheduledAt ? new Date(parsed.data.visitScheduledAt) : null }
-            : {}),
-          ...(parsed.data.visitType !== undefined ? { visitType: parsed.data.visitType } : {}),
-          ...(parsed.data.visitProviderName !== undefined ? { visitProviderName: parsed.data.visitProviderName } : {}),
-          ...(parsed.data.visitNotes !== undefined ? { visitNotes: parsed.data.visitNotes } : {}),
-          ...(nextStatus === "VISIT_SCHEDULED" && parsed.data.visitScheduledAt === undefined && !existing.visitScheduledAt
-            ? { visitScheduledAt: new Date() }
-            : {}),
-          ...(followUpField ? { [followUpField]: new Date() } : {})
-        },
-        select: {
-          id: true,
-          status: true,
-          contactName: true,
-          email: true,
-          careGuideId: true,
-          carePathway: true,
-          assessmentNotes: true,
-          carePlanSummary: true,
-          visitScheduledAt: true,
-          visitType: true,
-          visitProviderName: true,
-          visitNotes: true,
-          careGuide: { select: { name: true, email: true } }
-        }
-      });
+      const intake = shouldCloseMatches
+        ? await prisma.$transaction(async (tx) => {
+            const updated = await tx.intake.update({
+              where: { id },
+              data: intakeData,
+              select: intakeSelect
+            });
+
+            await tx.match.updateMany({
+              where: {
+                intakeId: updated.id,
+                status: { not: "CLOSED" }
+              },
+              data: { status: "CLOSED" }
+            });
+
+            return updated;
+          })
+        : await prisma.intake.update({
+            where: { id },
+            data: intakeData,
+            select: intakeSelect
+          });
 
       const normalizedStatus = normalizeIntakeStatus(intake.status);
       const shouldNotifyVisitSchedule = Boolean(
         intake.visitScheduledAt && (nextStatus === "VISIT_SCHEDULED" || parsed.data.visitScheduledAt !== undefined)
       );
-
-      if (nextStatus && nextStatus !== currentStatus && normalizedStatus === "CLOSED") {
-        await prisma.match.updateMany({
-          where: {
-            intakeId: intake.id,
-            status: { not: "CLOSED" }
-          },
-          data: { status: "CLOSED" }
-        });
-      }
 
       if (nextStatus && nextStatus !== currentStatus && normalizedStatus !== "VISIT_SCHEDULED") {
         runInBackground(

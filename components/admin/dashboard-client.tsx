@@ -526,15 +526,17 @@ function FamilyDetailPanel({
   }, [family, clearPanelMessage]);
 
   const isPending = family ? pendingId === family.id : false;
-  const matchingAllowed = family ? canCreateMatches(family.status, carePathway || family.carePathway) : false;
-  const nextAction = family ? getAdminCaseNextAction(family, matches) : null;
   const normalizedStatus = family ? normalizeIntakeStatus(family.status) : "NEW";
+  const isClosedCase = normalizedStatus === "CLOSED";
+  const matchingAllowed = family && !isClosedCase ? canCreateMatches(family.status, carePathway || family.carePathway) : false;
+  const nextAction = family ? getAdminCaseNextAction(family, matches) : null;
   const hasMatches = matches.length > 0;
   const hasFamilyRequestedMatch = matches.some((match) => match.statusRaw === "VISIT_REQUESTED" || match.statusRaw === "CALLBACK_REQUESTED");
   const hasAcceptedOrContactedMatch = matches.some((match) => match.statusRaw === "ACCEPTED" || match.statusRaw === "CONTACTED" || match.statusRaw === "PLACED");
   const visitSchedulingAllowed =
-    hasFamilyRequestedMatch || hasAcceptedOrContactedMatch || ["VISIT_SCHEDULED", "PROVIDER_RESPONSE", "PLACEMENT_IN_PROGRESS", "PLACED"].includes(normalizedStatus);
-  const placementActionAllowed = hasAcceptedOrContactedMatch || ["PROVIDER_RESPONSE", "PLACEMENT_IN_PROGRESS", "PLACED"].includes(normalizedStatus);
+    !isClosedCase &&
+    (hasFamilyRequestedMatch || hasAcceptedOrContactedMatch || ["VISIT_SCHEDULED", "PROVIDER_RESPONSE", "PLACEMENT_IN_PROGRESS", "PLACED"].includes(normalizedStatus));
+  const placementActionAllowed = !isClosedCase && (hasAcceptedOrContactedMatch || ["PROVIDER_RESPONSE", "PLACEMENT_IN_PROGRESS", "PLACED"].includes(normalizedStatus));
   const createMatchDisabledReason = !assessmentComplete({ carePathway: carePathway || family?.carePathway || null })
     ? "Select a care pathway before creating provider matches."
     : !carePlanComplete({ carePlanSummary: carePlanSummary || family?.carePlanSummary || null })
@@ -883,6 +885,23 @@ function FamilyDetailPanel({
             </div>
           </details>
 
+          {isClosedCase ? (
+            <PanelSection
+              title="Closed case summary"
+              description="This case is archived. Reopen or create a new intake if the family needs more help later."
+            >
+              <DetailList
+                columns={1}
+                items={[
+                  { label: "Final status", value: adminIntakeStatusLabel(family.status) },
+                  { label: "Care Guide", value: family.careGuideName || "Not assigned" },
+                  { label: "Care pathway", value: family.carePathway },
+                  { label: "Last provider", value: family.visitProviderName },
+                  { label: "Last updated", value: family.updatedAt }
+                ]}
+              />
+            </PanelSection>
+          ) : (
           <div className="space-y-6 border-t border-stone-100 pt-6">
             <PanelSection
               step={2}
@@ -1134,6 +1153,7 @@ function FamilyDetailPanel({
               </PanelSection>
             ) : null}
           </div>
+          )}
 
           <PanelSection title="Case record">
             <DetailList

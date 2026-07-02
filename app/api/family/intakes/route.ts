@@ -57,17 +57,21 @@ export async function GET() {
     });
 
     const withCounts = await Promise.all(
-      intakes.map(async (intake) => ({
-        ...intake,
-        status: normalizeIntakeStatus(intake.status),
-        hospitalDischargeDate: intake.hospitalDischargeDate?.toISOString() ?? null,
-        visitScheduledAt: intake.visitScheduledAt?.toISOString() ?? null,
-        submittedAt: intake.createdAt.toISOString(),
-        careGuide: intake.careGuide
-          ? { name: intake.careGuide.name || "Your Care Guide", email: intake.careGuide.email }
-          : null,
-        matchCount: await countVisibleMatchesForIntake(intake.id)
-      }))
+      intakes.map(async (intake) => {
+        const status = normalizeIntakeStatus(intake.status);
+
+        return {
+          ...intake,
+          status,
+          hospitalDischargeDate: intake.hospitalDischargeDate?.toISOString() ?? null,
+          visitScheduledAt: intake.visitScheduledAt?.toISOString() ?? null,
+          submittedAt: intake.createdAt.toISOString(),
+          careGuide: intake.careGuide
+            ? { name: intake.careGuide.name || "Your Care Guide", email: intake.careGuide.email }
+            : null,
+          matchCount: status === "CLOSED" ? 0 : await countVisibleMatchesForIntake(intake.id)
+        };
+      })
     );
 
     return jsonOk(withCounts);

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { withIntakeId } from "@/lib/client/case-selection";
+import { normalizeIntakeStatus } from "@/lib/domain/intake-workflow";
 import { intakeStatusHint, intakeStatusLabel, formatVisitSchedule, type FamilyIntake } from "@/lib/client/intake";
 import { Button } from "@/components/ui/button";
 import { CareGuideCard } from "@/components/shared/care-guide-card";
@@ -61,12 +62,13 @@ export function IntakeSummaryCard({
 }) {
   const status = intakeStatusLabel(intake.status);
   const hint = intakeStatusHint(intake.status);
-  const hasMatches = typeof intake.matchCount === "number" && intake.matchCount > 0;
+  const isClosed = normalizeIntakeStatus(intake.status) === "CLOSED";
+  const hasMatches = !isClosed && typeof intake.matchCount === "number" && intake.matchCount > 0;
   const visitSummary = formatVisitSchedule(intake);
   const reference = intake.id.slice(0, 8).toUpperCase();
   const hasDecisionSupport = Boolean(intake.decisionMakerName || intake.decisionMakerRelationship);
   const hasCareDetails = Boolean(intake.mobility || intake.dementiaNeeds);
-  const hasUpdates = Boolean(intake.carePathway || intake.carePlanSummary || visitSummary);
+  const hasUpdates = !isClosed && Boolean(intake.carePathway || intake.carePlanSummary || visitSummary);
 
   if (compact) {
     return (
