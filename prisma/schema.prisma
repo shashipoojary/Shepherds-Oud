@@ -1,4 +1,3 @@
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -22,10 +21,11 @@ model User {
   linkedProviderId String?   @unique
   linkedProvider   Provider? @relation(fields: [linkedProviderId], references: [id])
 
-  intakes       Intake[]
-  guidedIntakes Intake[] @relation("CareGuideIntakes")
-  sessions      Session[]
-  accounts      Account[]
+  intakes             Intake[]
+  guidedIntakes       Intake[]         @relation("CareGuideIntakes")
+  providerInvitesSent ProviderInvite[] @relation("ProviderInvitesSent")
+  sessions            Session[]
+  accounts            Account[]
 }
 
 model Session {
@@ -244,4 +244,35 @@ model WaitlistEntry {
   status       WaitlistStatus @default(NEW)
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
+
+  providerInvites ProviderInvite[]
+}
+
+model ProviderInvite {
+  id              String               @id @default(cuid())
+  email           String
+  tokenHash       String               @unique
+  status          ProviderInviteStatus @default(PENDING)
+  waitlistEntryId String?
+  providerId      String?
+  invitedById     String?
+  expiresAt       DateTime
+  acceptedAt      DateTime?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  waitlistEntry WaitlistEntry? @relation(fields: [waitlistEntryId], references: [id])
+  invitedBy     User?          @relation("ProviderInvitesSent", fields: [invitedById], references: [id])
+
+  @@index([email])
+  @@index([status])
+  @@index([waitlistEntryId])
+  @@index([invitedById])
+}
+
+enum ProviderInviteStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
 }

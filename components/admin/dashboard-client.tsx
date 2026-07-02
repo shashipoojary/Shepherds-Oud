@@ -1595,7 +1595,9 @@ function WaitlistTable({
 }) {
   const [entries, setEntries] = useState(initialEntries);
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [pendingInviteId, setPendingInviteId] = useState<string | null>(null);
   const [selected, setSelected] = useState<WaitlistEntry | null>(null);
+  const [confirmInvite, setConfirmInvite] = useState<WaitlistEntry | null>(null);
 
   async function markContacted(id: string, name: string, notify: (message: string) => void = setMessage) {
     setPendingId(id);
@@ -1632,6 +1634,48 @@ function WaitlistTable({
       notify(`Could not mark ${name} as contacted. Please try again.`);
     } finally {
       setPendingId(null);
+    }
+  }
+
+  async function inviteProvider(entry: WaitlistEntry) {
+    setPendingInviteId(entry.id);
+    try {
+      const response = await fetch("/api/admin/provider-invites", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ waitlistEntryId: entry.id })
+      });
+
+      if (!response.ok) {
+        throw new Error("Could not send provider invite.");
+      }
+
+      const payload = (await response.json()) as { id: string; emailMode?: string };
+      const nextStatus = entry.status === "NEW" ? "CONTACTED" : entry.status;
+
+      setEntries((current) =>
+        current.map((item) => (item.id === entry.id ? { ...item, status: nextStatus } : item))
+      );
+      setSelected((current) => (current?.id === entry.id ? { ...current, status: nextStatus } : current));
+
+      try {
+        await recordAction({
+          type: "provider_invite_sent",
+          targetType: "waitlist",
+          targetId: entry.id,
+          label: `Sent provider invite to ${entry.email}.`,
+          payload: { waitlistEntryId: entry.id, inviteId: payload.id, email: entry.email, emailMode: payload.emailMode }
+        });
+      } catch {
+        // Invite send succeeded; action log is non-blocking.
+      }
+
+      setMessage(`Provider invite sent to ${entry.email}.`);
+    } catch {
+      setMessage(`Could not send provider invite to ${entry.email}. Please try again.`);
+    } finally {
+      setPendingInviteId(null);
+      setConfirmInvite(null);
     }
   }
 
@@ -1673,6 +1717,15 @@ function WaitlistTable({
                 <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}>
                   <div className="flex items-center gap-1">
                     <IconActionButton label="Open details" icon={ArrowUpRight} onClick={() => setSelected(entry)} />
+                    {entry.type === "FACILITY" ? (
+                      <IconActionButton
+                        label="Invite provider"
+                        icon={Building2}
+                        loading={pendingInviteId === entry.id}
+                        disabled={pendingInviteId === entry.id || entry.status === "CONVERTED" || entry.status === "CLOSED"}
+                        onClick={() => setConfirmInvite(entry)}
+                      />
+                    ) : null}
                     <IconActionButton
                       label={isContacted ? "Already contacted" : "Mark contacted"}
                       icon={Mail}
@@ -1692,7 +1745,28 @@ function WaitlistTable({
         entry={selected}
         onClose={() => setSelected(null)}
         onMarkContacted={markContacted}
+        onInviteProvider={(entry) => setConfirmInvite(entry)}
         pendingId={pendingId}
+        pendingInviteId={pendingInviteId}
+      />
+      <ConfirmDialog
+        open={Boolean(confirmInvite)}
+        title="Send provider invite?"
+        description={
+          confirmInvite
+            ? `Send a provider onboarding invite to ${confirmInvite.email}? This will create a pending invite record for ${confirmInvite.name}.`
+            : ""
+        }
+        confirmLabel="Send invite"
+        pending={Boolean(confirmInvite && pendingInviteId === confirmInvite.id)}
+        onCancel={() => {
+          if (pendingInviteId) return;
+          setConfirmInvite(null);
+        }}
+        onConfirm={() => {
+          if (!confirmInvite) return;
+          void inviteProvider(confirmInvite);
+        }}
       />
     </>
   );
@@ -1702,16 +1776,21 @@ function WaitlistDetailPanel({
   entry,
   onClose,
   onMarkContacted,
-  pendingId
+  onInviteProvider,
+  pendingId,
+  pendingInviteId
 }: {
   entry: WaitlistEntry | null;
   onClose: () => void;
   onMarkContacted: (id: string, name: string, notify?: (message: string) => void) => Promise<void>;
+  onInviteProvider: (entry: WaitlistEntry) => void;
   pendingId: string | null;
+  pendingInviteId: string | null;
 }) {
   const { message: panelMessage, setMessage: setPanelMessage, clearMessage: clearPanelMessage } = usePanelMessage();
   const isContacted = entry?.status === "CONTACTED";
   const isPending = entry ? pendingId === entry.id : false;
+  const isInvitePending = entry ? pendingInviteId === entry.id : false;
   const isFamily = entry?.type === "FAMILY";
 
   useEffect(() => {
@@ -1834,6 +1913,16 @@ function WaitlistDetailPanel({
                   {entry.email ? (
                     <Button asChild size="sm" variant="outline">
                       <a href={`mailto:${entry.email}`}>Email contact</a>
+                    </Button>
+                  ) : null}
+                  {!isFamily ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={isInvitePending || entry.status === "CONVERTED" || entry.status === "CLOSED"}
+                      onClick={() => onInviteProvider(entry)}
+                    >
+                      {isInvitePending ? "Sending..." : "Invite provider"}
                     </Button>
                   ) : null}
                   <Button
