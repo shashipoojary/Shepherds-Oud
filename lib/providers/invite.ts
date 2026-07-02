@@ -55,18 +55,61 @@ export async function acceptProviderInviteForUser(input: {
   }
 
   const acceptedAt = new Date();
-  await prisma.$transaction([
-    prisma.providerInvite.update({
-      where: { id: invite.id },
-      data: { status: "ACCEPTED", acceptedAt }
-    }),
-    prisma.user.update({
-      where: { id: input.userId },
-      data: { role: "PROVIDER" }
-    })
-  ]);
+  const waitlistEntry = invite.waitlistEntryId
+    ? await prisma.waitlistEntry.findUnique({
+        where: { id: invite.waitlistEntryId }
+      })
+    : null;
 
-  return { ok: true as const, inviteId: invite.id };
+  const existingUser = await prisma.user.findUnique({
+    where: { id: input.userId },
+    select: { linkedProviderId: true, name: true }
+  });
+
+  let providerId = existingUser?.linkedProviderId || invite.providerId || null;
+
+  await prisma.$transaction(async (tx) => {
+    if (!providerId && waitlistEntry?.type === "FACILITY") {
+      const provider = await tx.provider.create({
+        data: {
+          name: waitlistEntry.facilityName?.trim() || waitlistEntry.contactName || email,
+          type: waitlistEntry.facilityType?.trim() || "Care facility",
+          area: [waitlistEntry.city, waitlistEntry.province].filter(Boolean).join(", ") || "Netherlands",
+          city: waitlistEntry.city || null,
+          province: waitlistEntry.province || null,
+          description: waitlistEntry.message || "",
+          contactName: waitlistEntry.contactName || existingUser?.name || null,
+          email,
+          phone: waitlistEntry.phone || null,
+          bedsTotal: waitlistEntry.bedsTotal || null,
+          services: waitlistEntry.services,
+          careLevels: [],
+          languages: [],
+          fundingTypes: []
+        }
+      });
+      providerId = provider.id;
+    }
+
+    await tx.providerInvite.update({
+      where: { id: invite.id },
+      data: { status: "ACCEPTED", acceptedAt, providerId }
+    });
+
+    await tx.user.update({
+      where: { id: input.userId },
+      data: { role: "PROVIDER", linkedProviderId: providerId || undefined }
+    });
+
+    if (invite.waitlistEntryId) {
+      await tx.waitlistEntry.update({
+        where: { id: invite.waitlistEntryId },
+        data: { status: "CONVERTED" }
+      });
+    }
+  });
+
+  return { ok: true as const, inviteId: invite.id, providerId };
 }
 
 export async function createProviderInvite(input: {

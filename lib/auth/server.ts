@@ -11,7 +11,8 @@ type Session = NonNullable<Awaited<ReturnType<typeof auth.api.getSession>>>;
 async function syncUserRole(session: Session) {
   const resolvedRole = await resolveRoleForUser({
     id: session.user.id,
-    email: session.user.email
+    email: session.user.email,
+    role: session.user.role
   });
 
   if (session.user.role === resolvedRole) {

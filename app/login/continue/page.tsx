@@ -29,7 +29,8 @@ export default async function LoginContinuePage({ searchParams }: { searchParams
   const destination = destinationFromCallback(callbackUrl);
   let role = await resolveRoleForUser({
     id: session.user.id,
-    email: session.user.email
+    email: session.user.email,
+    role: session.user.role
   });
 
   if (session.user.role !== role) {

@@ -48,8 +48,13 @@ export function resolveRole(email: string | null | undefined): AppRole {
 export async function resolveRoleForUser(user: {
   id?: string | null;
   email?: string | null;
+  role?: string | null;
   linkedProviderId?: string | null;
 }): Promise<AppRole> {
+  if (user.role === "ADMIN") {
+    return "ADMIN";
+  }
+
   const role = resolveRole(user.email);
 
   if (role !== "FAMILY") {
@@ -68,9 +73,14 @@ export async function resolveRoleForUser(user: {
     where: { id: user.id },
     select: {
       linkedProviderId: true,
-      email: true
+      email: true,
+      role: true
     }
   });
+
+  if (existing?.role === "ADMIN") {
+    return "ADMIN";
+  }
 
   if (existing?.linkedProviderId) {
     return "PROVIDER";
