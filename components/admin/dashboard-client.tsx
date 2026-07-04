@@ -17,6 +17,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { IconActionButton } from "@/components/ui/icon-action-button";
 import { RefreshButton } from "@/components/ui/refresh-button";
+import { UnreadDot } from "@/components/ui/unread-dot";
 import { DetailList, PanelSection, panelNoticeTone, SlidePanel, StatusPill, TagList, usePanelMessage } from "@/components/ui/slide-panel";
 import { StatGrid } from "@/components/ui/stat-grid";
 import type { AdminDashboardData } from "@/lib/data/admin";
@@ -32,6 +33,7 @@ import {
   initTabSeenFromData,
   markTabSeen
 } from "@/lib/client/admin-seen";
+import { initAdminItemsSeenFromData, isAdminItemUnread, markAdminItemSeen } from "@/lib/client/admin-item-seen";
 import { CARE_PATHWAYS } from "@/lib/domain/care-pathways";
 import { getAdminCaseNextAction } from "@/lib/domain/admin-case-next-action";
 import {
@@ -91,6 +93,13 @@ export function AdminDashboardClient({ data: initialData }: { data: AdminDashboa
   const [message, setMessage] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const [tabSeenAt, setTabSeenAt] = useState(getTabSeenAt);
+  const [itemSeenVersion, setItemSeenVersion] = useState(0);
+  const dataRef = useRef(data);
+  dataRef.current = data;
+
+  function bumpItemSeen() {
+    setItemSeenVersion((current) => current + 1);
+  }
 
   useEffect(() => {
     setData(initialData);
@@ -98,12 +107,38 @@ export function AdminDashboardClient({ data: initialData }: { data: AdminDashboa
 
   useEffect(() => {
     initTabSeenFromData(initialData);
+    initAdminItemsSeenFromData([
+      ...initialData.families.map((family) => ({
+        scope: "family" as const,
+        id: family.id,
+        createdAtIso: family.createdAtIso,
+        updatedAtIso: family.updatedAtIso
+      })),
+      ...initialData.providerList.map((provider) => ({
+        scope: "provider" as const,
+        id: provider.id,
+        createdAtIso: provider.createdAtIso,
+        updatedAtIso: provider.updatedAtIso
+      })),
+      ...initialData.inquiries.map((inquiry) => ({
+        scope: "inquiry" as const,
+        id: inquiry.id,
+        createdAtIso: inquiry.createdAtIso,
+        updatedAtIso: inquiry.updatedAtIso
+      })),
+      ...initialData.waitlist.map((entry) => ({
+        scope: "waitlist" as const,
+        id: entry.id,
+        createdAtIso: entry.createdAtIso,
+        updatedAtIso: entry.updatedAtIso
+      }))
+    ]);
   }, [initialData]);
 
   useEffect(() => {
-    const seen = markTabSeen(tab, data);
+    const seen = markTabSeen(tab, dataRef.current);
     setTabSeenAt(seen);
-  }, [tab, data]);
+  }, [tab]);
 
   const tabBadges = useMemo(
     () => ({
@@ -206,6 +241,8 @@ export function AdminDashboardClient({ data: initialData }: { data: AdminDashboa
                 careGuides={data.careGuides}
                 setMessage={setMessage}
                 onSync={syncDashboard}
+                itemSeenVersion={itemSeenVersion}
+                onMarkItemSeen={bumpItemSeen}
               />
             ) : (
               <EmptyState title="No family intakes yet" description="New submissions from the intake form will appear here." />
@@ -214,7 +251,11 @@ export function AdminDashboardClient({ data: initialData }: { data: AdminDashboa
 
           {tab === "providers" ? (
             data.providerList.length ? (
-              <ProvidersTable providers={data.providerList} />
+              <ProvidersTable
+                providers={data.providerList}
+                itemSeenVersion={itemSeenVersion}
+                onMarkItemSeen={bumpItemSeen}
+              />
             ) : (
               <EmptyState title="No active providers yet" description="Providers appear here after invitation acceptance or profile creation." />
             )
@@ -222,7 +263,13 @@ export function AdminDashboardClient({ data: initialData }: { data: AdminDashboa
 
           {tab === "inquiries" ? (
             data.inquiries.length ? (
-              <InquiriesTable inquiries={data.inquiries} setMessage={setMessage} onSync={syncDashboard} />
+              <InquiriesTable
+                inquiries={data.inquiries}
+                setMessage={setMessage}
+                onSync={syncDashboard}
+                itemSeenVersion={itemSeenVersion}
+                onMarkItemSeen={bumpItemSeen}
+              />
             ) : (
               <EmptyState
                 title="No provider follow-up needed"
@@ -233,7 +280,12 @@ export function AdminDashboardClient({ data: initialData }: { data: AdminDashboa
 
           {tab === "waitlist" ? (
             data.waitlist.length ? (
-              <WaitlistTable entries={data.waitlist} setMessage={setMessage} />
+              <WaitlistTable
+                entries={data.waitlist}
+                setMessage={setMessage}
+                itemSeenVersion={itemSeenVersion}
+                onMarkItemSeen={bumpItemSeen}
+              />
             ) : (
               <EmptyState title="No waitlist registrations yet" description="Family and facility pre-launch sign-ups appear here only — not in Families or Providers." />
             )
@@ -250,7 +302,9 @@ function FamiliesTable({
   providers,
   careGuides,
   setMessage,
-  onSync
+  onSync,
+  itemSeenVersion,
+  onMarkItemSeen
 }: {
   families: FamilyEntry[];
   inquiries: InquiryEntry[];
@@ -258,11 +312,19 @@ function FamiliesTable({
   careGuides: CareGuideOption[];
   setMessage: (message: string) => void;
   onSync: () => Promise<boolean>;
+  itemSeenVersion: number;
+  onMarkItemSeen: () => void;
 }) {
   const [rows, setRows] = useState(families);
   const [selected, setSelected] = useState<FamilyEntry | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const matchesByIntakeId = useMemo(() => groupInquiriesByIntake(inquiries), [inquiries]);
+
+  function openFamily(family: FamilyEntry) {
+    markAdminItemSeen("family", family.id, family.createdAtIso, family.updatedAtIso);
+    onMarkItemSeen();
+    setSelected(family);
+  }
 
   useEffect(() => {
     setRows(families);
@@ -384,10 +446,16 @@ function FamiliesTable({
             const isPending = pendingId === family.id;
             const assignMeta = adminIntakeActionMeta("CARE_GUIDE_ASSIGNED");
             const nextAction = getAdminCaseNextAction(family, matchesByIntakeId.get(family.id) ?? []);
+            const isUnread =
+              itemSeenVersion >= 0 &&
+              isAdminItemUnread("family", family.id, family.createdAtIso, family.updatedAtIso);
             return (
-              <tr key={family.id} className="cursor-pointer hover:bg-cream" onClick={() => setSelected(family)}>
+              <tr key={family.id} className="cursor-pointer hover:bg-cream" onClick={() => openFamily(family)}>
                 <td className="px-4 py-3 text-sm">
-                  <strong>{family.name}</strong>
+                  <div className="flex items-center gap-2">
+                    {isUnread ? <UnreadDot /> : null}
+                    <strong>{family.name}</strong>
+                  </div>
                   <span className="block text-xs text-neutral-500">{family.context}</span>
                   <span className="mt-1 block text-xs text-neutral-500 sm:hidden">{family.location}</span>
                 </td>
@@ -425,10 +493,10 @@ function FamiliesTable({
                         icon={ClipboardList}
                         loading={isPending}
                         disabled={isPending}
-                        onClick={() => setSelected(family)}
+                        onClick={() => openFamily(family)}
                       />
                     ) : (
-                      <IconActionButton label="Open details" icon={ArrowUpRight} onClick={() => setSelected(family)} />
+                      <IconActionButton label="Open details" icon={ArrowUpRight} onClick={() => openFamily(family)} />
                     )}
                   </div>
                 </td>
@@ -1231,11 +1299,21 @@ function FamilyDetailPanel({
 }
 
 function ProvidersTable({
-  providers
+  providers,
+  itemSeenVersion,
+  onMarkItemSeen
 }: {
   providers: AdminDashboardData["providerList"];
+  itemSeenVersion: number;
+  onMarkItemSeen: () => void;
 }) {
   const [selected, setSelected] = useState<AdminDashboardData["providerList"][number] | null>(null);
+
+  function openProvider(provider: AdminDashboardData["providerList"][number]) {
+    markAdminItemSeen("provider", provider.id, provider.createdAtIso, provider.updatedAtIso);
+    onMarkItemSeen();
+    setSelected(provider);
+  }
 
   useEffect(() => {
     setSelected((current) => {
@@ -1257,10 +1335,16 @@ function ProvidersTable({
           </tr>
         </thead>
         <tbody className="divide-y divide-stone-200">
-          {providers.map((provider) => (
-            <tr key={provider.id} className="cursor-pointer hover:bg-cream" onClick={() => setSelected(provider)}>
+          {providers.map((provider) => {
+            const isUnread =
+              itemSeenVersion >= 0 &&
+              isAdminItemUnread("provider", provider.id, provider.createdAtIso, provider.updatedAtIso);
+
+            return (
+            <tr key={provider.id} className="cursor-pointer hover:bg-cream" onClick={() => openProvider(provider)}>
               <td className="px-4 py-3 text-sm font-semibold">
                 <div className="flex flex-wrap items-center gap-2">
+                  {isUnread ? <UnreadDot /> : null}
                   <span>{provider.name}</span>
                   <span
                     className={cn(
@@ -1286,10 +1370,11 @@ function ProvidersTable({
                 {provider.bedsTotal ? ` / ${provider.bedsTotal}` : ""}
               </td>
               <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}>
-                <IconActionButton label="Open details" icon={ArrowUpRight} onClick={() => setSelected(provider)} />
+                <IconActionButton label="Open details" icon={ArrowUpRight} onClick={() => openProvider(provider)} />
               </td>
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
 
@@ -1500,11 +1585,15 @@ function formatProviderPriceRange(priceMin: number | null, priceMax: number | nu
 function InquiriesTable({
   inquiries,
   setMessage,
-  onSync
+  onSync,
+  itemSeenVersion,
+  onMarkItemSeen
 }: {
   inquiries: InquiryEntry[];
   setMessage: (message: string) => void;
   onSync: () => Promise<boolean>;
+  itemSeenVersion: number;
+  onMarkItemSeen: () => void;
 }) {
   const [rows, setRows] = useState(inquiries);
   const [pendingId, setPendingId] = useState<string | null>(null);
@@ -1512,6 +1601,12 @@ function InquiriesTable({
   const [selected, setSelected] = useState<InquiryEntry | null>(null);
   const [confirmClose, setConfirmClose] = useState<InquiryEntry | null>(null);
   const [showHistory, setShowHistory] = useState(false);
+
+  function openInquiry(inquiry: InquiryEntry) {
+    markAdminItemSeen("inquiry", inquiry.id, inquiry.createdAtIso, inquiry.updatedAtIso);
+    onMarkItemSeen();
+    setSelected(inquiry);
+  }
 
   useEffect(() => {
     setRows(inquiries);
@@ -1634,14 +1729,22 @@ function InquiriesTable({
             const isPending = pendingId === inquiry.id;
             const needsFollowUp = isAdminActionNeeded(inquiry.statusRaw);
             const placementReady = inquiry.statusRaw === "ACCEPTED" || inquiry.statusRaw === "CONTACTED";
+            const isUnread =
+              itemSeenVersion >= 0 &&
+              isAdminItemUnread("inquiry", inquiry.id, inquiry.createdAtIso, inquiry.updatedAtIso);
 
             return (
               <tr
                 key={inquiry.id}
                 className={`cursor-pointer hover:bg-cream ${needsFollowUp ? "bg-brand-amber/5" : ""}`}
-                onClick={() => setSelected(inquiry)}
+                onClick={() => openInquiry(inquiry)}
               >
-                <td className="px-4 py-3 text-sm text-neutral-700">{inquiry.family}</td>
+                <td className="px-4 py-3 text-sm text-neutral-700">
+                  <div className="flex items-center gap-2">
+                    {isUnread ? <UnreadDot /> : null}
+                    <span>{inquiry.family}</span>
+                  </div>
+                </td>
                 <td className="px-4 py-3 text-sm text-neutral-700">{inquiry.provider}</td>
                 <td className="px-4 py-3 text-sm font-semibold text-sage-700">{inquiry.match}</td>
                 <td className="px-4 py-3 text-sm text-neutral-600">{inquiry.updatedAt}</td>
@@ -1679,7 +1782,7 @@ function InquiriesTable({
                         onClick={() => setConfirmClose(inquiry)}
                       />
                     ) : null}
-                    <IconActionButton label="Open details" icon={ArrowUpRight} onClick={() => setSelected(inquiry)} />
+                    <IconActionButton label="Open details" icon={ArrowUpRight} onClick={() => openInquiry(inquiry)} />
                   </div>
                 </td>
               </tr>
@@ -1855,16 +1958,26 @@ function InquiryDetailPanel({
 
 function WaitlistTable({
   entries: initialEntries,
-  setMessage
+  setMessage,
+  itemSeenVersion,
+  onMarkItemSeen
 }: {
   entries: WaitlistEntry[];
   setMessage: (message: string) => void;
+  itemSeenVersion: number;
+  onMarkItemSeen: () => void;
 }) {
   const [entries, setEntries] = useState(initialEntries);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [pendingInviteId, setPendingInviteId] = useState<string | null>(null);
   const [selected, setSelected] = useState<WaitlistEntry | null>(null);
   const [confirmInvite, setConfirmInvite] = useState<WaitlistEntry | null>(null);
+
+  function openEntry(entry: WaitlistEntry) {
+    markAdminItemSeen("waitlist", entry.id, entry.createdAtIso, entry.updatedAtIso);
+    onMarkItemSeen();
+    setSelected(entry);
+  }
 
   function canInviteProvider(entry: WaitlistEntry) {
     return entry.type === "FACILITY" && entry.status === "NEW";
@@ -1984,11 +2097,19 @@ function WaitlistTable({
             const isContacted = entry.status === "CONTACTED";
             const isPending = pendingId === entry.id;
             const isInviteLocked = !canInviteProvider(entry);
+            const isUnread =
+              itemSeenVersion >= 0 &&
+              isAdminItemUnread("waitlist", entry.id, entry.createdAtIso, entry.updatedAtIso);
 
             return (
-              <tr key={entry.id} className="cursor-pointer hover:bg-cream" onClick={() => setSelected(entry)}>
+              <tr key={entry.id} className="cursor-pointer hover:bg-cream" onClick={() => openEntry(entry)}>
                 <td className="px-4 py-3 text-sm text-neutral-600">{entry.type === "FACILITY" ? "Facility" : "Family"}</td>
-                <td className="px-4 py-3 text-sm font-semibold">{entry.name}</td>
+                <td className="px-4 py-3 text-sm font-semibold">
+                  <div className="flex items-center gap-2">
+                    {isUnread ? <UnreadDot /> : null}
+                    <span>{entry.name}</span>
+                  </div>
+                </td>
                 <td className="px-4 py-3 text-sm text-neutral-600">{entry.email}</td>
                 <td className="px-4 py-3 text-sm text-neutral-600">{entry.location}</td>
                 <td className="px-4 py-3 text-sm text-neutral-600">{entry.createdAt}</td>
@@ -2003,7 +2124,7 @@ function WaitlistTable({
                 </td>
                 <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}>
                   <div className="flex items-center gap-1">
-                    <IconActionButton label="Open details" icon={ArrowUpRight} onClick={() => setSelected(entry)} />
+                    <IconActionButton label="Open details" icon={ArrowUpRight} onClick={() => openEntry(entry)} />
                     {entry.type === "FACILITY" ? (
                       <IconActionButton
                         label={isInviteLocked ? "Provider invite locked" : "Invite provider"}

@@ -30,6 +30,18 @@ export function markProviderInquirySeen(inquiryId: string, updatedAtIso: string)
   writeMap(map);
 }
 
+/** First visit: treat current inquiries as already seen so only future updates badge. */
+export function initProviderInquirySeenFromData(items: Array<{ id: string; updatedAt: string }>) {
+  if (typeof window === "undefined") return;
+  if (window.localStorage.getItem(STORAGE_KEY)) return;
+
+  const map: SeenMap = {};
+  for (const item of items) {
+    map[item.id] = item.updatedAt;
+  }
+  writeMap(map);
+}
+
 export function isProviderInquiryUnread(inquiryId: string, updatedAtIso: string) {
   const seenAt = getProviderInquirySeenAt(inquiryId);
   if (!seenAt) return true;

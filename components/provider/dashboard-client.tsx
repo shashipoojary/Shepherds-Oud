@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowUpRight, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -10,6 +10,7 @@ import { DashboardSkeleton } from "@/components/ui/dashboard-skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { RefreshButton } from "@/components/ui/refresh-button";
 import { StatGrid } from "@/components/ui/stat-grid";
+import { UnreadDot } from "@/components/ui/unread-dot";
 import { PanelSection, DetailList, panelNoticeTone, SlidePanel, StatusPill, usePanelMessage } from "@/components/ui/slide-panel";
 import { careTypeOptions, declineReasonOptions, careLevelOptions, dementiaCapacityOptions, dutchProvinces, facilityTypes, fundingTypeOptions, visitAvailabilityOptions } from "@/lib/config/content";
 import {
@@ -21,7 +22,6 @@ import {
   providerInquiryActionMessage,
   providerInquiryBanner,
   providerInquiryStatusLabel,
-  providerInquiryTabForStatus,
   providerInquiryTabLabel,
   providerMatchNotes,
   type ProviderInquiryTab
@@ -30,9 +30,16 @@ import { sanitizeClientErrorMessage } from "@/lib/providers/errors";
 import { recordAction } from "@/lib/client/actions";
 import {
   countUnreadProviderInquiries,
+  initProviderInquirySeenFromData,
   isProviderInquiryUnread,
   markProviderInquirySeen
 } from "@/lib/client/provider-inquiry-seen";
+import {
+  countUnseenProviderInquiriesInTab,
+  getProviderInquiryTabSeenAt,
+  initProviderInquiryTabSeenFromData,
+  markProviderInquiryTabSeen
+} from "@/lib/client/provider-inquiry-tab-seen";
 import { TOAST_DISMISS_MS } from "@/lib/client/toast-timing";
 import { brand } from "@/lib/config/brand";
 import { cn } from "@/lib/core/utils";
@@ -258,8 +265,22 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
   const [profilePanelOpen, setProfilePanelOpen] = useState(false);
   const [inquiryTab, setInquiryTab] = useState<ProviderInquiryTab>("new");
   const [selectedInquiry, setSelectedInquiry] = useState<Inquiry | null>(null);
+  const [inquiryTabSeenAt, setInquiryTabSeenAt] = useState(getProviderInquiryTabSeenAt);
+  const [inquirySeenVersion, setInquirySeenVersion] = useState(0);
 
   const providerInquiryTabs: ProviderInquiryTab[] = ["new", "ongoing", "closed", "all"];
+  const inquiriesRef = useRef(inquiries);
+  inquiriesRef.current = inquiries;
+
+  function bumpInquirySeen() {
+    setInquirySeenVersion((current) => current + 1);
+  }
+
+  function openInquiry(inquiry: Inquiry) {
+    markProviderInquirySeen(inquiry.id, inquiry.updatedAt);
+    bumpInquirySeen();
+    setSelectedInquiry(inquiry);
+  }
 
   async function refreshDashboard() {
     setRefreshing(true);
@@ -314,6 +335,16 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
 
     void load();
   }, [initialData]);
+
+  useEffect(() => {
+    initProviderInquirySeenFromData(inquiries.map((item) => ({ id: item.id, updatedAt: item.updatedAt })));
+    initProviderInquiryTabSeenFromData(inquiries);
+  }, [inquiries]);
+
+  useEffect(() => {
+    if (!profileComplete) return;
+    setInquiryTabSeenAt(markProviderInquiryTabSeen(inquiryTab, inquiriesRef.current));
+  }, [inquiryTab, profileComplete]);
 
   useEffect(() => {
     if (!message) return;
@@ -481,6 +512,8 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
       const updated = (await response.json()) as Inquiry;
       setInquiries((current) => current.map((item) => (item.id === id ? { ...item, ...updated } : item)));
       setSelectedInquiry((current) => (current?.id === id ? { ...current, ...updated } : current));
+      markProviderInquirySeen(id, updated.updatedAt);
+      bumpInquirySeen();
       const feedback = providerInquiryActionMessage(updated.status, familyName, priorStatus);
       setInquiryFeedback((current) => ({ ...current, [id]: feedback }));
     } catch {
@@ -498,24 +531,24 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
     () => [...inquiries].sort((a, b) => compareMatchPriority(a.status, b.status)),
     [inquiries]
   );
-  const inquiryTabCounts = useMemo(
+  const inquiryTabBadges = useMemo(
     () => ({
-      new: inquiries.filter((item) => providerInquiryTabForStatus(item.status) === "new").length,
-      ongoing: inquiries.filter((item) => providerInquiryTabForStatus(item.status) === "ongoing").length,
-      closed: inquiries.filter((item) => providerInquiryTabForStatus(item.status) === "closed").length,
-      all: inquiries.length
+      new: countUnseenProviderInquiriesInTab(inquiries, "new", inquiryTabSeenAt.new),
+      ongoing: countUnseenProviderInquiriesInTab(inquiries, "ongoing", inquiryTabSeenAt.ongoing),
+      closed: countUnseenProviderInquiriesInTab(inquiries, "closed", inquiryTabSeenAt.closed),
+      all: countUnseenProviderInquiriesInTab(inquiries, "all", inquiryTabSeenAt.all)
     }),
-    [inquiries]
+    [inquiries, inquiryTabSeenAt]
   );
   const filteredInquiries = useMemo(
     () => filterProviderInquiriesByTab(sortedInquiries, inquiryTab),
     [sortedInquiries, inquiryTab]
   );
-  const actionNeededCount = inquiryTabCounts.new;
-  const unreadInquiryCount = useMemo(
-    () => countUnreadProviderInquiries(inquiries.map((item) => ({ id: item.id, updatedAt: item.updatedAt }))),
-    [inquiries]
-  );
+  const actionNeededCount = inquiries.filter((item) => isProviderActionNeeded(item.status)).length;
+  const unreadInquiryCount = useMemo(() => {
+    void inquirySeenVersion;
+    return countUnreadProviderInquiries(inquiries.map((item) => ({ id: item.id, updatedAt: item.updatedAt })));
+  }, [inquiries, inquirySeenVersion]);
   const newInquiries = actionNeededCount;
   const bedsDisplay = form.bedsOpen.trim() === "" ? "—" : form.bedsOpen;
 
@@ -602,7 +635,7 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
 
       <div className="mb-5 flex w-full gap-1 overflow-x-auto rounded-[10px] bg-white p-1 shadow-soft sm:inline-flex sm:w-auto">
         {providerInquiryTabs.map((item) => {
-          const count = inquiryTabCounts[item];
+          const badge = inquiryTabBadges[item];
           const isActive = inquiryTab === item;
 
           return (
@@ -617,9 +650,9 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
             >
               <span className="inline-flex items-center gap-2">
                 {providerInquiryTabLabel(item)}
-                {count > 0 && !isActive ? (
+                {badge > 0 && !isActive ? (
                   <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-amber px-1.5 text-[10px] font-bold leading-none text-white">
-                    {count > 9 ? "9+" : count}
+                    {badge > 9 ? "9+" : badge}
                   </span>
                 ) : null}
               </span>
@@ -706,7 +739,8 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
                 <tbody className="divide-y divide-stone-200">
                   {filteredInquiries.map((inquiry) => {
                     const needsResponse = isProviderActionNeeded(inquiry.status);
-                    const isUnread = isProviderInquiryUnread(inquiry.id, inquiry.updatedAt);
+                    const isUnread =
+                      inquirySeenVersion >= 0 && isProviderInquiryUnread(inquiry.id, inquiry.updatedAt);
                     const isPending = pendingInquiryId === inquiry.id;
 
                     return (
@@ -716,20 +750,12 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
                           "cursor-pointer hover:bg-cream",
                           needsResponse ? "bg-brand-amber/[0.04]" : isUnread ? "bg-brand-green-pale/[0.08]" : undefined
                         )}
-                        onClick={() => {
-                          markProviderInquirySeen(inquiry.id, inquiry.updatedAt);
-                          setSelectedInquiry(inquiry);
-                        }}
+                        onClick={() => openInquiry(inquiry)}
                       >
                         <td className="px-4 py-3 text-sm">
                           <div className="flex flex-wrap items-center gap-2">
+                            {isUnread ? <UnreadDot /> : null}
                             <strong className="text-ink">{inquiry.intake.contactName}</strong>
-                            {isUnread ? (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-brand-green-dark px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
-                                <span className="h-1.5 w-1.5 rounded-full bg-white" aria-hidden />
-                                Updated
-                              </span>
-                            ) : null}
                           </div>
                           <span className="mt-1 block text-xs text-neutral-500">
                             {inquiry.score}% match · {inquiry.intake.urgency}
@@ -758,10 +784,7 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
                             variant="outline"
                             className="bg-white"
                             disabled={isPending}
-                            onClick={() => {
-                              markProviderInquirySeen(inquiry.id, inquiry.updatedAt);
-                              setSelectedInquiry(inquiry);
-                            }}
+                            onClick={() => openInquiry(inquiry)}
                           >
                             Open
                             <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
