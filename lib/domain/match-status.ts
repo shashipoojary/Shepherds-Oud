@@ -34,6 +34,32 @@ export function isProviderActionNeeded(status: string) {
   return ["VISIT_REQUESTED", "CALLBACK_REQUESTED"].includes(status);
 }
 
+export type ProviderInquiryTab = "new" | "ongoing" | "closed" | "all";
+
+export function providerInquiryTabForStatus(status: string): Exclude<ProviderInquiryTab, "all"> {
+  if (isProviderActionNeeded(status)) return "new";
+  if (status === "CLOSED" || status === "DECLINED") return "closed";
+  return "ongoing";
+}
+
+export function filterProviderInquiriesByTab<T extends { status: string }>(items: T[], tab: ProviderInquiryTab) {
+  if (tab === "all") return items;
+  return items.filter((item) => providerInquiryTabForStatus(item.status) === tab);
+}
+
+export function providerInquiryTabLabel(tab: ProviderInquiryTab) {
+  switch (tab) {
+    case "new":
+      return "New";
+    case "ongoing":
+      return "Ongoing";
+    case "closed":
+      return "Closed";
+    default:
+      return "All";
+  }
+}
+
 export function isAdminActionNeeded(status: string) {
   return ["VISIT_REQUESTED", "CALLBACK_REQUESTED", "ACCEPTED"].includes(status);
 }
