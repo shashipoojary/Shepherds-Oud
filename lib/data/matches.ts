@@ -37,3 +37,32 @@ export async function countVisibleMatchesForIntake(intakeId: string) {
     }
   });
 }
+
+export async function getFamilyMatchHistoryForIntake(intakeId: string): Promise<ProviderMatch[]> {
+  const matches = await prisma.match.findMany({
+    where: { intakeId },
+    orderBy: [{ updatedAt: "desc" }, { score: "desc" }],
+    include: { provider: true }
+  });
+
+  return matches.map((match) => ({
+    ...mapProviderRecord(match.provider),
+    match: match.score,
+    matchId: match.id,
+    matchStatus: match.status,
+    action:
+      match.status === "VISIT_REQUESTED"
+        ? "Visit requested"
+        : match.status === "CALLBACK_REQUESTED"
+          ? "Callback requested"
+          : match.status === "ACCEPTED"
+            ? "Accepted"
+            : match.status === "PLACED"
+              ? "Placement in progress"
+              : match.status === "DECLINED"
+                ? "Declined"
+                : match.status === "CLOSED"
+                  ? "Closed"
+                  : "Suggested match"
+  }));
+}

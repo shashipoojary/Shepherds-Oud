@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/core/db";
 import { canAccessIntake } from "@/lib/auth/case-access";
-import { getMatchesForIntake } from "@/lib/data/matches";
+import { getMatchesForIntake, getFamilyMatchHistoryForIntake } from "@/lib/data/matches";
 import { getServerSession, getUserRole } from "@/lib/auth/server";
 import { canCreateMatches, normalizeIntakeStatus } from "@/lib/domain/intake-workflow";
 import { isProviderProfileComplete } from "@/lib/providers/completeness";
@@ -23,6 +23,7 @@ export async function GET(request: Request) {
 
   try {
     const intakeId = new URL(request.url).searchParams.get("intakeId");
+    const includeHistory = new URL(request.url).searchParams.get("history") === "1";
 
     if (!intakeId) {
       return jsonError("intakeId is required.", 400);
@@ -54,7 +55,7 @@ export async function GET(request: Request) {
       return jsonError("Forbidden", 403);
     }
 
-    const matches = await getMatchesForIntake(intakeId);
+    const matches = includeHistory ? await getFamilyMatchHistoryForIntake(intakeId) : await getMatchesForIntake(intakeId);
     return jsonOk(matches, 200);
   } catch (error) {
     return handleApiError(error, "matches_read");

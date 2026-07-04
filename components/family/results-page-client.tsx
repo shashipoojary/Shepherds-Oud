@@ -4,7 +4,7 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { BedDouble, Check, CircleDollarSign, Loader2, MapPin } from "lucide-react";
-import { selectFamilyIntake, withIntakeId } from "@/lib/client/case-selection";
+import { isHistoryIntake, selectFamilyIntake, withIntakeId } from "@/lib/client/case-selection";
 import { TOAST_DISMISS_MS } from "@/lib/client/toast-timing";
 import { getSessionFamilyIntakes, type FamilyIntake } from "@/lib/client/intake";
 import { requestMatchAction } from "@/lib/client/match-request";
@@ -128,6 +128,7 @@ function ResultsPageContent() {
   const [rowFeedback, setRowFeedback] = useState<Record<string, RowFeedback>>({});
   const recommended = providers[0];
   const intake = selectionState.state === "selected" ? selectionState.intake : null;
+  const historyCase = intake ? isHistoryIntake(intake) : false;
 
   useEffect(() => {
     async function loadMatches() {
@@ -152,7 +153,10 @@ function ResultsPageContent() {
           return;
         }
 
-        const matchesResponse = await fetch(`/api/matches?intakeId=${selected.intake.id}`);
+        const historyCase = isHistoryIntake(selected.intake);
+        const matchesResponse = await fetch(
+          `/api/matches?intakeId=${selected.intake.id}${historyCase ? "&history=1" : ""}`
+        );
 
         if (matchesResponse.ok) {
           setProviders((await matchesResponse.json()) as ProviderMatch[]);
@@ -194,6 +198,8 @@ function ResultsPageContent() {
   const filteredCount = visibleProviders.length;
 
   async function handleProviderAction(provider: ProviderMatch, status: "VISIT_REQUESTED" | "CALLBACK_REQUESTED") {
+    if (historyCase) return;
+
     const actionType = status === "VISIT_REQUESTED" ? "visit" : "callback";
 
     if (!intake?.id || !provider.matchId) {
@@ -319,6 +325,12 @@ function ResultsPageContent() {
         ← Your dashboard
       </Link>
 
+      {historyCase ? (
+        <div className="mb-5 rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm text-ink/70 shadow-soft">
+          Provider history for this request. Visit and callback actions are closed — this page is for your records only.
+        </div>
+      ) : null}
+
       <IntakeSummaryCard intake={intake} compact />
 
       <section className="mt-6 overflow-hidden rounded-2xl border border-stone-200/80 bg-white shadow-soft">
@@ -366,7 +378,9 @@ function ResultsPageContent() {
 
           <aside className="flex h-fit flex-col gap-3 rounded-xl border border-stone-200/80 bg-brand-cream/60 p-4">
             <p className="text-sm font-medium text-ink">Next step</p>
-            {featuredAccepted ? (
+            {historyCase ? (
+              <p className="text-sm leading-6 text-ink/65">This request is closed. Review each provider&apos;s final status below.</p>
+            ) : featuredAccepted ? (
               <p className="text-sm leading-6 text-ink/65">{familyMatchNextStep(recommended.matchStatus!, recommended.name)}</p>
             ) : (
               <p className="text-sm leading-6 text-ink/65">
@@ -376,7 +390,7 @@ function ResultsPageContent() {
 
             {featuredFeedback ? <ActionFeedback message={featuredFeedback.text} tone={featuredFeedback.tone} /> : null}
 
-            {!featuredAccepted ? (
+            {!historyCase && !featuredAccepted ? (
               <>
                 <Button
                   className="w-full"
@@ -419,11 +433,11 @@ function ResultsPageContent() {
                   )}
                 </Button>
               </>
-            ) : (
+            ) : !historyCase ? (
               <Button asChild className="w-full">
                 <Link href={withIntakeId("/family/dashboard", intake.id)}>Your dashboard</Link>
               </Button>
-            )}
+            ) : null}
 
             <Button asChild variant="ghost" className="w-full">
               <Link href={withIntakeId(`/providers/${recommended.id}`, intake.id)}>Read full profile</Link>
@@ -472,6 +486,7 @@ function ResultsPageContent() {
                 pendingAction={pendingAction}
                 feedback={provider.matchId ? rowFeedback[provider.matchId] : undefined}
                 onAction={handleProviderAction}
+                readOnly={historyCase}
               />
             ))
           ) : filteredCount <= 1 && activeFilter !== "All options" ? (
@@ -499,13 +514,15 @@ function CompareRow({
   intakeId,
   pendingAction,
   feedback,
-  onAction
+  onAction,
+  readOnly = false
 }: {
   provider: ProviderMatch;
   intakeId: string;
   pendingAction: PendingAction | null;
   feedback?: RowFeedback;
   onAction: (provider: ProviderMatch, status: "VISIT_REQUESTED" | "CALLBACK_REQUESTED") => void;
+  readOnly?: boolean;
 }) {
   const meta = parseMeta(provider.meta);
   const visitSent = provider.matchStatus === "VISIT_REQUESTED";
@@ -543,7 +560,7 @@ function CompareRow({
           <Button asChild size="sm" variant="outline" className="w-full sm:min-w-[132px]">
               <Link href={withIntakeId(`/providers/${provider.id}`, intakeId)}>Profile</Link>
           </Button>
-          {!accepted ? (
+          {!readOnly && !accepted ? (
             <>
               <Button
                 size="sm"
