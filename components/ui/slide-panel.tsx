@@ -50,6 +50,7 @@ type SlidePanelProps = {
   notice?: string;
   noticeTone?: PanelNoticeTone;
   children: React.ReactNode;
+  footer?: React.ReactNode;
 };
 
 export function SlidePanel({
@@ -60,7 +61,8 @@ export function SlidePanel({
   size = "default",
   notice,
   noticeTone = "success",
-  children
+  children,
+  footer
 }: SlidePanelProps) {
   const [mounted, setMounted] = useState(false);
 
@@ -123,13 +125,20 @@ export function SlidePanel({
             <X className="h-4 w-4" />
           </button>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-5 sm:py-5 lg:px-6 lg:py-6">
-          {notice ? (
-            <div className="sticky top-0 z-10 -mt-1 mb-4 bg-white pb-1 pt-1">
-              <PanelNotice message={notice} tone={noticeTone} />
+        <div className="flex min-h-0 flex-1 flex-col">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-5 sm:py-5 lg:px-6 lg:py-6">
+            {notice ? (
+              <div className="sticky top-0 z-10 -mt-1 mb-4 bg-white pb-1 pt-1">
+                <PanelNotice message={notice} tone={noticeTone} />
+              </div>
+            ) : null}
+            {children}
+          </div>
+          {footer ? (
+            <div className="shrink-0 border-t border-stone-200 bg-white px-4 py-4 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] sm:px-5 lg:px-6">
+              {footer}
             </div>
           ) : null}
-          {children}
         </div>
       </aside>
     </>,

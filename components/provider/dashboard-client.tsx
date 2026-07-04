@@ -512,11 +512,20 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
           </p>
         </div>
         <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
-          <Button type="button" variant="outline" size="sm" className="flex-1 sm:flex-none" onClick={() => setProfilePanelOpen(true)}>
-            <Settings className="h-4 w-4" aria-hidden />
-            Facility profile
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="flex-1 bg-white sm:flex-none"
+            onClick={() => setProfilePanelOpen(true)}
+          >
+            <Settings className="h-4 w-4 shrink-0" aria-hidden />
+            <span className="truncate">Facility profile</span>
             {!profileComplete ? (
-              <span className="rounded-full bg-brand-amber px-2 py-0.5 text-[10px] font-semibold text-white">
+              <span
+                className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-brand-amber px-1.5 text-[11px] font-bold leading-none tabular-nums text-white"
+                aria-label={`${profileMissingRequirements.length} profile item${profileMissingRequirements.length === 1 ? "" : "s"} still needed`}
+              >
                 {profileMissingRequirements.length}
               </span>
             ) : null}
@@ -874,9 +883,15 @@ function ProviderProfilePanel({
       }
       notice={panelMessage}
       noticeTone={panelNoticeTone(panelMessage)}
+      footer={
+        <Button type="submit" form="provider-facility-profile-form" disabled={saving} className="w-full sm:w-auto sm:min-w-[200px]">
+          {saving ? "Saving..." : providerId ? "Save facility profile" : "Create facility profile"}
+        </Button>
+      }
     >
       <form
-        className="space-y-6 pb-6"
+        id="provider-facility-profile-form"
+        className="space-y-6"
         onSubmit={(event) => {
           event.preventDefault();
           onSave((message, tone) => {
@@ -981,12 +996,6 @@ function ProviderProfilePanel({
             </ul>
           </div>
         ) : null}
-
-        <div className="sticky bottom-0 -mx-1 border-t border-stone-100 bg-white pt-4">
-          <Button type="submit" disabled={saving} className="w-full sm:w-auto sm:min-w-[200px]">
-            {saving ? "Saving..." : providerId ? "Save facility profile" : "Create facility profile"}
-          </Button>
-        </div>
       </form>
     </SlidePanel>
   );
