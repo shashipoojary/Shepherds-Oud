@@ -282,6 +282,12 @@ export function providerMatchNotes(notes: string | null | undefined) {
       if (line.startsWith("Provider declined")) {
         return line.replace("Provider declined", "You declined");
       }
+      if (line.startsWith("You accepted this inquiry")) {
+        return line;
+      }
+      if (line.startsWith("You declined this inquiry")) {
+        return line;
+      }
       if (line.startsWith("Family requested a visit")) {
         return line.replace("Family requested a visit", "Visit requested");
       }
@@ -293,6 +299,24 @@ export function providerMatchNotes(notes: string | null | undefined) {
       }
       if (line.startsWith("Care advisor marked coordinated")) {
         return line.replace("Care advisor marked coordinated", "Care Guide coordinated");
+      }
+      return line;
+    })
+    .join("\n");
+}
+
+/** Admin-panel copy — neutral activity log wording for coordinators. */
+export function adminMatchNotes(notes: string | null | undefined) {
+  if (!notes) return null;
+
+  return notes
+    .split("\n")
+    .map((line) => {
+      if (line.startsWith("You accepted this inquiry")) {
+        return line.replace("You accepted this inquiry", "Provider accepted this inquiry");
+      }
+      if (line.startsWith("You declined this inquiry")) {
+        return line.replace("You declined this inquiry", "Provider declined this inquiry");
       }
       return line;
     })

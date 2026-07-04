@@ -134,6 +134,40 @@ export function intakeStatusHint(status: string) {
   return JOURNEY_STEPS.find((step) => step.status === normalized)?.hint ?? JOURNEY_STEPS[0].hint;
 }
 
+/** Admin-panel copy — describes the case stage for coordinators, not the family-facing timeline text. */
+export function adminIntakeJourneyHint(status: string) {
+  switch (normalizeIntakeStatus(status)) {
+    case "NEW":
+      return "Intake received. Assign a Care Guide in section 2 to begin coordination.";
+    case "CARE_GUIDE_ASSIGNED":
+      return "Care Guide assigned. Complete assessment and publish the care plan in section 3 when ready.";
+    case "ASSESSMENT":
+      return "Assessment in progress. Add the family-facing care plan summary before publishing to their dashboard.";
+    case "CARE_PLAN":
+      return "Care plan is live on the family dashboard. Create provider matches in section 4 when the shortlist is ready.";
+    case "MATCHED":
+      return "Providers are on the family shortlist. Monitor Inquiries for visit or callback requests, or schedule in section 5.";
+    case "VISIT_SCHEDULED":
+      return "Visit or callback is scheduled and visible to the family. Track provider response in Inquiries.";
+    case "PROVIDER_RESPONSE":
+      return "A provider has responded. Coordinate next steps in Inquiries or update visit details in section 5.";
+    case "PLACEMENT_IN_PROGRESS":
+      return "The family is moving toward placement. Confirm details and advance the case in section 6.";
+    case "PLACED":
+      return "Care is arranged for this family. Record follow-ups in section 6 as they are completed.";
+    case "FOLLOW_UP_7":
+      return "7-day follow-up due. Contact the family, then record the follow-up in section 6.";
+    case "FOLLOW_UP_30":
+      return "30-day follow-up due. Contact the family, then record the follow-up in section 6.";
+    case "FOLLOW_UP_90":
+      return "90-day follow-up due. Contact the family, then record the follow-up or close the case in section 6.";
+    case "CLOSED":
+      return "Case archived. No further action unless the family contacts you again.";
+    default:
+      return "Review the intake below and advance the case using the guided sections.";
+  }
+}
+
 export function adminIntakeStatusLabel(status: string) {
   return intakeStatusLabel(status);
 }

@@ -36,6 +36,7 @@ import { CARE_PATHWAYS } from "@/lib/domain/care-pathways";
 import { getAdminCaseNextAction } from "@/lib/domain/admin-case-next-action";
 import {
   adminIntakeActionMeta,
+  adminIntakeJourneyHint,
   adminIntakeStatusLabel,
   assessmentComplete,
   canCreateMatches,
@@ -49,6 +50,7 @@ import {
 import {
   adminInquiryActionMeta,
   adminInquiryHint,
+  adminMatchNotes,
   adminMatchStatusLabel,
   compareMatchPriority,
   isAdminActionNeeded,
@@ -357,7 +359,7 @@ function FamiliesTable({
       id,
       { status },
       name,
-      `${name} marked as ${adminIntakeStatusLabel(status).toLowerCase()}.`,
+      `You advanced ${name} to ${adminIntakeStatusLabel(status).toLowerCase()}.`,
       notify
     );
   }
@@ -569,7 +571,7 @@ function FamilyDetailPanel({
       family.id,
       { careGuideId, ...(family.status === "NEW" ? { status: "CARE_GUIDE_ASSIGNED" } : {}) },
       family.name,
-      `Care Guide assigned for ${family.name}.`,
+      `You assigned a Care Guide to ${family.name}.`,
       notifyPanel
     );
   }
@@ -590,17 +592,17 @@ function FamilyDetailPanel({
 
     if (normalizedStatus === "CARE_GUIDE_ASSIGNED") {
       nextStatus = "ASSESSMENT";
-      successMessage = `Assessment saved for ${family.name}. Edit anytime before publishing the care plan to the family.`;
+      successMessage = `You saved the assessment for ${family.name}. Edit anytime before publishing the care plan to them.`;
     } else if (
       carePlanSummary.trim() &&
       !["CARE_PLAN", "MATCHED", "VISIT_SCHEDULED", "PROVIDER_RESPONSE", "PLACEMENT_IN_PROGRESS", "PLACED"].includes(normalizedStatus)
     ) {
       nextStatus = "CARE_PLAN";
-      successMessage = `Care plan published for ${family.name}. The family dashboard now shows the pathway and plan. You can still edit before the case closes.`;
+      successMessage = `You published the care plan for ${family.name}. It is now visible on their dashboard and can still be edited until the case closes.`;
     } else if (normalizedStatus === "ASSESSMENT" && !carePlanSummary.trim()) {
-      successMessage = `Assessment saved for ${family.name}. Add the care plan summary when you are ready to publish.`;
+      successMessage = `You saved the assessment for ${family.name}. Add the care plan summary when you are ready to publish.`;
     } else {
-      successMessage = `Care plan details saved for ${family.name}. Published plans can still be edited until the case closes.`;
+      successMessage = `You saved care plan details for ${family.name}. Published plans can still be edited until the case closes.`;
     }
 
     setSavingAssessment(true);
@@ -646,7 +648,7 @@ function FamilyDetailPanel({
           status: "MATCHED"
         },
         family.name,
-        `${family.name} marked as matched. The family can now view providers on their shortlist.`,
+        `You marked ${family.name} as matched. They can now view providers on their shortlist.`,
         notifyPanel
       );
     } finally {
@@ -675,8 +677,8 @@ function FamilyDetailPanel({
         },
         family.name,
         canAdvanceToVisitScheduled
-          ? `Visit scheduled for ${family.name}. The family dashboard now shows the appointment.`
-          : `Visit details updated for ${family.name}.`,
+          ? `You scheduled a visit or callback for ${family.name}. It is now visible on their dashboard.`
+          : `You updated visit details for ${family.name}.`,
         notifyPanel
       );
     } finally {
@@ -721,7 +723,7 @@ function FamilyDetailPanel({
         // Action log is optional; the match already succeeded.
       }
 
-      notifyPanel(`Match created for ${family.name}. They can now see this provider on their results page.`);
+      notifyPanel(`You created a provider match for ${family.name}. They can now see this provider on their shortlist.`);
       await onSync();
     } catch (error) {
       notifyPanel(error instanceof Error ? error.message : `Could not create match for ${family.name}.`);
@@ -782,14 +784,12 @@ function FamilyDetailPanel({
             </div>
           </StatusPill>
 
-          <PanelSection title="Family journey progress" description="What the family sees on their dashboard timeline.">
+          <PanelSection title="Case stage" description="Current milestone for this family case and what you should do next in this panel.">
             <p className="text-sm font-semibold text-ink">
               Step {Math.min(currentStepIndex + 1, visibleJourneySteps.length)} of {visibleJourneySteps.length} ·{" "}
               {adminIntakeStatusLabel(family.status)}
             </p>
-            <p className="mt-1 text-sm leading-6 text-neutral-600">
-              {visibleJourneySteps.find((step) => step.status === normalizedStatus)?.hint}
-            </p>
+            <p className="mt-1 text-sm leading-6 text-neutral-600">{adminIntakeJourneyHint(family.status)}</p>
           </PanelSection>
 
           {nextAction ? (
@@ -1570,7 +1570,7 @@ function InquiriesTable({
             }
           : current
       );
-      notify(`Inquiry updated to ${adminMatchStatusLabel(updated.status).toLowerCase()}.`);
+      notify(`You updated this inquiry to ${adminMatchStatusLabel(updated.status).toLowerCase()}.`);
       await onSync();
     } catch (error) {
       notify(error instanceof Error ? error.message : "Could not update inquiry.");
@@ -1753,7 +1753,7 @@ function InquiryDetailPanel({
         { label: "Status", value: adminMatchStatusLabel(inquiry.statusRaw) },
         { label: "Created", value: inquiry.date },
         { label: "Last updated", value: inquiry.updatedAt },
-        { label: "Activity log", value: inquiry.notes }
+        { label: "Activity log", value: adminMatchNotes(inquiry.notes) || inquiry.notes }
       ]
     : [];
 
@@ -1914,7 +1914,7 @@ function WaitlistTable({
         // Action log is optional; the waitlist update already succeeded.
       }
 
-      notify(`${name} marked as contacted. Status updated in the waitlist.`);
+      notify(`You marked ${name} as contacted on the waitlist.`);
     } catch {
       notify(`Could not mark ${name} as contacted. Please try again.`);
     } finally {

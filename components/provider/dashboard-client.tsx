@@ -263,7 +263,7 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
         setProfileMissingRequirements(data.profileMissingRequirements);
         setProviderId(data.provider?.id ?? null);
         setMessageTone("success");
-        setMessage("Dashboard updated.");
+        setMessage("Your dashboard is up to date.");
       } else {
         setMessageTone("error");
         setMessage(await readApiError(response));
@@ -735,7 +735,10 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
             </div>
           ) : (
             <div className="mt-4">
-              <EmptyState title="No inquiries yet" description="When an admin matches a family to your facility, the inquiry will appear here." />
+              <EmptyState
+                title="No inquiries yet"
+                description="When Shepherds Oud matches a family to your facility, the inquiry will appear here for you to review."
+              />
             </div>
           )}
         </section>
