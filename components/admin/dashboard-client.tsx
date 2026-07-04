@@ -21,6 +21,7 @@ import { DetailList, PanelSection, panelNoticeTone, SlidePanel, StatusPill, TagL
 import { StatGrid } from "@/components/ui/stat-grid";
 import type { AdminDashboardData } from "@/lib/data/admin";
 import { recordAction } from "@/lib/client/actions";
+import { TOAST_DISMISS_MS } from "@/lib/client/toast-timing";
 import { cn } from "@/lib/core/utils";
 import {
   countUnseenFamilies,
@@ -118,7 +119,7 @@ export function AdminDashboardClient({ data: initialData }: { data: AdminDashboa
 
   useEffect(() => {
     if (!message) return;
-    const timer = window.setTimeout(() => setMessage(""), 4000);
+    const timer = window.setTimeout(() => setMessage(""), TOAST_DISMISS_MS);
     return () => window.clearTimeout(timer);
   }, [message]);
 
@@ -589,12 +590,17 @@ function FamilyDetailPanel({
 
     if (normalizedStatus === "CARE_GUIDE_ASSIGNED") {
       nextStatus = "ASSESSMENT";
-      successMessage = `Assessment saved for ${family.name}. The family timeline now shows assessment in progress.`;
-    } else if (carePlanSummary.trim() && !["CARE_PLAN", "MATCHED", "VISIT_SCHEDULED", "PROVIDER_RESPONSE", "PLACEMENT_IN_PROGRESS", "PLACED"].includes(normalizedStatus)) {
+      successMessage = `Assessment saved for ${family.name}. Edit anytime before publishing the care plan to the family.`;
+    } else if (
+      carePlanSummary.trim() &&
+      !["CARE_PLAN", "MATCHED", "VISIT_SCHEDULED", "PROVIDER_RESPONSE", "PLACEMENT_IN_PROGRESS", "PLACED"].includes(normalizedStatus)
+    ) {
       nextStatus = "CARE_PLAN";
-      successMessage = `Care plan published for ${family.name}. The family dashboard now shows the pathway and plan.`;
+      successMessage = `Care plan published for ${family.name}. The family dashboard now shows the pathway and plan. You can still edit before the case closes.`;
+    } else if (normalizedStatus === "ASSESSMENT" && !carePlanSummary.trim()) {
+      successMessage = `Assessment saved for ${family.name}. Add the care plan summary when you are ready to publish.`;
     } else {
-      successMessage = `Care plan details saved for ${family.name}.`;
+      successMessage = `Care plan details saved for ${family.name}. Published plans can still be edited until the case closes.`;
     }
 
     setSavingAssessment(true);
@@ -730,7 +736,17 @@ function FamilyDetailPanel({
         return { label: meta.label, status, description: meta.description };
       })
     : [];
+  const advanceActions = nextActions.filter((action) => action.status !== "CLOSED");
+  const canCloseCase = nextActions.some((action) => action.status === "CLOSED");
   const currentStepIndex = family ? journeyStepIndex(family.status) : 0;
+  const careGuideStepLocked = Boolean(family?.careGuideId) && currentStepIndex >= journeyStepIndex("CARE_GUIDE_ASSIGNED");
+  const assessmentStepLocked = carePlanComplete({ carePlanSummary: family?.carePlanSummary }) && currentStepIndex >= journeyStepIndex("CARE_PLAN");
+  const matchStepLocked = hasMatches && currentStepIndex >= journeyStepIndex("MATCHED");
+  const visitStepLocked = Boolean(family?.visitScheduledAt) && currentStepIndex >= journeyStepIndex("VISIT_SCHEDULED");
+  const visitNotesLabel =
+    visitType === "CALLBACK" ? "Callback notes" : visitType === "VISIT" ? "Visit notes" : "Visit or callback notes";
+  const visitNotesHint =
+    "Shared with the family on their dashboard. Providers see the scheduled date and type, not these internal coordination notes.";
   const visibleJourneySteps = JOURNEY_STEPS.filter((step) => step.status !== "CLOSED");
 
   return (
@@ -906,7 +922,8 @@ function FamilyDetailPanel({
             <PanelSection
               step={2}
               title="Assign Care Guide"
-              description="Assign a named guide — the family timeline moves to “Care Guide assigned”."
+              description="Assign a named guide — the family timeline moves to “Care Guide assigned”. You can reassign a different guide at any time."
+              locked={careGuideStepLocked}
             >
               <div className="space-y-3">
               <label className="grid gap-2 text-sm font-medium">
@@ -935,7 +952,8 @@ function FamilyDetailPanel({
             <PanelSection
               step={3}
               title="Assessment & care plan"
-              description="One save shares pathway and plan with the family. Use “Mark shortlist ready” when providers should appear on their results page."
+              description="Save assessment notes internally, then publish the care plan summary when the family should see it."
+              locked={assessmentStepLocked}
             >
               <div className="space-y-3">
               <label className="grid gap-2 text-sm font-medium">
@@ -990,7 +1008,8 @@ function FamilyDetailPanel({
             <PanelSection
               step={4}
               title="Create provider match"
-              description="Add providers to the family shortlist. Your entries stay here so you can review or add another match."
+              description="Add providers to the family shortlist. Completed matches stay listed here for reference."
+              locked={matchStepLocked}
             >
               <div className="space-y-3">
               <label className="grid gap-2 text-sm font-medium">
@@ -1053,6 +1072,7 @@ function FamilyDetailPanel({
                   ? "Saving advances the family timeline to “Visit scheduled” and shows the appointment on their dashboard."
                   : "Visit details are saved for the family dashboard. Status is not moved backward if the case has already progressed."
               }
+              locked={visitStepLocked}
             >
               <div className="space-y-3">
               <label className="grid gap-2 text-sm font-medium">
@@ -1089,15 +1109,20 @@ function FamilyDetailPanel({
                 />
               </label>
               <label className="grid gap-2 text-sm font-medium">
-                Visit notes
+                {visitNotesLabel}
                 <textarea
                   value={visitNotes}
                   disabled={!visitSchedulingAllowed}
                   onChange={(event) => setVisitNotes(event.target.value)}
                   className={`${adminFieldClass} min-h-20`}
-                  placeholder="Directions, contact person, what to bring..."
+                  placeholder={
+                    visitType === "CALLBACK"
+                      ? "Best time to call, who to ask for, topics to cover..."
+                      : "Directions, contact person, what to bring..."
+                  }
                 />
               </label>
+              <p className="text-xs leading-5 text-neutral-500">{visitNotesHint}</p>
               <AdminPanelActions>
                 <Button
                   type="button"
@@ -1116,10 +1141,14 @@ function FamilyDetailPanel({
               </div>
             </PanelSection>
 
-            {nextActions.length ? (
-              <PanelSection step={6} title="Advance case status" description="Use when the case moves to placement, follow-ups, or closure.">
-                <div className="space-y-4">
-                  {nextActions.map((action) => {
+            <PanelSection
+              step={6}
+              title="Advance case status"
+              description="Record the next milestone when the family moves forward. Close case only when support is complete."
+            >
+              <div className="space-y-4">
+                {advanceActions.length ? (
+                  advanceActions.map((action) => {
                     const disabledReason =
                       action.status === "VISIT_SCHEDULED" && !visitSchedulingAllowed
                         ? "Wait until the family requests a visit/callback or a provider accepts before scheduling."
@@ -1128,30 +1157,43 @@ function FamilyDetailPanel({
                           : "";
 
                     return (
-                    <div key={action.status}>
-                      <AdminPanelActions>
-                        <Button
-                          size="sm"
-                          variant={action.status === "CLOSED" ? "outline" : "default"}
-                          disabled={isPending || Boolean(disabledReason)}
-                          onClick={() => {
-                            if (action.status === "CLOSED") {
-                              setConfirmCloseCase(true);
-                              return;
-                            }
-                            void handleCaseAction(action.status);
-                          }}
-                        >
-                          {isPending && pendingAction === action.status ? "Saving..." : action.label}
-                        </Button>
-                      </AdminPanelActions>
-                      <p className="mt-2 text-xs leading-5 text-neutral-500">{disabledReason || action.description}</p>
-                    </div>
+                      <div key={action.status}>
+                        <AdminPanelActions>
+                          <Button
+                            size="sm"
+                            disabled={isPending || Boolean(disabledReason)}
+                            onClick={() => void handleCaseAction(action.status)}
+                          >
+                            {isPending && pendingAction === action.status ? "Saving..." : action.label}
+                          </Button>
+                        </AdminPanelActions>
+                        <p className="mt-2 text-xs leading-5 text-neutral-500">{disabledReason || action.description}</p>
+                      </div>
                     );
-                  })}
-                </div>
-              </PanelSection>
-            ) : null}
+                  })
+                ) : (
+                  <p className="text-sm leading-6 text-neutral-600">All milestones are recorded. Close the case when no further follow-up is needed.</p>
+                )}
+
+                {canCloseCase ? (
+                  <div className="border-t border-stone-200 pt-4">
+                    <AdminPanelActions>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={isPending}
+                        onClick={() => setConfirmCloseCase(true)}
+                      >
+                        Close case
+                      </Button>
+                    </AdminPanelActions>
+                    <p className="mt-2 text-xs leading-5 text-neutral-500">
+                      Only close when the family is no longer active or has been helped elsewhere.
+                    </p>
+                  </div>
+                ) : null}
+              </div>
+            </PanelSection>
           </div>
           )}
 

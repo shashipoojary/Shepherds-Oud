@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "@/lib/core/utils";
+import { TOAST_DISMISS_MS } from "@/lib/client/toast-timing";
 
 export type PanelNoticeTone = "success" | "error";
 
@@ -17,7 +18,7 @@ export function usePanelMessage() {
 
   useEffect(() => {
     if (!message) return;
-    const timer = window.setTimeout(() => setMessage(""), 4000);
+    const timer = window.setTimeout(() => setMessage(""), TOAST_DISMISS_MS);
     return () => window.clearTimeout(timer);
   }, [message]);
 
@@ -187,24 +188,42 @@ export function PanelSection({
   title,
   description,
   children,
-  className
+  className,
+  locked,
+  lockedNote = "This step is complete. It stays visible here until the case is closed."
 }: {
   step?: number;
   title: string;
   description?: string;
   children: React.ReactNode;
   className?: string;
+  locked?: boolean;
+  lockedNote?: string;
 }) {
   return (
-    <section className={cn("border-t border-stone-100 pt-5 first:border-0 first:pt-0", className)}>
+    <section
+      className={cn(
+        "border-t border-stone-100 pt-5 first:border-0 first:pt-0",
+        locked && "rounded-xl border border-stone-200 bg-stone-50/70 px-4 py-4 first:border first:pt-4",
+        className
+      )}
+    >
       <div className="mb-3">
-        <h3 className="flex items-center text-sm font-semibold text-ink">
-          {step != null ? <PanelStep number={step} /> : null}
-          {title}
-        </h3>
+        <div className="flex flex-wrap items-center gap-2">
+          <h3 className="flex items-center text-sm font-semibold text-ink">
+            {step != null ? <PanelStep number={step} /> : null}
+            {title}
+          </h3>
+          {locked ? (
+            <span className="rounded-full bg-brand-green-pale/50 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-brand-green-dark">
+              Completed
+            </span>
+          ) : null}
+        </div>
         {description ? <p className="mt-1 text-sm leading-6 text-neutral-500">{description}</p> : null}
+        {locked ? <p className="mt-2 text-xs leading-5 text-neutral-500">{lockedNote}</p> : null}
       </div>
-      {children}
+      <div className={locked ? "pointer-events-none opacity-70" : undefined}>{children}</div>
     </section>
   );
 }

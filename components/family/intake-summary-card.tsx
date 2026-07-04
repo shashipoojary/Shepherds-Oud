@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { withIntakeId } from "@/lib/client/case-selection";
-import { normalizeIntakeStatus } from "@/lib/domain/intake-workflow";
 import { intakeStatusHint, intakeStatusLabel, formatVisitSchedule, type FamilyIntake } from "@/lib/client/intake";
 import { Button } from "@/components/ui/button";
+import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import { CareGuideCard } from "@/components/shared/care-guide-card";
+import { normalizeIntakeStatus } from "@/lib/domain/intake-workflow";
 
 function SummaryField({ label, value }: { label: string; value: React.ReactNode }) {
   return (
@@ -42,9 +43,9 @@ function UpdateCallout({ title, children, tone = "neutral" }: { title: string; c
         : "border-stone-200 bg-white";
 
   return (
-    <div className={`rounded-xl border px-4 py-4 sm:px-5 sm:py-4 ${toneClass}`}>
+    <div className={`flex h-full flex-col rounded-xl border px-4 py-4 sm:px-5 sm:py-4 ${toneClass}`}>
       <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">{title}</p>
-      <div className="mt-2 text-sm leading-7 text-neutral-700">{children}</div>
+      <div className="mt-2 flex-1 text-sm leading-7 text-neutral-700">{children}</div>
     </div>
   );
 }
@@ -53,12 +54,16 @@ export function IntakeSummaryCard({
   intake,
   compact = false,
   showActions = false,
-  showCareGuide = true
+  showCareGuide = true,
+  showShortlistCta = false,
+  defaultOpen = true
 }: {
   intake: FamilyIntake;
   compact?: boolean;
   showActions?: boolean;
   showCareGuide?: boolean;
+  showShortlistCta?: boolean;
+  defaultOpen?: boolean;
 }) {
   const status = intakeStatusLabel(intake.status);
   const hint = intakeStatusHint(intake.status);
@@ -142,26 +147,27 @@ export function IntakeSummaryCard({
     <div className="space-y-5">
       {intake.careGuide && showCareGuide ? <CareGuideCard guide={intake.careGuide} /> : null}
 
-      <article className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-soft">
-        <div className="border-b border-stone-100 bg-brand-cream/20 px-5 py-5 sm:px-7 sm:py-6">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="min-w-0">
-              <p className="section-label">Your care request</p>
-              <h2 className="mt-2 text-xl font-semibold text-ink sm:text-2xl">{intake.contactName}</h2>
-              <p className="mt-2 text-sm text-neutral-500">
-                Reference <span className="font-medium text-neutral-700">{reference}</span>
-                {intake.preferredArea ? <> · {intake.preferredArea}</> : null}
-              </p>
-            </div>
-            <span className="rounded-full bg-brand-green-pale/50 px-3.5 py-1.5 text-xs font-semibold text-brand-green-dark">{status}</span>
+      <CollapsibleSection
+        title={`Your care request — ${intake.contactName}`}
+        description={
+          isClosed
+            ? "Your saved request details. Collapse this section if you only need current updates."
+            : "Your saved intake details and Care Guide updates in one place."
+        }
+        defaultOpen={defaultOpen}
+        badge={
+          <span className="rounded-full bg-brand-green-pale/50 px-3 py-1 text-xs font-semibold text-brand-green-dark">{status}</span>
+        }
+      >
+        <div className="space-y-8">
+          <div>
+            <p className="text-sm text-neutral-500">
+              Reference <span className="font-medium text-neutral-700">{reference}</span>
+              {intake.preferredArea ? <> · {intake.preferredArea}</> : null}
+            </p>
+            <p className="mt-3 max-w-3xl text-sm leading-7 text-neutral-700">{hint}</p>
           </div>
 
-          <p className="mt-4 max-w-3xl rounded-xl border border-stone-200/80 bg-white px-4 py-3.5 text-sm leading-7 text-neutral-700">
-            {hint}
-          </p>
-        </div>
-
-        <div className="space-y-8 px-5 py-6 sm:px-7 sm:py-7">
           <section>
             <h3 className="text-sm font-semibold text-ink">At a glance</h3>
             <dl className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -175,7 +181,7 @@ export function IntakeSummaryCard({
 
           <section>
             <h3 className="text-sm font-semibold text-ink">Care needed</h3>
-            <div className="mt-4 rounded-xl border border-stone-100 bg-brand-cream/20 px-4 py-4 sm:px-5">
+            <div className="mt-4 rounded-xl bg-brand-cream/20 px-4 py-4 sm:px-5">
               <CareTypeTags items={intake.careTypes} />
               {hasCareDetails ? (
                 <dl className="mt-4 grid gap-3 border-t border-stone-200/70 pt-4 sm:grid-cols-2">
@@ -199,7 +205,7 @@ export function IntakeSummaryCard({
           {hasUpdates ? (
             <section id="care-guide-plan" className="scroll-mt-24">
               <h3 className="text-sm font-semibold text-ink">Updates from your Care Guide</h3>
-              <div className="mt-4 grid gap-4 lg:grid-cols-2">
+              <div className="mt-4 grid gap-4 lg:grid-cols-2 lg:items-stretch">
                 {intake.carePathway ? (
                   <UpdateCallout title="Recommended pathway" tone="neutral">
                     <strong className="text-ink">{intake.carePathway}</strong>
@@ -219,7 +225,7 @@ export function IntakeSummaryCard({
             </section>
           ) : null}
 
-          {hasMatches ? (
+          {showShortlistCta && hasMatches ? (
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand-green-pale/80 bg-brand-green-pale/15 px-4 py-4 sm:px-5">
               <p className="text-sm font-medium text-brand-green-dark">
                 {intake.matchCount} provider match{intake.matchCount === 1 ? "" : "es"} on your shortlist.
@@ -234,7 +240,7 @@ export function IntakeSummaryCard({
 
           <p className="text-xs leading-5 text-neutral-500">Your request is saved to your account so you can return from any device.</p>
         </div>
-      </article>
+      </CollapsibleSection>
     </div>
   );
 }

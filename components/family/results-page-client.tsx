@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { BedDouble, Check, CircleDollarSign, Loader2, MapPin } from "lucide-react";
 import { selectFamilyIntake, withIntakeId } from "@/lib/client/case-selection";
+import { TOAST_DISMISS_MS } from "@/lib/client/toast-timing";
 import { getSessionFamilyIntakes, type FamilyIntake } from "@/lib/client/intake";
 import { requestMatchAction } from "@/lib/client/match-request";
 import { familyMatchNextStep, matchStatusLabel, isFamilyActionableMatchStatus } from "@/lib/domain/match-status";
@@ -171,7 +172,7 @@ function ResultsPageContent() {
 
   useEffect(() => {
     if (!globalMessage) return;
-    const timer = window.setTimeout(() => setGlobalMessage(""), 6000);
+    const timer = window.setTimeout(() => setGlobalMessage(""), TOAST_DISMISS_MS);
     return () => window.clearTimeout(timer);
   }, [globalMessage]);
 

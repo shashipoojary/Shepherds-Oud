@@ -29,6 +29,38 @@ export function isProviderEmail(email: string | null | undefined) {
   return parseProviderEmails(process.env.PROVIDER_EMAILS).includes(normalizeEmail(email));
 }
 
+export async function isProviderLoginApprovedEmail(email: string | null | undefined) {
+  const normalized = normalizeEmail(email || "");
+  if (!normalized) return false;
+
+  if (isProviderEmail(normalized)) {
+    return true;
+  }
+
+  const [acceptedInvite, linkedUser, provider] = await Promise.all([
+    prisma.providerInvite.findFirst({
+      where: {
+        email: normalized,
+        status: "ACCEPTED"
+      },
+      select: { id: true }
+    }),
+    prisma.user.findFirst({
+      where: {
+        email: { equals: normalized, mode: "insensitive" },
+        linkedProviderId: { not: null }
+      },
+      select: { id: true }
+    }),
+    prisma.provider.findFirst({
+      where: { email: { equals: normalized, mode: "insensitive" } },
+      select: { id: true }
+    })
+  ]);
+
+  return Boolean(acceptedInvite || linkedUser || provider);
+}
+
 export function resolveRole(email: string | null | undefined): AppRole {
   if (!email) {
     return "FAMILY";

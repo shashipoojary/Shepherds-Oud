@@ -18,7 +18,7 @@ const RoleAwareNav = dynamic(() => import("@/components/layout/nav-links").then(
   ssr: false
 });
 
-export function Nav() {
+export function Nav({ hideAuth = false }: { hideAuth?: boolean }) {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -49,7 +49,7 @@ export function Nav() {
             </button>
             <nav className="hidden items-center gap-5 md:flex lg:gap-7" aria-label="Main menu">
               <RoleAwareNav variant="desktop" />
-              <AuthHeaderActions />
+              {hideAuth ? null : <AuthHeaderActions />}
             </nav>
           </div>
         </div>
@@ -58,7 +58,7 @@ export function Nav() {
       <MobileNavDrawer
         open={open}
         onClose={closeMenu}
-        profile={<MobileNavProfile onNavigate={closeMenu} />}
+        profile={hideAuth ? null : <MobileNavProfile onNavigate={closeMenu} />}
         menu={<RoleAwareNav variant="mobile" onNavigate={closeMenu} />}
       />
     </>

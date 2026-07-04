@@ -1,10 +1,11 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth/client";
+import { TOAST_DISMISS_MS } from "@/lib/client/toast-timing";
 import { PROVIDER_DASHBOARD_PATH } from "@/lib/auth/routes";
 
 function errorMessage(code: string | null, isProvider: boolean) {
@@ -77,6 +78,12 @@ export function AuthLoginForm({ intent }: AuthLoginFormProps) {
     router.push(googleLoginHref);
   }
 
+  useEffect(() => {
+    if (!emailFeedback) return;
+    const timer = window.setTimeout(() => setEmailFeedback(""), TOAST_DISMISS_MS);
+    return () => window.clearTimeout(timer);
+  }, [emailFeedback]);
+
   async function sendEmailSignInLink() {
     const trimmed = email.trim().toLowerCase();
     if (!trimmed || !trimmed.includes("@")) {
@@ -89,6 +96,21 @@ export function AuthLoginForm({ intent }: AuthLoginFormProps) {
     setEmailFeedback("");
 
     try {
+      if (isProvider) {
+        const accessResponse = await fetch("/api/provider/login-access", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: trimmed, invite: inviteParam || undefined })
+        });
+
+        if (!accessResponse.ok) {
+          const data = (await accessResponse.json().catch(() => null)) as { error?: string } | null;
+          setEmailFeedbackTone("error");
+          setEmailFeedback(data?.error || "Your facility account is not approved yet.");
+          return;
+        }
+      }
+
       const { error: signInError } = await authClient.signIn.magicLink({
         email: trimmed,
         callbackURL: callbackUrl,
@@ -116,6 +138,11 @@ export function AuthLoginForm({ intent }: AuthLoginFormProps) {
       <div className="grid gap-4">
         {message ? (
           <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{message}</p>
+        ) : null}
+        {isProvider && inviteParam ? (
+          <p className="rounded-xl border border-brand-green-pale bg-brand-green-pale/20 px-4 py-3 text-sm leading-6 text-brand-green-dark">
+            Use the invited facility email to finish onboarding. After sign-in, you will land on your provider dashboard.
+          </p>
         ) : null}
 
         <label className="grid gap-2 text-sm font-medium text-ink">

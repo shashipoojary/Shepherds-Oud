@@ -129,6 +129,7 @@ export async function getProviderDashboardData(userId: string) {
       notes: match.notes,
       declineReason: match.declineReason,
       createdAt: match.createdAt.toISOString(),
+      updatedAt: match.updatedAt.toISOString(),
       intake: {
         ...match.intake,
         visitScheduledAt: match.intake.visitScheduledAt?.toISOString() ?? null

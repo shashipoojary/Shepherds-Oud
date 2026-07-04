@@ -4,7 +4,8 @@ import { dash } from "@better-auth/infra";
 import { nextCookies } from "better-auth/next-js";
 import { magicLink } from "better-auth/plugins";
 import { prisma } from "@/lib/core/db";
-import { isAdminEmail, resolveRole, resolveRoleForUser } from "@/lib/auth/roles";
+import { isAdminEmail, isProviderLoginApprovedEmail, resolveRole, resolveRoleForUser } from "@/lib/auth/roles";
+import { PROVIDER_DASHBOARD_PATH } from "@/lib/auth/routes";
 import { sendFamilyMagicLinkEmail } from "@/lib/email/family-magic-link";
 import { sendProviderMagicLinkEmail } from "@/lib/email/provider-magic-link";
 
@@ -13,6 +14,11 @@ const appUrl = process.env.BETTER_AUTH_URL || process.env.NEXT_PUBLIC_APP_URL ||
 function isFamilyMagicLink(url: string) {
   const decoded = decodeURIComponent(url);
   return decoded.includes("/family/dashboard") || decoded.includes("/family/login");
+}
+
+function isProviderMagicLink(url: string) {
+  const decoded = decodeURIComponent(url);
+  return decoded.includes(PROVIDER_DASHBOARD_PATH) || decoded.includes("/provider/login");
 }
 
 export const auth = betterAuth({
@@ -88,6 +94,12 @@ export const auth = betterAuth({
         if (isFamilyMagicLink(url)) {
           await sendFamilyMagicLinkEmail(email, url);
           return;
+        }
+
+        if (isProviderMagicLink(url) && !(await isProviderLoginApprovedEmail(email))) {
+          throw new Error(
+            "Your facility account is not approved yet. Use the invited email from Shepherds Oud, or join the facility waitlist so our team can review your provider profile."
+          );
         }
 
         await sendProviderMagicLinkEmail(email, url);

@@ -8,6 +8,7 @@ import { selectFamilyIntake, withIntakeId } from "@/lib/client/case-selection";
 import { getSessionFamilyIntakes } from "@/lib/client/intake";
 import { isProviderSaved, toggleSavedProvider } from "@/lib/client/favourites";
 import { requestMatchAction } from "@/lib/client/match-request";
+import { TOAST_DISMISS_MS } from "@/lib/client/toast-timing";
 import { familyMatchNextStep, isFamilyActionableMatchStatus, matchStatusLabel } from "@/lib/domain/match-status";
 import { ActionFeedback } from "@/components/ui/action-feedback";
 import { Button } from "@/components/ui/button";
@@ -87,7 +88,7 @@ function ProviderDetailActionsContent({ providerId, providerName }: { providerId
 
   useEffect(() => {
     if (!message) return;
-    const timer = window.setTimeout(() => setMessage(""), 6000);
+    const timer = window.setTimeout(() => setMessage(""), TOAST_DISMISS_MS);
     return () => window.clearTimeout(timer);
   }, [message]);
 

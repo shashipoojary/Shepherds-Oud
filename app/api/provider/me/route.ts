@@ -38,6 +38,7 @@ export async function GET() {
         notes: match.notes,
         declineReason: match.declineReason,
         createdAt: match.createdAt.toISOString(),
+        updatedAt: match.updatedAt.toISOString(),
         intake: match.intake
       }))
     });

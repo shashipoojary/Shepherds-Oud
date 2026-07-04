@@ -56,7 +56,7 @@ export function FamilyActiveMatches({ intakeId, intakeStatus }: { intakeId: stri
   const suggested = matches.filter((match) => !isFamilyActionableMatchStatus(match.matchStatus));
 
   return (
-    <section id="provider-updates" className="mt-5 scroll-mt-24 space-y-4">
+    <section id="provider-updates" className="scroll-mt-24 space-y-4">
       {active.length ? (
         <div className="rounded-2xl border border-brand-amber/25 bg-brand-amber/5 p-5 shadow-soft">
           <div className="flex flex-wrap items-start justify-between gap-3">
@@ -102,9 +102,7 @@ export function FamilyActiveMatches({ intakeId, intakeStatus }: { intakeId: stri
             ))}
           </div>
         </div>
-      ) : null}
-
-      {suggested.length ? (
+      ) : suggested.length ? (
         <div className="rounded-2xl bg-white p-5 shadow-soft">
           <p className="section-label">Your shortlist</p>
           <h2 className="mt-1 text-lg font-semibold text-ink">

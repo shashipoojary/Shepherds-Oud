@@ -22,6 +22,13 @@ import {
 } from "@/lib/domain/match-status";
 import { sanitizeClientErrorMessage } from "@/lib/providers/errors";
 import { recordAction } from "@/lib/client/actions";
+import {
+  countUnreadProviderInquiries,
+  isProviderInquiryUnread,
+  markProviderInquirySeen
+} from "@/lib/client/provider-inquiry-seen";
+import { TOAST_DISMISS_MS } from "@/lib/client/toast-timing";
+import { brand } from "@/lib/config/brand";
 import { cn } from "@/lib/core/utils";
 
 type ProviderRecord = {
@@ -57,6 +64,7 @@ type Inquiry = {
   status: string;
   notes: string | null;
   createdAt: string;
+  updatedAt: string;
   intake: {
     contactName: string;
     preferredArea: string;
@@ -298,7 +306,7 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
 
   useEffect(() => {
     if (!message) return;
-    const timer = window.setTimeout(() => setMessage(""), 5000);
+    const timer = window.setTimeout(() => setMessage(""), TOAST_DISMISS_MS);
     return () => window.clearTimeout(timer);
   }, [message]);
 
@@ -313,7 +321,7 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
         }
         return next;
       });
-    }, 6000);
+    }, TOAST_DISMISS_MS);
     return () => window.clearTimeout(timer);
   }, [inquiryFeedback]);
 
@@ -480,6 +488,10 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
     [inquiries]
   );
   const actionNeededCount = inquiries.filter((item) => isProviderActionNeeded(item.status)).length;
+  const unreadInquiryCount = useMemo(
+    () => countUnreadProviderInquiries(inquiries.map((item) => ({ id: item.id, updatedAt: item.updatedAt }))),
+    [inquiries]
+  );
   const newInquiries = actionNeededCount;
   const bedsDisplay = form.bedsOpen.trim() === "" ? "—" : form.bedsOpen;
 
@@ -546,18 +558,26 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
       ) : null}
 
       <div className="mt-5 grid gap-5 xl:grid-cols-[1fr_420px]">
-        <section className="flex min-h-[26rem] max-h-[min(44rem,calc(100dvh-5.5rem))] flex-col overflow-hidden rounded-card border border-[var(--card-border)] bg-white p-4 shadow-soft sm:min-h-[18rem] sm:max-h-[min(32rem,calc(100dvh-12rem))] sm:p-5">
+        <section className="flex min-h-[28rem] flex-col overflow-hidden rounded-card border border-[var(--card-border)] bg-white p-4 shadow-soft sm:min-h-[22rem] sm:p-5 xl:min-h-[32rem]">
           <div className="shrink-0">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h2 className="font-semibold text-ink">Family inquiries</h2>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="font-semibold text-ink">Family inquiries</h2>
+                  {unreadInquiryCount ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-brand-amber px-2.5 py-1 text-[11px] font-semibold text-white">
+                      <span className="h-1.5 w-1.5 rounded-full bg-white" aria-hidden />
+                      {unreadInquiryCount} update{unreadInquiryCount === 1 ? "" : "s"}
+                    </span>
+                  ) : null}
+                </div>
                 <p className="mt-1 text-sm text-ink/60">
                   When a family requests a visit or callback, accept or decline so they know you are interested. Their Care Guide will then coordinate next steps.
                 </p>
               </div>
               {inquiries.length ? (
                 <span className="shrink-0 rounded-full bg-brand-cream px-2.5 py-1 text-xs font-semibold text-ink/55">
-                  {inquiries.length}
+                  {inquiries.length} total
                 </span>
               ) : null}
             </div>
@@ -571,13 +591,14 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
             </div>
           ) : inquiries.length ? (
             <div
-              className="scroll-area mt-4 min-h-0 flex-1 basis-0"
+              className="scroll-area mt-4 min-h-0 flex-1 basis-0 max-h-[min(70vh,48rem)]"
               role="region"
               aria-label="Family inquiries list"
             >
               <ul className="divide-y divide-stone-300 pr-1">
                 {sortedInquiries.map((inquiry, index) => {
                 const needsResponse = isProviderActionNeeded(inquiry.status);
+                const isUnread = isProviderInquiryUnread(inquiry.id, inquiry.updatedAt);
                 const isAccepted = inquiry.status === "ACCEPTED";
                 const isDeclined = inquiry.status === "DECLINED";
                 const isClosed = inquiry.status === "CLOSED";
@@ -594,13 +615,21 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
                     key={inquiry.id}
                     className={cn(
                       "space-y-3 border-l-[3px] py-5 pl-4",
-                      needsResponse ? "border-l-brand-amber bg-brand-amber/[0.03]" : "border-l-transparent"
+                      needsResponse ? "border-l-brand-amber bg-brand-amber/[0.03]" : isUnread ? "border-l-brand-green-dark/70 bg-brand-green-pale/[0.06]" : "border-l-transparent"
                     )}
+                    onMouseEnter={() => markProviderInquirySeen(inquiry.id, inquiry.updatedAt)}
+                    onFocus={() => markProviderInquirySeen(inquiry.id, inquiry.updatedAt)}
                   >
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <p className="font-semibold text-ink">{inquiry.intake.contactName}</p>
+                          {isUnread ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-brand-green-dark px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
+                              <span className="h-1.5 w-1.5 rounded-full bg-white" aria-hidden />
+                              Updated
+                            </span>
+                          ) : null}
                           {sortedInquiries.length > 1 ? (
                             <span className="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-neutral-600">
                               Inquiry {index + 1} of {sortedInquiries.length}
@@ -811,6 +840,18 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
           </div>
         </form>
       </section>
+
+      <section className="mt-6 rounded-card border border-[var(--card-border)] bg-white p-5 shadow-soft sm:p-6">
+        <p className="section-label">Provider support</p>
+        <h2 className="mt-1 text-lg font-semibold text-ink">Questions for Shepherds Oud?</h2>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-ink/70">
+          Use this for platform help, profile questions, or anything outside a specific family inquiry. Family-specific coordination stays in the inquiries list above.
+        </p>
+        <Button asChild size="sm" variant="outline" className="mt-4">
+          <a href={`mailto:${brand.email}`}>Email Shepherds Oud</a>
+        </Button>
+      </section>
+
       <ConfirmDialog
         open={Boolean(confirmDecline)}
         tone="danger"

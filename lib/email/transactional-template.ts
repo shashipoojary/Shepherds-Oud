@@ -66,7 +66,7 @@ export function renderTransactionalEmail({
       <p class="email-link" style="margin:0 0 24px;font-size:13px;line-height:1.6;word-break:break-all;color:${colors.greenDark};"><a href="${safeCtaUrl}" style="color:${colors.amberDark};text-decoration:underline;">${safeCtaUrl}</a></p>`
     : "";
 
-  const brandMark = emailBrandMarkHtml(appUrl, 52);
+  const brandMark = emailBrandMarkHtml(appUrl, 56);
 
   return `<!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
@@ -94,11 +94,12 @@ export function renderTransactionalEmail({
       img { border: 0; outline: none; text-decoration: none; -ms-interpolation-mode: bicubic; }
       a { text-decoration: none; }
       @media only screen and (max-width: 620px) {
-        .email-shell { padding: 16px 10px !important; }
-        .email-card { width: 100% !important; }
-        .email-header { padding: 20px 18px !important; }
-        .email-body { padding: 24px 20px !important; }
+        .email-shell { padding: 20px 12px !important; }
+        .email-card { width: 100% !important; max-width: 100% !important; }
+        .email-header { padding: 22px 20px !important; }
+        .email-body { padding: 26px 22px !important; }
         .email-title { font-size: 24px !important; line-height: 1.25 !important; }
+        .email-text { font-size: 15px !important; line-height: 1.65 !important; }
         .email-button {
           display: block !important;
           width: 100% !important;
@@ -125,17 +126,17 @@ export function renderTransactionalEmail({
     <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;mso-hide:all;">${escapeHtml(preheader)}&#847;&zwnj;&nbsp;</div>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="email-outer" style="width:100%;background-color:${colors.cream};">
       <tr>
-        <td align="center" class="email-shell" style="padding:32px 16px;">
+        <td align="center" class="email-shell" style="padding:32px 20px;">
           <!-- Single card: no seam between header and body (fixes white border line in clients) -->
           <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" class="email-card" style="width:100%;max-width:600px;background-color:${colors.white};border-radius:16px;overflow:hidden;">
             <tr>
-              <td class="email-header" style="background-color:${colors.greenDark};padding:24px 28px;">
+              <td class="email-header" style="background-color:${colors.greenDark};padding:26px 32px;">
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                   <tr>
-                    <td width="56" valign="middle" style="width:56px;vertical-align:middle;line-height:0;font-size:0;">
+                    <td width="64" valign="middle" style="width:64px;vertical-align:middle;line-height:0;font-size:0;">
                       ${brandMark}
                     </td>
-                    <td valign="middle" style="vertical-align:middle;padding-left:14px;">
+                    <td valign="middle" style="vertical-align:middle;padding-left:16px;">
                       <p style="margin:0;font-size:18px;line-height:1.2;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:${colors.white};">${escapeHtml(brand.name)}</p>
                       <p style="margin:6px 0 0;font-size:13px;line-height:1.5;font-style:italic;color:${colors.amber};">${escapeHtml(brand.tagline)}</p>
                     </td>
@@ -144,7 +145,7 @@ export function renderTransactionalEmail({
               </td>
             </tr>
             <tr>
-              <td class="email-body" style="background-color:${colors.white};padding:32px 28px;">
+              <td class="email-body" style="background-color:${colors.white};padding:36px 32px;">
                 <p style="margin:0 0 10px;font-size:11px;line-height:1.4;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${colors.amber};">${escapeHtml(eyebrow)}</p>
                 <h1 class="email-title" style="margin:0 0 18px;font-size:28px;line-height:1.25;font-weight:700;color:${colors.greenDark};">${escapeHtml(title)}</h1>
                 ${paragraphHtml}
