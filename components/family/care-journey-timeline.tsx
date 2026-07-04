@@ -1,7 +1,7 @@
 "use client";
 
 import { Check } from "lucide-react";
-import { JOURNEY_STEPS, journeyStepIndex, normalizeIntakeStatus } from "@/lib/domain/intake-workflow";
+import { JOURNEY_STEPS, familyJourneyStepHint, journeyStepIndex, normalizeIntakeStatus } from "@/lib/domain/intake-workflow";
 import type { CareGuideInfo } from "@/lib/client/intake";
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import { cn } from "@/lib/core/utils";
@@ -13,7 +13,8 @@ export function CareJourneyTimeline({
   showCarePlanLink = false,
   matchesHref,
   visitDetailsHref,
-  defaultOpen = true
+  defaultOpen = true,
+  declineContext
 }: {
   status: string;
   careGuide?: CareGuideInfo | null;
@@ -22,11 +23,13 @@ export function CareJourneyTimeline({
   matchesHref?: string | null;
   visitDetailsHref?: string | null;
   defaultOpen?: boolean;
+  declineContext?: { hasRecentDecline?: boolean; hasAlternativeMatches?: boolean };
 }) {
   const currentIndex = journeyStepIndex(status);
   const normalized = normalizeIntakeStatus(status);
   const visibleSteps = JOURNEY_STEPS.filter((step) => step.status !== "CLOSED");
   const isClosed = normalized === "CLOSED";
+  const currentHint = familyJourneyStepHint(status, declineContext);
 
   const timeline = (
     <ol className="relative max-w-3xl lg:max-w-none">
@@ -69,7 +72,7 @@ export function CareJourneyTimeline({
 
               {isCurrent ? (
                 <div className="mt-3 rounded-xl border border-brand-green-dark/20 bg-brand-green-pale/15 px-4 py-3 sm:px-5 sm:py-4">
-                  <p className="text-sm leading-7 text-neutral-700">{step.hint}</p>
+                  <p className="text-sm leading-7 text-neutral-700">{currentHint}</p>
                   {showCarePlanLink && step.status === "CARE_PLAN" ? (
                     <p className="mt-3 text-sm leading-6 text-neutral-700">
                       <a href="#care-guide-plan" className="font-semibold text-brand-amber underline underline-offset-4 hover:text-brand-amber-mid">

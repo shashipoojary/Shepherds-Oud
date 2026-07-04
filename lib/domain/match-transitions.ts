@@ -52,12 +52,17 @@ function formatWhen() {
   return new Date().toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" });
 }
 
-export function matchStatusChangeNote(actor: MatchActor, status: MatchStatus) {
+export function matchStatusChangeNote(actor: MatchActor, status: MatchStatus, declineReason?: string | null) {
   const when = formatWhen();
 
   if (actor === "provider") {
     if (status === "ACCEPTED") return `You accepted this inquiry on ${when}.`;
-    if (status === "DECLINED") return `You declined this inquiry on ${when}.`;
+    if (status === "DECLINED") {
+      const reason = declineReason?.trim();
+      return reason
+        ? `Provider declined this inquiry on ${when}. Reason: ${reason}.`
+        : `Provider declined this inquiry on ${when}.`;
+    }
     return null;
   }
 

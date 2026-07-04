@@ -94,7 +94,11 @@ function visibleTags(provider: ProviderMatch, limit = 5) {
 }
 
 function showStatusNote(status?: string) {
-  return isFamilyActionableMatchStatus(status);
+  return isFamilyActionableMatchStatus(status) || status === "DECLINED";
+}
+
+function matchIsDeclined(status?: string) {
+  return status === "DECLINED";
 }
 
 function matchIsInProgress(status?: string) {
@@ -126,7 +130,14 @@ function ResultsPageContent() {
   const [selectionState, setSelectionState] = useState<ReturnType<typeof selectFamilyIntake>>({ state: "none", intake: null });
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   const [rowFeedback, setRowFeedback] = useState<Record<string, RowFeedback>>({});
-  const recommended = providers[0];
+  const sortedProviders = useMemo(() => {
+    return [...providers].sort((a, b) => {
+      const aDeclined = matchIsDeclined(a.matchStatus) ? 1 : 0;
+      const bDeclined = matchIsDeclined(b.matchStatus) ? 1 : 0;
+      return aDeclined - bDeclined;
+    });
+  }, [providers]);
+  const recommended = sortedProviders.find((provider) => !matchIsDeclined(provider.matchStatus)) ?? sortedProviders[0];
   const intake = selectionState.state === "selected" ? selectionState.intake : null;
   const historyCase = intake ? isHistoryIntake(intake) : false;
 
@@ -181,18 +192,19 @@ function ResultsPageContent() {
   }, [globalMessage]);
 
   const visibleProviders = useMemo(() => {
-    if (activeFilter === "All options") return providers;
+    const source = sortedProviders;
+    if (activeFilter === "All options") return source;
     if (activeFilter === "Available now") {
-      return providers.filter((provider) => provider.availability.toLowerCase().includes("available"));
+      return source.filter((provider) => provider.availability.toLowerCase().includes("available"));
     }
     if (activeFilter === "Memory care") {
-      return providers.filter((provider) => provider.tags.some((tag) => tag.label.toLowerCase().includes("dementia")));
+      return source.filter((provider) => provider.tags.some((tag) => tag.label.toLowerCase().includes("dementia")));
     }
     if (activeFilter === "Home care") {
-      return providers.filter((provider) => provider.type.toLowerCase().includes("home care"));
+      return source.filter((provider) => provider.type.toLowerCase().includes("home care"));
     }
-    return providers;
-  }, [activeFilter, providers]);
+    return source;
+  }, [activeFilter, sortedProviders]);
 
   const backupProviders = useMemo(() => visibleProviders.slice(1), [visibleProviders]);
   const filteredCount = visibleProviders.length;
@@ -317,6 +329,7 @@ function ResultsPageContent() {
   const featuredVisitSent = recommended.matchStatus === "VISIT_REQUESTED";
   const featuredCallbackSent = recommended.matchStatus === "CALLBACK_REQUESTED";
   const featuredAccepted = matchIsInProgress(recommended.matchStatus);
+  const featuredDeclined = matchIsDeclined(recommended.matchStatus);
   const featuredFeedback = featuredMatchId ? rowFeedback[featuredMatchId] : undefined;
 
   return (
@@ -327,7 +340,7 @@ function ResultsPageContent() {
 
       {historyCase ? (
         <div className="mb-5 rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm text-ink/70 shadow-soft">
-          Provider history for this request. Visit and callback actions are closed — this page is for your records only.
+          This request is closed. Matches are shown for your records only.
         </div>
       ) : null}
 
@@ -380,6 +393,8 @@ function ResultsPageContent() {
             <p className="text-sm font-medium text-ink">Next step</p>
             {historyCase ? (
               <p className="text-sm leading-6 text-ink/65">This request is closed. Review each provider&apos;s final status below.</p>
+            ) : featuredDeclined ? (
+              <p className="text-sm leading-6 text-ink/65">{familyMatchNextStep(recommended.matchStatus!, recommended.name)}</p>
             ) : featuredAccepted ? (
               <p className="text-sm leading-6 text-ink/65">{familyMatchNextStep(recommended.matchStatus!, recommended.name)}</p>
             ) : (
@@ -390,7 +405,7 @@ function ResultsPageContent() {
 
             {featuredFeedback ? <ActionFeedback message={featuredFeedback.text} tone={featuredFeedback.tone} /> : null}
 
-            {!historyCase && !featuredAccepted ? (
+            {!historyCase && !featuredAccepted && !featuredDeclined ? (
               <>
                 <Button
                   className="w-full"
@@ -528,6 +543,7 @@ function CompareRow({
   const visitSent = provider.matchStatus === "VISIT_REQUESTED";
   const callbackSent = provider.matchStatus === "CALLBACK_REQUESTED";
   const accepted = matchIsInProgress(provider.matchStatus);
+  const declined = matchIsDeclined(provider.matchStatus);
   const matchId = provider.matchId;
   const busy = pendingAction !== null;
 
@@ -551,7 +567,9 @@ function CompareRow({
             <p className="mt-2 text-sm text-ink/60">{meta.price}</p>
           )}
           {provider.matchStatus && showStatusNote(provider.matchStatus) ? (
-            <p className="mt-2 text-sm leading-6 text-brand-green-dark">{familyMatchNextStep(provider.matchStatus, provider.name)}</p>
+            <p className={`mt-2 text-sm leading-6 ${declined ? "text-neutral-600" : "text-brand-green-dark"}`}>
+              {familyMatchNextStep(provider.matchStatus, provider.name)}
+            </p>
           ) : null}
           {feedback ? <ActionFeedback message={feedback.text} tone={feedback.tone} className="mt-3" /> : null}
         </div>
@@ -560,7 +578,7 @@ function CompareRow({
           <Button asChild size="sm" variant="outline" className="w-full sm:min-w-[132px]">
               <Link href={withIntakeId(`/providers/${provider.id}`, intakeId)}>Profile</Link>
           </Button>
-          {!readOnly && !accepted ? (
+          {!readOnly && !accepted && !declined ? (
             <>
               <Button
                 size="sm"

@@ -128,6 +128,35 @@ export function getAdminCaseNextAction(intake: IntakeForNextAction, matches: Mat
     };
   }
 
+  if (
+    matchStatuses.includes("DECLINED") &&
+    !matchStatuses.some((matchStatus) =>
+      ["VISIT_REQUESTED", "CALLBACK_REQUESTED", "ACCEPTED", "CONTACTED", "PLACED"].includes(matchStatus)
+    )
+  ) {
+    if (matchStatuses.includes("SUGGESTED")) {
+      return {
+        key: "FAMILY_TRY_ALTERNATIVE",
+        label: "Offer alternative provider",
+        description: "A provider declined. Other shortlisted facilities are still available for the family.",
+        instruction: "Contact the family if helpful, then wait for them to request another visit or callback from results.",
+        target: "Family results",
+        tab: "families",
+        severity: "action"
+      };
+    }
+
+    return {
+      key: "REMATCH_AFTER_DECLINE",
+      label: "Review after provider decline",
+      description: "The family has no active provider responses left. Update the care plan or add new matches.",
+      instruction: "Open section 3 to review the care plan, then section 4 to add new provider matches for the family.",
+      target: "Section 3 - Assessment & care plan",
+      tab: "families",
+      severity: "action"
+    };
+  }
+
   if (matchStatuses.includes("CONTACTED") && !placementAndHistoryStatuses.has(status)) {
     return {
       key: "FOLLOW_UP_RECORD_PLACEMENT",

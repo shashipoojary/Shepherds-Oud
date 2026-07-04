@@ -1,17 +1,18 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { isHistoryIntake, selectFamilyIntake, splitFamilyIntakes, withIntakeId } from "@/lib/client/case-selection";
+import { selectFamilyIntake, withIntakeId } from "@/lib/client/case-selection";
 import { getSessionFamilyIntakes, type FamilyIntake } from "@/lib/client/intake";
-import { normalizeIntakeStatus, intakeStatusLabel } from "@/lib/domain/intake-workflow";
+import { computeFamilyDeclineContext } from "@/lib/domain/match-status";
+import { normalizeIntakeStatus } from "@/lib/domain/intake-workflow";
+import type { ProviderMatch } from "@/lib/core/types";
 import { brand } from "@/lib/config/brand";
 import { CareJourneyTimeline } from "@/components/family/care-journey-timeline";
 import { FamilyActiveMatches } from "@/components/family/active-matches";
-import { FamilyCaseHistoryPanel } from "@/components/family/case-history-panel";
+import { FamilyHistoryPanel } from "@/components/family/family-history-panel";
 import { FamilyCasePicker } from "@/components/family/case-picker";
-import { FamilyMatchHistory } from "@/components/family/match-history";
 import { IntakeSummaryCard } from "@/components/family/intake-summary-card";
 import { Button } from "@/components/ui/button";
 import { ButtonRow } from "@/components/ui/button-row";
@@ -33,6 +34,7 @@ function FamilyDashboardContent() {
   const [intakes, setIntakes] = useState<FamilyIntake[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [matches, setMatches] = useState<ProviderMatch[]>([]);
 
   const refreshStatus = useCallback(async () => {
     const sessionIntakes = await getSessionFamilyIntakes();
@@ -53,6 +55,41 @@ function FamilyDashboardContent() {
     void refreshStatus();
   }, [refreshStatus]);
 
+  const selection = selectFamilyIntake(intakes, requestedIntakeId);
+  const intake = selection.state === "selected" ? selection.intake : null;
+
+  useEffect(() => {
+    if (!intake?.id) {
+      setMatches([]);
+      return;
+    }
+
+    const intakeId = intake.id;
+
+    async function loadMatches() {
+      try {
+        const response = await fetch(`/api/matches?intakeId=${encodeURIComponent(intakeId)}`);
+        if (response.ok) {
+          setMatches((await response.json()) as ProviderMatch[]);
+        } else {
+          setMatches([]);
+        }
+      } catch {
+        setMatches([]);
+      }
+    }
+
+    void loadMatches();
+  }, [intake?.id, intake?.status, refreshing]);
+
+  const declineContext = useMemo(
+    () =>
+      intake
+        ? computeFamilyDeclineContext(matches, intake.status)
+        : { hasDeclined: false, hasForward: false, declinedCount: 0 },
+    [intake, matches]
+  );
+
   async function handleRefresh() {
     setRefreshing(true);
     await refreshStatus();
@@ -62,15 +99,10 @@ function FamilyDashboardContent() {
     return <FamilyDashboardSkeleton />;
   }
 
-  const selection = selectFamilyIntake(intakes, requestedIntakeId);
-  const intake = selection.state === "selected" ? selection.intake : null;
   const matchCount = intake?.matchCount ?? 0;
   const normalizedStatus = intake ? normalizeIntakeStatus(intake.status) : null;
   const caseClosed = normalizedStatus === "CLOSED";
-  const historyCase = intake ? isHistoryIntake(intake) : false;
   const collapsedByDefault = caseClosed;
-  const { history: historyIntakes } = splitFamilyIntakes(intakes);
-  const showCaseHistory = intakes.length > 1 || historyIntakes.length > 0;
 
   if (selection.state === "needs-picker" || selection.state === "not-found") {
     return (
@@ -96,7 +128,12 @@ function FamilyDashboardContent() {
               Follow each step with your dedicated Care Guide. Shared decision support — not a directory search.
             </p>
           </div>
-          {intake ? <RefreshButton onClick={() => void handleRefresh()} loading={refreshing} /> : null}
+          {intake ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <FamilyHistoryPanel intakes={intakes} currentIntakeId={intake.id} />
+              <RefreshButton onClick={() => void handleRefresh()} loading={refreshing} />
+            </div>
+          ) : null}
         </div>
         <ButtonRow className="mt-5 max-w-lg">
           {intake ? (
@@ -119,18 +156,6 @@ function FamilyDashboardContent() {
       <section className="mt-6 space-y-6">
         {intake ? (
           <>
-            {historyCase ? (
-              <div className="rounded-2xl border border-stone-200 bg-white px-5 py-4 shadow-soft sm:px-6">
-                <p className="text-sm font-semibold text-ink">
-                  {caseClosed ? "This care request is closed" : "This request is in your history"}
-                </p>
-                <p className="mt-1 max-w-2xl text-sm leading-6 text-neutral-600">
-                  {caseClosed
-                    ? "You can still review your journey, provider history, and request details below. Start a new request anytime if your family needs help again."
-                    : `Status: ${intakeStatusLabel(normalizedStatus!)}. Review your journey and provider history below, or open another request from your history.`}
-                </p>
-              </div>
-            ) : null}
             <CareJourneyTimeline
               status={intake.status}
               careGuide={intake.careGuide}
@@ -138,14 +163,14 @@ function FamilyDashboardContent() {
               matchesHref={matchCount > 0 ? withIntakeId("/family/results", intake.id) : null}
               visitDetailsHref={intake.visitScheduledAt ? "#care-guide-plan" : null}
               defaultOpen={!collapsedByDefault}
+              declineContext={
+                declineContext.hasDeclined
+                  ? { hasRecentDecline: true, hasAlternativeMatches: declineContext.hasForward }
+                  : undefined
+              }
             />
             <IntakeSummaryCard intake={intake} showCareGuide={false} defaultOpen={!collapsedByDefault} />
-            {historyCase ? (
-              <FamilyMatchHistory intakeId={intake.id} />
-            ) : (
-              <FamilyActiveMatches key={`${intake.id}-${intake.matchCount}`} intakeId={intake.id} intakeStatus={intake.status} />
-            )}
-            {showCaseHistory ? <FamilyCaseHistoryPanel intakes={intakes} currentIntakeId={intake.id} /> : null}
+            <FamilyActiveMatches key={`${intake.id}-${intake.matchCount}`} intakeId={intake.id} intakeStatus={intake.status} />
             <section className="rounded-2xl border border-stone-200 bg-white p-5 shadow-soft sm:p-6">
               <p className="section-label">Questions for your team</p>
               <h2 className="mt-1 text-lg font-semibold text-ink">Need to ask something?</h2>

@@ -109,7 +109,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
     const autoNote = isFamilyAction
       ? familyRequestNote(status as "VISIT_REQUESTED" | "CALLBACK_REQUESTED")
-      : matchStatusChangeNote(actor, nextStatus);
+      : matchStatusChangeNote(actor, nextStatus, parsed.data.declineReason);
 
     const match = await prisma.match.update({
       where: { id },

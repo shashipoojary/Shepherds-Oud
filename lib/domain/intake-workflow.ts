@@ -134,6 +134,27 @@ export function intakeStatusHint(status: string) {
   return JOURNEY_STEPS.find((step) => step.status === normalized)?.hint ?? JOURNEY_STEPS[0].hint;
 }
 
+export function familyJourneyStepHint(
+  status: string,
+  context?: { hasRecentDecline?: boolean; hasAlternativeMatches?: boolean }
+) {
+  const normalized = normalizeIntakeStatus(status);
+
+  if (context?.hasRecentDecline) {
+    if (normalized === "MATCHED") {
+      return context.hasAlternativeMatches
+        ? "A provider could not take your last request, but other matched facilities remain on your shortlist. Review them or ask your Care Guide for guidance."
+        : "Your Care Guide is helping you explore next options after a provider could not help.";
+    }
+
+    if (normalized === "CARE_PLAN") {
+      return "Your Care Guide is reviewing your care plan and will suggest new provider options after a facility could not help with your last request.";
+    }
+  }
+
+  return intakeStatusHint(status);
+}
+
 /** Admin-panel copy — describes the case stage for coordinators, not the family-facing timeline text. */
 export function adminIntakeJourneyHint(status: string) {
   switch (normalizeIntakeStatus(status)) {

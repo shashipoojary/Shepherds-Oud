@@ -4,7 +4,8 @@ const familyVisibleStatusList = [
   "VISIT_REQUESTED",
   "CALLBACK_REQUESTED",
   "ACCEPTED",
-  "PLACED"
+  "PLACED",
+  "DECLINED"
 ] as const;
 
 export const familyVisibleMatchStatuses = familyVisibleStatusList;
@@ -144,7 +145,7 @@ export function familyMatchNextStep(status: string, providerName: string) {
     case "PLACED":
       return `Placement is in progress with ${providerName}. Your Care Guide will share final details.`;
     case "DECLINED":
-      return `${providerName} is not available for this request right now. View other matches on your shortlist.`;
+      return `${providerName} is not available for this request right now. Review other matches on your shortlist or wait for your Care Guide to suggest alternatives.`;
     case "CLOSED":
       return `This match with ${providerName} is closed.`;
     default:
@@ -154,6 +155,35 @@ export function familyMatchNextStep(status: string, providerName: string) {
 
 export function isFamilyActionableMatchStatus(status?: string) {
   return Boolean(status && ["VISIT_REQUESTED", "CALLBACK_REQUESTED", "ACCEPTED", "CONTACTED", "PLACED"].includes(status));
+}
+
+export function isFamilyForwardMatchStatus(status?: string | null) {
+  return Boolean(
+    status && ["SUGGESTED", "VISIT_REQUESTED", "CALLBACK_REQUESTED", "ACCEPTED", "CONTACTED", "PLACED"].includes(status)
+  );
+}
+
+export function familyDeclineRecoveryMessage(hasAlternativeMatches: boolean) {
+  if (hasAlternativeMatches) {
+    return "A provider could not help with your last request. Review other facilities on your shortlist, or request a visit or callback with another option. Your Care Guide can help you decide.";
+  }
+
+  return "A provider could not help with your last request. Your Care Guide is reviewing your care plan and will suggest next options — usually within one business day.";
+}
+
+export function computeFamilyDeclineContext(
+  matches: Array<{ matchStatus?: string | null }>,
+  intakeStatus: string
+) {
+  const declinedMatches = matches.filter((match) => match.matchStatus === "DECLINED");
+  const hasDeclined = declinedMatches.length > 0;
+  const hasForward = matches.some((match) => isFamilyForwardMatchStatus(match.matchStatus));
+
+  return {
+    hasDeclined,
+    hasForward,
+    declinedCount: declinedMatches.length
+  };
 }
 
 export function adminInquiryActionMeta(status: MatchAdminAction) {
