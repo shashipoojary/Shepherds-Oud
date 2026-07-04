@@ -1,4 +1,4 @@
-import { isProviderLoginApprovedEmail } from "@/lib/auth/roles";
+import { isProviderMagicLinkAllowedEmail } from "@/lib/auth/roles";
 import { jsonError, jsonOk, handleApiError, readJsonBody } from "@/lib/core/api-helpers";
 import { findPendingProviderInviteByToken } from "@/lib/providers/invite";
 
@@ -27,7 +27,7 @@ export async function POST(request: Request) {
       return jsonOk({ ok: true });
     }
 
-    if (await isProviderLoginApprovedEmail(email)) {
+    if (await isProviderMagicLinkAllowedEmail(email)) {
       return jsonOk({ ok: true });
     }
 

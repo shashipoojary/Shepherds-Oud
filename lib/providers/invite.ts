@@ -17,6 +17,26 @@ export function hashProviderInviteToken(token: string) {
   return createHash("sha256").update(token).digest("hex");
 }
 
+function normalizeInviteEmail(email: string | null | undefined) {
+  return email?.trim().toLowerCase() || "";
+}
+
+export async function hasActiveProviderInviteForEmail(email: string | null | undefined) {
+  const normalized = normalizeInviteEmail(email);
+  if (!normalized) return false;
+
+  const invite = await prisma.providerInvite.findFirst({
+    where: {
+      email: normalized,
+      status: "PENDING",
+      expiresAt: { gt: new Date() }
+    },
+    select: { id: true }
+  });
+
+  return Boolean(invite);
+}
+
 export async function findPendingProviderInviteByToken(token: string) {
   const tokenHash = hashProviderInviteToken(token);
   const invite = await prisma.providerInvite.findUnique({

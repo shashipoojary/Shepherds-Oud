@@ -1,5 +1,6 @@
 import type { AppRole } from "@/lib/auth/server";
 import { prisma } from "@/lib/core/db";
+import { hasActiveProviderInviteForEmail } from "@/lib/providers/invite";
 
 function normalizeEmail(value: string) {
   return value.trim().toLowerCase().replace(/^["']|["']$/g, "");
@@ -59,6 +60,14 @@ export async function isProviderLoginApprovedEmail(email: string | null | undefi
   ]);
 
   return Boolean(acceptedInvite || linkedUser || provider);
+}
+
+export async function isProviderMagicLinkAllowedEmail(email: string | null | undefined) {
+  if (await isProviderLoginApprovedEmail(email)) {
+    return true;
+  }
+
+  return hasActiveProviderInviteForEmail(email);
 }
 
 export function resolveRole(email: string | null | undefined): AppRole {

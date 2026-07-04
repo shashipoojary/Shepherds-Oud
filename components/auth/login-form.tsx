@@ -119,7 +119,11 @@ export function AuthLoginForm({ intent }: AuthLoginFormProps) {
 
       if (signInError) {
         setEmailFeedbackTone("error");
-        setEmailFeedback(signInError.message || "Could not send sign-in link.");
+        const serverMessage =
+          typeof signInError === "object" && signInError && "message" in signInError && typeof signInError.message === "string"
+            ? signInError.message
+            : "";
+        setEmailFeedback(serverMessage || "Could not send sign-in link.");
         return;
       }
 
