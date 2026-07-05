@@ -63,6 +63,7 @@ import {
   isAdminActionNeeded,
   matchStatusBadgeClass
 } from "@/lib/domain/match-status";
+import { INTAKE_STALE_CONFLICT_MESSAGE, isIntakeStaleConflictError } from "@/lib/domain/intake-stale-conflict";
 
 type AdminTab = "families" | "providers" | "inquiries" | "waitlist";
 type WaitlistEntry = AdminDashboardData["waitlist"][number];
@@ -100,6 +101,8 @@ export function AdminDashboardClient({ data: initialData }: { data: AdminDashboa
   const [tabSeenAt, setTabSeenAt] = useState(getTabSeenAt);
   const [itemSeenVersion, setItemSeenVersion] = useState(0);
   const dataRef = useRef(data);
+  const intakeSavePendingRef = useRef(false);
+  const focusRefetchTimerRef = useRef<number | null>(null);
   dataRef.current = data;
 
   function bumpItemSeen() {
@@ -161,6 +164,32 @@ export function AdminDashboardClient({ data: initialData }: { data: AdminDashboa
     const timer = window.setTimeout(() => setMessage(""), TOAST_DISMISS_MS);
     return () => window.clearTimeout(timer);
   }, [message]);
+
+  useEffect(() => {
+    function handleVisibilityChange() {
+      if (document.visibilityState !== "visible") return;
+      if (intakeSavePendingRef.current) return;
+
+      if (focusRefetchTimerRef.current !== null) {
+        window.clearTimeout(focusRefetchTimerRef.current);
+      }
+
+      focusRefetchTimerRef.current = window.setTimeout(() => {
+        focusRefetchTimerRef.current = null;
+        if (document.visibilityState !== "visible" || intakeSavePendingRef.current) return;
+        void syncDashboard();
+      }, 500);
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      if (focusRefetchTimerRef.current !== null) {
+        window.clearTimeout(focusRefetchTimerRef.current);
+        focusRefetchTimerRef.current = null;
+      }
+    };
+  }, []);
 
   async function syncDashboard() {
     const response = await fetch("/api/admin/dashboard");
@@ -243,6 +272,9 @@ export function AdminDashboardClient({ data: initialData }: { data: AdminDashboa
                 careGuides={data.careGuides}
                 setMessage={setMessage}
                 onSync={syncDashboard}
+                onIntakeSavePendingChange={(pending) => {
+                  intakeSavePendingRef.current = pending;
+                }}
                 itemSeenVersion={itemSeenVersion}
                 onMarkItemSeen={bumpItemSeen}
               />
@@ -305,6 +337,7 @@ function FamiliesTable({
   careGuides,
   setMessage,
   onSync,
+  onIntakeSavePendingChange,
   itemSeenVersion,
   onMarkItemSeen
 }: {
@@ -314,6 +347,7 @@ function FamiliesTable({
   careGuides: CareGuideOption[];
   setMessage: (message: string) => void;
   onSync: () => Promise<boolean>;
+  onIntakeSavePendingChange: (pending: boolean) => void;
   itemSeenVersion: number;
   onMarkItemSeen: () => void;
 }) {
@@ -321,6 +355,10 @@ function FamiliesTable({
   const [selected, setSelected] = useState<FamilyEntry | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const matchesByIntakeId = useMemo(() => groupInquiriesByIntake(inquiries), [inquiries]);
+
+  useEffect(() => {
+    onIntakeSavePendingChange(pendingId !== null);
+  }, [pendingId, onIntakeSavePendingChange]);
 
   function openFamily(family: FamilyEntry) {
     markAdminItemSeen("family", family.id, family.createdAtIso, family.updatedAtIso);
@@ -353,6 +391,11 @@ function FamiliesTable({
 
       if (!response.ok) {
         const data = (await response.json().catch(() => ({}))) as { error?: string };
+        if (response.status === 409) {
+          const err = new Error(data.error || INTAKE_STALE_CONFLICT_MESSAGE);
+          err.name = "IntakeStaleConflictError";
+          throw err;
+        }
         throw new Error(data.error || "Could not update intake.");
       }
 
@@ -412,16 +455,25 @@ function FamiliesTable({
       notify(successMessage);
       await onSync();
     } catch (error) {
+      if (isIntakeStaleConflictError(error)) {
+        throw error;
+      }
       notify(error instanceof Error ? error.message : `Could not update ${name}. Please try again.`);
     } finally {
       setPendingId(null);
     }
   }
 
-  async function updateStatus(id: string, status: IntakeStatus, name: string, notify?: (message: string) => void) {
+  async function updateStatus(
+    id: string,
+    status: IntakeStatus,
+    name: string,
+    notify?: (message: string) => void,
+    expectedUpdatedAt?: string | null
+  ) {
     await patchIntake(
       id,
-      { status },
+      { status, ...(expectedUpdatedAt ? { expectedUpdatedAt } : {}) },
       name,
       `You advanced ${name} to ${adminIntakeStatusLabel(status).toLowerCase()}.`,
       notify
@@ -541,7 +593,13 @@ function FamilyDetailPanel({
   providers: ProviderOption[];
   careGuides: CareGuideOption[];
   onClose: () => void;
-  onUpdateStatus: (id: string, status: IntakeStatus, name: string, notify?: (message: string) => void) => Promise<void>;
+  onUpdateStatus: (
+    id: string,
+    status: IntakeStatus,
+    name: string,
+    notify?: (message: string) => void,
+    expectedUpdatedAt?: string | null
+  ) => Promise<void>;
   onPatchIntake: (
     id: string,
     body: Record<string, unknown>,
@@ -577,27 +635,66 @@ function FamilyDetailPanel({
   const [savingAssessment, setSavingAssessment] = useState(false);
   const [savingVisit, setSavingVisit] = useState(false);
   const [savingCareGuide, setSavingCareGuide] = useState(false);
+  const [loadedUpdatedAtIso, setLoadedUpdatedAtIso] = useState<string | null>(null);
+  const [staleConflict, setStaleConflict] = useState(false);
+  const [refreshingCase, setRefreshingCase] = useState(false);
+
+  function intakePatchBody(body: Record<string, unknown>) {
+    return loadedUpdatedAtIso ? { ...body, expectedUpdatedAt: loadedUpdatedAtIso } : body;
+  }
+
+  function handleStaleConflict(error: unknown) {
+    if (isIntakeStaleConflictError(error)) {
+      setStaleConflict(true);
+      return true;
+    }
+    return false;
+  }
+
+  async function refreshCase() {
+    setRefreshingCase(true);
+    try {
+      const ok = await onSync();
+      if (ok) {
+        setStaleConflict(false);
+        clearPanelMessage();
+      } else {
+        notifyPanel("Could not refresh this case. Try the dashboard Refresh button.");
+      }
+    } finally {
+      setRefreshingCase(false);
+    }
+  }
 
   useEffect(() => {
     if (!family) {
       previousFamilyIdRef.current = null;
+      setLoadedUpdatedAtIso(null);
+      setStaleConflict(false);
       return;
     }
 
-    if (previousFamilyIdRef.current !== family.id) {
+    const isNewCase = previousFamilyIdRef.current !== family.id;
+    if (isNewCase) {
       previousFamilyIdRef.current = family.id;
       clearPanelMessage();
+      setStaleConflict(false);
+      setLoadedUpdatedAtIso(family.updatedAtIso);
+    } else if (!staleConflict) {
+      setLoadedUpdatedAtIso(family.updatedAtIso);
     }
 
-    setCareGuideId(family.careGuideId || "");
-    setCarePathway(family.carePathway || "");
-    setAssessmentNotes(family.assessmentNotes || "");
-    setCarePlanSummary(family.carePlanSummary || "");
-    setVisitScheduledAt(family.visitScheduledAt ? family.visitScheduledAt.slice(0, 16) : "");
-    setVisitType((family.visitType as "VISIT" | "CALLBACK") || "");
-    setVisitProviderName(family.visitProviderName || "");
-    setVisitNotes(family.visitNotes || "");
-  }, [family, clearPanelMessage]);
+    if (isNewCase || !staleConflict) {
+      setCareGuideId(family.careGuideId || "");
+      setCarePathway(family.carePathway || "");
+      setAssessmentNotes(family.assessmentNotes || "");
+      setCarePlanSummary(family.carePlanSummary || "");
+      setVisitScheduledAt(family.visitScheduledAt ? family.visitScheduledAt.slice(0, 16) : "");
+      setVisitType((family.visitType as "VISIT" | "CALLBACK") || "");
+      setVisitProviderName(family.visitProviderName || "");
+      setVisitNotes(family.visitNotes || "");
+    }
+  }, [family, staleConflict, clearPanelMessage]);
 
   const isCaseActionPending = family ? pendingId === family.id && pendingAction !== null : false;
   const normalizedStatus = family ? normalizeIntakeStatus(family.status) : "NEW";
@@ -627,7 +724,9 @@ function FamilyDetailPanel({
     if (!family) return;
     setPendingAction(status);
     try {
-      await onUpdateStatus(family.id, status, family.name, notifyPanel);
+      await onUpdateStatus(family.id, status, family.name, notifyPanel, loadedUpdatedAtIso);
+    } catch (error) {
+      handleStaleConflict(error);
     } finally {
       setPendingAction(null);
       if (status === "CLOSED") {
@@ -642,11 +741,13 @@ function FamilyDetailPanel({
     try {
       await onPatchIntake(
         family.id,
-        { careGuideId, ...(family.status === "NEW" ? { status: "CARE_GUIDE_ASSIGNED" } : {}) },
+        intakePatchBody({ careGuideId, ...(family.status === "NEW" ? { status: "CARE_GUIDE_ASSIGNED" } : {}) }),
         family.name,
         `You assigned a Care Guide to ${family.name}.`,
         notifyPanel
       );
+    } catch (error) {
+      handleStaleConflict(error);
     } finally {
       setSavingCareGuide(false);
     }
@@ -685,17 +786,19 @@ function FamilyDetailPanel({
     try {
       await onPatchIntake(
         family.id,
-        {
+        intakePatchBody({
           careGuideId: careGuideId || family.careGuideId || null,
           carePathway,
           assessmentNotes,
           carePlanSummary,
           ...(nextStatus ? { status: nextStatus } : {})
-        },
+        }),
         family.name,
         successMessage,
         notifyPanel
       );
+    } catch (error) {
+      handleStaleConflict(error);
     } finally {
       setSavingAssessment(false);
     }
@@ -716,17 +819,19 @@ function FamilyDetailPanel({
     try {
       await onPatchIntake(
         family.id,
-        {
+        intakePatchBody({
           careGuideId: careGuideId || family.careGuideId || null,
           carePathway,
           assessmentNotes,
           carePlanSummary,
           status: "MATCHED"
-        },
+        }),
         family.name,
         `You marked ${family.name} as matched. They can now view providers on their shortlist.`,
         notifyPanel
       );
+    } catch (error) {
+      handleStaleConflict(error);
     } finally {
       setSavingAssessment(false);
     }
@@ -744,19 +849,21 @@ function FamilyDetailPanel({
     try {
       await onPatchIntake(
         family.id,
-        {
+        intakePatchBody({
           visitScheduledAt: new Date(visitScheduledAt).toISOString(),
           visitType: visitType || null,
           visitProviderName: visitProviderName || null,
           visitNotes: visitNotes || null,
           ...(canAdvanceToVisitScheduled ? { status: "VISIT_SCHEDULED" as const } : {})
-        },
+        }),
         family.name,
         canAdvanceToVisitScheduled
           ? `You scheduled a visit or callback for ${family.name}. It is now visible on their dashboard.`
           : `You updated visit details for ${family.name}.`,
         notifyPanel
       );
+    } catch (error) {
+      handleStaleConflict(error);
     } finally {
       setSavingVisit(false);
     }
@@ -834,11 +941,29 @@ function FamilyDetailPanel({
       size="xl"
       title={family?.name || "Family intake"}
       subtitle={family ? `${family.location} · ${family.urgency}` : "Care intake details"}
-      notice={panelMessage}
-      noticeTone={panelNoticeTone(panelMessage)}
+      notice={staleConflict ? undefined : panelMessage}
+      noticeTone={staleConflict ? "error" : panelNoticeTone(panelMessage)}
     >
       {family ? (
         <div className="space-y-5">
+          {staleConflict ? (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 ring-1 ring-amber-100">
+              <p className="font-semibold">{INTAKE_STALE_CONFLICT_MESSAGE}</p>
+              <p className="mt-1 leading-6 text-amber-900">
+                Your form may be out of date. Refresh to load the latest version before saving again.
+              </p>
+              <Button
+                type="button"
+                size="sm"
+                className="mt-3"
+                disabled={refreshingCase}
+                onClick={() => void refreshCase()}
+              >
+                {refreshingCase ? "Refreshing…" : "Refresh case"}
+              </Button>
+            </div>
+          ) : null}
+
           <StatusPill>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <div>

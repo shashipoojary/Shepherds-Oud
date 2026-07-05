@@ -3,6 +3,7 @@ import { CARE_PATHWAYS } from "@/lib/domain/care-pathways";
 import { INTAKE_STATUSES } from "@/lib/domain/intake-workflow";
 
 export const adminIntakeUpdateSchema = z.object({
+  expectedUpdatedAt: z.string().datetime().optional(),
   status: z.enum(INTAKE_STATUSES).optional(),
   careGuideId: z.string().nullable().optional(),
   carePathway: z.enum(CARE_PATHWAYS).optional(),

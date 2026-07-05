@@ -14,6 +14,7 @@ import { sendProviderStatusEmail } from "@/lib/email/provider-status-email";
 import { handleApiError, jsonError, jsonOk, rateLimitResponse, readJsonBody, runInBackground } from "@/lib/core/api-helpers";
 import { getIsPrelaunch } from "@/lib/config/prelaunch";
 import { intakeSchema } from "@/lib/validation/intake";
+import { INTAKE_STALE_CONFLICT_MESSAGE, intakeUpdatedAtMatches } from "@/lib/domain/intake-stale-conflict";
 import { adminIntakeUpdateSchema } from "@/lib/validation/intake-admin";
 
 export const runtime = "nodejs";
@@ -159,6 +160,13 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       const existing = await prisma.intake.findUnique({ where: { id } });
       if (!existing) {
         return jsonError("Intake not found.", 404);
+      }
+
+      if (
+        parsed.data.expectedUpdatedAt &&
+        !intakeUpdatedAtMatches(parsed.data.expectedUpdatedAt, existing.updatedAt)
+      ) {
+        return jsonError(INTAKE_STALE_CONFLICT_MESSAGE, 409);
       }
 
       const currentStatus = normalizeIntakeStatus(existing.status);
