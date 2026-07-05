@@ -58,10 +58,11 @@ export function FamilyActiveMatches({ intakeId, intakeStatus }: { intakeId: stri
   const active = matches.filter((match) => isFamilyActionableMatchStatus(match.matchStatus));
   const declined = matches.filter((match) => match.matchStatus === "DECLINED");
   const suggested = matches.filter((match) => match.matchStatus === "SUGGESTED");
+  const singleMatch = matches.filter((match) => match.matchStatus !== "DECLINED").length === 1;
 
   return (
     <section id="provider-updates" className="scroll-mt-24 space-y-4">
-      {declineContext.hasDeclined ? (
+      {declineContext.needsDeclineRecovery ? (
         <div className="rounded-2xl border border-brand-amber/30 bg-brand-amber/10 p-5 shadow-soft">
           <p className="section-label">What happens next</p>
           <h2 className="mt-1 text-lg font-semibold text-ink">A provider could not help with your last request</h2>
@@ -94,7 +95,7 @@ export function FamilyActiveMatches({ intakeId, intakeStatus }: { intakeId: stri
               </p>
             </div>
             <Button asChild size="sm" variant="outline">
-              <Link href={withIntakeId("/family/results", intakeId)}>View shortlist</Link>
+              <Link href={withIntakeId("/family/results", intakeId)}>{singleMatch ? "View matched provider" : "View shortlist"}</Link>
             </Button>
           </div>
 
@@ -128,7 +129,7 @@ export function FamilyActiveMatches({ intakeId, intakeStatus }: { intakeId: stri
             {suggested.length} matched provider{suggested.length === 1 ? "" : "s"} ready to review
           </h2>
           <p className="mt-1 text-sm text-neutral-600">
-            {declineContext.hasDeclined
+            {declineContext.needsDeclineRecovery
               ? "Review these alternatives and request a visit or callback when you are ready."
               : "Review options and request a visit or callback when you are ready."}
           </p>

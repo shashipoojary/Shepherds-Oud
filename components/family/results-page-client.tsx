@@ -348,7 +348,9 @@ function ResultsPageContent() {
 
       <section className="mt-6 overflow-hidden rounded-2xl border border-stone-200/80 bg-white shadow-soft">
         <div className="border-b border-stone-100 bg-brand-green-dark px-5 py-4 sm:px-7">
-          <p className="text-xs font-medium tracking-wide text-brand-green-pale">Where we would start</p>
+          <p className="text-xs font-medium tracking-wide text-brand-green-pale">
+            {providers.length === 1 ? "Your matched provider" : "Where we would start"}
+          </p>
           <h1 className="mt-1 font-brand text-xl font-semibold text-white sm:text-2xl">{recommended.name}</h1>
           <p className="mt-1 text-sm text-white/75">
             {recommended.type} · {recommended.area}
@@ -463,6 +465,7 @@ function ResultsPageContent() {
 
       {globalMessage ? <ActionFeedback message={globalMessage} tone={globalTone} className="mt-4" /> : null}
 
+      {providers.length > 1 ? (
       <section className="mt-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
@@ -511,6 +514,7 @@ function ResultsPageContent() {
           ) : null}
         </div>
       </section>
+      ) : null}
     </main>
   );
 }

@@ -26,13 +26,18 @@ import { TOAST_DISMISS_MS } from "@/lib/client/toast-timing";
 import { cn } from "@/lib/core/utils";
 import {
   countUnseenFamilies,
-  countUnseenInquiries,
   countUnseenProviders,
   countUnseenWaitlist,
   getTabSeenAt,
   initTabSeenFromData,
   markTabSeen
 } from "@/lib/client/admin-seen";
+import {
+  countUnreadAdminInquiries,
+  initAdminInquirySeenFromData,
+  isAdminInquiryUnread,
+  markAdminInquirySeen
+} from "@/lib/client/admin-inquiry-seen";
 import { initAdminItemsSeenFromData, isAdminItemUnread, markAdminItemSeen } from "@/lib/client/admin-item-seen";
 import { CARE_PATHWAYS } from "@/lib/domain/care-pathways";
 import { getAdminCaseNextAction } from "@/lib/domain/admin-case-next-action";
@@ -107,6 +112,9 @@ export function AdminDashboardClient({ data: initialData }: { data: AdminDashboa
 
   useEffect(() => {
     initTabSeenFromData(initialData);
+    initAdminInquirySeenFromData(
+      initialData.inquiries.map((inquiry) => ({ id: inquiry.id, updatedAtIso: inquiry.updatedAtIso }))
+    );
     initAdminItemsSeenFromData([
       ...initialData.families.map((family) => ({
         scope: "family" as const,
@@ -119,12 +127,6 @@ export function AdminDashboardClient({ data: initialData }: { data: AdminDashboa
         id: provider.id,
         createdAtIso: provider.createdAtIso,
         updatedAtIso: provider.updatedAtIso
-      })),
-      ...initialData.inquiries.map((inquiry) => ({
-        scope: "inquiry" as const,
-        id: inquiry.id,
-        createdAtIso: inquiry.createdAtIso,
-        updatedAtIso: inquiry.updatedAtIso
       })),
       ...initialData.waitlist.map((entry) => ({
         scope: "waitlist" as const,
@@ -144,7 +146,7 @@ export function AdminDashboardClient({ data: initialData }: { data: AdminDashboa
     () => ({
       families: countUnseenFamilies(data.families, tabSeenAt.families),
       providers: countUnseenProviders(data.providerList, tabSeenAt.providers),
-      inquiries: countUnseenInquiries(data.inquiries, tabSeenAt.inquiries),
+      inquiries: countUnreadAdminInquiries(data.inquiries),
       waitlist: countUnseenWaitlist(data.waitlist, tabSeenAt.waitlist)
     }),
     [data, tabSeenAt]
@@ -574,6 +576,7 @@ function FamilyDetailPanel({
   const [visitNotes, setVisitNotes] = useState("");
   const [savingAssessment, setSavingAssessment] = useState(false);
   const [savingVisit, setSavingVisit] = useState(false);
+  const [savingCareGuide, setSavingCareGuide] = useState(false);
 
   useEffect(() => {
     if (!family) {
@@ -596,7 +599,7 @@ function FamilyDetailPanel({
     setVisitNotes(family.visitNotes || "");
   }, [family, clearPanelMessage]);
 
-  const isPending = family ? pendingId === family.id : false;
+  const isCaseActionPending = family ? pendingId === family.id && pendingAction !== null : false;
   const normalizedStatus = family ? normalizeIntakeStatus(family.status) : "NEW";
   const isClosedCase = normalizedStatus === "CLOSED";
   const matchingAllowed = family && !isClosedCase ? canCreateMatches(family.status, carePathway || family.carePathway) : false;
@@ -635,13 +638,18 @@ function FamilyDetailPanel({
 
   async function saveCareGuide() {
     if (!family || !careGuideId) return;
-    await onPatchIntake(
-      family.id,
-      { careGuideId, ...(family.status === "NEW" ? { status: "CARE_GUIDE_ASSIGNED" } : {}) },
-      family.name,
-      `You assigned a Care Guide to ${family.name}.`,
-      notifyPanel
-    );
+    setSavingCareGuide(true);
+    try {
+      await onPatchIntake(
+        family.id,
+        { careGuideId, ...(family.status === "NEW" ? { status: "CARE_GUIDE_ASSIGNED" } : {}) },
+        family.name,
+        `You assigned a Care Guide to ${family.name}.`,
+        notifyPanel
+      );
+    } finally {
+      setSavingCareGuide(false);
+    }
   }
 
   async function saveAndShareWithFamily() {
@@ -1010,8 +1018,8 @@ function FamilyDetailPanel({
                 </select>
               </label>
               <AdminPanelActions>
-                <Button type="button" size="sm" disabled={!careGuideId || isPending} onClick={() => void saveCareGuide()}>
-                  {isPending ? "Saving..." : "Assign Care Guide"}
+                <Button type="button" size="sm" disabled={!careGuideId || savingCareGuide} onClick={() => void saveCareGuide()}>
+                  {savingCareGuide ? "Saving..." : "Assign Care Guide"}
                 </Button>
               </AdminPanelActions>
               </div>
@@ -1054,7 +1062,7 @@ function FamilyDetailPanel({
                 />
               </label>
               <AdminPanelActions>
-                <Button type="button" size="sm" disabled={savingAssessment || isPending} onClick={() => void saveAndShareWithFamily()}>
+                <Button type="button" size="sm" disabled={savingAssessment} onClick={() => void saveAndShareWithFamily()}>
                   {savingAssessment ? "Saving..." : normalizedStatus === "ASSESSMENT" ? "Publish care plan" : "Save assessment"}
                 </Button>
                 {!["MATCHED", "VISIT_SCHEDULED", "PROVIDER_RESPONSE", "PLACEMENT_IN_PROGRESS", "PLACED", "CLOSED"].includes(normalizedStatus) ? (
@@ -1062,7 +1070,7 @@ function FamilyDetailPanel({
                     type="button"
                     size="sm"
                     variant="outline"
-                    disabled={savingAssessment || isPending || !carePlanSummary.trim() || Boolean(shortlistDisabledReason)}
+                    disabled={savingAssessment || !carePlanSummary.trim() || Boolean(shortlistDisabledReason)}
                     onClick={() => void markShortlistReady()}
                   >
                     Mark shortlist ready
@@ -1195,7 +1203,7 @@ function FamilyDetailPanel({
                 <Button
                   type="button"
                   size="sm"
-                  disabled={savingVisit || isPending || !visitScheduledAt || !visitSchedulingAllowed}
+                  disabled={savingVisit || !visitScheduledAt || !visitSchedulingAllowed}
                   onClick={() => void saveVisitSchedule()}
                 >
                   {savingVisit
@@ -1229,10 +1237,10 @@ function FamilyDetailPanel({
                         <AdminPanelActions>
                           <Button
                             size="sm"
-                            disabled={isPending || Boolean(disabledReason)}
+                            disabled={isCaseActionPending || Boolean(disabledReason)}
                             onClick={() => void handleCaseAction(action.status)}
                           >
-                            {isPending && pendingAction === action.status ? "Saving..." : action.label}
+                            {isCaseActionPending && pendingAction === action.status ? "Saving..." : action.label}
                           </Button>
                         </AdminPanelActions>
                         <p className="mt-2 text-xs leading-5 text-neutral-500">{disabledReason || action.description}</p>
@@ -1249,7 +1257,7 @@ function FamilyDetailPanel({
                       <Button
                         size="sm"
                         variant="outline"
-                        disabled={isPending}
+                        disabled={isCaseActionPending}
                         onClick={() => setConfirmCloseCase(true)}
                       >
                         Close case
@@ -1287,7 +1295,7 @@ function FamilyDetailPanel({
       <ConfirmDialog
         open={confirmCloseCase}
         tone="danger"
-        pending={isPending && pendingAction === "CLOSED"}
+        pending={isCaseActionPending && pendingAction === "CLOSED"}
         title="Close this case?"
         description="Only close the case when the family is no longer active or has been helped elsewhere."
         confirmLabel="Close case"
@@ -1603,7 +1611,7 @@ function InquiriesTable({
   const [showHistory, setShowHistory] = useState(false);
 
   function openInquiry(inquiry: InquiryEntry) {
-    markAdminItemSeen("inquiry", inquiry.id, inquiry.createdAtIso, inquiry.updatedAtIso);
+    markAdminInquirySeen(inquiry.id, inquiry.updatedAtIso);
     onMarkItemSeen();
     setSelected(inquiry);
   }
@@ -1641,7 +1649,8 @@ function InquiriesTable({
         throw new Error(data?.error || "Could not update inquiry.");
       }
 
-      const updated = (await response.json()) as { status: MatchStatus; notes?: string | null };
+      const updated = (await response.json()) as { status: MatchStatus; notes?: string | null; updatedAt?: string };
+      const updatedAtIso = updated.updatedAt ?? new Date().toISOString();
 
       setRows((current) =>
         current.map((inquiry) =>
@@ -1650,7 +1659,9 @@ function InquiriesTable({
                 ...inquiry,
                 statusRaw: updated.status,
                 status: adminMatchStatusLabel(updated.status),
-                notes: updated.notes ?? inquiry.notes
+                notes: updated.notes ?? inquiry.notes,
+                updatedAtIso,
+                updatedAt: new Date(updatedAtIso).toLocaleDateString("en-GB")
               }
             : inquiry
         )
@@ -1661,10 +1672,14 @@ function InquiriesTable({
               ...current,
               statusRaw: updated.status,
               status: adminMatchStatusLabel(updated.status),
-              notes: updated.notes ?? current.notes
+              notes: updated.notes ?? current.notes,
+              updatedAtIso,
+              updatedAt: new Date(updatedAtIso).toLocaleDateString("en-GB")
             }
           : current
       );
+      markAdminInquirySeen(id, updatedAtIso);
+      onMarkItemSeen();
       notify(`You updated this inquiry to ${adminMatchStatusLabel(updated.status).toLowerCase()}.`);
       await onSync();
     } catch (error) {
@@ -1730,8 +1745,7 @@ function InquiriesTable({
             const needsFollowUp = isAdminActionNeeded(inquiry.statusRaw);
             const placementReady = inquiry.statusRaw === "ACCEPTED" || inquiry.statusRaw === "CONTACTED";
             const isUnread =
-              itemSeenVersion >= 0 &&
-              isAdminItemUnread("inquiry", inquiry.id, inquiry.createdAtIso, inquiry.updatedAtIso);
+              itemSeenVersion >= 0 && isAdminInquiryUnread(inquiry.id, inquiry.updatedAtIso);
 
             return (
               <tr

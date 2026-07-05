@@ -179,10 +179,15 @@ export function computeFamilyDeclineContext(
   const hasDeclined = declinedMatches.length > 0;
   const hasForward = matches.some((match) => isFamilyForwardMatchStatus(match.matchStatus));
 
+  const hasActiveResponse = matches.some((match) =>
+    ["VISIT_REQUESTED", "CALLBACK_REQUESTED", "ACCEPTED", "CONTACTED", "PLACED"].includes(match.matchStatus || "")
+  );
+
   return {
     hasDeclined,
     hasForward,
-    declinedCount: declinedMatches.length
+    declinedCount: declinedMatches.length,
+    needsDeclineRecovery: hasDeclined && !hasActiveResponse
   };
 }
 

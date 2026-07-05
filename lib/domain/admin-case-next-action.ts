@@ -136,13 +136,13 @@ export function getAdminCaseNextAction(intake: IntakeForNextAction, matches: Mat
   ) {
     if (matchStatuses.includes("SUGGESTED")) {
       return {
-        key: "FAMILY_TRY_ALTERNATIVE",
-        label: "Offer alternative provider",
-        description: "A provider declined. Other shortlisted facilities are still available for the family.",
-        instruction: "Contact the family if helpful, then wait for them to request another visit or callback from results.",
+        key: "WAITING_FAMILY_REQUEST",
+        label: "Wait for family request",
+        description: "A provider declined, but a new match is on the shortlist. Wait for the family to request a visit or callback.",
+        instruction: "No admin action yet. The next step starts when the family requests contact from results.",
         target: "Family results",
         tab: "families",
-        severity: "action"
+        severity: "waiting"
       };
     }
 

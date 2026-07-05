@@ -141,8 +141,9 @@ function ProviderDetailActionsContent({ providerId, providerName }: { providerId
   const accepted = matchStatus === "ACCEPTED";
   const coordinated = matchStatus === "CONTACTED";
   const placed = matchStatus === "PLACED";
+  const declined = matchStatus === "DECLINED";
   const inProgress = isFamilyActionableMatchStatus(matchStatus || undefined) && (accepted || coordinated || placed);
-  const canRequest = Boolean(matchId) && !accepted && !coordinated && !placed;
+  const canRequest = Boolean(matchId) && !accepted && !coordinated && !placed && !declined;
   const dashboardHref = intakeId ? `${withIntakeId("/family/dashboard", intakeId)}#provider-updates` : "/family/dashboard#provider-updates";
   const resultsHref = intakeId ? withIntakeId("/family/results", intakeId) : "/family/results";
 
@@ -178,13 +179,19 @@ function ProviderDetailActionsContent({ providerId, providerName }: { providerId
         />
       ) : inProgress && matchStatus ? (
         <ActionFeedback tone="success" className="mt-4" message={familyMatchNextStep(matchStatus, providerName)} />
+      ) : declined ? (
+        <ActionFeedback
+          tone="info"
+          className="mt-4"
+          message={`${familyMatchNextStep("DECLINED", providerName)} Choose another matched provider from your dashboard.`}
+        />
       ) : matchStatus && (visitSent || callbackSent) ? (
         <ActionFeedback tone="success" className="mt-4" message={`Status: ${matchStatusLabel(matchStatus)}. ${familyMatchNextStep(matchStatus, providerName)}`} />
       ) : null}
 
       {message ? <ActionFeedback message={message} tone={messageTone} className="mt-4" /> : null}
 
-      {inProgress ? (
+      {inProgress || declined ? (
         <div className="mt-5 flex flex-col gap-2">
           <Button asChild className="w-full">
             <Link href={fromDashboard ? dashboardHref : resultsHref}>{fromDashboard ? "Back to your dashboard" : "Back to all matches"}</Link>
@@ -194,6 +201,7 @@ function ProviderDetailActionsContent({ providerId, providerName }: { providerId
               <Link href={dashboardHref}>Your dashboard</Link>
             </Button>
           ) : null}
+          {!declined ? (
           <Button variant="ghost" className="w-full" disabled={pending === "favourite"} onClick={handleFavourite}>
             {pending === "favourite" ? (
               <>
@@ -212,6 +220,7 @@ function ProviderDetailActionsContent({ providerId, providerName }: { providerId
               </>
             )}
           </Button>
+          ) : null}
         </div>
       ) : (
         <div className="mt-5 flex flex-col gap-2">

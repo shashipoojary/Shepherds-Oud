@@ -86,7 +86,7 @@ function FamilyDashboardContent() {
     () =>
       intake
         ? computeFamilyDeclineContext(matches, intake.status)
-        : { hasDeclined: false, hasForward: false, declinedCount: 0 },
+        : { hasDeclined: false, hasForward: false, declinedCount: 0, needsDeclineRecovery: false },
     [intake, matches]
   );
 
@@ -164,7 +164,7 @@ function FamilyDashboardContent() {
               visitDetailsHref={intake.visitScheduledAt ? "#care-guide-plan" : null}
               defaultOpen={!collapsedByDefault}
               declineContext={
-                declineContext.hasDeclined
+                declineContext.needsDeclineRecovery
                   ? { hasRecentDecline: true, hasAlternativeMatches: declineContext.hasForward }
                   : undefined
               }

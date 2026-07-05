@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { intakeSteps } from "@/lib/config/content";
 import { usePrelaunch } from "@/components/layout/prelaunch-context";
-import { selectFamilyIntake, withIntakeId } from "@/lib/client/case-selection";
+import { selectFamilyIntake, withIntakeId, isHistoryIntake } from "@/lib/client/case-selection";
 import {
   fieldKeyFor,
   getSessionFamilyIntakes,
@@ -64,6 +64,7 @@ function IntakeFormContent({
   const [submitting, setSubmitting] = useState(false);
   const [ready, setReady] = useState(false);
   const [existingIntake, setExistingIntake] = useState<FamilyIntake | null>(null);
+  const [savedIntakeId, setSavedIntakeId] = useState<string | null>(null);
 
   const step = intakeSteps[stepIndex];
   const isFinal = stepIndex === intakeSteps.length - 1;
@@ -77,8 +78,13 @@ function IntakeFormContent({
     setSubmitting(false);
 
     async function loadExistingIntake() {
+      const result = await getSessionFamilyIntakes();
+      const intakes = result.status === "ok" ? result.intakes : [];
+      const activeIntake = intakes.find((item) => !isHistoryIntake(item)) ?? intakes[0] ?? null;
+
       if (!isUpdateMode) {
         if (!active) return;
+        setSavedIntakeId(activeIntake?.id ?? null);
         setExistingIntake(null);
         setForm({});
         setStepIndex(0);
@@ -86,12 +92,12 @@ function IntakeFormContent({
         return;
       }
 
-      const result = await getSessionFamilyIntakes();
-      const selection = result.status === "ok" ? selectFamilyIntake(result.intakes, requestedIntakeId) : { state: "none" as const, intake: null };
+      const selection = intakes.length ? selectFamilyIntake(intakes, requestedIntakeId) : { state: "none" as const, intake: null };
       const intake = selection.state === "selected" ? selection.intake : null;
 
       if (!active) return;
 
+      setSavedIntakeId(activeIntake?.id ?? null);
       setExistingIntake(intake);
       if (intake) {
         setForm(intakeToForm(intake));
@@ -104,12 +110,6 @@ function IntakeFormContent({
         }
       }
       setReady(true);
-    }
-
-    if (!isUpdateMode) {
-      setExistingIntake(null);
-      setForm({});
-      setStepIndex(0);
     }
 
     void loadExistingIntake();
@@ -236,13 +236,15 @@ function IntakeFormContent({
             ? "Update your existing care request. Your Care Guide keeps supporting your family through shared decisions."
             : "About 5 minutes. A real Care Guide reviews your case personally — no family should carry eldercare decisions alone."}
         </p>
-        {!isUpdateMode && existingIntake ? (
-          <p className="mt-3 text-[12px] text-white/70">
-            Need to change your saved request instead?{" "}
-            <Link href="/family/intake?update=1" className="font-semibold text-brand-amber underline underline-offset-2">
-              Open update form
-            </Link>
-          </p>
+        {!isUpdateMode && savedIntakeId ? (
+          <div className="mt-5">
+            <Button asChild size="sm" variant="outline" className="w-full border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white">
+              <Link href={withIntakeId("/family/dashboard", savedIntakeId)}>Go to your dashboard</Link>
+            </Button>
+            <p className="mt-2 text-[12px] leading-relaxed text-white/65">
+              You already have a care request saved. Open your dashboard to follow your journey, or continue below to start another.
+            </p>
+          </div>
         ) : null}
         <div className="mt-4">
           <ProgressBar value={progress} trackClassName="bg-white/25" />
