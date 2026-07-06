@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/core/db";
-import { normalizeIntakeStatus } from "@/lib/domain/intake-workflow";
 import type { ProviderProfileInput } from "@/lib/validation/provider";
 import { getProviderProfileMissingRequirements, isProviderProfileComplete } from "@/lib/providers/completeness";
+import { toSafeProvider, toSafeProviderInquiry } from "@/lib/serializers/provider";
 
 export const providerVisibleMatchStatuses = [
   "VISIT_REQUESTED",
@@ -119,22 +119,9 @@ export async function getProviderDashboardData(userId: string) {
   const inquiries = provider && profileComplete ? await getProviderInquiries(provider.id) : [];
 
   return {
-    provider,
+    provider: toSafeProvider(provider),
     profileComplete,
     profileMissingRequirements,
-    inquiries: inquiries.map((match) => ({
-      id: match.id,
-      intakeId: match.intakeId,
-      score: match.score,
-      status: normalizeIntakeStatus(match.intake.status) === "CLOSED" ? "CLOSED" : match.status,
-      notes: match.notes,
-      declineReason: match.declineReason,
-      createdAt: match.createdAt.toISOString(),
-      updatedAt: match.updatedAt.toISOString(),
-      intake: {
-        ...match.intake,
-        visitScheduledAt: match.intake.visitScheduledAt?.toISOString() ?? null
-      }
-    }))
+    inquiries: inquiries.map(toSafeProviderInquiry)
   };
 }

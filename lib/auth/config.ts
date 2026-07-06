@@ -1,13 +1,15 @@
-import { betterAuth } from "better-auth";
+import { betterAuth, type BetterAuthOptions } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { dash } from "@better-auth/infra";
 import { nextCookies } from "better-auth/next-js";
-import { magicLink } from "better-auth/plugins";
+import { customSession, magicLink } from "better-auth/plugins";
 import { prisma } from "@/lib/core/db";
 import { isAdminEmail, isProviderMagicLinkAllowedEmail, resolveRole, resolveRoleForUser } from "@/lib/auth/roles";
 import { PROVIDER_DASHBOARD_PATH } from "@/lib/auth/routes";
 import { sendFamilyMagicLinkEmail } from "@/lib/email/family-magic-link";
 import { sendProviderMagicLinkEmail } from "@/lib/email/provider-magic-link";
+import { toSafeSession } from "@/lib/serializers/session";
+import { toSafeUser } from "@/lib/serializers/user";
 
 const appUrl = process.env.BETTER_AUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
@@ -35,7 +37,7 @@ function isProviderMagicLink(url: string) {
   return decoded.includes(PROVIDER_DASHBOARD_PATH) || decoded.includes("/provider/login");
 }
 
-export const auth = betterAuth({
+const authOptions = {
   secret: process.env.BETTER_AUTH_SECRET || "development-only-better-auth-secret-change-in-production",
   baseURL: appUrl,
   database: prismaAdapter(prisma, {
@@ -127,5 +129,18 @@ export const auth = betterAuth({
         ]
       : []),
     nextCookies()
+  ]
+} satisfies BetterAuthOptions;
+
+export const auth = betterAuth({
+  ...authOptions,
+  plugins: [
+    ...(authOptions.plugins ?? []),
+    customSession(async ({ user, session }) => {
+      return {
+        user: toSafeUser(user),
+        session: toSafeSession(session)
+      };
+    }, authOptions)
   ]
 });

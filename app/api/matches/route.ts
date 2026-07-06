@@ -7,6 +7,7 @@ import { canCreateMatches, normalizeIntakeStatus } from "@/lib/domain/intake-wor
 import { isProviderProfileComplete } from "@/lib/providers/completeness";
 import { createMatchSchema } from "@/lib/validation/match";
 import { handleApiError, jsonError, jsonOk, rateLimitResponse, readJsonBody } from "@/lib/core/api-helpers";
+import { toSafeMatch } from "@/lib/serializers/match";
 
 export const runtime = "nodejs";
 
@@ -126,7 +127,7 @@ export async function POST(request: Request) {
       });
     }
 
-    return jsonOk(match, 201);
+    return jsonOk(toSafeMatch(match), 201);
   } catch (error) {
     return handleApiError(error, "matches_create");
   }

@@ -9,6 +9,7 @@ import { sendProviderInquiryEmail } from "@/lib/email/provider-inquiry-email";
 import { sendProviderStatusEmail } from "@/lib/email/provider-status-email";
 import { familyRequestNote } from "@/lib/domain/match-status";
 import { handleApiError, jsonError, jsonOk, readJsonBody, runInBackground } from "@/lib/core/api-helpers";
+import { toSafeMatch } from "@/lib/serializers/match";
 import {
   appendMatchNotes,
   canTransitionMatchStatus,
@@ -158,7 +159,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       );
     }
 
-    return jsonOk(match);
+    return jsonOk(toSafeMatch(match));
   } catch (error) {
     return handleApiError(error, "match_update");
   }

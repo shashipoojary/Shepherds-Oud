@@ -4,6 +4,7 @@ import { handleApiError, jsonError, jsonOk, readJsonBody } from "@/lib/core/api-
 import { providerSaveErrorMessage } from "@/lib/providers/errors";
 import { getProviderInquiries, getUserLinkedProvider, upsertProviderForUser } from "@/lib/providers/server";
 import { getProviderProfileMissingRequirements } from "@/lib/providers/completeness";
+import { toSafeProvider, toSafeProviderInquiry } from "@/lib/serializers/provider";
 import { providerProfileSchema } from "@/lib/validation/provider";
 
 export const runtime = "nodejs";
@@ -28,19 +29,10 @@ export async function GET() {
     const inquiries = provider && profileComplete ? await getProviderInquiries(provider.id) : [];
 
     return jsonOk({
-      provider,
+      provider: toSafeProvider(provider),
       profileComplete,
       profileMissingRequirements,
-      inquiries: inquiries.map((match) => ({
-        id: match.id,
-        score: match.score,
-        status: match.status,
-        notes: match.notes,
-        declineReason: match.declineReason,
-        createdAt: match.createdAt.toISOString(),
-        updatedAt: match.updatedAt.toISOString(),
-        intake: match.intake
-      }))
+      inquiries: inquiries.map(toSafeProviderInquiry)
     });
   } catch (error) {
     return handleApiError(error, "provider_dashboard_read");
@@ -67,7 +59,7 @@ export async function PATCH(request: Request) {
     const profileMissingRequirements = getProviderProfileMissingRequirements(provider);
 
     return jsonOk({
-      provider,
+      provider: toSafeProvider(provider),
       profileComplete: profileMissingRequirements.length === 0,
       profileMissingRequirements,
       inquiries: []

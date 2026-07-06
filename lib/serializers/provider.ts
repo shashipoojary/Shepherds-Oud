@@ -1,0 +1,142 @@
+import { normalizeIntakeStatus } from "@/lib/domain/intake-workflow";
+import type { Provider } from "@prisma/client";
+
+export type SafeProvider = {
+  id: string;
+  name: string;
+  type: string;
+  area: string;
+  city: string | null;
+  province: string | null;
+  description: string;
+  contactName: string | null;
+  email: string | null;
+  phone: string | null;
+  website: string | null;
+  bedsTotal: number | null;
+  bedsOpen: number | null;
+  availabilityStatus: string | null;
+  waitlistText: string | null;
+  services: string[];
+  languages: string[];
+  careLevels: string[];
+  dementiaCapacity: string | null;
+  fundingTypes: string[];
+  responseTimeHours: number | null;
+  visitAvailability: string | null;
+  priceMin: number | null;
+  priceMax: number | null;
+};
+
+type ProviderInquiryIntake = {
+  id: string;
+  contactName: string;
+  preferredArea: string;
+  careTypes: string[];
+  urgency: string;
+  ageRange: string;
+  phone: string;
+  email: string;
+  status: string;
+  visitScheduledAt: Date | null;
+  visitType: string | null;
+  visitProviderName: string | null;
+  visitNotes: string | null;
+};
+
+type ProviderInquiryMatch = {
+  id: string;
+  intakeId: string;
+  score: number;
+  status: string;
+  notes: string | null;
+  declineReason: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  intake: ProviderInquiryIntake;
+};
+
+export type SafeProviderInquiry = {
+  id: string;
+  intakeId: string;
+  score: number;
+  status: string;
+  notes: string | null;
+  declineReason: string | null;
+  createdAt: string;
+  updatedAt: string;
+  intake: {
+    contactName: string;
+    preferredArea: string;
+    careTypes: string[];
+    urgency: string;
+    ageRange: string;
+    phone: string;
+    email: string;
+    status: string;
+    visitScheduledAt: string | null;
+    visitType: string | null;
+    visitProviderName: string | null;
+    visitNotes: string | null;
+  };
+};
+
+export function toSafeProvider(provider: Provider | null): SafeProvider | null {
+  if (!provider) {
+    return null;
+  }
+
+  return {
+    id: provider.id,
+    name: provider.name,
+    type: provider.type,
+    area: provider.area,
+    city: provider.city,
+    province: provider.province,
+    description: provider.description,
+    contactName: provider.contactName,
+    email: provider.email,
+    phone: provider.phone,
+    website: provider.website,
+    bedsTotal: provider.bedsTotal,
+    bedsOpen: provider.bedsOpen,
+    availabilityStatus: provider.availabilityStatus,
+    waitlistText: provider.waitlistText,
+    services: provider.services,
+    languages: provider.languages,
+    careLevels: provider.careLevels,
+    dementiaCapacity: provider.dementiaCapacity,
+    fundingTypes: provider.fundingTypes,
+    responseTimeHours: provider.responseTimeHours,
+    visitAvailability: provider.visitAvailability,
+    priceMin: provider.priceMin,
+    priceMax: provider.priceMax
+  };
+}
+
+export function toSafeProviderInquiry(match: ProviderInquiryMatch): SafeProviderInquiry {
+  return {
+    id: match.id,
+    intakeId: match.intakeId,
+    score: match.score,
+    status: normalizeIntakeStatus(match.intake.status) === "CLOSED" ? "CLOSED" : match.status,
+    notes: match.notes,
+    declineReason: match.declineReason,
+    createdAt: match.createdAt.toISOString(),
+    updatedAt: match.updatedAt.toISOString(),
+    intake: {
+      contactName: match.intake.contactName,
+      preferredArea: match.intake.preferredArea,
+      careTypes: match.intake.careTypes,
+      urgency: match.intake.urgency,
+      ageRange: match.intake.ageRange,
+      phone: match.intake.phone,
+      email: match.intake.email,
+      status: match.intake.status,
+      visitScheduledAt: match.intake.visitScheduledAt?.toISOString() ?? null,
+      visitType: match.intake.visitType,
+      visitProviderName: match.intake.visitProviderName,
+      visitNotes: match.intake.visitNotes
+    }
+  };
+}
