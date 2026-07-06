@@ -124,6 +124,7 @@ export async function getProviderDashboardData(userId: string) {
     profileMissingRequirements,
     inquiries: inquiries.map((match) => ({
       id: match.id,
+      intakeId: match.intakeId,
       score: match.score,
       status: normalizeIntakeStatus(match.intake.status) === "CLOSED" ? "CLOSED" : match.status,
       notes: match.notes,

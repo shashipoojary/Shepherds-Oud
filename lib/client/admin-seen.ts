@@ -81,14 +81,20 @@ export function initTabSeenFromData(snapshot: AdminSeenSnapshot) {
   });
 }
 
-export function countUnseenFamilies(items: Array<{ createdAtIso: string }>, seenAt: string) {
-  const seen = new Date(seenAt).getTime();
-  return items.filter((item) => new Date(item.createdAtIso).getTime() > seen).length;
+function itemActivityTime(item: { createdAtIso: string; updatedAtIso?: string }) {
+  const created = new Date(item.createdAtIso).getTime();
+  const updated = item.updatedAtIso ? new Date(item.updatedAtIso).getTime() : created;
+  return Math.max(created, updated);
 }
 
-export function countUnseenProviders(items: Array<{ createdAtIso: string }>, seenAt: string) {
+export function countUnseenFamilies(items: Array<{ createdAtIso: string; updatedAtIso?: string }>, seenAt: string) {
   const seen = new Date(seenAt).getTime();
-  return items.filter((item) => new Date(item.createdAtIso).getTime() > seen).length;
+  return items.filter((item) => itemActivityTime(item) > seen).length;
+}
+
+export function countUnseenProviders(items: Array<{ createdAtIso: string; updatedAtIso?: string }>, seenAt: string) {
+  const seen = new Date(seenAt).getTime();
+  return items.filter((item) => itemActivityTime(item) > seen).length;
 }
 
 export function countUnseenInquiries(items: Array<{ createdAtIso: string; updatedAtIso: string }>, seenAt: string) {
@@ -99,7 +105,13 @@ export function countUnseenInquiries(items: Array<{ createdAtIso: string; update
   }).length;
 }
 
-export function countUnseenWaitlist(items: Array<{ createdAtIso: string; status: string }>, seenAt: string) {
+export function countUnseenWaitlist(
+  items: Array<{ createdAtIso: string; updatedAtIso?: string; status: string }>,
+  seenAt: string
+) {
   const seen = new Date(seenAt).getTime();
-  return items.filter((item) => item.status !== "CONTACTED" && new Date(item.createdAtIso).getTime() > seen).length;
+  return items.filter((item) => {
+    if (item.status === "CONTACTED" || item.status === "CONVERTED" || item.status === "CLOSED") return false;
+    return itemActivityTime(item) > seen;
+  }).length;
 }

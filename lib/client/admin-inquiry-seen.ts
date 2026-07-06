@@ -48,3 +48,12 @@ export function isAdminInquiryUnread(inquiryId: string, updatedAtIso: string) {
 export function countUnreadAdminInquiries(items: Array<{ id: string; updatedAtIso: string }>) {
   return items.filter((item) => isAdminInquiryUnread(item.id, item.updatedAtIso)).length;
 }
+
+export function markAllAdminInquiriesSeen(items: Array<{ id: string; updatedAtIso: string }>) {
+  if (!items.length) return;
+  const map = readMap();
+  for (const item of items) {
+    map[item.id] = item.updatedAtIso;
+  }
+  writeMap(map);
+}

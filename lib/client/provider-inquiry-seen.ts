@@ -51,3 +51,12 @@ export function isProviderInquiryUnread(inquiryId: string, updatedAtIso: string)
 export function countUnreadProviderInquiries(items: Array<{ id: string; updatedAt: string }>) {
   return items.filter((item) => isProviderInquiryUnread(item.id, item.updatedAt)).length;
 }
+
+export function markAllProviderInquiriesSeen(items: Array<{ id: string; updatedAt: string }>) {
+  if (!items.length) return;
+  const map = readMap();
+  for (const item of items) {
+    map[item.id] = item.updatedAt;
+  }
+  writeMap(map);
+}

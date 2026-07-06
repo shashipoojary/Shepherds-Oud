@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowUpRight,
   Building2,
@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { IconActionButton } from "@/components/ui/icon-action-button";
+import { ListSearch } from "@/components/ui/list-search";
 import { RefreshButton } from "@/components/ui/refresh-button";
 import { UnreadDot } from "@/components/ui/unread-dot";
 import { DetailList, PanelSection, panelNoticeTone, SlidePanel, StatusPill, TagList, usePanelMessage } from "@/components/ui/slide-panel";
@@ -26,6 +27,7 @@ import { TOAST_DISMISS_MS } from "@/lib/client/toast-timing";
 import { cn } from "@/lib/core/utils";
 import {
   countUnseenFamilies,
+  countUnseenInquiries,
   countUnseenProviders,
   countUnseenWaitlist,
   getTabSeenAt,
@@ -33,10 +35,10 @@ import {
   markTabSeen
 } from "@/lib/client/admin-seen";
 import {
-  countUnreadAdminInquiries,
   initAdminInquirySeenFromData,
   isAdminInquiryUnread,
-  markAdminInquirySeen
+  markAdminInquirySeen,
+  markAllAdminInquiriesSeen
 } from "@/lib/client/admin-inquiry-seen";
 import { initAdminItemsSeenFromData, isAdminItemUnread, markAdminItemSeen } from "@/lib/client/admin-item-seen";
 import { CARE_PATHWAYS } from "@/lib/domain/care-pathways";
@@ -64,6 +66,9 @@ import {
   matchStatusBadgeClass
 } from "@/lib/domain/match-status";
 import { INTAKE_STALE_CONFLICT_MESSAGE, isIntakeStaleConflictError } from "@/lib/domain/intake-stale-conflict";
+import { displayProviderAvailability } from "@/lib/domain/provider-availability";
+import { formatReference, matchesListSearch, matchesReferenceQuery } from "@/lib/domain/reference";
+import { isResolvedWaitlistStatus, waitlistStatusLabel } from "@/lib/domain/waitlist-status";
 
 type AdminTab = "families" | "providers" | "inquiries" | "waitlist";
 type WaitlistEntry = AdminDashboardData["waitlist"][number];
@@ -105,9 +110,13 @@ export function AdminDashboardClient({ data: initialData }: { data: AdminDashboa
   const focusRefetchTimerRef = useRef<number | null>(null);
   dataRef.current = data;
 
-  function bumpItemSeen() {
+  const onMarkItemSeen = useCallback(() => {
     setItemSeenVersion((current) => current + 1);
-  }
+  }, []);
+
+  useEffect(() => {
+    setTabSeenAt(getTabSeenAt());
+  }, []);
 
   useEffect(() => {
     setData(initialData);
@@ -143,13 +152,19 @@ export function AdminDashboardClient({ data: initialData }: { data: AdminDashboa
   useEffect(() => {
     const seen = markTabSeen(tab, dataRef.current);
     setTabSeenAt(seen);
-  }, [tab]);
+    if (tab === "inquiries") {
+      markAllAdminInquiriesSeen(
+        dataRef.current.inquiries.map((inquiry) => ({ id: inquiry.id, updatedAtIso: inquiry.updatedAtIso }))
+      );
+      onMarkItemSeen();
+    }
+  }, [tab, onMarkItemSeen]);
 
   const tabBadges = useMemo(
     () => ({
       families: countUnseenFamilies(data.families, tabSeenAt.families),
       providers: countUnseenProviders(data.providerList, tabSeenAt.providers),
-      inquiries: countUnreadAdminInquiries(data.inquiries),
+      inquiries: countUnseenInquiries(data.inquiries, tabSeenAt.inquiries),
       waitlist: countUnseenWaitlist(data.waitlist, tabSeenAt.waitlist)
     }),
     [data, tabSeenAt]
@@ -276,7 +291,7 @@ export function AdminDashboardClient({ data: initialData }: { data: AdminDashboa
                   intakeSavePendingRef.current = pending;
                 }}
                 itemSeenVersion={itemSeenVersion}
-                onMarkItemSeen={bumpItemSeen}
+                onMarkItemSeen={onMarkItemSeen}
               />
             ) : (
               <EmptyState title="No family intakes yet" description="New submissions from the intake form will appear here." />
@@ -288,7 +303,7 @@ export function AdminDashboardClient({ data: initialData }: { data: AdminDashboa
               <ProvidersTable
                 providers={data.providerList}
                 itemSeenVersion={itemSeenVersion}
-                onMarkItemSeen={bumpItemSeen}
+                onMarkItemSeen={onMarkItemSeen}
               />
             ) : (
               <EmptyState title="No active providers yet" description="Providers appear here after invitation acceptance or profile creation." />
@@ -302,7 +317,7 @@ export function AdminDashboardClient({ data: initialData }: { data: AdminDashboa
                 setMessage={setMessage}
                 onSync={syncDashboard}
                 itemSeenVersion={itemSeenVersion}
-                onMarkItemSeen={bumpItemSeen}
+                onMarkItemSeen={onMarkItemSeen}
               />
             ) : (
               <EmptyState
@@ -318,7 +333,7 @@ export function AdminDashboardClient({ data: initialData }: { data: AdminDashboa
                 entries={data.waitlist}
                 setMessage={setMessage}
                 itemSeenVersion={itemSeenVersion}
-                onMarkItemSeen={bumpItemSeen}
+                onMarkItemSeen={onMarkItemSeen}
               />
             ) : (
               <EmptyState title="No waitlist registrations yet" description="Family and facility pre-launch sign-ups appear here only — not in Families or Providers." />
@@ -354,7 +369,18 @@ function FamiliesTable({
   const [rows, setRows] = useState(families);
   const [selected, setSelected] = useState<FamilyEntry | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
   const matchesByIntakeId = useMemo(() => groupInquiriesByIntake(inquiries), [inquiries]);
+
+  const filteredRows = useMemo(
+    () =>
+      rows.filter(
+        (family) =>
+          matchesReferenceQuery(family.id, search) ||
+          matchesListSearch(search, family.name, family.location, family.care, family.careGuideName, family.context, family.email)
+      ),
+    [rows, search]
+  );
 
   useEffect(() => {
     onIntakeSavePendingChange(pendingId !== null);
@@ -370,9 +396,14 @@ function FamiliesTable({
     setRows(families);
     setSelected((current) => {
       if (!current) return null;
-      return families.find((family) => family.id === current.id) ?? null;
+      const fresh = families.find((family) => family.id === current.id) ?? null;
+      if (fresh) {
+        markAdminItemSeen("family", fresh.id, fresh.createdAtIso, fresh.updatedAtIso);
+        onMarkItemSeen();
+      }
+      return fresh;
     });
-  }, [families]);
+  }, [families, onMarkItemSeen]);
 
   async function patchIntake(
     id: string,
@@ -482,6 +513,9 @@ function FamiliesTable({
 
   return (
     <>
+      <div className="border-b border-stone-100 px-4 py-3">
+        <ListSearch value={search} onChange={setSearch} placeholder="Search families by name, area, care guide, or reference…" />
+      </div>
       <table className="w-full min-w-[720px] border-collapse text-left">
         <thead className="bg-cream text-xs uppercase tracking-wide text-neutral-500">
           <tr>
@@ -496,11 +530,12 @@ function FamiliesTable({
           </tr>
         </thead>
         <tbody className="divide-y divide-stone-200">
-          {rows.map((family) => {
+          {filteredRows.map((family) => {
             const isPending = pendingId === family.id;
             const assignMeta = adminIntakeActionMeta("CARE_GUIDE_ASSIGNED");
             const nextAction = getAdminCaseNextAction(family, matchesByIntakeId.get(family.id) ?? []);
             const isUnread =
+              selected?.id !== family.id &&
               itemSeenVersion >= 0 &&
               isAdminItemUnread("family", family.id, family.createdAtIso, family.updatedAtIso);
             return (
@@ -511,6 +546,7 @@ function FamiliesTable({
                     <strong>{family.name}</strong>
                   </div>
                   <span className="block text-xs text-neutral-500">{family.context}</span>
+                  <span className="mt-1 block font-mono text-[11px] text-neutral-400">Ref {formatReference(family.id)}</span>
                   <span className="mt-1 block text-xs text-neutral-500 sm:hidden">{family.location}</span>
                 </td>
                 <td className="hidden px-4 py-3 text-sm text-neutral-600 sm:table-cell">{family.care}</td>
@@ -925,7 +961,22 @@ function FamilyDetailPanel({
   const canCloseCase = nextActions.some((action) => action.status === "CLOSED");
   const currentStepIndex = family ? journeyStepIndex(family.status) : 0;
   const careGuideStepLocked = Boolean(family?.careGuideId) && currentStepIndex >= journeyStepIndex("CARE_GUIDE_ASSIGNED");
-  const assessmentStepLocked = carePlanComplete({ carePlanSummary: family?.carePlanSummary }) && currentStepIndex >= journeyStepIndex("CARE_PLAN");
+  const forwardMatchStatuses = new Set([
+    "SUGGESTED",
+    "VISIT_REQUESTED",
+    "CALLBACK_REQUESTED",
+    "ACCEPTED",
+    "CONTACTED",
+    "PLACED"
+  ]);
+  const declineRematchMode =
+    normalizedStatus === "CARE_PLAN" &&
+    matches.some((match) => match.statusRaw === "DECLINED") &&
+    !matches.some((match) => forwardMatchStatuses.has(match.statusRaw || ""));
+  const assessmentStepLocked =
+    !declineRematchMode &&
+    carePlanComplete({ carePlanSummary: family?.carePlanSummary }) &&
+    currentStepIndex >= journeyStepIndex("CARE_PLAN");
   const matchStepLocked = hasMatches && currentStepIndex >= journeyStepIndex("MATCHED");
   const visitStepLocked = Boolean(family?.visitScheduledAt) && currentStepIndex >= journeyStepIndex("VISIT_SCHEDULED");
   const visitNotesLabel =
@@ -1402,6 +1453,7 @@ function FamilyDetailPanel({
             <DetailList
               columns={1}
               items={[
+                { label: "Reference", value: formatReference(family.id) },
                 { label: "Intake ID", value: family.id },
                 { label: "Care pathway", value: family.carePathway },
                 { label: "Visit scheduled", value: family.visitScheduledAtLabel },
@@ -1441,6 +1493,26 @@ function ProvidersTable({
   onMarkItemSeen: () => void;
 }) {
   const [selected, setSelected] = useState<AdminDashboardData["providerList"][number] | null>(null);
+  const [search, setSearch] = useState("");
+
+  const filteredProviders = useMemo(
+    () =>
+      providers.filter(
+        (provider) =>
+          matchesReferenceQuery(provider.id, search) ||
+          matchesListSearch(
+            search,
+            provider.name,
+            provider.type,
+            provider.area,
+            provider.city,
+            provider.province,
+            provider.email,
+            displayProviderAvailability(provider)
+          )
+      ),
+    [providers, search]
+  );
 
   function openProvider(provider: AdminDashboardData["providerList"][number]) {
     markAdminItemSeen("provider", provider.id, provider.createdAtIso, provider.updatedAtIso);
@@ -1451,27 +1523,38 @@ function ProvidersTable({
   useEffect(() => {
     setSelected((current) => {
       if (!current) return null;
-      return providers.find((provider) => provider.id === current.id) ?? null;
+      const fresh = providers.find((provider) => provider.id === current.id) ?? null;
+      if (fresh) {
+        markAdminItemSeen("provider", fresh.id, fresh.createdAtIso, fresh.updatedAtIso);
+        onMarkItemSeen();
+      }
+      return fresh;
     });
-  }, [providers]);
+  }, [providers, onMarkItemSeen]);
 
   return (
     <>
+      <div className="border-b border-stone-100 px-4 py-3">
+        <ListSearch value={search} onChange={setSearch} placeholder="Search providers by name, area, availability, or reference…" />
+      </div>
       <table className="w-full min-w-[900px] border-collapse text-left">
         <thead className="bg-cream text-xs uppercase tracking-wide text-neutral-500">
           <tr>
             <th className="px-4 py-3">Provider</th>
             <th className="px-4 py-3">Type</th>
             <th className="px-4 py-3">Area</th>
+            <th className="px-4 py-3">Availability</th>
             <th className="px-4 py-3">Beds open</th>
             <th className="px-4 py-3">Actions</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-stone-200">
-          {providers.map((provider) => {
+          {filteredProviders.map((provider) => {
             const isUnread =
+              selected?.id !== provider.id &&
               itemSeenVersion >= 0 &&
               isAdminItemUnread("provider", provider.id, provider.createdAtIso, provider.updatedAtIso);
+            const availability = displayProviderAvailability(provider);
 
             return (
             <tr key={provider.id} className="cursor-pointer hover:bg-cream" onClick={() => openProvider(provider)}>
@@ -1490,6 +1573,7 @@ function ProvidersTable({
                     {provider.profileComplete ? "Active" : "Provider locked"}
                   </span>
                 </div>
+                <span className="mt-1 block font-mono text-[11px] font-normal text-neutral-400">Ref {formatReference(provider.id)}</span>
                 {!provider.profileComplete ? (
                   <span className="mt-1 block text-xs font-normal text-neutral-500">
                     Complete profile before matching
@@ -1498,6 +1582,7 @@ function ProvidersTable({
               </td>
               <td className="px-4 py-3 text-sm text-neutral-600">{provider.type}</td>
               <td className="px-4 py-3 text-sm text-neutral-600">{provider.area}</td>
+              <td className="px-4 py-3 text-sm text-neutral-600">{availability}</td>
               <td className="px-4 py-3 text-sm text-neutral-600">
                 {provider.bedsOpen ?? "—"}
                 {provider.bedsTotal ? ` / ${provider.bedsTotal}` : ""}
@@ -1530,6 +1615,7 @@ function ProviderDetailPanel({
   }, [provider, clearPanelMessage]);
 
   const priceRange = provider ? formatProviderPriceRange(provider.priceMin, provider.priceMax) : null;
+  const availability = provider ? displayProviderAvailability(provider) : null;
   const bedsSummary =
     provider && (provider.bedsOpen != null || provider.bedsTotal != null)
       ? `${provider.bedsOpen ?? "—"} open · ${provider.bedsTotal ?? "—"} total`
@@ -1564,7 +1650,7 @@ function ProviderDetailPanel({
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <div>
                 <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Availability</span>
-                <p className="mt-1 font-semibold text-ink">{provider.availabilityStatus || "Not set"}</p>
+                <p className="mt-1 font-semibold text-ink">{availability || "Not set"}</p>
               </div>
               <div>
                 <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Beds</span>
@@ -1734,6 +1820,7 @@ function InquiriesTable({
   const [selected, setSelected] = useState<InquiryEntry | null>(null);
   const [confirmClose, setConfirmClose] = useState<InquiryEntry | null>(null);
   const [showHistory, setShowHistory] = useState(false);
+  const [search, setSearch] = useState("");
 
   function openInquiry(inquiry: InquiryEntry) {
     markAdminInquirySeen(inquiry.id, inquiry.updatedAtIso);
@@ -1745,17 +1832,40 @@ function InquiriesTable({
     setRows(inquiries);
     setSelected((current) => {
       if (!current) return null;
-      return inquiries.find((item) => item.id === current.id) ?? null;
+      const fresh = inquiries.find((item) => item.id === current.id) ?? null;
+      if (fresh) {
+        markAdminInquirySeen(fresh.id, fresh.updatedAtIso);
+        onMarkItemSeen();
+      }
+      return fresh;
     });
-  }, [inquiries]);
+  }, [inquiries, onMarkItemSeen]);
 
   const visibleRows = useMemo(
     () => (showHistory ? rows : rows.filter((item) => inquiryCoordinationStatuses.has(item.statusRaw))),
     [rows, showHistory]
   );
+  const filteredRows = useMemo(
+    () =>
+      visibleRows.filter(
+        (inquiry) =>
+          matchesReferenceQuery(inquiry.id, search) ||
+          matchesReferenceQuery(inquiry.intakeId, search) ||
+          matchesListSearch(
+            search,
+            inquiry.family,
+            inquiry.provider,
+            inquiry.familyArea,
+            inquiry.familyEmail,
+            inquiry.familyPhone,
+            inquiry.status
+          )
+      ),
+    [visibleRows, search]
+  );
   const sortedInquiries = useMemo(
-    () => [...visibleRows].sort((a, b) => compareMatchPriority(a.statusRaw, b.statusRaw)),
-    [visibleRows]
+    () => [...filteredRows].sort((a, b) => compareMatchPriority(a.statusRaw, b.statusRaw)),
+    [filteredRows]
   );
   const followUpCount = visibleRows.filter((item) => isAdminActionNeeded(item.statusRaw) || item.statusRaw === "CONTACTED").length;
 
@@ -1842,6 +1952,14 @@ function InquiriesTable({
         </div>
       ) : null}
 
+      <div className="border-b border-stone-100 px-4 py-3">
+        <ListSearch
+          value={search}
+          onChange={setSearch}
+          placeholder="Search inquiries by family, provider, phone, or reference…"
+        />
+      </div>
+
       {!sortedInquiries.length ? (
         <EmptyState
           title={showHistory ? "No inquiries yet" : "No provider follow-up needed"}
@@ -1870,7 +1988,9 @@ function InquiriesTable({
             const needsFollowUp = isAdminActionNeeded(inquiry.statusRaw);
             const placementReady = inquiry.statusRaw === "ACCEPTED" || inquiry.statusRaw === "CONTACTED";
             const isUnread =
-              itemSeenVersion >= 0 && isAdminInquiryUnread(inquiry.id, inquiry.updatedAtIso);
+              selected?.id !== inquiry.id &&
+              itemSeenVersion >= 0 &&
+              isAdminInquiryUnread(inquiry.id, inquiry.updatedAtIso);
 
             return (
               <tr
@@ -1883,6 +2003,9 @@ function InquiriesTable({
                     {isUnread ? <UnreadDot /> : null}
                     <span>{inquiry.family}</span>
                   </div>
+                  <span className="mt-1 block font-mono text-[11px] text-neutral-400">
+                    Ref {formatReference(inquiry.intakeId)}
+                  </span>
                 </td>
                 <td className="px-4 py-3 text-sm text-neutral-700">{inquiry.provider}</td>
                 <td className="px-4 py-3 text-sm font-semibold text-sage-700">{inquiry.match}</td>
@@ -2111,6 +2234,17 @@ function WaitlistTable({
   const [pendingInviteId, setPendingInviteId] = useState<string | null>(null);
   const [selected, setSelected] = useState<WaitlistEntry | null>(null);
   const [confirmInvite, setConfirmInvite] = useState<WaitlistEntry | null>(null);
+  const [search, setSearch] = useState("");
+
+  const filteredEntries = useMemo(
+    () =>
+      entries.filter(
+        (entry) =>
+          matchesReferenceQuery(entry.id, search) ||
+          matchesListSearch(search, entry.name, entry.email, entry.location, entry.city, entry.type, entry.phone)
+      ),
+    [entries, search]
+  );
 
   function openEntry(entry: WaitlistEntry) {
     markAdminItemSeen("waitlist", entry.id, entry.createdAtIso, entry.updatedAtIso);
@@ -2118,8 +2252,38 @@ function WaitlistTable({
     setSelected(entry);
   }
 
+  useEffect(() => {
+    setEntries(initialEntries);
+    setSelected((current) => {
+      if (!current) return null;
+      const fresh = initialEntries.find((entry) => entry.id === current.id) ?? null;
+      if (fresh) {
+        markAdminItemSeen("waitlist", fresh.id, fresh.createdAtIso, fresh.updatedAtIso);
+        onMarkItemSeen();
+      }
+      return fresh;
+    });
+  }, [initialEntries, onMarkItemSeen]);
+
   function canInviteProvider(entry: WaitlistEntry) {
     return entry.type === "FACILITY" && entry.status === "NEW";
+  }
+
+  function canMarkContacted(entry: WaitlistEntry) {
+    return entry.status === "NEW";
+  }
+
+  function waitlistStatusClass(status: string) {
+    switch (status) {
+      case "CONTACTED":
+        return "bg-brand-amber/15 text-brand-amber-dark";
+      case "CONVERTED":
+        return "bg-brand-green-pale/70 text-brand-green-dark";
+      case "CLOSED":
+        return "bg-stone-100 text-neutral-600";
+      default:
+        return "bg-sage-100 text-sage-700";
+    }
   }
 
   function startProviderInvite(entry: WaitlistEntry, notify: (message: string) => void = setMessage) {
@@ -2146,13 +2310,41 @@ function WaitlistTable({
       });
 
       if (!response.ok) {
-        throw new Error("Could not update waitlist entry.");
+        const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(payload?.error || "Could not update waitlist entry.");
       }
 
+      const result = (await response.json()) as { status: WaitlistEntry["status"]; updatedAtIso?: string };
+      const entry = entries.find((item) => item.id === id);
+      const updatedAtIso = result.updatedAtIso ?? entry?.updatedAtIso ?? new Date().toISOString();
+
       setEntries((current) =>
-        current.map((entry) => (entry.id === id ? { ...entry, status: "CONTACTED" as const } : entry))
+        current.map((item) =>
+          item.id === id
+            ? {
+                ...item,
+                status: result.status,
+                updatedAtIso,
+                updatedAt: new Date(updatedAtIso).toLocaleDateString("en-GB")
+              }
+            : item
+        )
       );
-      setSelected((current) => (current?.id === id ? { ...current, status: "CONTACTED" } : current));
+      setSelected((current) =>
+        current?.id === id
+          ? {
+              ...current,
+              status: result.status,
+              updatedAtIso,
+              updatedAt: new Date(updatedAtIso).toLocaleDateString("en-GB")
+            }
+          : current
+      );
+
+      if (entry) {
+        markAdminItemSeen("waitlist", id, entry.createdAtIso, updatedAtIso);
+        onMarkItemSeen();
+      }
 
       try {
         await recordAction({
@@ -2189,12 +2381,15 @@ function WaitlistTable({
       }
 
       const payload = (await response.json()) as { id: string; emailMode?: string };
-      const nextStatus = entry.status === "NEW" ? "CONTACTED" : entry.status;
+      const nextStatus = entry.status === "NEW" ? ("CONTACTED" as const) : entry.status;
 
       setEntries((current) =>
         current.map((item) => (item.id === entry.id ? { ...item, status: nextStatus } : item))
       );
       setSelected((current) => (current?.id === entry.id ? { ...current, status: nextStatus } : current));
+
+      markAdminItemSeen("waitlist", entry.id, entry.createdAtIso, entry.updatedAtIso);
+      onMarkItemSeen();
 
       try {
         await recordAction({
@@ -2219,6 +2414,9 @@ function WaitlistTable({
 
   return (
     <>
+      <div className="border-b border-stone-100 px-4 py-3">
+        <ListSearch value={search} onChange={setSearch} placeholder="Search waitlist by name, email, location, or reference…" />
+      </div>
       <table className="w-full min-w-[980px] border-collapse text-left">
         <thead className="bg-cream text-xs uppercase tracking-wide text-neutral-500">
           <tr>
@@ -2232,11 +2430,12 @@ function WaitlistTable({
           </tr>
         </thead>
         <tbody className="divide-y divide-stone-200">
-          {entries.map((entry) => {
-            const isContacted = entry.status === "CONTACTED";
+          {filteredEntries.map((entry) => {
             const isPending = pendingId === entry.id;
             const isInviteLocked = !canInviteProvider(entry);
             const isUnread =
+              selected?.id !== entry.id &&
+              !isResolvedWaitlistStatus(entry.status) &&
               itemSeenVersion >= 0 &&
               isAdminItemUnread("waitlist", entry.id, entry.createdAtIso, entry.updatedAtIso);
 
@@ -2248,17 +2447,14 @@ function WaitlistTable({
                     {isUnread ? <UnreadDot /> : null}
                     <span>{entry.name}</span>
                   </div>
+                  <span className="mt-1 block font-mono text-[11px] font-normal text-neutral-400">Ref {formatReference(entry.id)}</span>
                 </td>
                 <td className="px-4 py-3 text-sm text-neutral-600">{entry.email}</td>
                 <td className="px-4 py-3 text-sm text-neutral-600">{entry.location}</td>
                 <td className="px-4 py-3 text-sm text-neutral-600">{entry.createdAt}</td>
                 <td className="px-4 py-3">
-                  <span
-                    className={`rounded-full px-3 py-1 text-xs font-medium ${
-                      isContacted ? "bg-sage-600 text-white" : "bg-amber-100 text-amber-800"
-                    }`}
-                  >
-                    {entry.status}
+                  <span className={cn("rounded-full px-3 py-1 text-xs font-medium", waitlistStatusClass(entry.status))}>
+                    {waitlistStatusLabel(entry.status)}
                   </span>
                 </td>
                 <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}>
@@ -2274,10 +2470,10 @@ function WaitlistTable({
                       />
                     ) : null}
                     <IconActionButton
-                      label={isContacted ? "Already contacted" : "Mark contacted"}
+                      label={canMarkContacted(entry) ? "Mark contacted" : `${waitlistStatusLabel(entry.status)}`}
                       icon={Mail}
                       loading={isPending}
-                      disabled={isContacted || isPending}
+                      disabled={!canMarkContacted(entry) || isPending}
                       onClick={() => void markContacted(entry.id, entry.name)}
                     />
                   </div>
@@ -2335,7 +2531,7 @@ function WaitlistDetailPanel({
   pendingInviteId: string | null;
 }) {
   const { message: panelMessage, setMessage: setPanelMessage, clearMessage: clearPanelMessage } = usePanelMessage();
-  const isContacted = entry?.status === "CONTACTED";
+  const canContact = entry?.status === "NEW";
   const isPending = entry ? pendingId === entry.id : false;
   const isInvitePending = entry ? pendingInviteId === entry.id : false;
   const isFamily = entry?.type === "FAMILY";
@@ -2364,7 +2560,7 @@ function WaitlistDetailPanel({
               </div>
               <div>
                 <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Status</span>
-                <p className="mt-1 font-semibold text-ink">{entry.status}</p>
+                <p className="mt-1 font-semibold text-ink">{entry ? waitlistStatusLabel(entry.status) : "—"}</p>
               </div>
               <div>
                 <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Registered</span>
@@ -2489,10 +2685,10 @@ function WaitlistDetailPanel({
                   </Button>
                   <Button
                     className="w-full"
-                    disabled={isContacted || isPending}
+                    disabled={!canContact || isPending}
                     onClick={() => void onMarkContacted(entry.id, entry.name, setPanelMessage)}
                   >
-                    {isPending ? "Saving..." : isContacted ? "Contacted" : "Mark contacted"}
+                    {isPending ? "Saving..." : canContact ? "Mark contacted" : waitlistStatusLabel(entry.status)}
                   </Button>
                 </div>
               </PanelSection>

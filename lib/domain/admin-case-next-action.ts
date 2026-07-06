@@ -148,10 +148,11 @@ export function getAdminCaseNextAction(intake: IntakeForNextAction, matches: Mat
 
     return {
       key: "REMATCH_AFTER_DECLINE",
-      label: "Review after provider decline",
-      description: "The family has no active provider responses left. Update the care plan or add new matches.",
-      instruction: "Open section 3 to review the care plan, then section 4 to add new provider matches for the family.",
-      target: "Section 3 - Assessment & care plan",
+      label: "Create a new provider match",
+      description: "The family has no active provider responses left. Add a new provider to their shortlist.",
+      instruction:
+        "Open section 4 to create a new provider match. Section 3 stays available if you need to adjust the care plan before rematching.",
+      target: "Section 4 - Create provider match",
       tab: "families",
       severity: "action"
     };

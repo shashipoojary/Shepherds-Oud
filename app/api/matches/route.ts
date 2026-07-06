@@ -93,6 +93,11 @@ export async function POST(request: Request) {
       return jsonError("This provider is locked until their facility profile is complete.", 400);
     }
 
+    const existingMatch = await prisma.match.findUnique({
+      where: { intakeId_providerId: { intakeId, providerId } },
+      select: { status: true }
+    });
+
     const match = await prisma.match.upsert({
       where: {
         intakeId_providerId: { intakeId, providerId }
@@ -106,7 +111,10 @@ export async function POST(request: Request) {
       },
       update: {
         score,
-        ...(notes !== undefined ? { notes: notes || null } : {})
+        ...(notes !== undefined ? { notes: notes || null } : {}),
+        ...(existingMatch?.status === "DECLINED"
+          ? { status: "SUGGESTED", declineReason: null }
+          : {})
       }
     });
 
