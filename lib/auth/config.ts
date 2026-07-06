@@ -132,6 +132,27 @@ const authOptions = {
   ]
 } satisfies BetterAuthOptions;
 
+/**
+ * Session response filtering (`customSession` below) applies only to `GET /api/auth/get-session`
+ * and therefore `auth.api.getSession()` / `authClient.useSession()`.
+ *
+ * Better Auth still exposes other sign-in endpoints that can return an unfiltered session
+ * `{ token, user, session }` JSON body. Do not point JSON-consuming clients at these paths
+ * without adding the same serializers (or switching them to cookie + get-session only).
+ *
+ * Current app usage (verified):
+ * - Magic link send (`login-form.tsx`) always passes `callbackURL`; Better Auth also embeds
+ *   `callbackURL` in the emailed verify URL (default `/`), so verify redirects — no JSON body.
+ * - Google OAuth (`/login/google`) uses `signInSocial` + redirect; callback sets httpOnly cookie only.
+ * - `emailAndPassword.enabled` is false — `signInEmail` is not used.
+ *
+ * Unfiltered JSON if called directly (e.g. future mobile/API client):
+ * - `GET /api/auth/magic-link/verify?token=…` with **no** `callbackURL` query param
+ * - `POST /api/auth/sign-in/email` (only if password sign-in is re-enabled)
+ *
+ * Near-term risk: a native app or SPA that verifies magic links via fetch/XHR without
+ * `callbackURL`, or re-enables email/password and reads the sign-in response body.
+ */
 export const auth = betterAuth({
   ...authOptions,
   plugins: [
