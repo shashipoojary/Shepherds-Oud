@@ -52,8 +52,15 @@ export function AuthLoginForm({ intent }: AuthLoginFormProps) {
   const callbackParam = searchParams.get("callbackUrl");
   const inviteParam = searchParams.get("invite");
   const familyDestination = callbackParam?.startsWith("/family") ? callbackParam : "/family/dashboard";
+  const adminDestination = callbackParam?.startsWith("/admin") ? callbackParam : "/admin";
   const requestedDestination =
-    intent === "provider" ? PROVIDER_DASHBOARD_PATH : intent === "family" ? familyDestination : callbackParam;
+    intent === "provider"
+      ? PROVIDER_DASHBOARD_PATH
+      : intent === "family"
+        ? familyDestination
+        : intent === "admin"
+          ? adminDestination
+          : callbackParam;
   const isProvider = intent === "provider" || requestedDestination?.startsWith(PROVIDER_DASHBOARD_PATH);
   const isFamily = intent === "family" || requestedDestination?.startsWith("/family");
   const callbackUrlParams = new URLSearchParams();

@@ -12,6 +12,11 @@ async function rejectProviderLogin(reason: "provider-pending" | "invite" | "invi
   redirect(`/provider/login?error=${reason}`);
 }
 
+async function rejectAdminLogin() {
+  await auth.api.signOut({ headers: await headers() });
+  redirect("/login?error=unauthorized");
+}
+
 export const dynamic = "force-dynamic";
 
 function loginContextFromCallback(callbackUrl?: string | null, invite?: string | null) {
@@ -51,6 +56,11 @@ export default async function LoginContinuePage({ searchParams }: { searchParams
   }
 
   const isProviderLogin = destination?.startsWith(PROVIDER_DASHBOARD_PATH);
+  const isAdminLogin = destination?.startsWith("/admin");
+
+  if (isAdminLogin && role !== "ADMIN") {
+    await rejectAdminLogin();
+  }
 
   if (isProviderLogin && providerInvite && !isAdminEmail(session.user.email)) {
     const accepted = await acceptProviderInviteForUser({

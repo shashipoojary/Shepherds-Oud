@@ -1,9 +1,7 @@
 import { Suspense } from "react";
-import Link from "next/link";
 import { SiteHeader } from "@/components/layout/site-header";
 import { AuthLoginForm } from "@/components/auth/login-form";
 import { noIndexMetadata } from "@/lib/config/seo";
-import { getIsPrelaunch, getPublicRoutes } from "@/lib/config/prelaunch";
 
 export const metadata = {
   ...noIndexMetadata,
@@ -11,8 +9,6 @@ export const metadata = {
 };
 
 export default function LoginPage() {
-  const isPrelaunch = getIsPrelaunch();
-  const publicRoutes = getPublicRoutes(isPrelaunch);
   return (
     <>
       <SiteHeader />
@@ -26,16 +22,9 @@ export default function LoginPage() {
 
           <div className="mt-6">
             <Suspense fallback={<p className="text-sm text-neutral-500">Loading sign-in...</p>}>
-              <AuthLoginForm />
+              <AuthLoginForm intent="admin" />
             </Suspense>
           </div>
-
-          <p className="mt-6 text-center text-sm text-neutral-500">
-            Looking for care?{" "}
-            <Link href={isPrelaunch ? publicRoutes.waitlistFamily : publicRoutes.intake} className="font-medium text-brand-amber hover:text-brand-amber-mid">
-              {isPrelaunch ? "Join the family waitlist" : "Start the family intake"}
-            </Link>
-          </p>
         </section>
       </main>
     </>
