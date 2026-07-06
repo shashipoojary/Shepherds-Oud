@@ -224,6 +224,12 @@ function providerNextStep(inquiry: Inquiry) {
         title: "Family chose your facility",
         description: "The family is moving forward with your facility. The Care Guide will coordinate final details."
       };
+    case "DECLINED":
+      return {
+        title: "Previously declined",
+        description:
+          "You declined this inquiry earlier. If your Care Guide re-opens it after case updates, it will appear under New with accept/decline actions again."
+      };
     case "CLOSED":
       return {
         title: "Inquiry closed",

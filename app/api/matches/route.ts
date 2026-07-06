@@ -6,8 +6,16 @@ import { getServerSession, getUserRole } from "@/lib/auth/server";
 import { canCreateMatches, normalizeIntakeStatus } from "@/lib/domain/intake-workflow";
 import { isProviderProfileComplete } from "@/lib/providers/completeness";
 import { createMatchSchema } from "@/lib/validation/match";
-import { handleApiError, jsonError, jsonOk, rateLimitResponse, readJsonBody } from "@/lib/core/api-helpers";
+import { handleApiError, jsonError, jsonOk, rateLimitResponse, readJsonBody, runInBackground } from "@/lib/core/api-helpers";
 import { toSafeMatch } from "@/lib/serializers/match";
+import { appendMatchNotes } from "@/lib/domain/match-transitions";
+import {
+  adminRematchRequestNote,
+  isRematchableMatchStatus,
+  reopenedMatchStatusForRematch,
+  type RematchRequestType
+} from "@/lib/domain/match-rematch";
+import { sendProviderInquiryEmail } from "@/lib/email/provider-inquiry-email";
 
 export const runtime = "nodejs";
 
@@ -96,8 +104,16 @@ export async function POST(request: Request) {
 
     const existingMatch = await prisma.match.findUnique({
       where: { intakeId_providerId: { intakeId, providerId } },
-      select: { status: true }
+      select: { status: true, notes: true }
     });
+
+    const reopening = isRematchableMatchStatus(existingMatch?.status);
+    const rematchRequestType: RematchRequestType = reopenedMatchStatusForRematch();
+    const rematchNote = reopening ? adminRematchRequestNote(rematchRequestType) : null;
+    const reopenedNotes =
+      reopening && rematchNote
+        ? appendMatchNotes(notes !== undefined ? notes || null : existingMatch?.notes, rematchNote)
+        : undefined;
 
     const match = await prisma.match.upsert({
       where: {
@@ -112,12 +128,33 @@ export async function POST(request: Request) {
       },
       update: {
         score,
-        ...(notes !== undefined ? { notes: notes || null } : {}),
-        ...(existingMatch?.status === "DECLINED"
-          ? { status: "SUGGESTED", declineReason: null }
-          : {})
+        ...(reopening
+          ? {
+              status: rematchRequestType,
+              declineReason: null,
+              ...(reopenedNotes !== undefined ? { notes: reopenedNotes } : {})
+            }
+          : notes !== undefined
+            ? { notes: notes || null }
+            : {})
       }
     });
+
+    if (reopening && provider.email) {
+      runInBackground(
+        () =>
+          sendProviderInquiryEmail({
+            providerEmail: provider.email!,
+            providerName: provider.name,
+            familyName: intake.contactName,
+            familyArea: intake.preferredArea,
+            familyCare: intake.careTypes.join(", ") || "Not specified",
+            familyUrgency: intake.urgency,
+            requestType: rematchRequestType
+          }),
+        "provider_rematch_email"
+      );
+    }
 
     const intakeStatus = normalizeIntakeStatus(intake.status);
     if (intakeStatus === "CARE_PLAN" || intakeStatus === "ASSESSMENT") {

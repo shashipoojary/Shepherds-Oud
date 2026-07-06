@@ -302,7 +302,7 @@ export function adminInquiryHint(status: string) {
     CALLBACK_REQUESTED: "Step 2 - family requested a callback. Provider should accept or decline in their dashboard.",
     ACCEPTED: "Step 3 - provider accepted. Call both sides, arrange timing, then mark the visit or call as arranged.",
     CONTACTED: "Step 4 - visit or call arranged. Record the chosen provider when the family commits, or close the inquiry.",
-    DECLINED: "Provider declined. Offer the family another match from the Families tab.",
+    DECLINED: "Provider declined. Re-create the match in section 4 to send the family request to this provider again, or match a different facility.",
     PLACED: "Provider choice recorded. The family sees placement in progress on their dashboard.",
     CLOSED: "This inquiry is closed."
   };
@@ -321,7 +321,7 @@ export function adminInquiryHint(status: string) {
     case "CONTACTED":
       return "Step 4 — visit or call arranged. Record placement when the family commits, or close the inquiry.";
     case "DECLINED":
-      return "Provider declined. Offer the family another match from the Families tab.";
+      return "Provider declined. Re-create the match in section 4 to send the family request to this provider again, or match a different facility.";
     case "PLACED":
       return "Placement recorded. The family sees “Placement in progress” on their dashboard.";
     case "CLOSED":
