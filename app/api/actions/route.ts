@@ -1,7 +1,5 @@
 import { Prisma } from "@prisma/client";
-import { headers } from "next/headers";
-import { auth } from "@/lib/auth/config";
-import { getUserRole } from "@/lib/auth/server";
+import { getServerSession, getUserRole } from "@/lib/auth/server";
 import { actionSchema } from "@/lib/validation/action";
 import { handleApiError, jsonError, jsonOk, readJsonBody } from "@/lib/core/api-helpers";
 
@@ -9,9 +7,7 @@ export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {
-    const session = await auth.api.getSession({
-      headers: await headers()
-    });
+    const session = await getServerSession();
 
     if (!session) {
       return jsonError("Unauthorized", 401);

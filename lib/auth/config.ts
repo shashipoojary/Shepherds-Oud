@@ -10,6 +10,7 @@ import { sendFamilyMagicLinkEmail } from "@/lib/email/family-magic-link";
 import { sendProviderMagicLinkEmail } from "@/lib/email/provider-magic-link";
 import { toSafeSession } from "@/lib/serializers/session";
 import { toSafeUser } from "@/lib/serializers/user";
+import { syncSessionUser } from "@/lib/auth/sync-session-user";
 
 const appUrl = process.env.BETTER_AUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
@@ -158,8 +159,9 @@ export const auth = betterAuth({
   plugins: [
     ...(authOptions.plugins ?? []),
     customSession(async ({ user, session }) => {
+      const syncedUser = await syncSessionUser(user);
       return {
-        user: toSafeUser(user),
+        user: toSafeUser(syncedUser),
         session: toSafeSession(session)
       };
     }, authOptions)

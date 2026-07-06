@@ -92,7 +92,7 @@ export async function resolveRoleForUser(user: {
   role?: string | null;
   linkedProviderId?: string | null;
 }): Promise<AppRole> {
-  if (user.role === "ADMIN") {
+  if (isAdminEmail(user.email)) {
     return "ADMIN";
   }
 
@@ -118,10 +118,6 @@ export async function resolveRoleForUser(user: {
       role: true
     }
   });
-
-  if (existing?.role === "ADMIN") {
-    return "ADMIN";
-  }
 
   if (existing?.linkedProviderId) {
     return "PROVIDER";
