@@ -8,9 +8,12 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const requestedDestination = searchParams.get("callbackUrl");
   const invite = searchParams.get("invite");
-  const callbackURL = requestedDestination
-    ? `/login/continue?callbackUrl=${encodeURIComponent(requestedDestination)}${invite ? `&invite=${encodeURIComponent(invite)}` : ""}`
-    : "/login/continue";
+  const callbackURL =
+    requestedDestination?.startsWith("/login/continue")
+      ? requestedDestination
+      : requestedDestination
+        ? `/login/continue?callbackUrl=${encodeURIComponent(requestedDestination)}${invite ? `&invite=${encodeURIComponent(invite)}` : ""}`
+        : "/login/continue";
   const loginUrl = new URL("/login", request.url);
   loginUrl.searchParams.set("callbackUrl", requestedDestination || "/login/continue");
 

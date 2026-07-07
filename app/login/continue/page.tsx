@@ -3,15 +3,20 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth/config";
 import { getServerSession } from "@/lib/auth/server";
 import { isAdminEmail, resolveRoleForUser } from "@/lib/auth/roles";
+import { parseLoginContinueContext } from "@/lib/auth/login-context";
 import { postLoginHref, PROVIDER_DASHBOARD_PATH } from "@/lib/auth/routes";
 import { prisma } from "@/lib/core/db";
 import { acceptProviderInviteForUser } from "@/lib/providers/invite";
 import { PROVIDER_LOGIN_ERROR, type ProviderLoginErrorCode } from "@/lib/auth/provider-login-errors";
 import { resolveProviderLoginAccess } from "@/lib/providers/invite-access";
 
-async function rejectProviderLogin(reason: ProviderLoginErrorCode) {
+async function rejectProviderLogin(reason: ProviderLoginErrorCode, inviteToken?: string | null) {
   await auth.api.signOut({ headers: await headers() });
-  redirect(`/provider/login?error=${reason}`);
+  const params = new URLSearchParams({ error: reason });
+  if (inviteToken) {
+    params.set("invite", inviteToken);
+  }
+  redirect(`/provider/login?${params.toString()}`);
 }
 
 async function rejectAdminLogin() {
@@ -21,21 +26,11 @@ async function rejectAdminLogin() {
 
 export const dynamic = "force-dynamic";
 
-function loginContextFromCallback(callbackUrl?: string | null, invite?: string | null) {
-  if (!callbackUrl) return { destination: null, invite: invite || null };
-
-  if (callbackUrl.startsWith("/login/continue?")) {
-    const nested = new URL(callbackUrl, "http://localhost");
-    return {
-      destination: nested.searchParams.get("callbackUrl"),
-      invite: invite || nested.searchParams.get("invite")
-    };
-  }
-
-  return { destination: callbackUrl, invite: invite || null };
-}
-
-export default async function LoginContinuePage({ searchParams }: { searchParams: Promise<{ callbackUrl?: string; invite?: string }> }) {
+export default async function LoginContinuePage({
+  searchParams
+}: {
+  searchParams: Promise<{ callbackUrl?: string; invite?: string }>;
+}) {
   const session = await getServerSession();
   const { callbackUrl, invite } = await searchParams;
 
@@ -43,7 +38,7 @@ export default async function LoginContinuePage({ searchParams }: { searchParams
     redirect("/login");
   }
 
-  const { destination, invite: providerInvite } = loginContextFromCallback(callbackUrl, invite);
+  const { destination, invite: providerInvite } = parseLoginContinueContext(callbackUrl, invite);
   let role = await resolveRoleForUser({
     id: session.user.id,
     email: session.user.email,
@@ -74,16 +69,16 @@ export default async function LoginContinuePage({ searchParams }: { searchParams
     if (accepted.ok) {
       role = "PROVIDER";
     } else if (accepted.reason === "email_mismatch") {
-      await rejectProviderLogin(PROVIDER_LOGIN_ERROR.INVITE_EMAIL);
+      await rejectProviderLogin(PROVIDER_LOGIN_ERROR.INVITE_EMAIL, providerInvite);
     }
   }
 
   if (isProviderLogin && role !== "PROVIDER" && !isAdminEmail(session.user.email)) {
     const access = await resolveProviderLoginAccess(session.user.email, providerInvite);
     if (!access.allowed) {
-      await rejectProviderLogin(access.code);
+      await rejectProviderLogin(access.code, providerInvite);
     }
-    await rejectProviderLogin(PROVIDER_LOGIN_ERROR.PENDING);
+    await rejectProviderLogin(PROVIDER_LOGIN_ERROR.PENDING, providerInvite);
   }
 
   redirect(postLoginHref(role, destination ?? callbackUrl));

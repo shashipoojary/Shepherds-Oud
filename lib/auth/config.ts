@@ -5,6 +5,7 @@ import { nextCookies } from "better-auth/next-js";
 import { customSession, magicLink } from "better-auth/plugins";
 import { prisma } from "@/lib/core/db";
 import { isAdminEmail, resolveRole, resolveRoleForUser } from "@/lib/auth/roles";
+import { extractInviteFromRedirectUrl } from "@/lib/auth/login-context";
 import { providerLoginErrorMessage, PROVIDER_ACCOUNT_NOT_FOUND_MESSAGE } from "@/lib/auth/provider-login-errors";
 import { PROVIDER_DASHBOARD_PATH } from "@/lib/auth/routes";
 import { sendFamilyMagicLinkEmail } from "@/lib/email/family-magic-link";
@@ -116,7 +117,8 @@ const authOptions = {
         }
 
         if (isProviderMagicLink(url)) {
-          const access = await resolveProviderLoginAccess(email);
+          const inviteToken = extractInviteFromRedirectUrl(url);
+          const access = await resolveProviderLoginAccess(email, inviteToken);
           if (!access.allowed) {
             throw new Error(providerLoginErrorMessage(access.code) || PROVIDER_ACCOUNT_NOT_FOUND_MESSAGE);
           }

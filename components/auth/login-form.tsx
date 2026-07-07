@@ -72,7 +72,14 @@ export function AuthLoginForm({ intent }: AuthLoginFormProps) {
   const [email, setEmail] = useState("");
   const [emailFeedback, setEmailFeedback] = useState("");
   const [emailFeedbackTone, setEmailFeedbackTone] = useState<"success" | "error">("success");
-  const googleLoginHref = `/login/google?callbackUrl=${encodeURIComponent(callbackUrl)}`;
+  const googleLoginParams = new URLSearchParams();
+  if (requestedDestination) {
+    googleLoginParams.set("callbackUrl", requestedDestination);
+  }
+  if (isProvider && inviteParam) {
+    googleLoginParams.set("invite", inviteParam);
+  }
+  const googleLoginHref = `/login/google${googleLoginParams.size ? `?${googleLoginParams.toString()}` : ""}`;
 
   function startGoogleSignIn() {
     setLoadingGoogle(true);
@@ -115,15 +122,17 @@ export function AuthLoginForm({ intent }: AuthLoginFormProps) {
       const { error: signInError } = await authClient.signIn.magicLink({
         email: trimmed,
         callbackURL: callbackUrl,
-        errorCallbackURL: isFamily ? "/family/login?error=magic-link" : "/provider/login?error=magic-link"
+        errorCallbackURL: isFamily
+          ? "/family/login?error=magic-link"
+          : inviteParam
+            ? `/provider/login?invite=${encodeURIComponent(inviteParam)}&error=magic-link`
+            : "/provider/login?error=magic-link"
       });
 
       if (signInError) {
         setEmailFeedbackTone("error");
-        const serverMessage =
-          typeof signInError === "object" && signInError && "message" in signInError && typeof signInError.message === "string"
-            ? signInError.message
-            : "";
+        const errorRecord = signInError as { message?: string; status?: number; error?: { message?: string } };
+        const serverMessage = errorRecord.message || errorRecord.error?.message || "";
         setEmailFeedback(serverMessage || "Could not send sign-in link.");
         return;
       }
