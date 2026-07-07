@@ -5,6 +5,9 @@ import { createPortal } from "react-dom";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { cn } from "@/lib/core/utils";
 
+/** Above slide panels (z-201) and their overlays (z-200). */
+const MENU_Z_INDEX = 310;
+
 type CustomSelectProps = {
   label?: string;
   value: string;
@@ -18,6 +21,7 @@ type MenuPosition = {
   top: number;
   left: number;
   width: number;
+  maxHeight: number;
 };
 
 export function CustomSelect({ label, value, placeholder = "Select...", options, onChange, className }: CustomSelectProps) {
@@ -32,10 +36,16 @@ export function CustomSelect({ label, value, placeholder = "Select...", options,
     if (!button) return;
 
     const rect = button.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom - 12;
+    const spaceAbove = rect.top - 12;
+    const openUpward = spaceBelow < 180 && spaceAbove > spaceBelow;
+    const maxHeight = Math.min(240, Math.max(120, openUpward ? spaceAbove - 6 : spaceBelow - 6));
+
     setMenuPosition({
-      top: rect.bottom + 6,
+      top: openUpward ? rect.top - maxHeight - 6 : rect.bottom + 6,
       left: rect.left,
-      width: rect.width
+      width: rect.width,
+      maxHeight
     });
   }
 
@@ -53,24 +63,18 @@ export function CustomSelect({ label, value, placeholder = "Select...", options,
       setOpen(false);
     }
 
-    function closeOnScroll(event: Event) {
-      const target = event.target as Node | null;
-      if (menuRef.current?.contains(target ?? null)) return;
-      setOpen(false);
-    }
-
     function handleViewportChange() {
       updateMenuPosition();
     }
 
     document.addEventListener("mousedown", closeOnOutside);
     window.addEventListener("resize", handleViewportChange);
-    window.addEventListener("scroll", closeOnScroll, true);
+    window.addEventListener("scroll", handleViewportChange, true);
 
     return () => {
       document.removeEventListener("mousedown", closeOnOutside);
       window.removeEventListener("resize", handleViewportChange);
-      window.removeEventListener("scroll", closeOnScroll, true);
+      window.removeEventListener("scroll", handleViewportChange, true);
     };
   }, [open]);
 
@@ -79,11 +83,13 @@ export function CustomSelect({ label, value, placeholder = "Select...", options,
       ? createPortal(
           <div
             ref={menuRef}
-            className="fixed z-[200] max-h-60 overflow-y-auto rounded-lg border border-stone-200 bg-white shadow-panel"
+            className="fixed overflow-y-auto rounded-lg border border-stone-200 bg-white shadow-panel"
             style={{
+              zIndex: MENU_Z_INDEX,
               top: menuPosition.top,
               left: menuPosition.left,
-              width: menuPosition.width
+              width: menuPosition.width,
+              maxHeight: menuPosition.maxHeight
             }}
           >
             {options.map((option) => (

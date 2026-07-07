@@ -5,7 +5,6 @@ import { intakeStatusLabel, normalizeIntakeStatus, canFamilyEditIntake } from "@
 import type { FamilyIntake } from "@/lib/client/intake";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/core/utils";
 
 type FamilyCasePickerProps = {
   intakes: FamilyIntake[];
@@ -16,53 +15,48 @@ type FamilyCasePickerProps = {
 export function FamilyCasePicker({
   intakes,
   title = "My care requests",
-  description = "Choose which care request you want to open."
+  description = "Choose a request to open its care journey."
 }: FamilyCasePickerProps) {
-  const groups = splitFamilyIntakes(intakes);
+  const { active, history } = splitFamilyIntakes(intakes);
+  const sortedIntakes = [...active, ...history].sort(
+    (a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()
+  );
 
   return (
-    <section className="rounded-2xl bg-white p-5 shadow-soft sm:p-7">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+    <section>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="section-label">Family dashboard</p>
-          <h1 className="mt-2 text-2xl font-semibold">{title}</h1>
+          <h1 className="mt-2 text-2xl font-semibold text-ink">{title}</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">{description}</p>
         </div>
-        <Button asChild className="w-full sm:w-auto">
+        <Button asChild className="w-full shrink-0 sm:w-auto">
           <Link href="/family/intake">Start new request</Link>
         </Button>
       </div>
 
-      <div className="mt-6 space-y-7">
-        <CaseGroup title="Active requests" intakes={groups.active} />
-        <CaseGroup title="History" intakes={groups.history} emptyText={groups.active.length ? undefined : "No completed requests yet."} />
-      </div>
-    </section>
-  );
-}
-
-function CaseGroup({ title, intakes, emptyText }: { title: string; intakes: FamilyIntake[]; emptyText?: string }) {
-  if (!intakes.length) {
-    if (!emptyText) return null;
-    return (
-      <div>
-        <h2 className="text-sm font-semibold text-ink">{title}</h2>
-        <p className="mt-2 rounded-xl border border-dashed border-stone-200 bg-brand-cream/50 px-4 py-5 text-sm text-ink/55">
-          {emptyText}
+      {sortedIntakes.length ? (
+        <>
+          <p className="mt-6 text-sm text-ink/50">
+            {sortedIntakes.length} request{sortedIntakes.length === 1 ? "" : "s"}
+            {active.length && history.length
+              ? ` · ${active.length} active, ${history.length} completed`
+              : active.length
+                ? " · in progress"
+                : " · completed"}
+          </p>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            {sortedIntakes.map((intake) => (
+              <CaseCard key={intake.id} intake={intake} />
+            ))}
+          </div>
+        </>
+      ) : (
+        <p className="mt-6 rounded-2xl bg-white px-5 py-8 text-center text-sm text-ink/55 shadow-soft">
+          No care requests yet. Start a new request to begin.
         </p>
-      </div>
-    );
-  }
-
-  return (
-    <div>
-      <h2 className="text-sm font-semibold text-ink">{title}</h2>
-      <div className="mt-3 grid gap-3 lg:grid-cols-2">
-        {intakes.map((intake) => (
-          <CaseCard key={intake.id} intake={intake} />
-        ))}
-      </div>
-    </div>
+      )}
+    </section>
   );
 }
 
@@ -75,39 +69,40 @@ function CaseCard({ intake }: { intake: FamilyIntake }) {
   const careType = intake.careTypes?.[0] || "Care request";
   const statusVariant = status === "CLOSED" ? "closed" : status === "PLACED" ? "placed" : "matched";
   const canEdit = canFamilyEditIntake(intake.status);
+  const hasMatches = (intake.matchCount ?? 0) > 0;
 
   return (
-    <article className="rounded-xl border border-stone-200/80 bg-white p-4 shadow-sm">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <Badge variant={statusVariant}>{intakeStatusLabel(status)}</Badge>
-          <h3 className="mt-3 font-semibold text-ink">
-            {intake.ageRange ? `Age ${intake.ageRange}` : "Care request"}
-          </h3>
-          <p className="mt-1 text-sm text-ink/60">{careType}</p>
-        </div>
-        <p className="rounded-lg bg-brand-cream px-2.5 py-1 text-xs font-semibold text-brand-green-dark">
-          {intake.matchCount ?? 0} matches
-        </p>
+    <article className="flex h-full flex-col rounded-2xl bg-white p-5 shadow-soft transition hover:shadow-md">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <Badge variant={statusVariant}>{intakeStatusLabel(status)}</Badge>
+        <span className="text-xs font-medium text-ink/45">{intake.matchCount ?? 0} matches</span>
       </div>
 
-      <dl className="mt-4 grid gap-2 text-sm text-ink/65">
+      <h3 className="mt-4 font-semibold text-ink">{intake.ageRange ? `Age ${intake.ageRange}` : "Care request"}</h3>
+      <p className="mt-1 text-sm text-ink/60">{careType}</p>
+
+      <dl className="mt-4 space-y-2 text-sm text-ink/65">
         <CaseFact icon={MapPin} text={intake.preferredArea || "Location pending"} />
         <CaseFact icon={CalendarDays} text={createdLabel} />
         <CaseFact icon={UserRound} text={intake.careGuide?.name || "Care Guide pending"} />
       </dl>
 
-      <div className={cn("mt-5 grid gap-2", canEdit ? "sm:grid-cols-3" : "sm:grid-cols-2")}>
-        <Button asChild size="sm" className="w-full">
-          <Link href={withIntakeId("/family/dashboard", intake.id)}>Open</Link>
-        </Button>
-        <Button asChild size="sm" variant="outline" className="w-full">
-          <Link href={withIntakeId("/family/results", intake.id)}>View matches</Link>
-        </Button>
+      <div className="mt-auto flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-stone-100 pt-4 text-sm">
+        <Link
+          href={withIntakeId("/family/dashboard", intake.id)}
+          className="font-semibold text-brand-amber hover:text-brand-amber-mid"
+        >
+          Open journey
+        </Link>
+        {hasMatches ? (
+          <Link href={withIntakeId("/family/results", intake.id)} className="text-ink/60 hover:text-brand-amber">
+            View matches
+          </Link>
+        ) : null}
         {canEdit ? (
-          <Button asChild size="sm" variant="ghost" className="w-full">
-            <Link href={withIntakeId("/family/intake?update=1", intake.id)}>Update</Link>
-          </Button>
+          <Link href={withIntakeId("/family/intake?update=1", intake.id)} className="text-ink/60 hover:text-brand-amber">
+            Update
+          </Link>
         ) : null}
       </div>
     </article>

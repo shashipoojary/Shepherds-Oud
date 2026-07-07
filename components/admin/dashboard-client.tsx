@@ -1355,16 +1355,27 @@ function FamilyDetailPanel({
             >
               <div className="space-y-3">
               {hasMatches ? (
-                <div className="rounded-lg border border-stone-200 bg-brand-cream/50 p-3">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Created matches</p>
-                  <ul className="mt-2 space-y-2 text-sm text-ink">
+                <div>
+                  <p className="text-sm font-medium text-ink">
+                    Shortlist <span className="font-normal text-neutral-500">({matches.length})</span>
+                  </p>
+                  <ul className="mt-3 divide-y divide-stone-100 rounded-xl bg-stone-50/90">
                     {matches.map((match) => (
-                      <li key={match.id} className="rounded-md border border-stone-200/80 bg-white px-3 py-2">
-                        <p className="font-semibold">
-                          {match.provider} · {match.match}
-                        </p>
-                        <p className="text-xs text-neutral-500">{adminMatchStatusLabel(match.statusRaw || "SUGGESTED")}</p>
-                        {match.notes ? <p className="mt-1 text-xs leading-5 text-neutral-600">{match.notes}</p> : null}
+                      <li key={match.id} className="px-4 py-3.5 first:rounded-t-xl last:rounded-b-xl">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="min-w-0">
+                            <p className="font-medium text-ink">
+                              {match.provider}
+                              <span className="ml-2 text-sm font-normal text-neutral-500">{match.match}%</span>
+                            </p>
+                            {match.notes ? (
+                              <p className="mt-1.5 text-xs leading-5 text-neutral-600">{match.notes}</p>
+                            ) : null}
+                          </div>
+                          <StatusPill className={matchStatusBadgeClass(match.statusRaw || "SUGGESTED")}>
+                            {adminMatchStatusLabel(match.statusRaw || "SUGGESTED")}
+                          </StatusPill>
+                        </div>
                       </li>
                     ))}
                   </ul>

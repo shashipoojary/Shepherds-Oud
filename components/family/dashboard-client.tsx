@@ -2,6 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { ChevronLeft } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { selectFamilyIntake, withIntakeId } from "@/lib/client/case-selection";
 import { getSessionFamilyIntakes, type FamilyIntake } from "@/lib/client/intake";
@@ -11,8 +12,8 @@ import type { ProviderMatch } from "@/lib/core/types";
 import { brand } from "@/lib/config/brand";
 import { CareJourneyTimeline } from "@/components/family/care-journey-timeline";
 import { FamilyActiveMatches } from "@/components/family/active-matches";
-import { FamilyHistoryPanel } from "@/components/family/family-history-panel";
 import { FamilyCasePicker } from "@/components/family/case-picker";
+import { FamilyCaseSwitcher } from "@/components/family/case-switcher";
 import { IntakeSummaryCard } from "@/components/family/intake-summary-card";
 import { Button } from "@/components/ui/button";
 import { ButtonRow } from "@/components/ui/button-row";
@@ -120,18 +121,34 @@ function FamilyDashboardContent() {
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
+      {intakes.length > 1 ? (
+        <div className="mb-4">
+          <Link
+            href="/family/dashboard"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-ink/60 transition hover:text-brand-amber"
+          >
+            <ChevronLeft className="h-4 w-4" aria-hidden />
+            All care requests
+          </Link>
+        </div>
+      ) : null}
+
       <header className="rounded-2xl bg-white p-5 shadow-soft sm:p-7">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
+          <div className="min-w-0 flex-1">
             <p className="section-label">Family dashboard</p>
-            <h1 className="mt-2 text-2xl font-semibold">Your guided care journey</h1>
+            <h1 className="mt-2 text-2xl font-semibold text-ink">Your guided care journey</h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">
               Follow each step with your dedicated Care Guide. Shared decision support — not a directory search.
             </p>
+            {intake && intakes.length > 1 ? (
+              <div className="mt-5">
+                <FamilyCaseSwitcher intakes={intakes} currentIntakeId={intake.id} />
+              </div>
+            ) : null}
           </div>
           {intake ? (
-            <div className="flex flex-wrap items-center gap-2">
-              <FamilyHistoryPanel intakes={intakes} currentIntakeId={intake.id} />
+            <div className="flex shrink-0 items-center gap-2">
               <RefreshButton onClick={() => void handleRefresh()} loading={refreshing} />
             </div>
           ) : null}
@@ -174,7 +191,7 @@ function FamilyDashboardContent() {
             />
             <IntakeSummaryCard intake={intake} showCareGuide={false} defaultOpen={!collapsedByDefault} />
             <FamilyActiveMatches key={`${intake.id}-${intake.matchCount}`} intakeId={intake.id} intakeStatus={intake.status} />
-            <section className="rounded-2xl border border-stone-200 bg-white p-5 shadow-soft sm:p-6">
+            <section className="rounded-2xl bg-white p-5 shadow-soft sm:p-6">
               <p className="section-label">Questions for your team</p>
               <h2 className="mt-1 text-lg font-semibold text-ink">Need to ask something?</h2>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">
