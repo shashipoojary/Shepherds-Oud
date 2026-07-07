@@ -182,9 +182,11 @@ function IntakeFormContent({
       phone: String(form["phone-number"] || "").trim(),
       relationship: resolveIntakeRelationship(form),
       preferredArea: String(form["preferred-city-or-province"] || "").trim(),
+      preferredDistance: String(form["preferred-distance-from-your-location"] || "").trim(),
       ageRange: String(form["age-range"] || "").trim(),
       livingSituation: String(form["current-living-situation"] || "").trim(),
       mobility: String(form["mobility-level"] || "").trim(),
+      medicalSupportNeeds: String(form["medical-or-nursing-support-needed"] || "").trim(),
       dementiaNeeds: String(form["dementia-or-memory-care-needs"] || "").trim(),
       careTypes: asArray(form["type-of-care-needed"]),
       urgency: String(form["how-urgent-is-the-care-need"] || "").trim(),
@@ -204,10 +206,12 @@ function IntakeFormContent({
       !payload.contactName ||
       !payload.email ||
       !payload.preferredArea ||
+      !payload.preferredDistance ||
       !payload.ageRange ||
       !payload.careTypes.length ||
       !payload.urgency ||
       !payload.relationship ||
+      !payload.medicalSupportNeeds ||
       !payload.decisionMakerName ||
       !payload.decisionMakerRelationship
     ) {

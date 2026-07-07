@@ -72,7 +72,7 @@ export function IntakeSummaryCard({
   const visitSummary = formatVisitSchedule(intake);
   const reference = intake.id.slice(0, 8).toUpperCase();
   const hasDecisionSupport = Boolean(intake.decisionMakerName || intake.decisionMakerRelationship);
-  const hasCareDetails = Boolean(intake.mobility || intake.dementiaNeeds);
+  const hasCareDetails = Boolean(intake.mobility || intake.medicalSupportNeeds || intake.dementiaNeeds);
   const hasUpdates = !isClosed && Boolean(intake.carePathway || intake.carePlanSummary || visitSummary);
 
   if (compact) {
@@ -92,6 +92,7 @@ export function IntakeSummaryCard({
 
           <dl className="mt-4 grid gap-3 sm:grid-cols-2">
             <SummaryField label="Area" value={intake.preferredArea} />
+            <SummaryField label="Distance" value={intake.preferredDistance} />
             <SummaryField label="Urgency" value={intake.urgency} />
             <SummaryField label="Care needed" value={intake.careTypes.join(", ")} />
             <SummaryField label="Relationship" value={intake.relationship} />
@@ -172,6 +173,7 @@ export function IntakeSummaryCard({
             <h3 className="text-sm font-semibold text-ink">At a glance</h3>
             <dl className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <SummaryField label="Preferred area" value={intake.preferredArea} />
+              <SummaryField label="Preferred distance" value={intake.preferredDistance} />
               <SummaryField label="Urgency" value={intake.urgency} />
               <SummaryField label="Relationship" value={intake.relationship} />
               {intake.ageRange ? <SummaryField label="Age range" value={intake.ageRange} /> : null}
@@ -186,6 +188,9 @@ export function IntakeSummaryCard({
               {hasCareDetails ? (
                 <dl className="mt-4 grid gap-3 border-t border-stone-200/70 pt-4 sm:grid-cols-2">
                   {intake.mobility ? <SummaryField label="Mobility" value={intake.mobility} /> : null}
+                  {intake.medicalSupportNeeds ? (
+                    <SummaryField label="Medical / nursing support" value={intake.medicalSupportNeeds} />
+                  ) : null}
                   {intake.dementiaNeeds ? <SummaryField label="Dementia / memory" value={intake.dementiaNeeds} /> : null}
                 </dl>
               ) : null}

@@ -1173,7 +1173,8 @@ function FamilyDetailPanel({
                     { label: "Phone", value: family.phone },
                     { label: "Relationship", value: family.relationship },
                     { label: "Age range", value: family.ageRange },
-                    { label: "Preferred area", value: family.location }
+                    { label: "Preferred area", value: family.location },
+                    { label: "Preferred distance", value: family.preferredDistance }
                   ]}
                 />
               </PanelSection>
@@ -1195,6 +1196,7 @@ function FamilyDetailPanel({
                     { label: "Urgency", value: family.urgency },
                     { label: "Budget", value: family.budget },
                     { label: "Mobility", value: family.mobility },
+                    { label: "Medical / nursing support", value: family.medicalSupportNeeds },
                     { label: "Dementia needs", value: family.dementiaNeeds },
                     { label: "Hospital discharge", value: family.hospitalDischargeDate }
                   ]}

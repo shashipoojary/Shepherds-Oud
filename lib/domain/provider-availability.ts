@@ -1,3 +1,13 @@
+/** Shared provider availability labels for admin, provider dashboard, and family results. */
+export const PROVIDER_AVAILABILITY_OPTIONS = [
+  "Not set",
+  "Available now",
+  "Limited availability",
+  "Waitlist",
+  "Fully occupied",
+  "Unknown / needs confirmation"
+] as const;
+
 type ProviderAvailabilityInput = {
   availabilityStatus?: string | null;
   bedsOpen?: number | null;
@@ -13,4 +23,13 @@ export function displayProviderAvailability(provider: ProviderAvailabilityInput)
     return "Available now";
   }
   return provider.waitlistText || "Contact for availability";
+}
+
+export function providerWaitEstimate(provider: ProviderAvailabilityInput) {
+  if (!provider.waitlistText?.trim()) return null;
+  const availability = displayProviderAvailability(provider).toLowerCase();
+  if (availability.includes("available now") && provider.bedsOpen && provider.bedsOpen > 0) {
+    return null;
+  }
+  return provider.waitlistText.trim();
 }

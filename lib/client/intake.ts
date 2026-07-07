@@ -10,6 +10,7 @@ export type FamilyIntake = {
   phone: string;
   relationship: string;
   preferredArea: string;
+  preferredDistance?: string;
   ageRange: string;
   careTypes: string[];
   urgency: string;
@@ -19,6 +20,7 @@ export type FamilyIntake = {
   livingSituation?: string;
   moveInTimeline?: string;
   mobility?: string;
+  medicalSupportNeeds?: string;
   dementiaNeeds?: string;
   hospitalDischargeDate?: string | null;
   decisionMakerName?: string;
@@ -71,9 +73,11 @@ export function intakeToForm(intake: FamilyIntake): Record<string, string | stri
     [fieldKeyFor(INTAKE_RELATIONSHIP_FIELD_LABEL)]: relationship.value,
     [otherFieldKey(INTAKE_RELATIONSHIP_FIELD_LABEL)]: relationship.other,
     "preferred-city-or-province": intake.preferredArea,
+    "preferred-distance-from-your-location": intake.preferredDistance || "",
     "age-range": intake.ageRange,
     "current-living-situation": intake.livingSituation || "",
     "mobility-level": intake.mobility || "",
+    "medical-or-nursing-support-needed": intake.medicalSupportNeeds || "",
     "dementia-or-memory-care-needs": intake.dementiaNeeds || "",
     "type-of-care-needed": intake.careTypes,
     "how-urgent-is-the-care-need": intake.urgency,

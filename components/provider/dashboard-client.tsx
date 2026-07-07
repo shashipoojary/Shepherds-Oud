@@ -45,6 +45,7 @@ import { TOAST_DISMISS_MS } from "@/lib/client/toast-timing";
 import { brand } from "@/lib/config/brand";
 import { cn } from "@/lib/core/utils";
 import { formatReference, matchesListSearch, matchesReferenceQuery } from "@/lib/domain/reference";
+import { PROVIDER_AVAILABILITY_OPTIONS } from "@/lib/domain/provider-availability";
 
 type ProviderRecord = {
   id: string;
@@ -150,7 +151,7 @@ const emptyForm: FormState = {
   priceMax: ""
 };
 
-const availabilityOptions = ["Not set", "Available now", "Limited availability", "Waitlist", "Fully occupied"] as const;
+const availabilityOptions = [...PROVIDER_AVAILABILITY_OPTIONS];
 
 function toForm(provider: ProviderRecord | null): FormState {
   if (!provider) return emptyForm;

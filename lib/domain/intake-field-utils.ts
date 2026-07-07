@@ -13,6 +13,22 @@ export const INTAKE_AGE_RANGE_OPTIONS = [
   "90 and above"
 ] as const;
 
+export const PREFERRED_DISTANCE_OPTIONS = [
+  "Within 15 km / same city",
+  "Within 30 minutes travel",
+  "Same province or region",
+  "Anywhere in the Netherlands",
+  "Not sure yet"
+] as const;
+
+export const MEDICAL_SUPPORT_OPTIONS = [
+  "None",
+  "Occasional nursing or medical visits",
+  "Regular nursing support",
+  "24-hour medical supervision",
+  "Not sure yet"
+] as const;
+
 export const relationshipToPersonNeedingCareOptions = [
   "Self",
   "Child",

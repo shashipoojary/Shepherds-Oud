@@ -15,6 +15,7 @@ export const intakeSchema = z.object({
   phone: z.string().min(6),
   relationship: z.string().min(1),
   preferredArea: z.string().min(1),
+  preferredDistance: z.string().min(1),
   ageRange: z.string().min(1),
   careTypes: z.array(z.string()).min(1),
   urgency: z.string().min(1),
@@ -24,6 +25,7 @@ export const intakeSchema = z.object({
   livingSituation: optionalText,
   moveInTimeline: optionalText,
   mobility: optionalText,
+  medicalSupportNeeds: z.string().min(1),
   dementiaNeeds: optionalText,
   hospitalDischargeDate: z
     .union([z.string(), z.null()])

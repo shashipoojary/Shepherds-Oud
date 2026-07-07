@@ -167,7 +167,7 @@ Sign in at `/provider/login` (magic link email).
 | **Tabs: New / Ongoing / Closed** | Inquiries move between tabs as status changes |
 | **Accept / Decline** | Only on New items after family requested visit or callback |
 | **Unread dot** | Orange dot on row when there is an update you have not opened |
-| **Facility profile** | Must be complete before responding to inquiries |
+| **Facility profile** | Must be complete before responding to inquiries; availability includes **Unknown / needs confirmation** |
 | **Visit notes** | Providers see visit **date and type** — not internal coordination notes (those are family/admin only) |
 
 ### Provider invite rules (if testing onboarding)
@@ -186,11 +186,12 @@ Sign in at `/provider/login` (magic link email).
 | Screen | URL | What to verify |
 |--------|-----|----------------|
 | Login | `/family/login` | Magic link and Google work |
-| Intake | `/family/intake` | 5 steps; red borders on validation errors; submit works |
+| Intake | `/family/intake` | 5 steps; includes **preferred distance** and **medical/nursing support**; red borders on validation errors; submit works |
 | Success | `/family/success` | Confirmation + timeline step 1 |
 | Dashboard | `/family/dashboard` | Timeline updates when admin acts; care plan; visit block |
-| Results | `/family/results` | Matched providers; request visit or callback |
-| Provider profile | `/providers/[id]` | Declined provider: no request buttons; clear message |
+| Results | `/family/results` | Matched providers; **price** and **estimated wait** (when provider entered waitlist text); **Save** favourites; request visit or callback |
+| Provider profile | `/providers/[id]` | Declined provider: no request buttons; clear message; save to favourites |
+| About / How it works / Contact | `/about`, `/how-it-works`, `/contact` | Public info pages linked from nav and footer |
 
 ### After provider declines
 

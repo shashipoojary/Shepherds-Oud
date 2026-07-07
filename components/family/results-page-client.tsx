@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { BedDouble, Check, CircleDollarSign, Loader2, MapPin } from "lucide-react";
+import { BedDouble, Check, CircleDollarSign, Clock, Loader2, MapPin } from "lucide-react";
 import { isHistoryIntake, selectFamilyIntake, withIntakeId } from "@/lib/client/case-selection";
 import { TOAST_DISMISS_MS } from "@/lib/client/toast-timing";
 import { getSessionFamilyIntakes, type FamilyIntake } from "@/lib/client/intake";
@@ -18,6 +18,7 @@ import { ButtonRow } from "@/components/ui/button-row";
 import { EmptyState } from "@/components/ui/empty-state";
 import { MatchScore } from "@/components/ui/match-score";
 import { ResultsSkeleton } from "@/components/ui/results-skeleton";
+import { ProviderFavouriteButton } from "@/components/ui/provider-favourite-button";
 import type { ProviderMatch } from "@/lib/core/types";
 
 const filters = ["All options", "Available now", "Memory care", "Home care"] as const;
@@ -84,7 +85,9 @@ function emptyStateCopy(intake: FamilyIntake, loadError: boolean) {
 function parseMeta(meta: string[]) {
   const price = meta.find((item) => item.toLowerCase().includes("eur") || item.toLowerCase().includes("price"));
   const beds = meta.find((item) => item.toLowerCase().includes("bed"));
-  return { price: price || "Price on request", beds: beds || null };
+  const waitEntry = meta.find((item) => item.toLowerCase().includes("estimated wait"));
+  const wait = waitEntry ? waitEntry.replace(/^estimated wait:\s*/i, "").trim() : null;
+  return { price: price || "Price on request", beds: beds || null, wait };
 }
 
 function visibleTags(provider: ProviderMatch, limit = 5) {
@@ -367,6 +370,7 @@ function ResultsPageContent() {
               <Fact icon={MapPin} label={recommended.area} />
               {featuredMeta.beds ? <Fact icon={BedDouble} label={featuredMeta.beds} /> : null}
               <Fact icon={CircleDollarSign} label={featuredMeta.price} />
+              {featuredMeta.wait ? <Fact icon={Clock} label={`Est. wait: ${featuredMeta.wait}`} /> : null}
             </dl>
 
             <div className="mt-5 flex flex-wrap items-center gap-2">
@@ -459,6 +463,7 @@ function ResultsPageContent() {
             <Button asChild variant="ghost" className="w-full">
               <Link href={withIntakeId(`/providers/${recommended.id}`, intake.id)}>Read full profile</Link>
             </Button>
+            <ProviderFavouriteButton providerId={recommended.id} className="w-full" variant="ghost" />
           </aside>
         </div>
       </section>
@@ -563,13 +568,9 @@ function CompareRow({
             {provider.type} · {provider.area}
           </p>
           <MatchScore score={provider.match} size="sm" variant="compact" className="mt-2 block" />
-          {meta.beds ? (
-            <p className="mt-2 text-sm text-ink/60">
-              {meta.beds} · {meta.price}
-            </p>
-          ) : (
-            <p className="mt-2 text-sm text-ink/60">{meta.price}</p>
-          )}
+          <p className="mt-2 text-sm text-ink/60">
+            {[meta.beds, meta.price, meta.wait ? `Est. wait: ${meta.wait}` : null].filter(Boolean).join(" · ")}
+          </p>
           {provider.matchStatus && showStatusNote(provider.matchStatus) ? (
             <p className={`mt-2 text-sm leading-6 ${declined ? "text-neutral-600" : "text-brand-green-dark"}`}>
               {familyMatchNextStep(provider.matchStatus, provider.name)}
@@ -579,6 +580,7 @@ function CompareRow({
         </div>
 
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:shrink-0">
+          <ProviderFavouriteButton providerId={provider.id} className="w-full sm:min-w-[132px]" />
           <Button asChild size="sm" variant="outline" className="w-full sm:min-w-[132px]">
               <Link href={withIntakeId(`/providers/${provider.id}`, intakeId)}>Profile</Link>
           </Button>

@@ -44,7 +44,10 @@ export function buildNavItems(role?: AppRole, signedIn = false, prelaunch = getI
 
   if (prelaunch) {
     items.push({ label: "Join waitlist", href: publicRoutes.waitlist });
+    items.push({ label: "About", href: "/about" });
+    items.push({ label: "Contact", href: "/contact" });
   } else {
+    items.push({ label: "How it works", href: "/how-it-works" });
     items.push({ label: "Start intake", href: publicRoutes.intake });
     items.push({ label: "Join waitlist", href: publicRoutes.waitlist });
   }

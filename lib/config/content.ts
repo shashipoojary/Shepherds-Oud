@@ -2,6 +2,8 @@ import {
   decisionMakerRelationshipOptions,
   INTAKE_AGE_RANGE_OPTIONS,
   INTAKE_RELATIONSHIP_FIELD_LABEL,
+  MEDICAL_SUPPORT_OPTIONS,
+  PREFERRED_DISTANCE_OPTIONS,
   relationshipToPersonNeedingCareOptions
 } from "@/lib/domain/intake-field-utils";
 import { getIsPrelaunch } from "@/lib/config/prelaunch";
@@ -15,6 +17,8 @@ export {
   INTAKE_AGE_RANGE_OPTIONS,
   INTAKE_OTHER_OPTION,
   INTAKE_RELATIONSHIP_FIELD_LABEL,
+  MEDICAL_SUPPORT_OPTIONS,
+  PREFERRED_DISTANCE_OPTIONS,
   relationshipToPersonNeedingCareOptions,
   relationshipToSeniorOptions
 } from "@/lib/domain/intake-field-utils";
@@ -108,8 +112,18 @@ export const intakeSteps = [
       },
       {
         type: "select",
+        label: "Medical or nursing support needed",
+        options: [...MEDICAL_SUPPORT_OPTIONS]
+      },
+      {
+        type: "select",
         label: "Dementia or memory care needs",
         options: ["None", "Early memory concerns", "Moderate dementia", "Advanced dementia / memory care required"]
+      },
+      {
+        type: "select",
+        label: "Preferred distance from your location",
+        options: [...PREFERRED_DISTANCE_OPTIONS]
       },
       {
         type: "chips",
@@ -231,6 +245,8 @@ export const careLevelOptions = ["Low care", "Medium care", "High care", "Specia
 export const fundingTypeOptions = ["WLZ funded", "Private pay", "Combination WLZ + private", "Insurance / other"];
 export const dementiaCapacityOptions = ["None", "Early stage", "Moderate", "Advanced / secure unit"];
 export const visitAvailabilityOptions = ["Visits welcome", "Virtual tour available", "Callback only", "By appointment"];
+
+export { PROVIDER_AVAILABILITY_OPTIONS } from "@/lib/domain/provider-availability";
 
 export function displayVisitAvailability(value: string | null | undefined) {
   const trimmed = value?.trim();

@@ -16,6 +16,9 @@ function footerLinks(prelaunch: boolean) {
       ]
     : [
         { label: "Home", href: publicRoutes.home },
+        { label: "How it works", href: "/how-it-works" },
+        { label: "About", href: "/about" },
+        { label: "Contact", href: "/contact" },
         { label: "Start intake", href: publicRoutes.intake },
         { label: "Join waitlist", href: publicRoutes.waitlist },
         { label: "Register a facility", href: publicRoutes.waitlistFacility }

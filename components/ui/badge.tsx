@@ -13,7 +13,8 @@ const badgeVariants = cva("inline-flex items-center rounded px-2 py-0.5 text-xs 
       matched: "bg-brand-green-light text-white",
       new: "bg-brand-amber text-white",
       placed: "bg-brand-green-dark text-white",
-      closed: "bg-neutral-400 text-white"
+      closed: "bg-neutral-400 text-white",
+      unknown: "bg-stone-300 text-ink/80"
     }
   },
   defaultVariants: {
@@ -29,6 +30,7 @@ export function Badge({ className, variant, ...props }: BadgeProps) {
 
 export function availabilityBadgeVariant(status: string): NonNullable<VariantProps<typeof badgeVariants>["variant"]> {
   const normalized = status.toLowerCase();
+  if (normalized.includes("unknown") || normalized.includes("needs confirmation")) return "unknown";
   if (normalized.includes("available") || normalized.includes("open")) return "available";
   if (normalized.includes("wait")) return "waitlist";
   if (normalized.includes("full")) return "full";

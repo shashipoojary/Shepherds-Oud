@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/core/db";
 import { displayVisitAvailability } from "@/lib/config/content";
+import { displayProviderAvailability, providerWaitEstimate } from "@/lib/domain/provider-availability";
 import type { ProviderMatch } from "@/lib/core/types";
 
 type ProviderRecord = {
@@ -25,9 +26,10 @@ type ProviderRecord = {
 
 export function mapProviderRecord(provider: ProviderRecord, score = 0): ProviderMatch {
   const openBeds = provider.bedsOpen ?? 0;
-  const availability =
-    provider.availabilityStatus ||
-    (provider.bedsOpen != null && provider.bedsOpen > 0 ? "Available now" : provider.waitlistText || "Contact for availability");
+  const availability = displayProviderAvailability(provider);
+  const waitEstimate = providerWaitEstimate(provider);
+  const priceLabel =
+    provider.priceMin && provider.priceMax ? `EUR ${provider.priceMin}-${provider.priceMax}/mo` : "Price on request";
 
   return {
     id: provider.id,
@@ -44,21 +46,22 @@ export function mapProviderRecord(provider: ProviderRecord, score = 0): Provider
       ...(provider.dementiaCapacity ? [{ label: `Dementia: ${provider.dementiaCapacity}`, type: "service" as const }] : [])
     ],
     meta: [
-      provider.priceMin && provider.priceMax ? `EUR ${provider.priceMin}-${provider.priceMax}/mo` : "Price on request",
+      priceLabel,
       provider.bedsOpen != null && provider.bedsOpen > 0 ? `${provider.bedsOpen} beds open` : "",
+      waitEstimate ? `Estimated wait: ${waitEstimate}` : "",
       provider.responseTimeHours ? `Responds within ${provider.responseTimeHours}h` : ""
     ].filter(Boolean),
     description: provider.description,
     details: {
       Area: provider.area,
       ...(provider.bedsTotal && provider.bedsOpen != null ? { "Beds available": `${openBeds} of ${provider.bedsTotal}` } : {}),
-      ...(provider.waitlistText ? { Waitlist: provider.waitlistText } : {}),
+      ...(waitEstimate ? { "Estimated wait": waitEstimate } : {}),
       ...(provider.dementiaCapacity ? { "Dementia capacity": provider.dementiaCapacity } : {}),
       ...(provider.fundingTypes.length ? { "Funding types": provider.fundingTypes.join(", ") } : {}),
       "Visit availability": displayVisitAvailability(provider.visitAvailability),
       ...(provider.priceMin && provider.priceMax
         ? { "Price range": `EUR ${provider.priceMin} - EUR ${provider.priceMax} per month` }
-        : {})
+        : { "Price range": "On request" })
     },
     contact: ["Contact details will be shared after your Care Guide reviews your request."]
   };
