@@ -251,7 +251,8 @@ export function AdminDashboardClient({ data: initialData }: { data: AdminDashboa
   }
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <main className="mx-auto flex max-w-7xl flex-col px-4 max-lg:h-[calc(100dvh-4rem)] max-lg:overflow-hidden max-lg:py-4 sm:px-6 lg:px-8 lg:py-8">
+      <div className="shrink-0">
       <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-[1.3rem] font-semibold">Admin dashboard</h1>
@@ -265,7 +266,7 @@ export function AdminDashboardClient({ data: initialData }: { data: AdminDashboa
 
       <StatGrid stats={data.stats} />
 
-      <div className="mt-6 flex w-full gap-1 overflow-x-auto rounded-[10px] bg-white p-1 shadow-soft sm:inline-flex sm:w-auto">
+      <div className="mt-6 flex w-full gap-1 overflow-x-auto rounded-[10px] bg-white p-1 shadow-soft">
         {(["families", "providers", "inquiries", "waitlist"] as const).map((item) => {
           const label = item === "waitlist" ? "Waitlist" : item[0].toUpperCase() + item.slice(1);
           const badge = tabBadges[item];
@@ -276,14 +277,14 @@ export function AdminDashboardClient({ data: initialData }: { data: AdminDashboa
               key={item}
               onClick={() => selectTab(item)}
               className={cn(
-                "relative min-w-fit flex-1 rounded-lg px-4 py-2 text-sm transition sm:flex-none",
+                "relative shrink-0 rounded-lg px-4 py-2 text-sm transition",
                 isActive ? "bg-brand-amber text-white" : "text-ink/70 hover:bg-brand-cream hover:text-brand-amber"
               )}
             >
-              <span className="inline-flex items-center gap-2">
+              <span className="inline-flex items-center gap-2 whitespace-nowrap">
                 {label}
                 {badge > 0 && !isActive ? (
-                  <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-amber px-1.5 text-[10px] font-bold leading-none text-white">
+                  <span className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-brand-amber px-1.5 text-[10px] font-bold leading-none tabular-nums text-white">
                     {badge > 9 ? "9+" : badge}
                   </span>
                 ) : null}
@@ -300,8 +301,10 @@ export function AdminDashboardClient({ data: initialData }: { data: AdminDashboa
           <WaitlistBulkEmailBar onNotify={setMessage} />
         </div>
       ) : null}
+      </div>
 
-      <div className={cn("rounded-xl bg-white shadow-soft", tab === "waitlist" ? "mt-4" : "mt-6")}>
+      <div className={cn("scroll-area min-h-0 flex-1", tab === "waitlist" ? "mt-4" : "mt-6")}>
+      <div className="rounded-xl bg-white shadow-soft">
         <div className="overflow-x-auto">
           {tab === "families" ? (
             data.families.length ? (
@@ -365,6 +368,7 @@ export function AdminDashboardClient({ data: initialData }: { data: AdminDashboa
             )
           ) : null}
         </div>
+      </div>
       </div>
     </main>
   );
