@@ -690,7 +690,7 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
         </section>
       ) : null}
 
-      <div className="mb-5 flex w-full gap-1 overflow-x-auto rounded-[10px] bg-white p-1 shadow-soft">
+      <div className="mb-5 flex w-full gap-1 overflow-x-auto rounded-[10px] bg-white p-1 shadow-soft sm:inline-flex sm:w-auto">
         {providerInquiryTabs.map((item) => {
           const badge = inquiryTabBadges[item];
           const isActive = inquiryTab === item;
@@ -701,14 +701,14 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
               type="button"
               onClick={() => setInquiryTab(item)}
               className={cn(
-                "relative shrink-0 rounded-lg px-4 py-2 text-sm transition",
+                "relative min-w-fit flex-1 rounded-lg px-4 py-2 text-sm transition sm:flex-none",
                 isActive ? "bg-brand-amber text-white" : "text-ink/70 hover:bg-brand-cream hover:text-brand-amber"
               )}
             >
-              <span className="inline-flex items-center gap-2 whitespace-nowrap">
+              <span className="inline-flex items-center gap-2">
                 {providerInquiryTabLabel(item)}
                 {badge > 0 && !isActive ? (
-                  <span className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-brand-amber px-1.5 text-[10px] font-bold leading-none tabular-nums text-white">
+                  <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-amber px-1.5 text-[10px] font-bold leading-none text-white">
                     {badge > 9 ? "9+" : badge}
                   </span>
                 ) : null}
