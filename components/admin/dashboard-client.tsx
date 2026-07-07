@@ -182,16 +182,16 @@ export function AdminDashboardClient({ data: initialData }: { data: AdminDashboa
       );
       onMarkItemSeen();
     }
-  }, [tab, onMarkItemSeen]);
+  }, [tab, data, onMarkItemSeen]);
 
   const tabBadges = useMemo(
     () => ({
-      families: countUnseenFamilies(data.families, tabSeenAt.families),
-      providers: countUnseenProviders(data.providerList, tabSeenAt.providers),
-      inquiries: countUnseenInquiries(data.inquiries, tabSeenAt.inquiries),
-      waitlist: countUnseenWaitlist(data.waitlist, tabSeenAt.waitlist)
+      families: tab === "families" ? 0 : countUnseenFamilies(data.families, tabSeenAt.families),
+      providers: tab === "providers" ? 0 : countUnseenProviders(data.providerList, tabSeenAt.providers),
+      inquiries: tab === "inquiries" ? 0 : countUnseenInquiries(data.inquiries, tabSeenAt.inquiries),
+      waitlist: tab === "waitlist" ? 0 : countUnseenWaitlist(data.waitlist, tabSeenAt.waitlist)
     }),
-    [data, tabSeenAt]
+    [data, tab, tabSeenAt]
   );
 
   function selectTab(next: AdminTab) {
@@ -819,27 +819,27 @@ function FamilyDetailPanel({
       return;
     }
 
-    let nextStatus: IntakeStatus | undefined;
-    let successMessage: string;
-
     if (normalizedStatus === "NEW") {
       notifyPanel("Assign a Care Guide before starting the assessment.");
       return;
     }
 
-    if (normalizedStatus === "CARE_GUIDE_ASSIGNED") {
-      nextStatus = "ASSESSMENT";
-      successMessage = `You saved the assessment for ${family.name}. Edit anytime before publishing the care plan to them.`;
-    } else if (
-      carePlanSummary.trim() &&
-      !["CARE_PLAN", "MATCHED", "VISIT_SCHEDULED", "PROVIDER_RESPONSE", "PLACEMENT_IN_PROGRESS", "PLACED"].includes(normalizedStatus)
-    ) {
+    const mode = carePlanButtonMode;
+    let nextStatus: IntakeStatus | undefined;
+    let successMessage: string;
+
+    if (mode === "publish") {
       nextStatus = "CARE_PLAN";
       successMessage = `You published the care plan for ${family.name}. It is now visible on their dashboard and can still be edited until the case closes.`;
-    } else if (normalizedStatus === "ASSESSMENT" && !carePlanSummary.trim()) {
+    } else if (mode === "save-assessment" && normalizedStatus === "CARE_GUIDE_ASSIGNED") {
+      nextStatus = "ASSESSMENT";
       successMessage = `You saved the assessment for ${family.name}. Add the care plan summary when you are ready to publish.`;
+    } else if (mode === "save-care-plan") {
+      successMessage = isCarePlanPublished
+        ? `You updated the care plan for ${family.name}.`
+        : `You saved the care plan draft for ${family.name}. Publish when the family should see it.`;
     } else {
-      successMessage = `You saved care plan details for ${family.name}. Published plans can still be edited until the case closes.`;
+      return;
     }
 
     setSavingAssessment(true);
@@ -967,6 +967,9 @@ function FamilyDetailPanel({
       }
 
       notifyPanel(`You created a provider match for ${family.name}. They can now see this provider on their shortlist.`);
+      setProviderId("");
+      setScore("85");
+      setMatchNotes("");
       await onSync();
     } catch (error) {
       notifyPanel(error instanceof Error ? error.message : `Could not create match for ${family.name}.`);
@@ -983,6 +986,14 @@ function FamilyDetailPanel({
     : [];
   const advanceActions = nextActions.filter((action) => action.status !== "CLOSED");
   const canCloseCase = nextActions.some((action) => action.status === "CLOSED");
+  const workflowManagedAdvanceStatuses = new Set<IntakeStatus>([
+    "CARE_GUIDE_ASSIGNED",
+    "ASSESSMENT",
+    "CARE_PLAN",
+    "MATCHED",
+    "VISIT_SCHEDULED"
+  ]);
+  const milestoneAdvanceActions = advanceActions.filter((action) => !workflowManagedAdvanceStatuses.has(action.status));
   const currentStepIndex = family ? journeyStepIndex(family.status) : 0;
   const careGuideStepLocked = Boolean(family?.careGuideId) && currentStepIndex >= journeyStepIndex("CARE_GUIDE_ASSIGNED");
   const forwardMatchStatuses = new Set([
@@ -1003,6 +1014,32 @@ function FamilyDetailPanel({
     currentStepIndex >= journeyStepIndex("CARE_PLAN");
   const matchStepLocked = hasMatches && currentStepIndex >= journeyStepIndex("MATCHED");
   const visitStepLocked = Boolean(family?.visitScheduledAt) && currentStepIndex >= journeyStepIndex("VISIT_SCHEDULED");
+  const advanceStepLocked = currentStepIndex < journeyStepIndex("VISIT_SCHEDULED");
+  const publishedCarePlanStatuses = new Set<IntakeStatus>([
+    "CARE_PLAN",
+    "MATCHED",
+    "VISIT_SCHEDULED",
+    "PROVIDER_RESPONSE",
+    "PLACEMENT_IN_PROGRESS",
+    "PLACED",
+    "FOLLOW_UP_7",
+    "FOLLOW_UP_30",
+    "FOLLOW_UP_90"
+  ]);
+  const isCarePlanPublished = publishedCarePlanStatuses.has(normalizedStatus);
+  const isCarePlanDirty =
+    carePathway !== (family?.carePathway || "") ||
+    assessmentNotes !== (family?.assessmentNotes || "") ||
+    carePlanSummary !== (family?.carePlanSummary || "");
+  const carePlanButtonMode = (() => {
+    if (!isCarePlanPublished) {
+      if (!carePlanSummary.trim()) return "save-assessment" as const;
+      if (isCarePlanDirty) return "save-care-plan" as const;
+      return "publish" as const;
+    }
+    if (isCarePlanDirty) return "save-care-plan" as const;
+    return "published" as const;
+  })();
   const visitNotesLabel =
     visitType === "CALLBACK" ? "Callback notes" : visitType === "VISIT" ? "Visit notes" : "Visit or callback notes";
   const visitNotesHint =
@@ -1262,8 +1299,21 @@ function FamilyDetailPanel({
                 />
               </label>
               <AdminPanelActions>
-                <Button type="button" size="sm" disabled={savingAssessment} onClick={() => void saveAndShareWithFamily()}>
-                  {savingAssessment ? "Saving..." : normalizedStatus === "ASSESSMENT" ? "Publish care plan" : "Save assessment"}
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={savingAssessment || carePlanButtonMode === "published"}
+                  onClick={() => void saveAndShareWithFamily()}
+                >
+                  {savingAssessment
+                    ? "Saving..."
+                    : carePlanButtonMode === "save-assessment"
+                      ? "Save assessment"
+                      : carePlanButtonMode === "save-care-plan"
+                        ? "Save care plan"
+                        : carePlanButtonMode === "publish"
+                          ? "Publish care plan"
+                          : "Care plan published"}
                 </Button>
                 {!["MATCHED", "VISIT_SCHEDULED", "PROVIDER_RESPONSE", "PLACEMENT_IN_PROGRESS", "PLACED", "CLOSED"].includes(normalizedStatus) ? (
                   <Button
@@ -1288,6 +1338,22 @@ function FamilyDetailPanel({
               locked={matchStepLocked}
             >
               <div className="space-y-3">
+              {hasMatches ? (
+                <div className="rounded-lg border border-stone-200 bg-brand-cream/50 p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Created matches</p>
+                  <ul className="mt-2 space-y-2 text-sm text-ink">
+                    {matches.map((match) => (
+                      <li key={match.id} className="rounded-md border border-stone-200/80 bg-white px-3 py-2">
+                        <p className="font-semibold">
+                          {match.provider} · {match.match}
+                        </p>
+                        <p className="text-xs text-neutral-500">{adminMatchStatusLabel(match.statusRaw || "SUGGESTED")}</p>
+                        {match.notes ? <p className="mt-1 text-xs leading-5 text-neutral-600">{match.notes}</p> : null}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
               <label className="grid gap-2 text-sm font-medium">
                 Provider
                 <select
@@ -1420,11 +1486,13 @@ function FamilyDetailPanel({
             <PanelSection
               step={6}
               title="Advance case status"
-              description="Record the next milestone when the family moves forward. Close case only when support is complete."
+              description="Record placement milestones after visit scheduling. Close case only when support is complete."
+              locked={advanceStepLocked}
+              lockedNote="Complete steps 2–5 (through visit scheduling) before advancing placement milestones."
             >
               <div className="space-y-4">
-                {advanceActions.length ? (
-                  advanceActions.map((action) => {
+                {milestoneAdvanceActions.length ? (
+                  milestoneAdvanceActions.map((action) => {
                     const disabledReason =
                       action.status === "VISIT_SCHEDULED" && !visitSchedulingAllowed
                         ? "Wait until the family requests a visit/callback or a provider accepts before scheduling."
@@ -1448,28 +1516,25 @@ function FamilyDetailPanel({
                     );
                   })
                 ) : (
-                  <p className="text-sm leading-6 text-neutral-600">All milestones are recorded. Close the case when no further follow-up is needed.</p>
+                  <p className="text-sm leading-6 text-neutral-600">Placement milestones will appear here after visit scheduling.</p>
                 )}
-
-                {canCloseCase ? (
-                  <div className="border-t border-stone-200 pt-4">
-                    <AdminPanelActions>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={isCaseActionPending}
-                        onClick={() => setConfirmCloseCase(true)}
-                      >
-                        Close case
-                      </Button>
-                    </AdminPanelActions>
-                    <p className="mt-2 text-xs leading-5 text-neutral-500">
-                      Only close when the family is no longer active or has been helped elsewhere.
-                    </p>
-                  </div>
-                ) : null}
               </div>
             </PanelSection>
+
+            {canCloseCase ? (
+              <PanelSection title="Close case" description="Archive when the family is no longer active or has been helped elsewhere.">
+                <AdminPanelActions>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={isCaseActionPending}
+                    onClick={() => setConfirmCloseCase(true)}
+                  >
+                    Close case
+                  </Button>
+                </AdminPanelActions>
+              </PanelSection>
+            ) : null}
           </div>
           )}
 
@@ -1843,6 +1908,7 @@ function InquiriesTable({
   const [pendingActionKey, setPendingActionKey] = useState<string | null>(null);
   const [selected, setSelected] = useState<InquiryEntry | null>(null);
   const [confirmClose, setConfirmClose] = useState<InquiryEntry | null>(null);
+  const [confirmContacted, setConfirmContacted] = useState<InquiryEntry | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [search, setSearch] = useState("");
 
@@ -2047,7 +2113,7 @@ function InquiriesTable({
                         icon={CalendarCheck}
                         loading={pendingActionKey === `${inquiry.id}:CONTACTED`}
                         disabled={isPending}
-                        onClick={() => void updateMatchStatus(inquiry.id, "CONTACTED")}
+                        onClick={() => setConfirmContacted(inquiry)}
                       />
                     ) : null}
                     {placementReady ? (
@@ -2086,6 +2152,19 @@ function InquiriesTable({
         onUpdateStatus={(id, status, notify) => updateMatchStatus(id, status, notify)}
       />
       <ConfirmDialog
+        open={Boolean(confirmContacted)}
+        title="Mark visit or call as arranged?"
+        description="Only confirm once the family and provider have agreed on the date and time. This updates both dashboards."
+        confirmLabel="Mark arranged"
+        pending={Boolean(confirmContacted && pendingActionKey === `${confirmContacted.id}:CONTACTED`)}
+        onCancel={() => setConfirmContacted(null)}
+        onConfirm={() => {
+          if (!confirmContacted) return;
+          void updateMatchStatus(confirmContacted.id, "CONTACTED");
+          setConfirmContacted(null);
+        }}
+      />
+      <ConfirmDialog
         open={Boolean(confirmClose)}
         tone="danger"
         pending={Boolean(confirmClose && pendingId === confirmClose.id)}
@@ -2119,6 +2198,7 @@ function InquiryDetailPanel({
   const { message: panelMessage, setMessage: setPanelMessage, clearMessage: clearPanelMessage } = usePanelMessage();
   const isPending = inquiry ? pendingId === inquiry.id : false;
   const [confirmClose, setConfirmClose] = useState(false);
+  const [confirmContacted, setConfirmContacted] = useState(false);
   const hint = inquiry ? adminInquiryHint(inquiry.statusRaw) : "";
 
   useEffect(() => {
@@ -2194,7 +2274,7 @@ function InquiryDetailPanel({
               inquiry.statusRaw === "CALLBACK_REQUESTED" ||
               inquiry.statusRaw === "ACCEPTED") && (
               <PanelSection step={4} title={adminInquiryActionMeta("CONTACTED").label} description={adminInquiryActionMeta("CONTACTED").description}>
-                <Button size="sm" disabled={isPending} onClick={() => void updateFromPanel(inquiry.id, "CONTACTED")}>
+                <Button size="sm" disabled={isPending} onClick={() => setConfirmContacted(true)}>
                   {pendingActionKey === `${inquiry.id}:CONTACTED` ? "Saving..." : "Confirm"}
                 </Button>
               </PanelSection>
@@ -2224,6 +2304,19 @@ function InquiryDetailPanel({
           </div>
         </div>
       ) : null}
+      <ConfirmDialog
+        open={confirmContacted}
+        title="Mark visit or call as arranged?"
+        description="Only confirm once the family and provider have agreed on the date and time. This updates both dashboards."
+        confirmLabel="Mark arranged"
+        pending={Boolean(inquiry && pendingActionKey === `${inquiry.id}:CONTACTED`)}
+        onCancel={() => setConfirmContacted(false)}
+        onConfirm={() => {
+          if (!inquiry) return;
+          void updateFromPanel(inquiry.id, "CONTACTED");
+          setConfirmContacted(false);
+        }}
+      />
       <ConfirmDialog
         open={confirmClose}
         tone="danger"

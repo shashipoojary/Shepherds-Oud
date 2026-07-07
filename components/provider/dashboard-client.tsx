@@ -30,7 +30,6 @@ import {
 import { sanitizeClientErrorMessage } from "@/lib/providers/errors";
 import { recordAction } from "@/lib/client/actions";
 import {
-  countUnreadProviderInquiries,
   initProviderInquirySeenFromData,
   isProviderInquiryUnread,
   markAllProviderInquiriesSeen,
@@ -202,7 +201,8 @@ function formatProviderVisit(inquiry: Inquiry) {
   const date = new Date(inquiry.intake.visitScheduledAt);
   if (Number.isNaN(date.getTime())) return null;
   const when = date.toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" });
-  return `${inquiry.intake.visitType || "Visit or callback"} - ${when}${inquiry.intake.visitNotes ? ` - ${inquiry.intake.visitNotes}` : ""}`;
+  const providerName = inquiry.intake.visitProviderName ? ` with ${inquiry.intake.visitProviderName}` : "";
+  return `${inquiry.intake.visitType || "Visit or callback"}${providerName} — ${when}`;
 }
 
 function providerNextStep(inquiry: Inquiry) {
@@ -572,12 +572,12 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
   );
   const inquiryTabBadges = useMemo(
     () => ({
-      new: countUnseenProviderInquiriesInTab(inquiries, "new", inquiryTabSeenAt.new),
-      ongoing: countUnseenProviderInquiriesInTab(inquiries, "ongoing", inquiryTabSeenAt.ongoing),
-      closed: countUnseenProviderInquiriesInTab(inquiries, "closed", inquiryTabSeenAt.closed),
-      all: countUnseenProviderInquiriesInTab(inquiries, "all", inquiryTabSeenAt.all)
+      new: inquiryTab === "new" ? 0 : countUnseenProviderInquiriesInTab(inquiries, "new", inquiryTabSeenAt.new),
+      ongoing: inquiryTab === "ongoing" ? 0 : countUnseenProviderInquiriesInTab(inquiries, "ongoing", inquiryTabSeenAt.ongoing),
+      closed: inquiryTab === "closed" ? 0 : countUnseenProviderInquiriesInTab(inquiries, "closed", inquiryTabSeenAt.closed),
+      all: inquiryTab === "all" ? 0 : countUnseenProviderInquiriesInTab(inquiries, "all", inquiryTabSeenAt.all)
     }),
-    [inquiries, inquiryTabSeenAt]
+    [inquiries, inquiryTab, inquiryTabSeenAt]
   );
   const filteredInquiries = useMemo(() => {
     const tabbed = filterProviderInquiriesByTab(sortedInquiries, inquiryTab);
@@ -595,10 +595,6 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
     );
   }, [sortedInquiries, inquiryTab, inquirySearch]);
   const actionNeededCount = inquiries.filter((item) => isProviderActionNeeded(item.status)).length;
-  const unreadInquiryCount = useMemo(() => {
-    void inquirySeenVersion;
-    return countUnreadProviderInquiries(inquiries.map((item) => ({ id: item.id, updatedAt: item.updatedAt })));
-  }, [inquiries, inquirySeenVersion]);
   const newInquiries = actionNeededCount;
   const bedsDisplay = form.bedsOpen.trim() === "" ? "—" : form.bedsOpen;
 
@@ -717,17 +713,6 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <h2 className="text-lg font-semibold text-ink">Inquiry queue</h2>
-                {actionNeededCount ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-brand-amber px-2.5 py-1 text-[11px] font-semibold text-white">
-                    {actionNeededCount} need{actionNeededCount === 1 ? "s" : ""} response
-                  </span>
-                ) : null}
-                {unreadInquiryCount ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-brand-green-dark px-2.5 py-1 text-[11px] font-semibold text-white">
-                    <span className="h-1.5 w-1.5 rounded-full bg-white" aria-hidden />
-                    {unreadInquiryCount} update{unreadInquiryCount === 1 ? "" : "s"}
-                  </span>
-                ) : null}
               </div>
               <p className="mt-1 text-sm text-ink/60">
                 Open an inquiry to review details, accept or decline requests, and track updates from your Care Guide.
@@ -773,17 +758,6 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
           />
         ) : (
           <>
-            {actionNeededCount && inquiryTab === "new" ? (
-              <div className="flex items-center gap-2.5 border-b border-brand-amber/15 bg-brand-amber/5 px-4 py-2.5 text-sm text-brand-amber-dark">
-                <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-amber text-xs font-bold text-white">
-                  {actionNeededCount}
-                </span>
-                <span>
-                  {actionNeededCount === 1 ? "Inquiry needs" : "Inquiries need"} your response — open a row to accept or decline.
-                </span>
-              </div>
-            ) : null}
-
             <div className="overflow-x-auto">
               <table className="w-full min-w-[760px] border-collapse text-left">
                 <thead className="bg-cream text-xs uppercase tracking-wide text-neutral-500">
@@ -798,7 +772,6 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
                 </thead>
                 <tbody className="divide-y divide-stone-200">
                   {filteredInquiries.map((inquiry) => {
-                    const needsResponse = isProviderActionNeeded(inquiry.status);
                     const isUnread =
                       selectedInquiry?.id !== inquiry.id &&
                       inquirySeenVersion >= 0 &&
@@ -808,10 +781,7 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
                     return (
                       <tr
                         key={inquiry.id}
-                        className={cn(
-                          "cursor-pointer hover:bg-cream",
-                          needsResponse ? "bg-brand-amber/[0.04]" : isUnread ? "bg-brand-green-pale/[0.08]" : undefined
-                        )}
+                        className={cn("cursor-pointer hover:bg-cream", isUnread ? "bg-brand-green-pale/[0.08]" : undefined)}
                         onClick={() => openInquiry(inquiry)}
                       >
                         <td className="px-4 py-3 text-sm">

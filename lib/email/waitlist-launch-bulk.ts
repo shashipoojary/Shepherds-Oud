@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/core/db";
 import { logError, logInfo } from "@/lib/core/logger";
 import { processBulkEmailQueue } from "@/lib/email/bulk-email-queue";
+import { sendWaitlistAnnouncementEmail, type WaitlistAnnouncementAudience } from "@/lib/email/waitlist-announcement-email";
 import {
   sendWaitlistFacilityLaunchEmail,
   sendWaitlistFamilyLaunchEmail
@@ -24,19 +25,17 @@ export type WaitlistLaunchPreview = {
   skippedClosed: number;
 };
 
-export async function getWaitlistLaunchRecipients(): Promise<WaitlistLaunchRecipient[]> {
-  const entries = await prisma.waitlistEntry.findMany({
-    where: { status: "NEW" },
-    orderBy: { createdAt: "asc" },
-    select: {
-      id: true,
-      email: true,
-      contactName: true,
-      type: true,
-      facilityName: true
-    }
-  });
+export type WaitlistAnnouncementPreview = WaitlistLaunchPreview & {
+  audience: WaitlistAnnouncementAudience;
+};
 
+function dedupeRecipients(entries: Array<{
+  id: string;
+  email: string;
+  contactName: string;
+  type: "FAMILY" | "FACILITY";
+  facilityName: string | null;
+}>) {
   const seen = new Set<string>();
   const recipients: WaitlistLaunchRecipient[] = [];
 
@@ -61,6 +60,45 @@ export async function getWaitlistLaunchRecipients(): Promise<WaitlistLaunchRecip
   return recipients;
 }
 
+export async function getWaitlistLaunchRecipients(): Promise<WaitlistLaunchRecipient[]> {
+  const entries = await prisma.waitlistEntry.findMany({
+    where: { status: "NEW" },
+    orderBy: { createdAt: "asc" },
+    select: {
+      id: true,
+      email: true,
+      contactName: true,
+      type: true,
+      facilityName: true
+    }
+  });
+
+  return dedupeRecipients(entries);
+}
+
+export async function getWaitlistAnnouncementRecipients(
+  audience: WaitlistAnnouncementAudience
+): Promise<WaitlistLaunchRecipient[]> {
+  const entries = await prisma.waitlistEntry.findMany({
+    where:
+      audience === "new"
+        ? { status: "NEW" }
+        : {
+            status: { in: ["NEW", "CONTACTED"] }
+          },
+    orderBy: { createdAt: "asc" },
+    select: {
+      id: true,
+      email: true,
+      contactName: true,
+      type: true,
+      facilityName: true
+    }
+  });
+
+  return dedupeRecipients(entries);
+}
+
 export async function getWaitlistLaunchPreview(): Promise<WaitlistLaunchPreview> {
   const [recipients, skippedContacted, skippedConverted, skippedClosed] = await Promise.all([
     getWaitlistLaunchRecipients(),
@@ -73,6 +111,32 @@ export async function getWaitlistLaunchPreview(): Promise<WaitlistLaunchPreview>
   const facilityCount = recipients.filter((entry) => entry.type === "FACILITY").length;
 
   return {
+    familyCount,
+    facilityCount,
+    totalCount: recipients.length,
+    skippedContacted,
+    skippedConverted,
+    skippedClosed
+  };
+}
+
+export async function getWaitlistAnnouncementPreview(
+  audience: WaitlistAnnouncementAudience
+): Promise<WaitlistAnnouncementPreview> {
+  const [recipients, skippedConverted, skippedClosed] = await Promise.all([
+    getWaitlistAnnouncementRecipients(audience),
+    prisma.waitlistEntry.count({ where: { status: "CONVERTED" } }),
+    prisma.waitlistEntry.count({ where: { status: "CLOSED" } })
+  ]);
+
+  const skippedContacted =
+    audience === "new" ? await prisma.waitlistEntry.count({ where: { status: "CONTACTED" } }) : 0;
+
+  const familyCount = recipients.filter((entry) => entry.type === "FAMILY").length;
+  const facilityCount = recipients.filter((entry) => entry.type === "FACILITY").length;
+
+  return {
+    audience,
     familyCount,
     facilityCount,
     totalCount: recipients.length,
@@ -117,6 +181,45 @@ export async function runWaitlistLaunchBulkSend(recipients: WaitlistLaunchRecipi
 
   if (result.errors.length) {
     logError("waitlist_launch_bulk_partial_failure", {
+      failed: result.failed,
+      errors: result.errors.slice(0, 10)
+    });
+  }
+
+  return result;
+}
+
+export async function runWaitlistAnnouncementBulkSend(input: {
+  recipients: WaitlistLaunchRecipient[];
+  subject: string;
+  message: string;
+  markNewAsContacted?: boolean;
+}) {
+  const result = await processBulkEmailQueue<WaitlistLaunchRecipient>(
+    input.recipients.map((recipient) => ({
+      item: recipient,
+      send: async (item) => {
+        await sendWaitlistAnnouncementEmail({
+          email: item.email,
+          contactName: item.contactName,
+          facilityName: item.facilityName,
+          type: item.type,
+          subject: input.subject,
+          message: input.message
+        });
+
+        if (input.markNewAsContacted) {
+          await markWaitlistContacted(item.id);
+        }
+      }
+    })),
+    { context: "waitlist_announcement_bulk" }
+  );
+
+  logInfo("waitlist_announcement_bulk_complete", result);
+
+  if (result.errors.length) {
+    logError("waitlist_announcement_bulk_partial_failure", {
       failed: result.failed,
       errors: result.errors.slice(0, 10)
     });

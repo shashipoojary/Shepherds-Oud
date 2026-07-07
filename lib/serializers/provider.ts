@@ -136,7 +136,7 @@ export function toSafeProviderInquiry(match: ProviderInquiryMatch): SafeProvider
       visitScheduledAt: match.intake.visitScheduledAt?.toISOString() ?? null,
       visitType: match.intake.visitType,
       visitProviderName: match.intake.visitProviderName,
-      visitNotes: match.intake.visitNotes
+      visitNotes: null
     }
   };
 }

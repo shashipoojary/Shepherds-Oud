@@ -24,6 +24,8 @@ import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
 import { CustomSelect } from "@/components/ui/custom-select";
 import { ProgressBar } from "@/components/ui/progress-bar";
+import { formatFieldErrorSummary, intakeFieldLabel, parseZodFieldErrors } from "@/lib/client/api-field-errors";
+import { cn } from "@/lib/core/utils";
 
 type Field = (typeof intakeSteps)[number]["fields"][number];
 type FormState = Record<string, string | string[]>;
@@ -61,6 +63,8 @@ function IntakeFormContent({
   const [stepIndex, setStepIndex] = useState(0);
   const [form, setForm] = useState<FormState>({});
   const [status, setStatus] = useState("");
+  const [statusTone, setStatusTone] = useState<"success" | "error">("success");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [ready, setReady] = useState(false);
   const [existingIntake, setExistingIntake] = useState<FamilyIntake | null>(null);
@@ -75,6 +79,8 @@ function IntakeFormContent({
     let active = true;
 
     setStatus("");
+    setStatusTone("success");
+    setFieldErrors({});
     setSubmitting(false);
 
     async function loadExistingIntake() {
@@ -132,6 +138,13 @@ function IntakeFormContent({
       }
       return next;
     });
+    const key = fieldKeyFor(label);
+    setFieldErrors((current) => {
+      if (!current[key]) return current;
+      const next = { ...current };
+      delete next[key];
+      return next;
+    });
   }
 
   function setOtherValue(label: string, value: string) {
@@ -159,6 +172,8 @@ function IntakeFormContent({
 
     setSubmitting(true);
     setStatus("");
+    setStatusTone("success");
+    setFieldErrors({});
 
     const payload = {
       contactName: String(form["your-name"] || "").trim(),
@@ -210,7 +225,19 @@ function IntakeFormContent({
 
     if (!response.ok) {
       const data = (await response.json().catch(() => ({}))) as { error?: string };
-      setStatus(data.error || "Please complete the highlighted details and try again.");
+      const apiErrors = parseZodFieldErrors(data);
+      if (Object.keys(apiErrors).length) {
+        const mapped: Record<string, string> = {};
+        for (const [apiKey, message] of Object.entries(apiErrors)) {
+          mapped[fieldKeyFor(intakeFieldLabel(apiKey))] = message;
+        }
+        setFieldErrors(mapped);
+        setStatusTone("error");
+        setStatus(formatFieldErrorSummary(apiErrors, intakeFieldLabel) || data.error || "Please fix the highlighted fields.");
+      } else {
+        setStatusTone("error");
+        setStatus(data.error || "Please complete the highlighted details and try again.");
+      }
       setSubmitting(false);
       return;
     }
@@ -287,10 +314,19 @@ function IntakeFormContent({
           Step {stepIndex + 1} of {intakeSteps.length} — {step.title}
         </p>
         <div className="grid gap-x-5 md:grid-cols-2">
-          {step.fields.map((field) => renderField(field, form, setValue, setOtherValue, toggleChip))}
+          {step.fields.map((field) => renderField(field, form, setValue, setOtherValue, toggleChip, fieldErrors))}
         </div>
 
-        {status ? <p className="mt-4 rounded-lg bg-brand-green-pale/30 p-3 text-sm text-brand-green-dark">{status}</p> : null}
+        {status ? (
+          <p
+            className={cn(
+              "mt-4 rounded-lg p-3 text-sm",
+              statusTone === "error" ? "border border-red-200 bg-red-50 text-red-800" : "bg-brand-green-pale/30 text-brand-green-dark"
+            )}
+          >
+            {status}
+          </p>
+        ) : null}
 
         <div className="relative z-10 mt-7 flex flex-col gap-4 border-t border-[var(--card-border)] pt-6 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex gap-2">
@@ -368,10 +404,13 @@ function renderField(
   form: FormState,
   setValue: (label: string, value: string) => void,
   setOtherValue: (label: string, value: string) => void,
-  toggleChip: (label: string, option: string) => void
+  toggleChip: (label: string, option: string) => void,
+  fieldErrors: Record<string, string> = {}
 ) {
   const baseInput =
-    "w-full rounded-lg border-[1.5px] border-[var(--card-border)] bg-white px-3.5 py-2.5 text-body text-ink outline-none transition focus:border-brand-amber";
+    "w-full rounded-lg border-[1.5px] bg-white px-3.5 py-2.5 text-body text-ink outline-none transition focus:border-brand-amber";
+  const inputClass = (key: string) =>
+    cn(baseInput, fieldErrors[key] ? "border-red-500 ring-1 ring-red-200" : "border-[var(--card-border)]");
 
   if (field.type === "notice") {
     return (
@@ -382,6 +421,7 @@ function renderField(
   }
 
   const key = fieldKeyFor(field.label);
+  const fieldError = fieldErrors[key];
   const otherKey = otherFieldKey(field.label);
   const otherPlaceholder =
     ("otherPlaceholder" in field && field.otherPlaceholder) || "Please specify";
@@ -391,13 +431,14 @@ function renderField(
     return (
       <div key={field.label} className="mb-5 md:col-span-2">
         <CustomSelect className="w-full" label={field.label} value={selected} options={field.options} onChange={(value) => setValue(field.label, value)} />
+        {fieldError ? <p className="mt-1 text-xs text-red-700">{fieldError}</p> : null}
         {selected === INTAKE_OTHER_OPTION ? (
           <label className="mt-3 block text-sm font-medium">
             <span className="mb-1.5 block">{otherPlaceholder}</span>
             <input
               value={String(form[otherKey] || "")}
               onChange={(event) => setOtherValue(field.label, event.target.value)}
-              className={baseInput}
+              className={inputClass(otherKey)}
               placeholder={otherPlaceholder}
             />
           </label>
@@ -422,6 +463,7 @@ function renderField(
             );
           })}
         </div>
+        {fieldError ? <p className="mt-2 text-xs text-red-700">{fieldError}</p> : null}
         {allowsOther && selected.includes(INTAKE_OTHER_OPTION) ? (
           <label className="mt-3 block text-sm font-medium">
             <span className="mb-1.5 block">{otherPlaceholder}</span>
@@ -441,7 +483,8 @@ function renderField(
     return (
       <label key={field.label} className="mb-5 block text-sm font-medium md:col-span-2">
         <span className="mb-1.5 block">{field.label}</span>
-        <textarea value={String(form[key] || "")} onChange={(event) => setValue(field.label, event.target.value)} className={`${baseInput} min-h-20 resize-y`} placeholder={field.placeholder} />
+        <textarea value={String(form[key] || "")} onChange={(event) => setValue(field.label, event.target.value)} className={cn(inputClass(key), "min-h-20 resize-y")} placeholder={field.placeholder} />
+        {fieldError ? <p className="mt-1 text-xs text-red-700">{fieldError}</p> : null}
       </label>
     );
   }
@@ -450,7 +493,8 @@ function renderField(
     return (
       <label key={field.label} className="mb-5 block text-sm font-medium">
         <span className="mb-1.5 block">{field.label}</span>
-        <input value={String(form[key] || "")} onChange={(event) => setValue(field.label, event.target.value)} type="date" className={baseInput} />
+        <input value={String(form[key] || "")} onChange={(event) => setValue(field.label, event.target.value)} type="date" className={inputClass(key)} />
+        {fieldError ? <p className="mt-1 text-xs text-red-700">{fieldError}</p> : null}
       </label>
     );
   }
@@ -458,7 +502,8 @@ function renderField(
   return (
     <label key={field.label} className="mb-5 block text-sm font-medium">
       <span className="mb-1.5 block">{field.label}</span>
-      <input value={String(form[key] || "")} onChange={(event) => setValue(field.label, event.target.value)} type={field.type} className={baseInput} placeholder={field.placeholder} />
+      <input value={String(form[key] || "")} onChange={(event) => setValue(field.label, event.target.value)} type={field.type} className={inputClass(key)} placeholder={field.placeholder} />
+      {fieldError ? <p className="mt-1 text-xs text-red-700">{fieldError}</p> : null}
     </label>
   );
 }
