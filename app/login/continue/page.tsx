@@ -6,8 +6,9 @@ import { isAdminEmail, resolveRoleForUser } from "@/lib/auth/roles";
 import { postLoginHref, PROVIDER_DASHBOARD_PATH } from "@/lib/auth/routes";
 import { prisma } from "@/lib/core/db";
 import { acceptProviderInviteForUser } from "@/lib/providers/invite";
+import { PROVIDER_LOGIN_ERROR } from "@/lib/auth/provider-login-errors";
 
-async function rejectProviderLogin(reason: "provider-pending" | "invite" | "invite-email") {
+async function rejectProviderLogin(reason: typeof PROVIDER_LOGIN_ERROR.PENDING | typeof PROVIDER_LOGIN_ERROR.INVITE_EMAIL) {
   await auth.api.signOut({ headers: await headers() });
   redirect(`/provider/login?error=${reason}`);
 }
@@ -71,13 +72,13 @@ export default async function LoginContinuePage({ searchParams }: { searchParams
 
     if (accepted.ok) {
       role = "PROVIDER";
-    } else {
-      await rejectProviderLogin(accepted.reason === "email_mismatch" ? "invite-email" : "invite");
+    } else if (accepted.reason === "email_mismatch") {
+      await rejectProviderLogin(PROVIDER_LOGIN_ERROR.INVITE_EMAIL);
     }
   }
 
   if (isProviderLogin && role !== "PROVIDER") {
-    await rejectProviderLogin("provider-pending");
+    await rejectProviderLogin(PROVIDER_LOGIN_ERROR.PENDING);
   }
 
   redirect(postLoginHref(role, destination ?? callbackUrl));

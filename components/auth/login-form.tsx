@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth/client";
 import { TOAST_DISMISS_MS } from "@/lib/client/toast-timing";
 import { PROVIDER_DASHBOARD_PATH } from "@/lib/auth/routes";
+import { providerLoginErrorMessage } from "@/lib/auth/provider-login-errors";
 
 function errorMessage(code: string | null, isProvider: boolean) {
   if (code === "unauthorized") {
@@ -27,16 +28,9 @@ function errorMessage(code: string | null, isProvider: boolean) {
     return "That sign-in link is invalid or has expired. Request a new link below.";
   }
 
-  if (code === "invite") {
-    return "That provider invite is invalid or has expired. Ask the Shepherds Oud team to send a new invite.";
-  }
-
-  if (code === "invite-email") {
-    return "This invite belongs to a different email address. Sign in with the invited email or ask for a new invite.";
-  }
-
-  if (code === "provider-pending") {
-    return "Your facility account is not approved yet. Use the invited email from Shepherds Oud, or join the facility waitlist so our team can review your provider profile.";
+  const providerMessage = providerLoginErrorMessage(code);
+  if (providerMessage) {
+    return providerMessage;
   }
 
   return null;

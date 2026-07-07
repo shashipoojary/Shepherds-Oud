@@ -5,6 +5,7 @@ import { nextCookies } from "better-auth/next-js";
 import { customSession, magicLink } from "better-auth/plugins";
 import { prisma } from "@/lib/core/db";
 import { isAdminEmail, isProviderMagicLinkAllowedEmail, resolveRole, resolveRoleForUser } from "@/lib/auth/roles";
+import { PROVIDER_ACCOUNT_NOT_FOUND_MESSAGE } from "@/lib/auth/provider-login-errors";
 import { PROVIDER_DASHBOARD_PATH } from "@/lib/auth/routes";
 import { sendFamilyMagicLinkEmail } from "@/lib/email/family-magic-link";
 import { sendProviderMagicLinkEmail } from "@/lib/email/provider-magic-link";
@@ -114,9 +115,7 @@ const authOptions = {
         }
 
         if (isProviderMagicLink(url) && !(await isProviderMagicLinkAllowedEmail(email))) {
-          throw new Error(
-            "Your facility account is not approved yet. Use the invited email from Shepherds Oud, or join the facility waitlist so our team can review your provider profile."
-          );
+          throw new Error(PROVIDER_ACCOUNT_NOT_FOUND_MESSAGE);
         }
 
         await sendProviderMagicLinkEmail(email, url);

@@ -1,4 +1,9 @@
 import { isProviderMagicLinkAllowedEmail } from "@/lib/auth/roles";
+import {
+  PROVIDER_ACCOUNT_NOT_FOUND_MESSAGE,
+  PROVIDER_INVITE_EMAIL_MISMATCH_MESSAGE,
+  PROVIDER_LOGIN_ERROR
+} from "@/lib/auth/provider-login-errors";
 import { jsonError, jsonOk, handleApiError, readJsonBody } from "@/lib/core/api-helpers";
 import { findPendingProviderInviteByToken } from "@/lib/providers/invite";
 
@@ -17,11 +22,14 @@ export async function POST(request: Request) {
     if (inviteToken) {
       const invite = await findPendingProviderInviteByToken(inviteToken);
       if (!invite) {
-        return jsonError("That provider invite is invalid or has expired.", 403, { code: "invite" });
+        if (await isProviderMagicLinkAllowedEmail(email)) {
+          return jsonOk({ ok: true });
+        }
+        return jsonError(PROVIDER_ACCOUNT_NOT_FOUND_MESSAGE, 403, { code: PROVIDER_LOGIN_ERROR.PENDING });
       }
       if (invite.email.trim().toLowerCase() !== email) {
-        return jsonError("This invite belongs to a different email address. Sign in with the invited email.", 403, {
-          code: "invite-email"
+        return jsonError(PROVIDER_INVITE_EMAIL_MISMATCH_MESSAGE, 403, {
+          code: PROVIDER_LOGIN_ERROR.INVITE_EMAIL
         });
       }
       return jsonOk({ ok: true });
@@ -31,11 +39,7 @@ export async function POST(request: Request) {
       return jsonOk({ ok: true });
     }
 
-    return jsonError(
-      "Your facility account is not approved yet. Use the invited email from Shepherds Oud, or join the facility waitlist so our team can review your provider profile.",
-      403,
-      { code: "provider-pending" }
-    );
+    return jsonError(PROVIDER_ACCOUNT_NOT_FOUND_MESSAGE, 403, { code: PROVIDER_LOGIN_ERROR.PENDING });
   } catch (error) {
     return handleApiError(error, "provider_login_access");
   }
