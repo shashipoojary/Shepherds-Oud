@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { selectFamilyIntake, withIntakeId } from "@/lib/client/case-selection";
 import { getSessionFamilyIntakes, type FamilyIntake } from "@/lib/client/intake";
 import { computeFamilyDeclineContext } from "@/lib/domain/match-status";
-import { normalizeIntakeStatus } from "@/lib/domain/intake-workflow";
+import { normalizeIntakeStatus, canFamilyEditIntake } from "@/lib/domain/intake-workflow";
 import type { ProviderMatch } from "@/lib/core/types";
 import { brand } from "@/lib/config/brand";
 import { CareJourneyTimeline } from "@/components/family/care-journey-timeline";
@@ -102,6 +102,7 @@ function FamilyDashboardContent() {
   const matchCount = intake?.matchCount ?? 0;
   const normalizedStatus = intake ? normalizeIntakeStatus(intake.status) : null;
   const caseClosed = normalizedStatus === "CLOSED";
+  const canEditIntake = intake ? canFamilyEditIntake(intake.status) : false;
   const collapsedByDefault = caseClosed;
 
   if (selection.state === "needs-picker" || selection.state === "not-found") {
@@ -138,9 +139,11 @@ function FamilyDashboardContent() {
         <ButtonRow className="mt-5 max-w-lg">
           {intake ? (
             <>
-              <Button asChild className="w-full">
-                <Link href={withIntakeId("/family/intake?update=1", intake.id)}>Update your request</Link>
-              </Button>
+              {canEditIntake ? (
+                <Button asChild className="w-full">
+                  <Link href={withIntakeId("/family/intake?update=1", intake.id)}>Update your request</Link>
+                </Button>
+              ) : null}
               <Button asChild variant="outline" className="w-full">
                 <Link href="/family/intake">Start new request</Link>
               </Button>

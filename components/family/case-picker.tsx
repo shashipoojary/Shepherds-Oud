@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { CalendarDays, MapPin, UserRound } from "lucide-react";
 import { splitFamilyIntakes, withIntakeId } from "@/lib/client/case-selection";
-import { intakeStatusLabel, normalizeIntakeStatus } from "@/lib/domain/intake-workflow";
+import { intakeStatusLabel, normalizeIntakeStatus, canFamilyEditIntake } from "@/lib/domain/intake-workflow";
 import type { FamilyIntake } from "@/lib/client/intake";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/core/utils";
 
 type FamilyCasePickerProps = {
   intakes: FamilyIntake[];
@@ -73,6 +74,7 @@ function CaseCard({ intake }: { intake: FamilyIntake }) {
     : submittedAt.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
   const careType = intake.careTypes?.[0] || "Care request";
   const statusVariant = status === "CLOSED" ? "closed" : status === "PLACED" ? "placed" : "matched";
+  const canEdit = canFamilyEditIntake(intake.status);
 
   return (
     <article className="rounded-xl border border-stone-200/80 bg-white p-4 shadow-sm">
@@ -95,16 +97,18 @@ function CaseCard({ intake }: { intake: FamilyIntake }) {
         <CaseFact icon={UserRound} text={intake.careGuide?.name || "Care Guide pending"} />
       </dl>
 
-      <div className="mt-5 grid gap-2 sm:grid-cols-3">
+      <div className={cn("mt-5 grid gap-2", canEdit ? "sm:grid-cols-3" : "sm:grid-cols-2")}>
         <Button asChild size="sm" className="w-full">
           <Link href={withIntakeId("/family/dashboard", intake.id)}>Open</Link>
         </Button>
         <Button asChild size="sm" variant="outline" className="w-full">
           <Link href={withIntakeId("/family/results", intake.id)}>View matches</Link>
         </Button>
-        <Button asChild size="sm" variant="ghost" className="w-full">
-          <Link href={withIntakeId("/family/intake?update=1", intake.id)}>Update</Link>
-        </Button>
+        {canEdit ? (
+          <Button asChild size="sm" variant="ghost" className="w-full">
+            <Link href={withIntakeId("/family/intake?update=1", intake.id)}>Update</Link>
+          </Button>
+        ) : null}
       </div>
     </article>
   );

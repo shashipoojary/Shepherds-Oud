@@ -290,3 +290,22 @@ export function followUpTimestampField(status: IntakeStatus): "followUp7At" | "f
   if (status === "FOLLOW_UP_90") return "followUp90At";
   return null;
 }
+
+/** Family self-service intake edits — must stay aligned with PATCH /api/intakes/[id]. */
+export function canFamilyEditIntake(status: string) {
+  const normalized = normalizeIntakeStatus(status);
+  if (normalized === "PLACED" || normalized === "CLOSED") return false;
+  if (normalized.startsWith("FOLLOW_UP")) return false;
+  return true;
+}
+
+export function familyIntakeEditBlockedMessage(status: string) {
+  const normalized = normalizeIntakeStatus(status);
+  if (normalized === "CLOSED") {
+    return "This request is closed and can no longer be updated online.";
+  }
+  if (normalized === "PLACED" || normalized.startsWith("FOLLOW_UP")) {
+    return "Your care has been arranged. Contact your Care Guide if you need to change something.";
+  }
+  return "This request can no longer be updated online.";
+}

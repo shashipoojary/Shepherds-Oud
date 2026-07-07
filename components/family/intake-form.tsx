@@ -21,6 +21,7 @@ import {
   resolveSelectField,
   selectFieldComplete
 } from "@/lib/domain/intake-field-utils";
+import { canFamilyEditIntake, familyIntakeEditBlockedMessage } from "@/lib/domain/intake-workflow";
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
 import { CustomSelect } from "@/components/ui/custom-select";
@@ -75,6 +76,7 @@ function IntakeFormContent({
   const isFinal = stepIndex === intakeSteps.length - 1;
   const progress = ((stepIndex + 1) / intakeSteps.length) * 100;
   const isUpdating = isUpdateMode && Boolean(existingIntake?.id);
+  const intakeLocked = isUpdating && existingIntake ? !canFamilyEditIntake(existingIntake.status) : false;
 
   useEffect(() => {
     let active = true;
@@ -315,6 +317,19 @@ function IntakeFormContent({
           </div>
         ) : null}
 
+        {intakeLocked && existingIntake ? (
+          <div className="mb-5 rounded-lg border border-stone-200 bg-brand-cream px-4 py-4 text-sm leading-6 text-ink/75">
+            <p>{familyIntakeEditBlockedMessage(existingIntake.status)}</p>
+            <div className="mt-4">
+              <Button asChild size="sm">
+                <Link href={withIntakeId("/family/dashboard", existingIntake.id)}>Back to your dashboard</Link>
+              </Button>
+            </div>
+          </div>
+        ) : null}
+
+        {!intakeLocked ? (
+          <>
         <p className="section-label mb-5">
           Step {stepIndex + 1} of {intakeSteps.length} — {step.title}
         </p>
@@ -365,6 +380,8 @@ function IntakeFormContent({
             )}
           </div>
         </div>
+          </>
+        ) : null}
       </div>
     </section>
   );
