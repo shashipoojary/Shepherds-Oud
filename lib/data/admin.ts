@@ -2,13 +2,14 @@ import { prisma } from "@/lib/core/db";
 import { displayVisitAvailability } from "@/lib/config/content";
 import { compareMatchPriority } from "@/lib/domain/match-status";
 import { normalizeIntakeStatus } from "@/lib/domain/intake-workflow";
-import { ensureAcceptedProviderInvitesHaveProfiles } from "@/lib/providers/invite";
+import { ensureAcceptedProviderInvitesHaveProfiles, expireStalePendingProviderInvites } from "@/lib/providers/invite";
+import { summarizeProviderInviteEligibility } from "@/lib/providers/invite-access";
 import { getProviderProfileMissingRequirements } from "@/lib/providers/completeness";
 
 export async function getAdminDashboardData() {
-  await ensureAcceptedProviderInvitesHaveProfiles();
+  await Promise.all([ensureAcceptedProviderInvitesHaveProfiles(), expireStalePendingProviderInvites()]);
 
-  const [statusGroups, providerCount, intakes, providers, matches, waitlist, careGuides] = await Promise.all([
+  const [statusGroups, providerCount, intakes, providers, matches, waitlist, careGuides, providerInvites] = await Promise.all([
     prisma.intake.groupBy({
       by: ["status"],
       _count: { _all: true }
@@ -143,8 +144,26 @@ export async function getAdminDashboardData() {
       where: { role: "ADMIN" },
       orderBy: { name: "asc" },
       select: { id: true, name: true, email: true }
+    }),
+    prisma.providerInvite.findMany({
+      where: {
+        waitlistEntryId: { not: null }
+      },
+      select: {
+        waitlistEntryId: true,
+        status: true,
+        expiresAt: true
+      }
     })
   ]);
+
+  const invitesByWaitlistEntry = new Map<string, Array<{ status: string; expiresAt: Date }>>();
+  for (const invite of providerInvites) {
+    if (!invite.waitlistEntryId) continue;
+    const current = invitesByWaitlistEntry.get(invite.waitlistEntryId) || [];
+    current.push({ status: invite.status, expiresAt: invite.expiresAt });
+    invitesByWaitlistEntry.set(invite.waitlistEntryId, current);
+  }
 
   const totalFamilies = statusGroups.reduce((sum, group) => sum + group._count._all, 0);
   const placements = statusGroups
@@ -266,7 +285,13 @@ export async function getAdminDashboardData() {
         const priority = compareMatchPriority(a.statusRaw, b.statusRaw);
         return priority !== 0 ? priority : b.date.localeCompare(a.date);
       }),
-    waitlist: waitlist.map((entry) => ({
+    waitlist: waitlist.map((entry) => {
+      const inviteEligibility = summarizeProviderInviteEligibility(
+        entry,
+        invitesByWaitlistEntry.get(entry.id) || []
+      );
+
+      return {
       id: entry.id,
       type: entry.type,
       contactName: entry.contactName,
@@ -288,8 +313,14 @@ export async function getAdminDashboardData() {
       createdAt: entry.createdAt.toLocaleDateString("en-GB"),
       createdAtIso: entry.createdAt.toISOString(),
       updatedAt: entry.updatedAt.toLocaleDateString("en-GB"),
-      updatedAtIso: entry.updatedAt.toISOString()
-    })),
+      updatedAtIso: entry.updatedAt.toISOString(),
+      canSendProviderInvite: inviteEligibility.canSend,
+      providerInviteAttemptsUsed: inviteEligibility.attemptsUsed,
+      providerInviteAttemptsRemaining: inviteEligibility.attemptsRemaining,
+      hasActivePendingProviderInvite: inviteEligibility.hasActivePendingInvite,
+      providerInviteLockReason: inviteEligibility.lockReason || null
+    };
+    }),
     careGuides
   };
 }

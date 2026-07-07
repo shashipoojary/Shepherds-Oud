@@ -1,7 +1,10 @@
 import { createHash, randomBytes } from "crypto";
 import { prisma } from "@/lib/core/db";
 
-const DEFAULT_INVITE_DAYS = 7;
+export const PROVIDER_INVITE_EXPIRY_DAYS = 2;
+export const MAX_PROVIDER_INVITE_ATTEMPTS = 3;
+
+const DEFAULT_INVITE_DAYS = PROVIDER_INVITE_EXPIRY_DAYS;
 
 function inviteExpiry(days = DEFAULT_INVITE_DAYS) {
   const expiresAt = new Date();
@@ -21,6 +24,18 @@ function normalizeInviteEmail(email: string | null | undefined) {
   return email?.trim().toLowerCase() || "";
 }
 
+export { normalizeInviteEmail };
+
+export async function expireStalePendingProviderInvites() {
+  await prisma.providerInvite.updateMany({
+    where: {
+      status: "PENDING",
+      expiresAt: { lte: new Date() }
+    },
+    data: { status: "EXPIRED" }
+  });
+}
+
 export async function hasActiveProviderInviteForEmail(email: string | null | undefined) {
   const normalized = normalizeInviteEmail(email);
   if (!normalized) return false;
@@ -35,6 +50,13 @@ export async function hasActiveProviderInviteForEmail(email: string | null | und
   });
 
   return Boolean(invite);
+}
+
+export async function findProviderInviteByToken(token: string) {
+  const tokenHash = hashProviderInviteToken(token);
+  return prisma.providerInvite.findUnique({
+    where: { tokenHash }
+  });
 }
 
 export async function findPendingProviderInviteByToken(token: string) {

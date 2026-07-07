@@ -88,6 +88,30 @@ type MatchStatus =
 
 const inquiryCoordinationStatuses = new Set(["VISIT_REQUESTED", "CALLBACK_REQUESTED", "ACCEPTED", "CONTACTED"]);
 
+function canInviteProvider(entry: WaitlistEntry) {
+  return entry.type === "FACILITY" && entry.canSendProviderInvite;
+}
+
+function providerInviteButtonLabel(entry: WaitlistEntry) {
+  if (entry.canSendProviderInvite) {
+    return entry.providerInviteAttemptsUsed > 0 ? "Re-send invite" : "Invite provider";
+  }
+  if (entry.hasActivePendingProviderInvite) {
+    return "Invite pending";
+  }
+  if (entry.providerInviteAttemptsRemaining === 0) {
+    return "Invite limit reached";
+  }
+  return "Invite locked";
+}
+
+function providerInviteLockMessage(entry: WaitlistEntry) {
+  if (entry.providerInviteLockReason) {
+    return entry.providerInviteLockReason;
+  }
+  return "This waitlist entry is not eligible for a provider invite.";
+}
+
 function groupInquiriesByIntake(inquiries: InquiryEntry[]) {
   const grouped = new Map<string, InquiryEntry[]>();
   for (const inquiry of inquiries) {
@@ -2265,10 +2289,6 @@ function WaitlistTable({
     });
   }, [initialEntries, onMarkItemSeen]);
 
-  function canInviteProvider(entry: WaitlistEntry) {
-    return entry.type === "FACILITY" && entry.status === "NEW";
-  }
-
   function canMarkContacted(entry: WaitlistEntry) {
     return entry.status === "NEW";
   }
@@ -2288,11 +2308,7 @@ function WaitlistTable({
 
   function startProviderInvite(entry: WaitlistEntry, notify: (message: string) => void = setMessage) {
     if (!canInviteProvider(entry)) {
-      notify(
-        entry.status === "CONTACTED"
-          ? "Provider invite is already sent or this facility has been contacted."
-          : "This waitlist entry is not eligible for a provider invite."
-      );
+      notify(providerInviteLockMessage(entry));
       return;
     }
 
@@ -2380,13 +2396,46 @@ function WaitlistTable({
         throw new Error(payload?.error || "Could not send provider invite.");
       }
 
-      const payload = (await response.json()) as { id: string; emailMode?: string };
+      const payload = (await response.json()) as {
+        id: string;
+        emailMode?: string;
+        attemptsUsed?: number;
+        attemptsRemaining?: number;
+      };
       const nextStatus = entry.status === "NEW" ? ("CONTACTED" as const) : entry.status;
+      const attemptsUsed = payload.attemptsUsed ?? entry.providerInviteAttemptsUsed + 1;
+      const attemptsRemaining = payload.attemptsRemaining ?? Math.max(0, entry.providerInviteAttemptsRemaining - 1);
 
       setEntries((current) =>
-        current.map((item) => (item.id === entry.id ? { ...item, status: nextStatus } : item))
+        current.map((item) =>
+          item.id === entry.id
+            ? {
+                ...item,
+                status: nextStatus,
+                canSendProviderInvite: false,
+                hasActivePendingProviderInvite: true,
+                providerInviteAttemptsUsed: attemptsUsed,
+                providerInviteAttemptsRemaining: attemptsRemaining,
+                providerInviteLockReason:
+                  "A provider invite is still pending. Wait for it to be accepted or expire."
+              }
+            : item
+        )
       );
-      setSelected((current) => (current?.id === entry.id ? { ...current, status: nextStatus } : current));
+      setSelected((current) =>
+        current?.id === entry.id
+          ? {
+              ...current,
+              status: nextStatus,
+              canSendProviderInvite: false,
+              hasActivePendingProviderInvite: true,
+              providerInviteAttemptsUsed: attemptsUsed,
+              providerInviteAttemptsRemaining: attemptsRemaining,
+              providerInviteLockReason:
+                "A provider invite is still pending. Wait for it to be accepted or expire."
+            }
+          : current
+      );
 
       markAdminItemSeen("waitlist", entry.id, entry.createdAtIso, entry.updatedAtIso);
       onMarkItemSeen();
@@ -2403,7 +2452,9 @@ function WaitlistTable({
         // Invite send succeeded; action log is non-blocking.
       }
 
-      setMessage(`Provider invite sent to ${entry.email}.`);
+      setMessage(
+        `Provider invite sent to ${entry.email}. It expires in 2 days (${attemptsRemaining} re-send${attemptsRemaining === 1 ? "" : "s"} left).`
+      );
     } catch (error) {
       setMessage(error instanceof Error ? error.message : `Could not send provider invite to ${entry.email}. Please try again.`);
     } finally {
@@ -2433,6 +2484,7 @@ function WaitlistTable({
           {filteredEntries.map((entry) => {
             const isPending = pendingId === entry.id;
             const isInviteLocked = !canInviteProvider(entry);
+            const inviteLabel = providerInviteButtonLabel(entry);
             const isUnread =
               selected?.id !== entry.id &&
               !isResolvedWaitlistStatus(entry.status) &&
@@ -2462,7 +2514,7 @@ function WaitlistTable({
                     <IconActionButton label="Open details" icon={ArrowUpRight} onClick={() => openEntry(entry)} />
                     {entry.type === "FACILITY" ? (
                       <IconActionButton
-                        label={isInviteLocked ? "Provider invite locked" : "Invite provider"}
+                        label={isInviteLocked ? inviteLabel : providerInviteButtonLabel(entry)}
                         icon={Building2}
                         loading={pendingInviteId === entry.id}
                         disabled={pendingInviteId === entry.id || isInviteLocked}
@@ -2497,7 +2549,7 @@ function WaitlistTable({
         title="Send provider invite?"
         description={
           confirmInvite
-            ? `Send a provider onboarding invite to ${confirmInvite.email}? This will create a pending invite record for ${confirmInvite.name}.`
+            ? `Send a provider onboarding invite to ${confirmInvite.email}? The link expires in 2 days. Attempt ${confirmInvite.providerInviteAttemptsUsed + 1} of 3.`
             : ""
         }
         confirmLabel="Send invite"
@@ -2532,6 +2584,8 @@ function WaitlistDetailPanel({
 }) {
   const { message: panelMessage, setMessage: setPanelMessage, clearMessage: clearPanelMessage } = usePanelMessage();
   const canContact = entry?.status === "NEW";
+  const canInvite = entry ? canInviteProvider(entry) : false;
+  const inviteLabel = entry ? providerInviteButtonLabel(entry) : "Invite provider";
   const isPending = entry ? pendingId === entry.id : false;
   const isInvitePending = entry ? pendingInviteId === entry.id : false;
   const isFamily = entry?.type === "FAMILY";
@@ -2646,7 +2700,23 @@ function WaitlistDetailPanel({
                   items={[
                     { label: "Entry ID", value: entry.id },
                     { label: "Registered", value: entry.createdAt },
-                    { label: "Last updated", value: entry.updatedAt }
+                    { label: "Last updated", value: entry.updatedAt },
+                    ...(!isFamily
+                      ? [
+                          {
+                            label: "Provider invites",
+                            value: `${entry.providerInviteAttemptsUsed} sent · ${entry.providerInviteAttemptsRemaining} remaining`
+                          },
+                          {
+                            label: "Invite status",
+                            value: entry.hasActivePendingProviderInvite
+                              ? "Pending — waiting for provider to accept"
+                              : entry.canSendProviderInvite
+                                ? "Ready to send"
+                                : entry.providerInviteLockReason || "Not eligible"
+                          }
+                        ]
+                      : [])
                   ]}
                 />
               </PanelSection>
@@ -2662,10 +2732,10 @@ function WaitlistDetailPanel({
                     <Button
                       size="sm"
                       variant="outline"
-                      disabled={isInvitePending || entry.status !== "NEW"}
+                      disabled={isInvitePending || !canInvite}
                       onClick={() => onInviteProvider(entry, setPanelMessage)}
                     >
-                      {isInvitePending ? "Sending..." : entry.status === "NEW" ? "Invite provider" : "Invite locked"}
+                      {isInvitePending ? "Sending..." : inviteLabel}
                     </Button>
                   ) : null}
                   <Button

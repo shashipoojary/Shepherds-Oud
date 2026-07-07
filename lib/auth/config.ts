@@ -4,11 +4,12 @@ import { dash } from "@better-auth/infra";
 import { nextCookies } from "better-auth/next-js";
 import { customSession, magicLink } from "better-auth/plugins";
 import { prisma } from "@/lib/core/db";
-import { isAdminEmail, isProviderMagicLinkAllowedEmail, resolveRole, resolveRoleForUser } from "@/lib/auth/roles";
-import { PROVIDER_ACCOUNT_NOT_FOUND_MESSAGE } from "@/lib/auth/provider-login-errors";
+import { isAdminEmail, resolveRole, resolveRoleForUser } from "@/lib/auth/roles";
+import { providerLoginErrorMessage, PROVIDER_ACCOUNT_NOT_FOUND_MESSAGE } from "@/lib/auth/provider-login-errors";
 import { PROVIDER_DASHBOARD_PATH } from "@/lib/auth/routes";
 import { sendFamilyMagicLinkEmail } from "@/lib/email/family-magic-link";
 import { sendProviderMagicLinkEmail } from "@/lib/email/provider-magic-link";
+import { resolveProviderLoginAccess } from "@/lib/providers/invite-access";
 import { toSafeSession } from "@/lib/serializers/session";
 import { toSafeUser } from "@/lib/serializers/user";
 import { syncSessionUser } from "@/lib/auth/sync-session-user";
@@ -114,8 +115,11 @@ const authOptions = {
           return;
         }
 
-        if (isProviderMagicLink(url) && !(await isProviderMagicLinkAllowedEmail(email))) {
-          throw new Error(PROVIDER_ACCOUNT_NOT_FOUND_MESSAGE);
+        if (isProviderMagicLink(url)) {
+          const access = await resolveProviderLoginAccess(email);
+          if (!access.allowed) {
+            throw new Error(providerLoginErrorMessage(access.code) || PROVIDER_ACCOUNT_NOT_FOUND_MESSAGE);
+          }
         }
 
         await sendProviderMagicLinkEmail(email, url);
