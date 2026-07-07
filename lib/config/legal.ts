@@ -96,7 +96,7 @@ const termsSections: LegalSection[] = [
   {
     title: "Eligibility and accurate information",
     paragraphs: [
-      "You must provide accurate, complete information when registering or submitting a care request. Families should only submit information they are authorised to share about the senior involved. Facilities must register truthfully and keep profile information current once onboarding is available."
+      "You must provide accurate, complete information when registering or submitting a care request. Families should only submit information they are authorised to share about the person needing care. Facilities must register truthfully and keep profile information current once onboarding is available."
     ]
   },
   {

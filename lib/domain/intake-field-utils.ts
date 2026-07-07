@@ -1,6 +1,19 @@
 export const INTAKE_OTHER_OPTION = "Other";
 
-export const relationshipToSeniorOptions = [
+export const INTAKE_RELATIONSHIP_FIELD_LABEL = "Your relationship to the person needing care";
+export const LEGACY_INTAKE_RELATIONSHIP_FIELD_LABEL = "Your relationship to the senior";
+
+export const INTAKE_AGE_RANGE_OPTIONS = [
+  "Under 18",
+  "18-39",
+  "40-59",
+  "60-69",
+  "70-79",
+  "80-89",
+  "90 and above"
+] as const;
+
+export const relationshipToPersonNeedingCareOptions = [
   "Self",
   "Child",
   "Spouse or partner",
@@ -9,6 +22,9 @@ export const relationshipToSeniorOptions = [
   "Professional caregiver",
   INTAKE_OTHER_OPTION
 ] as const;
+
+/** @deprecated Use relationshipToPersonNeedingCareOptions */
+export const relationshipToSeniorOptions = relationshipToPersonNeedingCareOptions;
 
 export const decisionMakerRelationshipOptions = [
   "Self",
@@ -49,6 +65,32 @@ export function resolveSelectField(
     return String(form[otherFieldKey(label)] || "").trim();
   }
   return selected;
+}
+
+export function resolveIntakeRelationship(form: Record<string, string | string[] | undefined>) {
+  return (
+    resolveSelectField(form, INTAKE_RELATIONSHIP_FIELD_LABEL) ||
+    resolveSelectField(form, LEGACY_INTAKE_RELATIONSHIP_FIELD_LABEL)
+  );
+}
+
+export function migrateIntakeFormKeys(form: Record<string, string | string[] | undefined>) {
+  const next = { ...form };
+  const newKey = fieldKeyFor(INTAKE_RELATIONSHIP_FIELD_LABEL);
+  const legacyKey = fieldKeyFor(LEGACY_INTAKE_RELATIONSHIP_FIELD_LABEL);
+
+  if (!next[newKey] && next[legacyKey]) {
+    next[newKey] = next[legacyKey];
+  }
+
+  const newOtherKey = otherFieldKey(INTAKE_RELATIONSHIP_FIELD_LABEL);
+  const legacyOtherKey = otherFieldKey(LEGACY_INTAKE_RELATIONSHIP_FIELD_LABEL);
+
+  if (!next[newOtherKey] && next[legacyOtherKey]) {
+    next[newOtherKey] = next[legacyOtherKey];
+  }
+
+  return next;
 }
 
 export function splitChipsForForm(storedValues: string[] | undefined, options: readonly string[]) {

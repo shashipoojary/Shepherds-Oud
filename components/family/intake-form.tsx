@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { intakeSteps } from "@/lib/config/content";
+import { intakeSteps, ubuntuTagline } from "@/lib/config/content";
 import { usePrelaunch } from "@/components/layout/prelaunch-context";
 import { selectFamilyIntake, withIntakeId, isHistoryIntake } from "@/lib/client/case-selection";
 import {
@@ -17,6 +17,7 @@ import {
   INTAKE_OTHER_OPTION,
   otherFieldKey,
   resolveChipField,
+  resolveIntakeRelationship,
   resolveSelectField,
   selectFieldComplete
 } from "@/lib/domain/intake-field-utils";
@@ -179,7 +180,7 @@ function IntakeFormContent({
       contactName: String(form["your-name"] || "").trim(),
       email: String(form["email-address"] || "").trim(),
       phone: String(form["phone-number"] || "").trim(),
-      relationship: resolveSelectField(form, "Your relationship to the senior"),
+      relationship: resolveIntakeRelationship(form),
       preferredArea: String(form["preferred-city-or-province"] || "").trim(),
       ageRange: String(form["age-range"] || "").trim(),
       livingSituation: String(form["current-living-situation"] || "").trim(),
@@ -261,7 +262,7 @@ function IntakeFormContent({
         <p className="mt-1 text-[13px] leading-relaxed text-white/80">
           {isUpdating
             ? "Update your existing care request. Your Care Guide keeps supporting your family through shared decisions."
-            : "About 5 minutes. A real Care Guide reviews your case personally — no family should carry eldercare decisions alone."}
+            : `About 5 minutes. A real Care Guide reviews your case personally — ${ubuntuTagline}`}
         </p>
         {!isUpdateMode && savedIntakeId ? (
           <div className="mt-5">

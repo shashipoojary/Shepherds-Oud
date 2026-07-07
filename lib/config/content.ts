@@ -1,21 +1,30 @@
 import {
   decisionMakerRelationshipOptions,
-  relationshipToSeniorOptions
+  INTAKE_AGE_RANGE_OPTIONS,
+  INTAKE_RELATIONSHIP_FIELD_LABEL,
+  relationshipToPersonNeedingCareOptions
 } from "@/lib/domain/intake-field-utils";
 import { getIsPrelaunch } from "@/lib/config/prelaunch";
 
 export { getIsPrelaunch } from "@/lib/config/prelaunch";
 
-export const ubuntuTagline = "No family should carry eldercare decisions alone.";
+export const ubuntuTagline = "No one should navigate care alone when mobility is limited.";
 
-export { decisionMakerRelationshipOptions, INTAKE_OTHER_OPTION, relationshipToSeniorOptions } from "@/lib/domain/intake-field-utils";
+export {
+  decisionMakerRelationshipOptions,
+  INTAKE_AGE_RANGE_OPTIONS,
+  INTAKE_OTHER_OPTION,
+  INTAKE_RELATIONSHIP_FIELD_LABEL,
+  relationshipToPersonNeedingCareOptions,
+  relationshipToSeniorOptions
+} from "@/lib/domain/intake-field-utils";
 
 export function homeHeroCopy(prelaunch = getIsPrelaunch()) {
   return {
-    badge: prelaunch ? "Preparing for nationwide launch" : "Netherlands eldercare platform",
+    badge: prelaunch ? "Preparing for nationwide launch" : "Netherlands care navigation platform",
     intro: prelaunch
-      ? "Shepherds Oud is a guided care navigation service — not a directory. Register your interest and a Care Guide will support your family when we open in your area."
-      : "We help families across the Netherlands find the right eldercare — with a dedicated Care Guide, clearer guidance, and shared decision support at every step."
+      ? "Shepherds Oud is a guided care navigation service — not a directory. Register your interest and a Care Guide will support you when we open in your area."
+      : "We help people across the Netherlands find the right care when mobility is limited — with a dedicated Care Guide, clearer guidance, and shared decision support at every step."
   };
 }
 
@@ -74,8 +83,8 @@ export const intakeSteps = [
       { type: "tel", label: "Phone number", placeholder: "+31 6 ..." },
       {
         type: "select",
-        label: "Your relationship to the senior",
-        options: relationshipToSeniorOptions,
+        label: INTAKE_RELATIONSHIP_FIELD_LABEL,
+        options: relationshipToPersonNeedingCareOptions,
         allowsOther: true,
         otherPlaceholder: "Please describe your relationship"
       },
@@ -83,9 +92,9 @@ export const intakeSteps = [
     ]
   },
   {
-    title: "About your loved one",
+    title: "About the person needing care",
     fields: [
-      { type: "select", label: "Age range", options: ["60-69", "70-79", "80-89", "90 and above"] },
+      { type: "select", label: "Age range", options: [...INTAKE_AGE_RANGE_OPTIONS] },
       {
         type: "select",
         label: "Current living situation",

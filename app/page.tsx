@@ -21,7 +21,7 @@ export default function HomePage() {
   const isPrelaunch = getIsPrelaunch();
   const publicRoutes = getPublicRoutes(isPrelaunch);
   const hero = homeHeroCopy(isPrelaunch);
-  const heroTitle = isPrelaunch ? "Guided eldercare navigation — opening soon" : "Find the right care for your loved one";
+  const heroTitle = isPrelaunch ? "Guided care navigation — opening soon" : "Find the right care when mobility is limited";
   const primaryHref = publicRoutes.familyPrimary;
   const primaryLabel = publicRoutes.familyPrimaryLabel;
 
@@ -37,7 +37,7 @@ export default function HomePage() {
             <p className="mx-auto mt-3 max-w-xl text-body text-ink/80">
               {isPrelaunch
                 ? "Shepherds Oud is a human-guided care navigation service for families across the Netherlands — not a care directory."
-                : "Shepherds Oud connects families with a dedicated Care Guide and matched eldercare providers."}
+                : "Shepherds Oud connects people with a dedicated Care Guide and matched care providers."}
             </p>
             <p className="mx-auto mt-3 max-w-[560px] text-body text-ink/70">{hero.intro}</p>
             <ButtonRow className="mx-auto mt-8 max-w-lg" columns={isPrelaunch ? 1 : 2}>
@@ -121,7 +121,7 @@ export default function HomePage() {
           <SectionHeader label="Pre-launch" title={homeContent.prelaunch.title} description={homeContent.prelaunch.description} />
           <div className="mx-auto grid max-w-4xl gap-5 md:grid-cols-2">
             <Card hover>
-              <p className="section-label">Families and seniors</p>
+              <p className="section-label">Families and care seekers</p>
               <h3 className="mt-2 text-h3 font-semibold">Looking for care support?</h3>
               <p className="mt-2 text-body text-ink/75">
                 Register your interest and we will reach out when guided care navigation is ready for your family.
@@ -147,7 +147,7 @@ export default function HomePage() {
           <SectionHeader label="Get started" title={homeContent.live.title} description={homeContent.live.description} />
           <div className="mx-auto grid max-w-4xl gap-5 md:grid-cols-2">
             <Card hover>
-              <p className="section-label">Families and seniors</p>
+              <p className="section-label">Families and care seekers</p>
               <h3 className="mt-2 text-h3 font-semibold">Ready to begin?</h3>
               <p className="mt-2 text-body text-ink/75">
                 Complete your guided intake and a Care Guide will personally review your family&apos;s situation.

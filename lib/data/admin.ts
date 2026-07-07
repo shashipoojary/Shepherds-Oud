@@ -185,7 +185,7 @@ export async function getAdminDashboardData() {
       email: intake.email,
       phone: intake.phone,
       relationship: intake.relationship,
-      context: `For loved one, ${intake.ageRange}`,
+      context: `Person needing care, age ${intake.ageRange}`,
       care: intake.careTypes.join(", ") || "Not specified",
       careTypes: intake.careTypes,
       location: intake.preferredArea,

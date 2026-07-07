@@ -80,7 +80,7 @@ function CaseCard({ intake }: { intake: FamilyIntake }) {
         <div className="min-w-0">
           <Badge variant={statusVariant}>{intakeStatusLabel(status)}</Badge>
           <h3 className="mt-3 font-semibold text-ink">
-            {intake.ageRange ? `Senior age ${intake.ageRange}` : "Care request"}
+            {intake.ageRange ? `Age ${intake.ageRange}` : "Care request"}
           </h3>
           <p className="mt-1 text-sm text-ink/60">{careType}</p>
         </div>

@@ -44,29 +44,32 @@ export { intakeStatusHint, intakeStatusLabel, JOURNEY_STEPS } from "@/lib/domain
 export {
   decisionMakerRelationshipOptions,
   INTAKE_OTHER_OPTION,
+  relationshipToPersonNeedingCareOptions,
   relationshipToSeniorOptions
 } from "@/lib/domain/intake-field-utils";
 
 import {
   decisionMakerRelationshipOptions,
   fieldKeyFor,
+  INTAKE_RELATIONSHIP_FIELD_LABEL,
+  migrateIntakeFormKeys,
   otherFieldKey,
-  relationshipToSeniorOptions,
+  relationshipToPersonNeedingCareOptions,
   splitChipsForForm,
   splitSelectForForm
 } from "@/lib/domain/intake-field-utils";
 
 export function intakeToForm(intake: FamilyIntake): Record<string, string | string[]> {
-  const relationship = splitSelectForForm(intake.relationship, relationshipToSeniorOptions);
+  const relationship = splitSelectForForm(intake.relationship, relationshipToPersonNeedingCareOptions);
   const decisionMakerRelationship = splitSelectForForm(intake.decisionMakerRelationship, decisionMakerRelationshipOptions);
   const languages = splitChipsForForm(intake.languages, languageOptions);
 
-  return {
+  return migrateIntakeFormKeys({
     "your-name": intake.contactName,
     "email-address": intake.email,
     "phone-number": intake.phone,
-    "your-relationship-to-the-senior": relationship.value,
-    [otherFieldKey("Your relationship to the senior")]: relationship.other,
+    [fieldKeyFor(INTAKE_RELATIONSHIP_FIELD_LABEL)]: relationship.value,
+    [otherFieldKey(INTAKE_RELATIONSHIP_FIELD_LABEL)]: relationship.other,
     "preferred-city-or-province": intake.preferredArea,
     "age-range": intake.ageRange,
     "current-living-situation": intake.livingSituation || "",
@@ -86,7 +89,7 @@ export function intakeToForm(intake: FamilyIntake): Record<string, string | stri
     "additional-needs": intake.additionalNeeds || [],
     "desired-move-in-timeline": intake.moveInTimeline || "",
     "anything-else-we-should-know": intake.notes || ""
-  };
+  }) as Record<string, string | string[]>;
 }
 
 export async function getSessionFamilyIntakes(): Promise<{

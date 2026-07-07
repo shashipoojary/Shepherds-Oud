@@ -27,7 +27,7 @@ export default function RegisterPage() {
 
           <div className="mt-8 grid gap-4 md:grid-cols-2">
             <article className="rounded-2xl border border-stone-200 p-5">
-              <h2 className="text-lg font-semibold">Families and seniors</h2>
+              <h2 className="text-lg font-semibold">Families and individuals</h2>
               <p className="mt-2 text-sm leading-6 text-neutral-600">
                 {isPrelaunch
                   ? "Register your interest if you are looking for care anywhere in the Netherlands. We will contact you when matching opens."

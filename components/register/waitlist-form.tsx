@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { CustomSelect } from "@/components/ui/custom-select";
 import { careTypeOptions, dutchProvinces, facilityTypes } from "@/lib/config/content";
 import { formatFieldErrorSummary, parseZodFieldErrors, waitlistFieldLabel } from "@/lib/client/api-field-errors";
+import { INTAKE_AGE_RANGE_OPTIONS } from "@/lib/domain/intake-field-utils";
 import { cn } from "@/lib/core/utils";
 
 type WaitlistFormProps = {
@@ -196,19 +197,19 @@ export function WaitlistForm({ type }: WaitlistFormProps) {
       {type === "FAMILY" ? (
         <>
           <div className="grid gap-5 sm:grid-cols-2">
-            <Field label="Relationship to the senior" error={fieldErrors.relationship}>
+            <Field label="Relationship to the person needing care" error={fieldErrors.relationship}>
               <input
                 className={fieldClass(Boolean(fieldErrors.relationship))}
                 value={form.relationship}
                 onChange={(e) => setForm({ ...form, relationship: e.target.value })}
-                placeholder="Child, spouse, etc."
+                placeholder="Self, child, spouse, etc."
               />
             </Field>
             <Field label="Age range" error={fieldErrors.ageRange}>
               <CustomSelect
                 value={form.ageRange}
                 onChange={(value) => setForm({ ...form, ageRange: value })}
-                options={["60-69", "70-79", "80-89", "90 and above"]}
+                options={[...INTAKE_AGE_RANGE_OPTIONS]}
                 placeholder="Select age range"
               />
             </Field>

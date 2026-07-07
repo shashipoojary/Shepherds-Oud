@@ -34,7 +34,7 @@ export function Footer() {
             <BrandLogo variant="footer" showTagline tone="light" href="/" />
             <p className="mt-4 max-w-sm text-sm leading-[1.7] text-white/80">
               {isPrelaunch
-                ? "Human-guided eldercare navigation for families across the Netherlands. Register now — we will contact you at launch."
+                ? "Human-guided care navigation for people across the Netherlands. Register now — we will contact you at launch."
                 : "We help families across the Netherlands with a dedicated Care Guide, matched providers, and support through each step."}
             </p>
             <a href={`mailto:${brand.email}`} className="mt-4 inline-block text-sm font-medium text-white/90 hover:text-brand-amber">
@@ -61,8 +61,8 @@ export function Footer() {
         </div>
 
         <div className="mt-8 flex flex-col gap-2 border-t border-white/15 pt-6 text-xs text-white/60 sm:flex-row sm:items-center sm:justify-between">
-          <p>© {new Date().getFullYear()} {brand.name}. Nationwide eldercare navigation in the Netherlands.</p>
-          <p>{isPrelaunch ? "Pre-launch — guided intake opening soon" : "For families, seniors, and care providers."}</p>
+          <p>© {new Date().getFullYear()} {brand.name}. Nationwide care navigation in the Netherlands.</p>
+          <p>{isPrelaunch ? "Pre-launch — guided intake opening soon" : "For families, individuals with mobility needs, and care providers."}</p>
         </div>
       </div>
     </footer>
