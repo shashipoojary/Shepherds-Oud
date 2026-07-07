@@ -707,7 +707,6 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
             >
               <span className="inline-flex items-center gap-2">
                 {providerInquiryTabLabel(item)}
-                {badge > 0 && !isActive ? <UnreadDot /> : null}
                 {badge > 0 && !isActive ? (
                   <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-amber px-1.5 text-[10px] font-bold leading-none text-white">
                     {badge > 9 ? "9+" : badge}
