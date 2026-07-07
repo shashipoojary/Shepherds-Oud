@@ -59,6 +59,7 @@ import {
 import {
   adminInquiryActionMeta,
   adminInquiryHint,
+  canAdminCloseProviderMatch,
   adminMatchNotes,
   adminMatchStatusLabel,
   compareMatchPriority,
@@ -1097,15 +1098,28 @@ function FamilyDetailPanel({
             </div>
           </StatusPill>
 
-          <PanelSection title="Case stage" description="Current milestone for this family case and what you should do next in this panel.">
-            <p className="text-sm font-semibold text-ink">
-              Step {Math.min(currentStepIndex + 1, visibleJourneySteps.length)} of {visibleJourneySteps.length} ·{" "}
-              {adminIntakeStatusLabel(family.status)}
-            </p>
-            <p className="mt-1 text-sm leading-6 text-neutral-600">{adminIntakeJourneyHint(family.status)}</p>
+          <PanelSection
+            title={isClosedCase ? "Case archived" : "Case stage"}
+            description={
+              isClosedCase
+                ? "This family case is closed. Workflow steps below are locked — review the summary or case record only."
+                : "Current milestone for this family case and what you should do next in this panel."
+            }
+          >
+            {isClosedCase ? (
+              <p className="text-sm leading-6 text-neutral-600">{adminIntakeJourneyHint(family.status)}</p>
+            ) : (
+              <>
+                <p className="text-sm font-semibold text-ink">
+                  Step {Math.min(currentStepIndex + 1, visibleJourneySteps.length)} of {visibleJourneySteps.length} ·{" "}
+                  {adminIntakeStatusLabel(family.status)}
+                </p>
+                <p className="mt-1 text-sm leading-6 text-neutral-600">{adminIntakeJourneyHint(family.status)}</p>
+              </>
+            )}
           </PanelSection>
 
-          {nextAction ? (
+          {nextAction && !isClosedCase ? (
             <div
               className={cn(
                 "rounded-xl border px-4 py-4 shadow-sm",
@@ -1522,7 +1536,7 @@ function FamilyDetailPanel({
             </PanelSection>
 
             {canCloseCase ? (
-              <PanelSection title="Close case" description="Archive when the family is no longer active or has been helped elsewhere.">
+              <PanelSection title="Close family case" description="End the whole family journey. Use Inquiries → Close provider match to archive one provider thread only.">
                 <AdminPanelActions>
                   <Button
                     size="sm"
@@ -1530,7 +1544,7 @@ function FamilyDetailPanel({
                     disabled={isCaseActionPending}
                     onClick={() => setConfirmCloseCase(true)}
                   >
-                    Close case
+                    Close family case
                   </Button>
                 </AdminPanelActions>
               </PanelSection>
@@ -1562,9 +1576,9 @@ function FamilyDetailPanel({
         open={confirmCloseCase}
         tone="danger"
         pending={isCaseActionPending && pendingAction === "CLOSED"}
-        title="Close this case?"
-        description="Only close the case when the family is no longer active or has been helped elsewhere."
-        confirmLabel="Close case"
+        title="Close this family case?"
+        description="This closes the entire family journey — their dashboard shows the case as archived and provider matching stops. This is different from closing a single provider match in Inquiries."
+        confirmLabel="Close family case"
         onCancel={() => setConfirmCloseCase(false)}
         onConfirm={() => void handleCaseAction("CLOSED")}
       />
@@ -2125,7 +2139,7 @@ function InquiriesTable({
                         onClick={() => void updateMatchStatus(inquiry.id, "PLACED")}
                       />
                     ) : null}
-                    {inquiry.statusRaw !== "CLOSED" ? (
+                    {canAdminCloseProviderMatch(inquiry.statusRaw) ? (
                       <IconActionButton
                         label={adminInquiryActionMeta("CLOSED").label}
                         icon={X}
@@ -2168,9 +2182,9 @@ function InquiriesTable({
         open={Boolean(confirmClose)}
         tone="danger"
         pending={Boolean(confirmClose && pendingId === confirmClose.id)}
-        title="Close this inquiry?"
-        description="Use this when no further follow-up is needed. Closed inquiries stay in records but are no longer active."
-        confirmLabel="Close inquiry"
+        title="Close this provider match?"
+        description="This archives only this provider inquiry. The provider will see it as closed. The family case stays active in the Families tab — use Close case there when the whole family journey is finished."
+        confirmLabel="Close provider match"
         onCancel={() => setConfirmClose(null)}
         onConfirm={() => {
           if (!confirmClose) return;
@@ -2247,7 +2261,8 @@ function InquiryDetailPanel({
                 <li>Family requests a visit or callback.</li>
                 <li>Provider accepts or declines.</li>
                 <li>Mark the visit or call as arranged after timing is agreed.</li>
-                <li>Record the chosen provider when the family commits, or close the inquiry.</li>
+                <li>Record the chosen provider when the family commits.</li>
+                <li>Close the provider match only if it was never used or the provider declined.</li>
               </ol>
             </PanelSection>
 
@@ -2294,7 +2309,7 @@ function InquiryDetailPanel({
                 )}
               </PanelSection>
             ) : null}
-            {inquiry.statusRaw !== "CLOSED" ? (
+            {canAdminCloseProviderMatch(inquiry.statusRaw) ? (
               <PanelSection step={6} title={adminInquiryActionMeta("CLOSED").label} description={adminInquiryActionMeta("CLOSED").description}>
                 <Button size="sm" variant="outline" disabled={isPending} onClick={() => setConfirmClose(true)}>
                   {pendingActionKey === `${inquiry.id}:CLOSED` ? "Saving..." : "Confirm"}
@@ -2321,9 +2336,9 @@ function InquiryDetailPanel({
         open={confirmClose}
         tone="danger"
         pending={Boolean(inquiry && pendingActionKey === `${inquiry.id}:CLOSED`)}
-        title="Close this inquiry?"
-        description="This removes the inquiry from active follow-up. Keep it open if coordination is still in progress."
-        confirmLabel="Close inquiry"
+        title="Close this provider match?"
+        description="This archives only this provider inquiry. The provider will see it as closed. The family case stays active in the Families tab — use Close case there when the whole family journey is finished."
+        confirmLabel="Close provider match"
         onCancel={() => setConfirmClose(false)}
         onConfirm={() => {
           if (!inquiry) return;

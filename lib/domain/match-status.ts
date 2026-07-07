@@ -191,6 +191,10 @@ export function computeFamilyDeclineContext(
   };
 }
 
+export function canAdminCloseProviderMatch(status?: string | null) {
+  return status === "DECLINED" || status === "SUGGESTED";
+}
+
 export function adminInquiryActionMeta(status: MatchAdminAction) {
   switch (status) {
     case "CONTACTED":
@@ -205,8 +209,8 @@ export function adminInquiryActionMeta(status: MatchAdminAction) {
       };
     case "CLOSED":
       return {
-        label: "Close inquiry",
-        description: "No further action needed on this match."
+        label: "Close provider match",
+        description: "Archive a declined match or an unused suggestion. Not shown once the family and provider are actively coordinating."
       };
     default:
       return { label: status, description: "" };
@@ -301,8 +305,8 @@ export function adminInquiryHint(status: string) {
     VISIT_REQUESTED: "Step 2 - family requested a visit. Provider should accept or decline in their dashboard.",
     CALLBACK_REQUESTED: "Step 2 - family requested a callback. Provider should accept or decline in their dashboard.",
     ACCEPTED: "Step 3 - provider accepted. Call both sides, arrange timing, then mark the visit or call as arranged.",
-    CONTACTED: "Step 4 - visit or call arranged. Record the chosen provider when the family commits, or close the inquiry.",
-    DECLINED: "Provider declined. Re-create the match in section 4 to send the family request to this provider again, or match a different facility.",
+    CONTACTED: "Step 4 - visit or call arranged. Record the chosen provider when the family commits.",
+    DECLINED: "Provider declined. Re-create the match in the family case (section 4) or match another facility. Closing this inquiry only archives it for the provider — it does not close the family case.",
     PLACED: "Provider choice recorded. The family sees placement in progress on their dashboard.",
     CLOSED: "This inquiry is closed."
   };
@@ -319,9 +323,9 @@ export function adminInquiryHint(status: string) {
     case "ACCEPTED":
       return "Step 3 — provider accepted. Call both sides, arrange timing, then click Mark coordinated.";
     case "CONTACTED":
-      return "Step 4 — visit or call arranged. Record placement when the family commits, or close the inquiry.";
+      return "Step 4 — visit or call arranged. Record the chosen provider when the family commits.";
     case "DECLINED":
-      return "Provider declined. Re-create the match in section 4 to send the family request to this provider again, or match a different facility.";
+      return "Provider declined. Re-create the match in the family case (section 4) or match another facility. Closing this inquiry only archives it for the provider — it does not close the family case.";
     case "PLACED":
       return "Placement recorded. The family sees “Placement in progress” on their dashboard.";
     case "CLOSED":

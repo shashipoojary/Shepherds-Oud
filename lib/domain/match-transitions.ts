@@ -33,12 +33,12 @@ const transitions: Record<MatchActor, Record<MatchStatus, MatchStatus[]>> = {
   },
   admin: {
     SUGGESTED: ["CLOSED"],
-    VISIT_REQUESTED: ["CONTACTED", "PLACED", "CLOSED"],
-    CALLBACK_REQUESTED: ["CONTACTED", "PLACED", "CLOSED"],
-    ACCEPTED: ["CONTACTED", "PLACED", "CLOSED"],
-    CONTACTED: ["PLACED", "CLOSED"],
+    VISIT_REQUESTED: ["CONTACTED", "PLACED"],
+    CALLBACK_REQUESTED: ["CONTACTED", "PLACED"],
+    ACCEPTED: ["CONTACTED", "PLACED"],
+    CONTACTED: ["PLACED"],
     DECLINED: ["CLOSED"],
-    PLACED: ["CLOSED"],
+    PLACED: [],
     CLOSED: []
   }
 };
