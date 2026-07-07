@@ -8,11 +8,13 @@ import { cn } from "@/lib/core/utils";
 
 export function ProviderFavouriteButton({
   providerId,
+  providerName,
   className,
   size = "sm",
   variant = "outline"
 }: {
   providerId: string;
+  providerName?: string;
   className?: string;
   size?: "sm" | "default";
   variant?: "outline" | "ghost";
@@ -24,7 +26,7 @@ export function ProviderFavouriteButton({
   }, [providerId]);
 
   function handleClick() {
-    toggleSavedProvider(providerId);
+    toggleSavedProvider(providerId, providerName);
     setSaved(isProviderSaved(providerId));
   }
 

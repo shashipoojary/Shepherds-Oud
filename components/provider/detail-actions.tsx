@@ -125,12 +125,12 @@ function ProviderDetailActionsContent({ providerId, providerName }: { providerId
 
   function handleFavourite() {
     setPending("favourite");
-    const nowSaved = toggleSavedProvider(providerId);
+    const nowSaved = toggleSavedProvider(providerId, providerName);
     setSaved(nowSaved);
     setMessageTone("success");
     setMessage(
       nowSaved
-        ? `${providerName} saved on this device. You can find saved providers when comparing options.`
+        ? `${providerName} saved on this device. Find them under Saved providers on your dashboard.`
         : `${providerName} removed from your saved providers.`
     );
     setPending(null);

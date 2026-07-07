@@ -14,6 +14,7 @@ import { CareJourneyTimeline } from "@/components/family/care-journey-timeline";
 import { FamilyActiveMatches } from "@/components/family/active-matches";
 import { FamilyCasePicker } from "@/components/family/case-picker";
 import { FamilyCaseSwitcher } from "@/components/family/case-switcher";
+import { FamilySavedProviders } from "@/components/family/saved-providers";
 import { IntakeSummaryCard } from "@/components/family/intake-summary-card";
 import { Button } from "@/components/ui/button";
 import { ButtonRow } from "@/components/ui/button-row";
@@ -191,6 +192,7 @@ function FamilyDashboardContent() {
             />
             <IntakeSummaryCard intake={intake} showCareGuide={false} defaultOpen={!collapsedByDefault} />
             <FamilyActiveMatches key={`${intake.id}-${intake.matchCount}`} intakeId={intake.id} intakeStatus={intake.status} />
+            <FamilySavedProviders intakeId={intake.id} matches={matches} />
             <section className="rounded-2xl bg-white p-5 shadow-soft sm:p-6">
               <p className="section-label">Questions for your team</p>
               <h2 className="mt-1 text-lg font-semibold text-ink">Need to ask something?</h2>

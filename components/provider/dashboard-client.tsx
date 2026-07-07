@@ -211,14 +211,24 @@ function providerNextStep(inquiry: Inquiry) {
 
   switch (inquiry.status) {
     case "ACCEPTED":
+      if (visit) {
+        return {
+          title: "Visit or call scheduled",
+          description: "Your Care Guide has arranged the next step with this family.",
+          visitLine: visit,
+          tone: "visit" as const
+        };
+      }
       return {
-        title: "Accepted - waiting for Care Guide",
+        title: "Accepted — waiting for Care Guide",
         description: "No extra action is needed right now. The Care Guide will arrange the visit or callback and update you here."
       };
     case "CONTACTED":
       return {
         title: "Visit or call arranged",
-        description: visit || "The Care Guide has coordinated the next step. Watch for timing details here or by email."
+        description: visit ? "Confirmed with the family. Use the details below if you need to prepare." : "The Care Guide has coordinated the next step. Watch for timing details here or by email.",
+        visitLine: visit || undefined,
+        tone: visit ? ("visit" as const) : undefined
       };
     case "PLACED":
       return {
@@ -380,11 +390,11 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
 
   useEffect(() => {
     if (!profileComplete) return;
-    const tabInquiries = filterProviderInquiriesByTab(inquiries, inquiryTab);
+    const tabInquiries = filterProviderInquiriesByTab(inquiriesRef.current, inquiryTab);
     markAllProviderInquiriesSeen(tabInquiries.map((item) => ({ id: item.id, updatedAt: item.updatedAt })));
     bumpInquirySeen();
-    setInquiryTabSeenAt(markProviderInquiryTabSeen(inquiryTab, inquiries));
-  }, [inquiryTab, profileComplete, inquiries, bumpInquirySeen]);
+    setInquiryTabSeenAt(markProviderInquiryTabSeen(inquiryTab, inquiriesRef.current));
+  }, [inquiryTab, profileComplete, bumpInquirySeen]);
 
   useEffect(() => {
     if (!message) return;
@@ -697,6 +707,7 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
             >
               <span className="inline-flex items-center gap-2">
                 {providerInquiryTabLabel(item)}
+                {badge > 0 && !isActive ? <UnreadDot /> : null}
                 {badge > 0 && !isActive ? (
                   <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-amber px-1.5 text-[10px] font-bold leading-none text-white">
                     {badge > 9 ? "9+" : badge}
@@ -939,6 +950,7 @@ function ProviderInquiryDetailPanel({
   const activityNotes = inquiry ? providerMatchNotes(inquiry.notes) : null;
   const cardFeedback = inquiry ? inquiryFeedback[inquiry.id] : undefined;
   const visitSummary = inquiry ? formatProviderVisit(inquiry) : null;
+  const showVisitInBanner = Boolean(nextStep?.visitLine);
 
   const details = inquiry
     ? [
@@ -959,7 +971,7 @@ function ProviderInquiryDetailPanel({
           label: "Last updated",
           value: new Date(inquiry.updatedAt).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })
         },
-        ...(visitSummary ? [{ label: "Visit or call", value: visitSummary }] : []),
+        ...(visitSummary && !showVisitInBanner ? [{ label: "Visit or call", value: visitSummary }] : []),
         ...(activityNotes ? [{ label: "Activity", value: <span className="whitespace-pre-line">{activityNotes}</span> }] : [])
       ]
     : [];
@@ -987,17 +999,19 @@ function ProviderInquiryDetailPanel({
           </div>
         ) : inquiry ? (
           <p className="text-sm text-ink/65">
-            {inquiry.status === "ACCEPTED"
-              ? "Accepted — your Care Guide will coordinate next steps."
-              : inquiry.status === "CONTACTED"
-                ? "Visit or call coordinated — watch for timing details here or by email."
-                : inquiry.status === "PLACED"
-                  ? "Placement in progress for this family."
-                  : inquiry.status === "DECLINED"
-                    ? "You declined this inquiry."
-                    : inquiry.status === "CLOSED"
-                      ? "This inquiry is closed."
-                      : "No action needed right now."}
+            {nextStep?.visitLine
+              ? nextStep.visitLine
+              : inquiry.status === "ACCEPTED"
+                ? "Accepted — your Care Guide will coordinate next steps."
+                : inquiry.status === "CONTACTED"
+                  ? "Visit or call coordinated — watch for timing details here or by email."
+                  : inquiry.status === "PLACED"
+                    ? "Placement in progress for this family."
+                    : inquiry.status === "DECLINED"
+                      ? "You declined this inquiry."
+                      : inquiry.status === "CLOSED"
+                        ? "This inquiry is closed."
+                        : "No action needed right now."}
           </p>
         ) : null
       }
@@ -1008,9 +1022,21 @@ function ProviderInquiryDetailPanel({
 
           {nextStep ? (
             <PanelSection title="What happens next">
-              <div className="rounded-xl border border-brand-green-pale/70 bg-brand-green-pale/15 px-4 py-3">
-                <p className="text-sm font-semibold text-brand-green-dark">{nextStep.title}</p>
+              <div
+                className={cn(
+                  "rounded-xl px-4 py-4",
+                  nextStep.tone === "visit"
+                    ? "border border-brand-amber/35 bg-brand-amber/10"
+                    : "border border-brand-green-pale/70 bg-brand-green-pale/15"
+                )}
+              >
+                <p className={cn("text-sm font-semibold", nextStep.tone === "visit" ? "text-brand-amber-dark" : "text-brand-green-dark")}>
+                  {nextStep.title}
+                </p>
                 <p className="mt-1 text-sm leading-6 text-ink/70">{nextStep.description}</p>
+                {nextStep.visitLine ? (
+                  <p className="mt-3 rounded-lg bg-white/80 px-3 py-2.5 text-sm font-medium leading-6 text-ink">{nextStep.visitLine}</p>
+                ) : null}
               </div>
             </PanelSection>
           ) : null}

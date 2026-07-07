@@ -463,7 +463,7 @@ function ResultsPageContent() {
             <Button asChild variant="ghost" className="w-full">
               <Link href={withIntakeId(`/providers/${recommended.id}`, intake.id)}>Read full profile</Link>
             </Button>
-            <ProviderFavouriteButton providerId={recommended.id} className="w-full" variant="ghost" />
+            <ProviderFavouriteButton providerId={recommended.id} providerName={recommended.name} className="w-full" variant="ghost" />
           </aside>
         </div>
       </section>
@@ -580,7 +580,7 @@ function CompareRow({
         </div>
 
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:shrink-0">
-          <ProviderFavouriteButton providerId={provider.id} className="w-full sm:min-w-[132px]" />
+          <ProviderFavouriteButton providerId={provider.id} providerName={provider.name} className="w-full sm:min-w-[132px]" />
           <Button asChild size="sm" variant="outline" className="w-full sm:min-w-[132px]">
               <Link href={withIntakeId(`/providers/${provider.id}`, intakeId)}>Profile</Link>
           </Button>

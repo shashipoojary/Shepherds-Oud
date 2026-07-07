@@ -1366,7 +1366,7 @@ function FamilyDetailPanel({
                           <div className="min-w-0">
                             <p className="font-medium text-ink">
                               {match.provider}
-                              <span className="ml-2 text-sm font-normal text-neutral-500">{match.match}%</span>
+                              <span className="ml-2 text-sm font-normal text-neutral-500">{formatAdminMatchScore(match.match)}</span>
                             </p>
                             {match.notes ? (
                               <p className="mt-1.5 text-xs leading-5 text-neutral-600">{match.notes}</p>
@@ -1902,6 +1902,12 @@ function ProviderDetailPanel({
       ) : null}
     </SlidePanel>
   );
+}
+
+function formatAdminMatchScore(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return "—";
+  return trimmed.endsWith("%") ? trimmed : `${trimmed}%`;
 }
 
 function formatProviderPriceRange(priceMin: number | null, priceMax: number | null) {
