@@ -25,7 +25,7 @@ export default async function RegisterSuccessPage({ searchParams }: { searchPara
           <p className="mt-3 text-sm leading-7 text-neutral-600">
             {isFacility
               ? "Thank you for registering your care facility. We will contact you when provider onboarding opens."
-              : "Thank you for registering. We will contact you as soon as Shepherds Oud is ready to support your family."}
+              : "Thank you for registering. We will contact you as soon as Shepherds Oud is ready to support you."}
           </p>
           <ButtonRow
             className={cn("mt-8", isPrelaunch || isFacility ? "mx-auto max-w-xs justify-items-center" : undefined)}

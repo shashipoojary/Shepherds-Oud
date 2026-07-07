@@ -33,7 +33,7 @@ const INTAKE_FIELD_LABELS: Record<string, string> = {
   languages: "Preferred languages",
   additionalNeeds: "Additional needs",
   emotionalSupportNeeds: "Emotional support needs",
-  supportTypes: "Type of support your family needs",
+  supportTypes: "Type of support you need",
   notes: "Anything else we should know?"
 };
 

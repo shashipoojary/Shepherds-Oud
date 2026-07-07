@@ -8,19 +8,19 @@ function familyLaunchContent(contactName: string) {
 
   const paragraphs = [
     `Hello ${contactName},`,
-    "Shepherds Oud is now live. Guided eldercare navigation is open for families across the Netherlands.",
-    "You can start your family intake today. A dedicated Care Guide will personally review your situation, help prepare a care plan, and support your family through matching, visits, and placement.",
+    "Shepherds Oud is now live. Guided care navigation is open across the Netherlands — for anyone whose mobility limits daily life.",
+    "You can start your care intake today. A dedicated Care Guide will personally review your situation, help prepare a care plan, and support you through matching, visits, and placement.",
     "Thank you for waiting with us — we are ready to help you take the next step."
   ];
 
   return {
     subject: "Shepherds Oud is live — start your guided care intake",
     htmlContent: renderTransactionalEmail({
-      preheader: "Guided eldercare navigation is now open on Shepherds Oud.",
+      preheader: "Guided care navigation is now open on Shepherds Oud.",
       eyebrow: "We are live",
       title: "Your guided care journey can begin",
       paragraphs,
-      cta: { label: "Start family intake", url: intakeUrl },
+      cta: { label: "Start care intake", url: intakeUrl },
       footerNote: "If you already completed intake, you can sign in from the homepage to view your journey."
     }),
     textContent: [...paragraphs, `Start intake: ${intakeUrl}`].join(" ")

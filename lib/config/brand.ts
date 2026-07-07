@@ -2,6 +2,9 @@ export const brand = {
   name: "Shepherds Oud",
   tagline: "Finding the right care together.",
   email: "care@shepherdsoud.nl",
+  metaDescription:
+    "Finding the right care together. Nationwide care navigation for people with limited mobility, providers, and Care Guides in the Netherlands.",
+  emailFooterLine: "Nationwide care navigation in the Netherlands",
   /** Sage green illustration for cream/white backgrounds. */
   logoFullPath: "/brand/logo.png",
   /** White illustration with transparent background — for dark green footer/nav. */

@@ -25,7 +25,7 @@ export async function sendIntakeConfirmationEmails(input: {
     : [
         `Hello ${input.contactName},`,
         `We received your care request. Your reference is ${reference}.`,
-        "A Care Guide will be assigned shortly to guide your family through each decision.",
+        "A Care Guide will be assigned shortly to guide you through each decision.",
         ubuntuTagline
       ];
 

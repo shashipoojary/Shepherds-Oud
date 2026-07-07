@@ -32,11 +32,11 @@ export const homeContent = {
   familySteps: [
     {
       title: "Tell us about your situation",
-      text: "Complete a guided intake about urgency, mobility, dementia needs, budget, language, and who helps decide."
+      text: "Complete a guided intake about mobility, urgency, care needs, budget, language, and who helps decide."
     },
     {
       title: "Meet your Care Guide",
-      text: "A real person reviews your case, prepares a care plan, and supports your family — you are not navigating this alone."
+      text: "A real person reviews your case, prepares a care plan, and supports you through each decision — you are not navigating this alone."
     },
     {
       title: "Visits, placement, and follow-up",
@@ -61,13 +61,14 @@ export const homeContent = {
     title: "Join before launch",
     description:
       "Shepherds Oud is preparing for nationwide rollout. Register now — we will contact you when guided care navigation opens in your area.",
-    familyCta: "Register as a family",
+    familyCta: "Register your interest",
     facilityCta: "Register your care facility"
   },
   live: {
     title: "Start your guided care journey",
-    description: "Complete intake and your Care Guide will review your case, prepare a care plan, and support every decision.",
-    familyCta: "Start family intake",
+    description:
+      "Complete intake and your Care Guide will review your case, prepare a care plan, and support every decision when mobility is limited.",
+    familyCta: "Start care intake",
     facilityCta: "Register your facility"
   }
 };
@@ -132,7 +133,7 @@ export const intakeSteps = [
       },
       {
         type: "chips",
-        label: "Type of support your family needs",
+        label: "Type of support you need",
         options: [
           "Help comparing options",
           "Emotional support during decisions",

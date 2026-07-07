@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { DM_Sans, Outfit } from "next/font/google";
 import { PrelaunchProvider } from "@/components/layout/prelaunch-context";
+import { brand } from "@/lib/config/brand";
 import { getIsPrelaunch } from "@/lib/config/prelaunch";
 import "./globals.css";
 
@@ -18,7 +19,7 @@ const bodyFont = DM_Sans({
 
 export const metadata: Metadata = {
   title: "Shepherds Oud",
-  description: "Finding the right care together. Nationwide eldercare navigation for families, providers, and Care Guides in the Netherlands."
+  description: brand.metaDescription
 };
 
 export const viewport: Viewport = {

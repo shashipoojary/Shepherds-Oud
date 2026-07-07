@@ -195,7 +195,7 @@ function FamilyDashboardContent() {
           <div className="rounded-2xl bg-white shadow-soft">
             <EmptyState
               title="No care request yet"
-              description="Complete the intake form to create your care request. A Care Guide will be assigned to support your family."
+              description="Complete the intake form to create your care request. A Care Guide will be assigned to support you through each step."
             />
           </div>
         )}

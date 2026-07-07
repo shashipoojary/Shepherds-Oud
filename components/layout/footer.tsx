@@ -11,7 +11,7 @@ function footerLinks(prelaunch: boolean) {
     ? [
         { label: "Home", href: publicRoutes.home },
         { label: "Join waitlist", href: publicRoutes.waitlist },
-        { label: "Register as a family", href: publicRoutes.waitlistFamily },
+        { label: "Register for care", href: publicRoutes.waitlistFamily },
         { label: "Register a facility", href: publicRoutes.waitlistFacility }
       ]
     : [
@@ -35,7 +35,7 @@ export function Footer() {
             <p className="mt-4 max-w-sm text-sm leading-[1.7] text-white/80">
               {isPrelaunch
                 ? "Human-guided care navigation for people across the Netherlands. Register now — we will contact you at launch."
-                : "We help families across the Netherlands with a dedicated Care Guide, matched providers, and support through each step."}
+                : "We help people across the Netherlands with a dedicated Care Guide, matched providers, and support when mobility is limited."}
             </p>
             <a href={`mailto:${brand.email}`} className="mt-4 inline-block text-sm font-medium text-white/90 hover:text-brand-amber">
               {brand.email}

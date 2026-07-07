@@ -81,7 +81,7 @@ export function intakeToForm(intake: FamilyIntake): Record<string, string | stri
     "primary-family-decision-maker": intake.decisionMakerName || "",
     "decision-maker-relationship": decisionMakerRelationship.value,
     [otherFieldKey("Decision-maker relationship")]: decisionMakerRelationship.other,
-    "type-of-support-your-family-needs": intake.supportTypes || [],
+    "type-of-support-you-need": intake.supportTypes || [],
     "emotional-support-needs": intake.emotionalSupportNeeds || [],
     "monthly-budget-range": intake.budget || "",
     "preferred-languages": languages.selected,

@@ -125,7 +125,7 @@ export function CareJourneyTimeline({
           <div>
             <p className="section-label">Your guided care journey</p>
             <p className="mt-1 max-w-2xl text-sm leading-6 text-neutral-600">
-              A real Care Guide supports your family at each step — shared decisions, not a directory search.
+              A real Care Guide supports you at each step — shared decisions, not a directory search.
             </p>
           </div>
           <p className="rounded-full bg-brand-green-pale/40 px-3 py-1 text-xs font-semibold text-brand-green-dark">
@@ -142,8 +142,8 @@ export function CareJourneyTimeline({
       title="Your guided care journey"
       description={
         isClosed
-          ? "This case is closed. Expand if you want to review the steps your family completed."
-          : "A real Care Guide supports your family at each step — shared decisions, not a directory search."
+          ? "This case is closed. Expand if you want to review the steps you completed."
+          : "A real Care Guide supports you at each step — shared decisions, not a directory search."
       }
       defaultOpen={defaultOpen}
       badge={

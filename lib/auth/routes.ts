@@ -37,7 +37,7 @@ export function postLoginHref(role: AppRole | undefined, requestedCallback?: str
 
 export type NavItem = { label: string; href: string };
 
-/** Base links shown to everyone — kept short and clear for seniors. */
+/** Base links shown to everyone — kept short and clear for care seekers. */
 export function buildNavItems(role?: AppRole, signedIn = false, prelaunch = getIsPrelaunch()): NavItem[] {
   const publicRoutes = getPublicRoutes(prelaunch);
   const items: NavItem[] = [{ label: "Home", href: publicRoutes.home }];

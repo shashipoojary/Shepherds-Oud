@@ -27,17 +27,17 @@ export const JOURNEY_STEPS: Array<{ status: IntakeStatus; label: string; hint: s
   {
     status: "CARE_GUIDE_ASSIGNED",
     label: "Care Guide assigned",
-    hint: "A real person is now reviewing your case and will guide your family through each decision."
+    hint: "A real person is now reviewing your case and will guide you through each decision."
   },
   {
     status: "ASSESSMENT",
     label: "Assessment",
-    hint: "Your Care Guide is learning about your loved one's needs, urgency, and family context."
+    hint: "Your Care Guide is learning about the person's needs, mobility, urgency, and decision context."
   },
   {
     status: "CARE_PLAN",
     label: "Care plan",
-    hint: "Your Care Guide has prepared a recommended pathway and next steps for your family."
+    hint: "Your Care Guide has prepared a recommended pathway and next steps for you."
   },
   {
     status: "MATCHED",
@@ -57,7 +57,7 @@ export const JOURNEY_STEPS: Array<{ status: IntakeStatus; label: string; hint: s
   {
     status: "PLACEMENT_IN_PROGRESS",
     label: "Placement in progress",
-    hint: "Your family is moving forward with admission or move-in."
+    hint: "Care arrangement is moving forward with admission or move-in."
   },
   {
     status: "PLACED",
@@ -82,7 +82,7 @@ export const JOURNEY_STEPS: Array<{ status: IntakeStatus; label: string; hint: s
   {
     status: "CLOSED",
     label: "Case closed",
-    hint: "This request is complete. Reach out anytime if your family's needs change."
+    hint: "This request is complete. Reach out anytime if your needs change."
   }
 ];
 

@@ -191,7 +191,7 @@ function IntakeFormContent({
       hospitalDischargeDate: String(form["hospital-discharge-date-if-applicable"] || "").trim() || undefined,
       decisionMakerName: String(form["primary-family-decision-maker"] || "").trim(),
       decisionMakerRelationship: resolveSelectField(form, "Decision-maker relationship"),
-      supportTypes: asArray(form["type-of-support-your-family-needs"]),
+      supportTypes: asArray(form["type-of-support-you-need"] || form["type-of-support-your-family-needs"]),
       emotionalSupportNeeds: asArray(form["emotional-support-needs"]),
       budget: String(form["monthly-budget-range"] || "").trim(),
       languages: resolveChipField(form, "Preferred languages"),
@@ -261,7 +261,7 @@ function IntakeFormContent({
         <h1 className="font-brand text-[1.3rem] font-semibold">Tell us about your situation</h1>
         <p className="mt-1 text-[13px] leading-relaxed text-white/80">
           {isUpdating
-            ? "Update your existing care request. Your Care Guide keeps supporting your family through shared decisions."
+            ? "Update your existing care request. Your Care Guide keeps supporting you through shared decisions."
             : `About 5 minutes. A real Care Guide reviews your case personally — ${ubuntuTagline}`}
         </p>
         {!isUpdateMode && savedIntakeId ? (
@@ -298,7 +298,7 @@ function IntakeFormContent({
       <div className="px-5 py-6 sm:px-8 lg:px-10 lg:py-9">
         {fromWaitlist && !isPrelaunch && !isUpdateMode ? (
           <div className="mb-5 rounded-lg border border-brand-green-pale/60 bg-brand-green-pale/20 px-4 py-3 text-sm text-brand-green-dark">
-            You are on our waitlist. Complete your guided intake next so a Care Guide can review your family&apos;s situation.
+            You are on our waitlist. Complete your guided intake next so a Care Guide can review your situation.
           </div>
         ) : null}
 

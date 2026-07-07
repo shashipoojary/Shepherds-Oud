@@ -36,8 +36,8 @@ export default function HomePage() {
             <p className="mx-auto mt-4 max-w-xl text-lg italic text-brand-amber">{ubuntuTagline}</p>
             <p className="mx-auto mt-3 max-w-xl text-body text-ink/80">
               {isPrelaunch
-                ? "Shepherds Oud is a human-guided care navigation service for families across the Netherlands — not a care directory."
-                : "Shepherds Oud connects people with a dedicated Care Guide and matched care providers."}
+                ? "Shepherds Oud is a human-guided care navigation service — for anyone whose mobility limits daily life. Not a care directory."
+                : "Shepherds Oud connects people with a dedicated Care Guide and matched care providers when mobility is limited."}
             </p>
             <p className="mx-auto mt-3 max-w-[560px] text-body text-ink/70">{hero.intro}</p>
             <ButtonRow className="mx-auto mt-8 max-w-lg" columns={isPrelaunch ? 1 : 2}>
@@ -69,11 +69,11 @@ export default function HomePage() {
           <div className="mx-auto grid max-w-5xl gap-4 sm:grid-cols-3">
             <AudienceCard
               icon={<Users className="h-5 w-5" />}
-              title="For families"
+              title="For care seekers"
               text={
                 isPrelaunch
                   ? "Register your interest. When we launch, a Care Guide will personally review your case and support every decision."
-                  : "Share your situation with a guided intake. A Care Guide reviews your case and supports your family through placement."
+                  : "Share your situation with a guided intake. A Care Guide reviews your case and supports you through placement."
               }
               href={isPrelaunch ? publicRoutes.waitlistFamily : publicRoutes.intake}
               cta={isPrelaunch ? "Register interest" : "Start intake"}
@@ -107,7 +107,7 @@ export default function HomePage() {
           <SectionHeader
             label="How it works"
             title="A guided journey — not a directory"
-            description="Your family works with a real Care Guide through assessment, care planning, visits, placement, and follow-up."
+            description="Work with a real Care Guide through assessment, care planning, visits, placement, and follow-up when mobility is limited."
           />
           <div className="mx-auto grid max-w-5xl gap-5 md:grid-cols-3">
             {homeContent.familySteps.map((step, index) => (
@@ -124,7 +124,7 @@ export default function HomePage() {
               <p className="section-label">Families and care seekers</p>
               <h3 className="mt-2 text-h3 font-semibold">Looking for care support?</h3>
               <p className="mt-2 text-body text-ink/75">
-                Register your interest and we will reach out when guided care navigation is ready for your family.
+                Register your interest and we will reach out when guided care navigation is ready for you.
               </p>
               <Button asChild className="mt-5">
                 <Link href={publicRoutes.waitlistFamily}>{homeContent.prelaunch.familyCta}</Link>
@@ -150,7 +150,7 @@ export default function HomePage() {
               <p className="section-label">Families and care seekers</p>
               <h3 className="mt-2 text-h3 font-semibold">Ready to begin?</h3>
               <p className="mt-2 text-body text-ink/75">
-                Complete your guided intake and a Care Guide will personally review your family&apos;s situation.
+                Complete your guided intake and a Care Guide will personally review your situation.
               </p>
               <Button asChild className="mt-5">
                 <Link href={publicRoutes.intake}>{homeContent.live.familyCta}</Link>
@@ -176,7 +176,7 @@ export default function HomePage() {
         </section>
 
         <section className="bg-white px-4 py-14 sm:px-6 lg:px-[max(2rem,calc((100vw-1040px)/2))]">
-          <SectionHeader label="Providers" title="For care providers" description="Reach families who are a genuine fit for your services across the Netherlands." />
+          <SectionHeader label="Providers" title="For care providers" description="Reach people who are a genuine fit for your services across the Netherlands." />
           <div className="mx-auto grid max-w-5xl gap-5 md:grid-cols-3">
             {providerSteps.map((step) => (
               <ProviderStepCard key={step.title} icon={step.icon} title={step.title} text={step.text} />

@@ -9,7 +9,7 @@ export function CareGuideCard({ guide, compact = false }: { guide: CareGuideInfo
       <p className="section-label">Your Care Guide — assigned</p>
       <h2 className="mt-1 text-lg font-semibold text-ink">{guide.name}</h2>
       <p className="mt-2 text-sm leading-6 text-neutral-700">
-        {ubuntuTagline} {guide.name} personally reviews your case and supports your family through assessment, care planning,
+        {ubuntuTagline} {guide.name} personally reviews your case and supports you through assessment, care planning, visits,
         visits, placement, and follow-up.
       </p>
       <p className="mt-3 text-sm text-neutral-600">

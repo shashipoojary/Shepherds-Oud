@@ -157,7 +157,7 @@ export function renderTransactionalEmail({
           <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;">
             <tr>
               <td class="email-footer" style="padding:18px 8px 0;text-align:center;font-size:12px;line-height:1.6;color:${colors.subtle};">
-                <p style="margin:0;">${escapeHtml(brand.name)} · Nationwide eldercare matching in the Netherlands</p>
+                <p style="margin:0;">${escapeHtml(brand.name)} · ${escapeHtml(brand.emailFooterLine)}</p>
                 <p style="margin:8px 0 0;"><a href="mailto:${escapeHtml(brand.email)}" style="color:${colors.amberDark};text-decoration:none;">${escapeHtml(brand.email)}</a></p>
               </td>
             </tr>

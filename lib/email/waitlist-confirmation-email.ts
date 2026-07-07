@@ -8,11 +8,9 @@ export async function sendWaitlistConfirmationEmails(input: {
   email: string;
   type: "FAMILY" | "FACILITY";
 }) {
-  const label = input.type === "FAMILY" ? "family" : "facility";
-
   const paragraphs = [
     `Hello ${input.contactName},`,
-    `Thank you for registering your ${label} interest with Shepherds Oud.`,
+    "Thank you for registering with Shepherds Oud.",
     "We will contact you as soon as guided intake opens in your area."
   ];
 

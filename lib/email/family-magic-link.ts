@@ -4,7 +4,7 @@ import { renderTransactionalEmail } from "@/lib/email/transactional-template";
 export async function sendFamilyMagicLinkEmail(email: string, url: string) {
   const subject = "Open your Shepherds Oud care dashboard";
   const textContent = [
-    "Sign in to your family care dashboard",
+    "Sign in to your care dashboard",
     "",
     "Use this secure link to view your care request and provider matches:",
     url,
@@ -16,10 +16,10 @@ export async function sendFamilyMagicLinkEmail(email: string, url: string) {
 
   const htmlContent = renderTransactionalEmail({
     preheader: "Your secure sign-in link for your Shepherds Oud care dashboard.",
-    eyebrow: "Family sign in",
+    eyebrow: "Care dashboard sign in",
     title: "Open your care dashboard",
     paragraphs: [
-      "Click the button below to sign in securely and continue your family's care journey.",
+      "Click the button below to sign in securely and continue your care journey.",
       "For your security, this link can only be used once and expires in 15 minutes."
     ],
     cta: { label: "Open care dashboard", url },

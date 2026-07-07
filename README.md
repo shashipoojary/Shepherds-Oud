@@ -1,6 +1,6 @@
 # Shepherds Oud
 
-Shepherds Oud is a production-ready MVP for an eldercare matching service. It helps families explain their care situation, receive matched care options, and stay guided through placement. Providers can manage availability and respond to requests, while admins can oversee families, cases, providers, waitlist entries, and follow-ups.
+Shepherds Oud is a production-ready MVP for a care navigation service. It helps people with limited mobility explain their care situation, receive matched care options, and stay guided through placement. Providers can manage availability and respond to requests, while admins can oversee cases, providers, waitlist entries, and follow-ups.
 
 The product is built as one Next.js application with separate experiences for the public site, family journey, provider dashboard, and admin panel.
 
@@ -8,7 +8,7 @@ The product is built as one Next.js application with separate experiences for th
 
 Shepherds Oud supports four main users:
 
-- Families looking for eldercare support, assisted living, home care, or placement guidance.
+- People seeking care when mobility is limited — assisted living, home care, rehabilitation, or placement guidance.
 - Providers who need a clear way to manage profile details, availability, and care requests.
 - Admins and care guides who manage intakes, cases, matches, follow-ups, and provider coordination.
 - Prelaunch visitors who can join the family or facility waitlist before the full intake flow is opened.

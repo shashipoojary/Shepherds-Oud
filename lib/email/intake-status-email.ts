@@ -51,7 +51,7 @@ export async function sendIntakeStatusEmail(input: {
       title: "Care has been arranged",
       paragraphs: [
         `Hello ${input.contactName},`,
-        "We are glad to share that care has been arranged for your family.",
+        "We are glad to share that care has been arranged.",
         `${guideName} remains available if you need support during the transition.`,
         "Your dashboard has the latest details."
       ]

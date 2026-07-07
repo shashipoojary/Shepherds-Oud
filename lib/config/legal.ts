@@ -4,7 +4,7 @@ import { brand } from "@/lib/config/brand";
 const legalUpdated = "23 June 2026";
 
 const privacyIntro =
-  `${brand.name} ("we", "us") provides human-guided eldercare navigation for families and care facilities in the Netherlands. This privacy policy explains what personal data we collect, why we use it, and the choices you have. We process personal data in line with the EU General Data Protection Regulation (GDPR) and Dutch privacy law.`;
+  `${brand.name} ("we", "us") provides human-guided care navigation for people with limited mobility and for care facilities in the Netherlands. This privacy policy explains what personal data we collect, why we use it, and the choices you have. We process personal data in line with the EU General Data Protection Regulation (GDPR) and Dutch privacy law.`;
 
 const privacySections: LegalSection[] = [
   {
@@ -89,7 +89,7 @@ const termsSections: LegalSection[] = [
   {
     title: "Our service",
     paragraphs: [
-      `${brand.name} helps families navigate eldercare decisions through human-guided support, care planning, and provider matching across the Netherlands. We are a navigation and coordination service — not a medical provider, emergency service, or care home operator.`,
+      `${brand.name} helps people navigate care decisions when mobility is limited — through human-guided support, care planning, and provider matching across the Netherlands. We are a navigation and coordination service — not a medical provider, emergency service, or care home operator.`,
       "During pre-launch, the public site may be limited to waitlist registration. Full guided intake and provider tools open when we announce launch in your area."
     ]
   },

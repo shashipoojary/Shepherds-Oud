@@ -15,7 +15,7 @@ export default function FamilyLoginPage() {
       <SiteHeader />
       <main className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-md items-center px-4 py-10 sm:px-6">
         <section className="w-full rounded-card border border-[var(--card-border)] bg-white p-6 shadow-soft sm:p-8">
-          <p className="section-label">For families</p>
+          <p className="section-label">For care seekers</p>
           <h1 className="mt-2 text-2xl font-semibold text-ink">Sign in to your care dashboard</h1>
           <p className="mt-2 text-sm leading-relaxed text-ink/70">
             Use email or Google to view your care request, updates from your Care Guide, and provider matches.
