@@ -1,8 +1,11 @@
 export const CARE_PATHWAYS = [
-  "Home care",
   "Assisted living",
+  "Home care",
   "Nursing care",
+  "Dementia / memory care",
   "Dementia care",
+  "Rehabilitation",
+  "Palliative care",
   "Respite care"
 ] as const;
 
