@@ -11,7 +11,7 @@ import { normalizeIntakeStatus } from "@/lib/domain/intake-workflow";
 
 function SummaryField({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-stone-100 bg-brand-cream/30 px-4 py-3.5">
+    <div className="rounded-xl bg-brand-cream/25 px-4 py-3.5">
       <dt className="text-xs font-semibold uppercase tracking-wide text-neutral-500">{label}</dt>
       <dd className="mt-1.5 text-sm font-semibold leading-6 text-ink">{value || "—"}</dd>
     </div>
@@ -37,13 +37,13 @@ function CareTypeTags({ items }: { items: string[] }) {
 function UpdateCallout({ title, children, tone = "neutral" }: { title: string; children: React.ReactNode; tone?: "neutral" | "guide" | "visit" }) {
   const toneClass =
     tone === "guide"
-      ? "border-brand-green-pale/80 bg-brand-green-pale/15"
+      ? "bg-brand-green-pale/15 ring-1 ring-brand-green-pale/70"
       : tone === "visit"
-        ? "border-brand-amber/30 bg-brand-amber/10"
-        : "border-stone-200 bg-white";
+        ? "bg-brand-amber/10 ring-1 ring-brand-amber/30"
+        : "bg-stone-50/80 ring-1 ring-stone-200/70";
 
   return (
-    <div className={`flex flex-col self-start rounded-xl border px-4 py-4 sm:px-5 sm:py-4 ${toneClass}`}>
+    <div className={`flex flex-col self-start rounded-xl px-4 py-4 sm:px-5 sm:py-4 ${toneClass}`}>
       <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">{title}</p>
       <div className="mt-2 text-sm leading-7 text-neutral-700">{children}</div>
     </div>
