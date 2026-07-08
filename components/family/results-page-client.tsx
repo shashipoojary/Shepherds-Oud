@@ -311,7 +311,7 @@ function ResultsPageContent() {
         <Link href={withIntakeId("/family/dashboard", intake.id)} className="mb-4 inline-flex text-sm text-ink/60 hover:text-brand-amber">
           ← Your dashboard
         </Link>
-        <IntakeSummaryCard intake={intake} compact />
+        <IntakeSummaryCard intake={intake} defaultOpen={false} />
         <section className="mt-5 rounded-2xl bg-white shadow-soft">
           <EmptyState title={copy.title} description={copy.description} />
         </section>
@@ -347,7 +347,7 @@ function ResultsPageContent() {
         </div>
       ) : null}
 
-      <IntakeSummaryCard intake={intake} compact />
+      <IntakeSummaryCard intake={intake} defaultOpen={false} />
 
       <section className="mt-6 overflow-hidden rounded-2xl border border-stone-200/80 bg-white shadow-soft">
         <div className="border-b border-stone-100 bg-brand-green-dark px-5 py-4 sm:px-7">
