@@ -1697,7 +1697,7 @@ function ProvidersTable({
                 <span className="mt-1 block font-mono text-[11px] font-normal text-neutral-400">Ref {formatReference(provider.id)}</span>
                 {!provider.profileComplete ? (
                   <span className="mt-1 block text-xs font-normal text-neutral-500">
-                    Complete profile before matching
+                    Provider locked until profile is complete
                   </span>
                 ) : null}
               </td>
@@ -1792,7 +1792,7 @@ function ProviderDetailPanel({
             <div className="rounded-xl border border-brand-amber/25 bg-brand-amber/10 px-4 py-3">
               <p className="text-sm font-semibold text-brand-amber-dark">Provider locked</p>
               <p className="mt-1 text-sm leading-6 text-neutral-700">
-                Admin cannot send family requests to this provider until the facility profile is complete.
+                This provider stays locked until their facility profile is complete.
               </p>
               {provider.profileMissingRequirements.length ? (
                 <p className="mt-2 text-xs leading-5 text-neutral-600">
