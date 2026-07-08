@@ -1917,7 +1917,7 @@ function ProviderDetailPanel({
                   value={adminNotes}
                   onChange={(event) => setAdminNotes(event.target.value)}
                   placeholder="Add internal notes about this provider..."
-                  className={`${adminFieldClass} min-h-28`}
+                  className={`${adminFieldClass} min-h-28 w-full`}
                 />
                 <AdminPanelActions>
                   <Button type="button" size="sm" disabled={savingNotes} onClick={() => void saveAdminNotes()}>
