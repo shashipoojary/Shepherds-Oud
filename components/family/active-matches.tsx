@@ -85,7 +85,7 @@ export function FamilyActiveMatches({ intakeId, intakeStatus }: { intakeId: stri
       ) : null}
 
       {active.length ? (
-        <div className="rounded-2xl border border-brand-amber/25 bg-brand-amber/5 p-5 shadow-soft">
+        <div className="rounded-2xl bg-white p-5 shadow-soft ring-1 ring-stone-200/80">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="section-label">Provider response</p>
@@ -94,9 +94,6 @@ export function FamilyActiveMatches({ intakeId, intakeStatus }: { intakeId: stri
                 These are updates from providers you selected. Your Care Guide will arrange the visit, callback, or next decision with you.
               </p>
             </div>
-            <Button asChild size="sm" variant="outline">
-              <Link href={withIntakeId("/family/results", intakeId)}>{singleMatch ? "View matched provider" : "View shortlist"}</Link>
-            </Button>
           </div>
 
           <div className="mt-4 grid gap-3">
@@ -104,21 +101,46 @@ export function FamilyActiveMatches({ intakeId, intakeStatus }: { intakeId: stri
               <MatchCard key={match.matchId || match.id} match={match} intakeId={intakeId} />
             ))}
           </div>
+          {!singleMatch ? (
+            <div className="mt-4">
+              <Button asChild size="sm" variant="ghost">
+                <Link href={withIntakeId("/family/results", intakeId)}>
+                  View full shortlist <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
+          ) : null}
         </div>
       ) : null}
 
       {declined.length ? (
-        <div className="rounded-2xl border border-stone-200 bg-white p-5 shadow-soft">
-          <p className="section-label">Not available right now</p>
+        <div className="rounded-2xl bg-white p-5 shadow-soft ring-1 ring-stone-200/80">
+          <p className="section-label">Provider updates</p>
           <h2 className="mt-1 text-lg font-semibold text-ink">
-            {declined.length} provider{declined.length === 1 ? "" : "s"} could not help
+            {declined.length} provider{declined.length === 1 ? "" : "s"} declined your request
           </h2>
-          <p className="mt-1 text-sm text-neutral-600">These facilities declined your visit or callback request. Your Care Guide can help you choose another option.</p>
+          <p className="mt-1 text-sm text-neutral-600">
+            This can happen when availability changes. Your Care Guide will help you choose the best next option.
+          </p>
+          {suggested.length ? (
+            <div className="mt-3 rounded-xl bg-brand-cream/40 px-4 py-3 text-sm text-ink/75 ring-1 ring-brand-amber/20">
+              You still have {suggested.length} other matched option{suggested.length === 1 ? "" : "s"} ready to review.
+            </div>
+          ) : null}
           <div className="mt-4 grid gap-3">
             {declined.map((match) => (
               <MatchCard key={match.matchId || match.id} match={match} intakeId={intakeId} muted />
             ))}
           </div>
+          {suggested.length ? (
+            <div className="mt-4">
+              <Button asChild size="sm">
+                <Link href={withIntakeId("/family/results", intakeId)}>
+                  Review other matches <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -146,7 +168,7 @@ export function FamilyActiveMatches({ intakeId, intakeStatus }: { intakeId: stri
 
 function MatchCard({ match, intakeId, muted = false }: { match: ProviderMatch; intakeId: string; muted?: boolean }) {
   return (
-    <article className={`rounded-xl border p-4 ${muted ? "border-stone-200 bg-stone-50/80" : "border-white/80 bg-white"}`}>
+    <article className={`rounded-xl p-4 ring-1 ${muted ? "bg-stone-50/80 ring-stone-200" : "bg-brand-cream/20 ring-stone-200/80"}`}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2">
