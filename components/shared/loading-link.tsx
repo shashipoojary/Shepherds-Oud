@@ -27,7 +27,10 @@ export function LoadingLink({ href, children, className, onClick, onNavigate, ..
   const handleClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
     onClick?.(event);
     if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-    if (hrefString === currentUrl) return;
+    if (hrefString === currentUrl) {
+      onNavigate?.();
+      return;
+    }
 
     event.preventDefault();
     setTarget(hrefString);
