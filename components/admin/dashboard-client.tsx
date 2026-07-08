@@ -701,6 +701,16 @@ function FamilyDetailPanel({
   const [loadedUpdatedAtIso, setLoadedUpdatedAtIso] = useState<string | null>(null);
   const [staleConflict, setStaleConflict] = useState(false);
   const [refreshingCase, setRefreshingCase] = useState(false);
+  const hasUnsavedCaseDraft = family
+    ? careGuideId !== (family.careGuideId || "") ||
+      carePathway !== (family.carePathway || "") ||
+      assessmentNotes !== (family.assessmentNotes || "") ||
+      carePlanSummary !== (family.carePlanSummary || "") ||
+      visitScheduledAt !== (family.visitScheduledAt ? family.visitScheduledAt.slice(0, 16) : "") ||
+      visitType !== ((family.visitType as "VISIT" | "CALLBACK") || "") ||
+      visitProviderName !== (family.visitProviderName || "") ||
+      visitNotes !== (family.visitNotes || "")
+    : false;
 
   function intakePatchBody(body: Record<string, unknown>) {
     return loadedUpdatedAtIso ? { ...body, expectedUpdatedAt: loadedUpdatedAtIso } : body;
@@ -743,11 +753,11 @@ function FamilyDetailPanel({
       clearPanelMessage();
       setStaleConflict(false);
       setLoadedUpdatedAtIso(family.updatedAtIso);
-    } else if (!staleConflict) {
+    } else if (!staleConflict && !hasUnsavedCaseDraft) {
       setLoadedUpdatedAtIso(family.updatedAtIso);
     }
 
-    if (isNewCase || !staleConflict) {
+    if (isNewCase || (!staleConflict && !hasUnsavedCaseDraft)) {
       setCareGuideId(family.careGuideId || "");
       setCarePathway(family.carePathway || "");
       setAssessmentNotes(family.assessmentNotes || "");
@@ -757,7 +767,7 @@ function FamilyDetailPanel({
       setVisitProviderName(family.visitProviderName || "");
       setVisitNotes(family.visitNotes || "");
     }
-  }, [family, staleConflict, clearPanelMessage]);
+  }, [family, staleConflict, clearPanelMessage, hasUnsavedCaseDraft]);
 
   const isCaseActionPending = family ? pendingId === family.id && pendingAction !== null : false;
   const normalizedStatus = family ? normalizeIntakeStatus(family.status) : "NEW";
@@ -1734,14 +1744,31 @@ function ProviderDetailPanel({
   const { message: panelMessage, setMessage: setPanelMessage, clearMessage: clearPanelMessage } = usePanelMessage();
   const [adminNotes, setAdminNotes] = useState("");
   const [savingNotes, setSavingNotes] = useState(false);
+  const previousProviderIdRef = useRef<string | null>(null);
+  const hasUnsavedAdminNotes = provider ? adminNotes !== (provider.adminNotes ?? "") : false;
 
   useEffect(() => {
     if (!provider) clearPanelMessage();
   }, [provider, clearPanelMessage]);
 
   useEffect(() => {
-    setAdminNotes(provider?.adminNotes ?? "");
-  }, [provider?.id, provider?.adminNotes]);
+    if (!provider) {
+      previousProviderIdRef.current = null;
+      setAdminNotes("");
+      return;
+    }
+
+    const isNewProvider = previousProviderIdRef.current !== provider.id;
+    if (isNewProvider) {
+      previousProviderIdRef.current = provider.id;
+      setAdminNotes(provider.adminNotes ?? "");
+      return;
+    }
+
+    if (!hasUnsavedAdminNotes) {
+      setAdminNotes(provider.adminNotes ?? "");
+    }
+  }, [provider, hasUnsavedAdminNotes]);
 
   const priceRange = provider ? formatProviderPriceRange(provider.priceMin, provider.priceMax) : null;
   const availability = provider ? displayProviderAvailability(provider) : null;
