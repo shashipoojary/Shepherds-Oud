@@ -43,9 +43,9 @@ function UpdateCallout({ title, children, tone = "neutral" }: { title: string; c
         : "border-stone-200 bg-white";
 
   return (
-    <div className={`flex h-full flex-col rounded-xl border px-4 py-4 sm:px-5 sm:py-4 ${toneClass}`}>
+    <div className={`flex flex-col self-start rounded-xl border px-4 py-4 sm:px-5 sm:py-4 ${toneClass}`}>
       <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">{title}</p>
-      <div className="mt-2 flex-1 text-sm leading-7 text-neutral-700">{children}</div>
+      <div className="mt-2 text-sm leading-7 text-neutral-700">{children}</div>
     </div>
   );
 }
@@ -210,7 +210,7 @@ export function IntakeSummaryCard({
           {hasUpdates ? (
             <section id="care-guide-plan" className="scroll-mt-24">
               <h3 className="text-sm font-semibold text-ink">Updates from your Care Guide</h3>
-              <div className="mt-4 grid gap-4 lg:grid-cols-2 lg:items-stretch">
+              <div className="mt-4 grid gap-4 lg:grid-cols-2 lg:items-start">
                 {intake.carePathway ? (
                   <UpdateCallout title="Recommended pathway" tone="neutral">
                     <strong className="text-ink">{intake.carePathway}</strong>
