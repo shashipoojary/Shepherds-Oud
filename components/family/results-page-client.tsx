@@ -379,6 +379,9 @@ function ResultsPageContent() {
                 <Badge variant="matched">{matchStatusLabel(recommended.matchStatus)}</Badge>
               ) : null}
             </div>
+            {recommended.availabilityUpdatedAt ? (
+              <p className="mt-2 text-xs text-ink/50">Availability last updated {recommended.availabilityUpdatedAt}</p>
+            ) : null}
 
             {recommended.tags.length ? (
               <p className="mt-4 text-sm text-ink/60">
@@ -564,6 +567,9 @@ function CompareRow({
             <h3 className="font-semibold text-ink">{provider.name}</h3>
             <Badge variant={availabilityBadgeVariant(provider.availability)}>{provider.availability}</Badge>
           </div>
+          {provider.availabilityUpdatedAt ? (
+            <p className="mt-1 text-xs text-ink/45">Availability last updated {provider.availabilityUpdatedAt}</p>
+          ) : null}
           <p className="mt-1 text-sm text-ink/55">
             {provider.type} · {provider.area}
           </p>

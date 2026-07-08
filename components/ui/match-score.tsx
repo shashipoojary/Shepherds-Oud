@@ -13,6 +13,16 @@ export function fitLabel(score: number) {
   return "Worth a conversation";
 }
 
+export function adminMatchScoreBands() {
+  return "90+ strong fit · 75+ good fit · below 75 exploratory";
+}
+
+export function adminFitLabel(score: number) {
+  if (score >= 90) return "Strong fit";
+  if (score >= 75) return "Good fit";
+  return "Exploratory fit";
+}
+
 function barHeight(size: MatchScoreProps["size"]) {
   if (size === "lg") return "h-2";
   if (size === "sm") return "h-1";

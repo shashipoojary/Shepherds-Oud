@@ -1,6 +1,10 @@
 import { prisma } from "@/lib/core/db";
 import { displayVisitAvailability } from "@/lib/config/content";
-import { displayProviderAvailability, providerWaitEstimate } from "@/lib/domain/provider-availability";
+import {
+  displayProviderAvailability,
+  formatAvailabilityLastUpdated,
+  providerWaitEstimate
+} from "@/lib/domain/provider-availability";
 import type { ProviderMatch } from "@/lib/core/types";
 
 type ProviderRecord = {
@@ -22,6 +26,7 @@ type ProviderRecord = {
   bedsOpen: number | null;
   waitlistText: string | null;
   availabilityStatus: string | null;
+  updatedAt?: Date;
 };
 
 export function mapProviderRecord(provider: ProviderRecord, score = 0): ProviderMatch {
@@ -30,6 +35,7 @@ export function mapProviderRecord(provider: ProviderRecord, score = 0): Provider
   const waitEstimate = providerWaitEstimate(provider);
   const priceLabel =
     provider.priceMin && provider.priceMax ? `EUR ${provider.priceMin}-${provider.priceMax}/mo` : "Price on request";
+  const availabilityUpdatedAt = provider.updatedAt ? formatAvailabilityLastUpdated(provider.updatedAt) ?? undefined : undefined;
 
   return {
     id: provider.id,
@@ -63,7 +69,8 @@ export function mapProviderRecord(provider: ProviderRecord, score = 0): Provider
         ? { "Price range": `EUR ${provider.priceMin} - EUR ${provider.priceMax} per month` }
         : { "Price range": "On request" })
     },
-    contact: ["Contact details will be shared after your Care Guide reviews your request."]
+    contact: ["Contact details will be shared after your Care Guide reviews your request."],
+    availabilityUpdatedAt
   };
 }
 

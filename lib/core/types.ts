@@ -18,4 +18,5 @@ export type ProviderMatch = {
   description: string;
   details: Record<string, string>;
   contact: string[];
+  availabilityUpdatedAt?: string;
 };

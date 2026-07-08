@@ -42,6 +42,9 @@ export default async function ProviderDetailPage({
             <Badge variant={availabilityBadgeVariant(provider.availability)} className="mt-4">
               {provider.availability}
             </Badge>
+            {provider.availabilityUpdatedAt ? (
+              <p className="mt-2 text-xs text-white/70">Availability last updated {provider.availabilityUpdatedAt}</p>
+            ) : null}
           </header>
           <div className="grid gap-8 p-5 sm:p-7 lg:grid-cols-[minmax(0,1fr)_380px]">
             <div>

@@ -21,6 +21,7 @@ import { RefreshButton } from "@/components/ui/refresh-button";
 import { UnreadDot } from "@/components/ui/unread-dot";
 import { DetailList, PanelSection, panelNoticeTone, SlidePanel, StatusPill, TagList, usePanelMessage } from "@/components/ui/slide-panel";
 import { StatGrid } from "@/components/ui/stat-grid";
+import { adminFitLabel, adminMatchScoreBands } from "@/components/ui/match-score";
 import type { AdminDashboardData } from "@/lib/data/admin";
 import { recordAction } from "@/lib/client/actions";
 import { TOAST_DISMISS_MS } from "@/lib/client/toast-timing";
@@ -67,7 +68,7 @@ import {
   matchStatusBadgeClass
 } from "@/lib/domain/match-status";
 import { INTAKE_STALE_CONFLICT_MESSAGE, isIntakeStaleConflictError } from "@/lib/domain/intake-stale-conflict";
-import { displayProviderAvailability } from "@/lib/domain/provider-availability";
+import { displayProviderAvailability, formatAvailabilityLastUpdated } from "@/lib/domain/provider-availability";
 import { formatReference, matchesListSearch, matchesReferenceQuery } from "@/lib/domain/reference";
 import { isResolvedWaitlistStatus, waitlistStatusLabel } from "@/lib/domain/waitlist-status";
 
@@ -329,6 +330,7 @@ export function AdminDashboardClient({ data: initialData }: { data: AdminDashboa
                 providers={data.providerList}
                 itemSeenVersion={itemSeenVersion}
                 onMarkItemSeen={onMarkItemSeen}
+                onSync={syncDashboard}
               />
             ) : (
               <EmptyState title="No active providers yet" description="Providers appear here after invitation acceptance or profile creation." />
@@ -1409,6 +1411,7 @@ function FamilyDetailPanel({
                   onChange={(event) => setScore(event.target.value)}
                   className={adminFieldClass}
                 />
+                <MatchScoreGuidance score={score} />
               </label>
               <label className="grid gap-2 text-sm font-medium">
                 Internal notes (optional)
@@ -1602,11 +1605,13 @@ function FamilyDetailPanel({
 function ProvidersTable({
   providers,
   itemSeenVersion,
-  onMarkItemSeen
+  onMarkItemSeen,
+  onSync
 }: {
   providers: AdminDashboardData["providerList"];
   itemSeenVersion: number;
   onMarkItemSeen: () => void;
+  onSync: () => Promise<boolean>;
 }) {
   const [selected, setSelected] = useState<AdminDashboardData["providerList"][number] | null>(null);
   const [search, setSearch] = useState("");
@@ -1712,23 +1717,31 @@ function ProvidersTable({
         </tbody>
       </table>
 
-      <ProviderDetailPanel provider={selected} onClose={() => setSelected(null)} />
+      <ProviderDetailPanel provider={selected} onClose={() => setSelected(null)} onSync={onSync} />
     </>
   );
 }
 
 function ProviderDetailPanel({
   provider,
-  onClose
+  onClose,
+  onSync
 }: {
   provider: AdminDashboardData["providerList"][number] | null;
   onClose: () => void;
+  onSync: () => Promise<boolean>;
 }) {
   const { message: panelMessage, setMessage: setPanelMessage, clearMessage: clearPanelMessage } = usePanelMessage();
+  const [adminNotes, setAdminNotes] = useState("");
+  const [savingNotes, setSavingNotes] = useState(false);
 
   useEffect(() => {
     if (!provider) clearPanelMessage();
   }, [provider, clearPanelMessage]);
+
+  useEffect(() => {
+    setAdminNotes(provider?.adminNotes ?? "");
+  }, [provider?.id, provider?.adminNotes]);
 
   const priceRange = provider ? formatProviderPriceRange(provider.priceMin, provider.priceMax) : null;
   const availability = provider ? displayProviderAvailability(provider) : null;
@@ -1736,6 +1749,32 @@ function ProviderDetailPanel({
     provider && (provider.bedsOpen != null || provider.bedsTotal != null)
       ? `${provider.bedsOpen ?? "—"} open · ${provider.bedsTotal ?? "—"} total`
       : null;
+  const availabilityUpdatedLabel = provider
+    ? formatAvailabilityLastUpdated(provider.updatedAtIso) ?? provider.updatedAt
+    : null;
+
+  async function saveAdminNotes() {
+    if (!provider) return;
+    setSavingNotes(true);
+    try {
+      const response = await fetch(`/api/admin/providers/${provider.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ adminNotes: adminNotes.trim() || null })
+      });
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+        setPanelMessage(payload?.error || "Could not save internal notes.");
+        return;
+      }
+      const ok = await onSync();
+      setPanelMessage(ok ? "Internal notes saved." : "Notes saved, but the dashboard could not refresh.");
+    } catch {
+      setPanelMessage("Could not save internal notes.");
+    } finally {
+      setSavingNotes(false);
+    }
+  }
 
   return (
     <SlidePanel
@@ -1767,6 +1806,9 @@ function ProviderDetailPanel({
               <div>
                 <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Availability</span>
                 <p className="mt-1 font-semibold text-ink">{availability || "Not set"}</p>
+                {availabilityUpdatedLabel ? (
+                  <p className="mt-0.5 text-xs text-neutral-500">Last updated {availabilityUpdatedLabel}</p>
+                ) : null}
               </div>
               <div>
                 <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Beds</span>
@@ -1866,7 +1908,25 @@ function ProviderDetailPanel({
                 <p className="text-sm leading-7 text-neutral-700">{provider.description?.trim() || "—"}</p>
               </PanelSection>
 
-              <PanelSection step={7} title="Record">
+              <PanelSection
+                step={7}
+                title="Internal notes"
+                description="Visible to admins only. Use for vetting notes, referral context, or follow-up reminders."
+              >
+                <textarea
+                  value={adminNotes}
+                  onChange={(event) => setAdminNotes(event.target.value)}
+                  placeholder="Add internal notes about this provider..."
+                  className={`${adminFieldClass} min-h-28`}
+                />
+                <AdminPanelActions>
+                  <Button type="button" size="sm" disabled={savingNotes} onClick={() => void saveAdminNotes()}>
+                    {savingNotes ? "Saving..." : "Save notes"}
+                  </Button>
+                </AdminPanelActions>
+              </PanelSection>
+
+              <PanelSection step={8} title="Record">
                 <DetailList
                   columns={1}
                   items={[
@@ -1877,7 +1937,7 @@ function ProviderDetailPanel({
                 />
               </PanelSection>
 
-              <PanelSection step={8} title="Quick actions">
+              <PanelSection step={9} title="Quick actions">
                 <div className="flex flex-wrap gap-2">
                   <Button asChild size="sm" variant="outline">
                     <a href={`/providers/${provider.id}`} target="_blank" rel="noreferrer">
@@ -1908,6 +1968,22 @@ function formatAdminMatchScore(value: string) {
   const trimmed = value.trim();
   if (!trimmed) return "—";
   return trimmed.endsWith("%") ? trimmed : `${trimmed}%`;
+}
+
+function MatchScoreGuidance({ score }: { score: string }) {
+  const numericScore = Number(score);
+  const validScore = Number.isFinite(numericScore) && numericScore >= 0 && numericScore <= 100;
+
+  return (
+    <div className="space-y-1 font-normal">
+      {validScore ? (
+        <p className="text-xs font-medium text-brand-green-dark">{adminFitLabel(numericScore)}</p>
+      ) : (
+        <p className="text-xs text-neutral-500">Enter a score from 0 to 100.</p>
+      )}
+      <p className="text-xs leading-5 text-neutral-500">{adminMatchScoreBands()}</p>
+    </div>
+  );
 }
 
 function formatProviderPriceRange(priceMin: number | null, priceMax: number | null) {

@@ -88,6 +88,7 @@ export async function getAdminDashboardData() {
         visitAvailability: true,
         priceMin: true,
         priceMax: true,
+        adminNotes: true,
         createdAt: true,
         updatedAt: true
       }
@@ -257,6 +258,7 @@ export async function getAdminDashboardData() {
       priceMax: provider.priceMax,
       profileComplete: profileMissingRequirements.length === 0,
       profileMissingRequirements,
+      adminNotes: provider.adminNotes,
       createdAt: provider.createdAt.toLocaleDateString("en-GB"),
       createdAtIso: provider.createdAt.toISOString(),
       updatedAt: provider.updatedAt.toLocaleDateString("en-GB"),

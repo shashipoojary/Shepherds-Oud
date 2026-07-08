@@ -33,3 +33,9 @@ export function providerWaitEstimate(provider: ProviderAvailabilityInput) {
   }
   return provider.waitlistText.trim();
 }
+
+export function formatAvailabilityLastUpdated(value: Date | string) {
+  const date = typeof value === "string" ? new Date(value) : value;
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+}
