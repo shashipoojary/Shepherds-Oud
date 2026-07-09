@@ -1362,34 +1362,15 @@ function FamilyDetailPanel({
             <PanelSection
               step={4}
               title="Create provider match"
-              description="Add providers to the family shortlist. Completed matches stay listed here for reference."
+              description="Matched providers appear below with live status and notes. Add another provider when you are ready."
               locked={matchStepLocked}
             >
-              <div className="space-y-3">
+              <div className="space-y-5">
+              {matches.map((match) => (
+                <SavedProviderMatchCard key={match.id} match={match} />
+              ))}
               {hasMatches ? (
-                <div>
-                  <p className="text-sm font-medium text-ink">
-                    Shortlist <span className="font-normal text-neutral-500">({matches.length})</span>
-                  </p>
-                  <ul className="mt-3 divide-y divide-stone-200/80">
-                    {matches.map((match) => (
-                      <li key={match.id} className="py-3 first:pt-0 last:pb-0">
-                        <div className="flex flex-wrap items-start gap-2">
-                          <p className="min-w-0 flex-1 font-medium text-ink break-words">{match.provider}</p>
-                          <span className="shrink-0 rounded-full bg-stone-100 px-2 py-0.5 text-xs font-semibold text-neutral-600">
-                            {formatAdminMatchScore(match.match)}
-                          </span>
-                          <StatusPill className={cn("shrink-0", matchStatusBadgeClass(match.statusRaw || "SUGGESTED"))}>
-                            {adminMatchStatusLabel(match.statusRaw || "SUGGESTED")}
-                          </StatusPill>
-                        </div>
-                        {match.notes ? (
-                          <p className="mt-1.5 text-xs leading-5 text-neutral-600 break-words">{match.notes}</p>
-                        ) : null}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                <p className="text-sm font-medium text-ink">Add another provider</p>
               ) : null}
               <label className="grid gap-2 text-sm font-medium">
                 Provider
@@ -1400,7 +1381,9 @@ function FamilyDetailPanel({
                   className={adminFieldClass}
                 >
                   <option value="">Select provider</option>
-                  {providers.map((provider) => (
+                  {providers
+                    .filter((provider) => !matches.some((match) => match.providerId === provider.id))
+                    .map((provider) => (
                     <option key={provider.id} value={provider.id}>
                       {provider.name} - {provider.area}
                       {provider.profileComplete ? "" : " (locked)"}
@@ -1993,6 +1976,50 @@ function formatAdminMatchScore(value: string) {
   const trimmed = value.trim();
   if (!trimmed) return "—";
   return trimmed.endsWith("%") ? trimmed : `${trimmed}%`;
+}
+
+function parseAdminMatchScore(value: string) {
+  const numeric = Number(value.replace("%", "").trim());
+  return Number.isFinite(numeric) ? numeric : null;
+}
+
+function SavedProviderMatchCard({ match }: { match: InquiryEntry }) {
+  const scoreValue = parseAdminMatchScore(match.match);
+  const notes = adminMatchNotes(match.notes);
+
+  return (
+    <div className="space-y-3 border-b border-stone-200/80 pb-5 last:border-b-0 last:pb-0">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Provider</p>
+          <p className="mt-1 font-medium text-ink break-words">{match.provider}</p>
+        </div>
+        <StatusPill className={cn("shrink-0", matchStatusBadgeClass(match.statusRaw || "SUGGESTED"))}>
+          {adminMatchStatusLabel(match.statusRaw || "SUGGESTED")}
+        </StatusPill>
+      </div>
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Match score (%)</p>
+        <p className="mt-1 text-sm font-medium text-ink">{formatAdminMatchScore(match.match)}</p>
+        {scoreValue != null ? (
+          <p className="mt-1 text-xs font-medium text-brand-green-dark">{adminFitLabel(scoreValue)}</p>
+        ) : null}
+      </div>
+      {notes ? (
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Internal notes</p>
+          <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-neutral-700 break-words">{notes}</p>
+        </div>
+      ) : null}
+      {match.declineReason ? (
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Decline reason</p>
+          <p className="mt-1 text-sm leading-6 text-neutral-700 break-words">{match.declineReason}</p>
+        </div>
+      ) : null}
+      <p className="text-xs text-neutral-500">Last updated {match.updatedAt}</p>
+    </div>
+  );
 }
 
 function MatchScoreGuidance({ score }: { score: string }) {
