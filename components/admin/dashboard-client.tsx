@@ -67,6 +67,7 @@ import {
   isAdminActionNeeded,
   matchStatusBadgeClass
 } from "@/lib/domain/match-status";
+import { isRematchableMatchStatus } from "@/lib/domain/match-rematch";
 import { INTAKE_STALE_CONFLICT_MESSAGE, isIntakeStaleConflictError } from "@/lib/domain/intake-stale-conflict";
 import { displayProviderAvailability, formatAvailabilityLastUpdated } from "@/lib/domain/provider-availability";
 import { formatReference, matchesListSearch, matchesReferenceQuery } from "@/lib/domain/reference";
@@ -122,6 +123,13 @@ function groupInquiriesByIntake(inquiries: InquiryEntry[]) {
     grouped.set(inquiry.intakeId, current);
   }
   return grouped;
+}
+
+function providerAvailableForMatching(providerId: string, matches: InquiryEntry[]) {
+  const existing = matches.find((match) => match.providerId === providerId);
+  if (!existing) return { available: true, rematch: false };
+  if (isRematchableMatchStatus(existing.statusRaw)) return { available: true, rematch: true };
+  return { available: false, rematch: false };
 }
 
 export function AdminDashboardClient({ data: initialData }: { data: AdminDashboardData }) {
@@ -979,7 +987,11 @@ function FamilyDetailPanel({
         // Action log is optional; the match already succeeded.
       }
 
-      notifyPanel(`You created a provider match for ${family.name}. They can now see this provider on their shortlist.`);
+      notifyPanel(
+        selectedProviderRematch
+          ? `You re-opened this provider on ${family.name}'s shortlist. The family can request a visit or callback again.`
+          : `You created a provider match for ${family.name}. They can now see this provider on their shortlist.`
+      );
       setProviderId("");
       setScore("85");
       setMatchNotes("");
@@ -1021,6 +1033,7 @@ function FamilyDetailPanel({
     normalizedStatus === "CARE_PLAN" &&
     matches.some((match) => match.statusRaw === "DECLINED") &&
     !matches.some((match) => forwardMatchStatuses.has(match.statusRaw || ""));
+  const selectedProviderRematch = providerId ? providerAvailableForMatching(providerId, matches).rematch : false;
   const assessmentStepLocked =
     !declineRematchMode &&
     carePlanComplete({ carePlanSummary: family?.carePlanSummary }) &&
@@ -1382,13 +1395,16 @@ function FamilyDetailPanel({
                 >
                   <option value="">Select provider</option>
                   {providers
-                    .filter((provider) => !matches.some((match) => match.providerId === provider.id))
-                    .map((provider) => (
+                    .filter((provider) => providerAvailableForMatching(provider.id, matches).available)
+                    .map((provider) => {
+                      const rematch = providerAvailableForMatching(provider.id, matches).rematch;
+                      return (
                     <option key={provider.id} value={provider.id}>
                       {provider.name} - {provider.area}
-                      {provider.profileComplete ? "" : " (locked)"}
+                      {rematch ? " (re-open declined match)" : !provider.profileComplete ? " (locked)" : ""}
                     </option>
-                  ))}
+                      );
+                    })}
                 </select>
               </label>
               <label className="grid gap-2 text-sm font-medium">
@@ -1420,7 +1436,7 @@ function FamilyDetailPanel({
                   disabled={!providerId || creatingMatch || Boolean(createMatchDisabledReason)}
                   onClick={() => void createMatch()}
                 >
-                  {creatingMatch ? "Creating..." : "Create match"}
+                  {creatingMatch ? "Saving..." : selectedProviderRematch ? "Re-open match" : "Create match"}
                 </Button>
               </AdminPanelActions>
               {createMatchDisabledReason ? <p className="text-xs leading-5 text-neutral-500">{createMatchDisabledReason}</p> : null}
@@ -2016,6 +2032,11 @@ function SavedProviderMatchCard({ match }: { match: InquiryEntry }) {
           <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Decline reason</p>
           <p className="mt-1 text-sm leading-6 text-neutral-700 break-words">{match.declineReason}</p>
         </div>
+      ) : null}
+      {isRematchableMatchStatus(match.statusRaw) ? (
+        <p className="text-xs leading-5 text-neutral-600">
+          You can re-open this provider below if the family should try again.
+        </p>
       ) : null}
       <p className="text-xs text-neutral-500">Last updated {match.updatedAt}</p>
     </div>
