@@ -43,9 +43,8 @@ export function FamilyActiveMatches({ intakeId, intakeStatus }: { intakeId: stri
 
   if (loading) {
     return (
-      <div className="mt-5 space-y-3">
-        <div className="h-24 animate-pulse rounded-2xl bg-stone-100" />
-        <div className="h-24 animate-pulse rounded-2xl bg-stone-100" />
+      <div className="mt-5">
+        <div className="h-32 animate-pulse rounded-2xl bg-stone-100" />
       </div>
     );
   }
@@ -59,88 +58,72 @@ export function FamilyActiveMatches({ intakeId, intakeStatus }: { intakeId: stri
   const declined = matches.filter((match) => match.matchStatus === "DECLINED");
   const suggested = matches.filter((match) => match.matchStatus === "SUGGESTED");
   const singleMatch = matches.filter((match) => match.matchStatus !== "DECLINED").length === 1;
+  const showProviderPanel = declineContext.needsDeclineRecovery || active.length > 0;
 
   return (
     <section id="provider-updates" className="scroll-mt-24 space-y-4">
-      {declineContext.needsDeclineRecovery ? (
-        <div className="rounded-2xl border border-brand-amber/30 bg-brand-amber/10 p-5 shadow-soft">
-          <p className="section-label">What happens next</p>
-          <h2 className="mt-1 text-lg font-semibold text-ink">A provider could not help with your last request</h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-700">
-            {familyDeclineRecoveryMessage(declineContext.hasForward)}
-          </p>
-          <div className="mt-4 flex flex-wrap gap-2">
-            {declineContext.hasForward ? (
-              <Button asChild size="sm">
-                <Link href={withIntakeId("/family/results", intakeId)}>
-                  Review other matches <ArrowRight className="h-4 w-4" />
-                </Link>
-              </Button>
-            ) : null}
-            <Button asChild size="sm" variant="outline">
-              <a href="#care-guide-plan">View care plan</a>
-            </Button>
-          </div>
-        </div>
-      ) : null}
-
-      {active.length ? (
+      {showProviderPanel ? (
         <div className="rounded-2xl bg-white p-5 shadow-soft ring-1 ring-stone-200/80">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
+          {declineContext.needsDeclineRecovery ? (
+            <>
+              <p className="section-label">Provider updates</p>
+              <h2 className="mt-1 text-lg font-semibold text-ink">A provider could not help with your last request</h2>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-700">
+                {familyDeclineRecoveryMessage(declineContext.hasForward)}
+              </p>
+              {declined.length ? (
+                <div className="mt-4 divide-y divide-stone-200">
+                  {declined.map((match) => (
+                    <DeclinedProviderRow key={match.matchId || match.id} match={match} intakeId={intakeId} />
+                  ))}
+                </div>
+              ) : null}
+              <div className="mt-4 flex flex-wrap gap-2">
+                {declineContext.hasForward ? (
+                  <Button asChild size="sm">
+                    <Link href={withIntakeId("/family/results", intakeId)}>
+                      Review other matches <ArrowRight className="h-4 w-4" />
+                    </Link>
+                  </Button>
+                ) : null}
+                <Button asChild size="sm" variant={declineContext.hasForward ? "outline" : "default"}>
+                  <a href="#care-guide-plan">View care plan</a>
+                </Button>
+              </div>
+            </>
+          ) : (
+            <>
               <p className="section-label">Provider response</p>
               <h2 className="mt-1 text-lg font-semibold text-ink">Your Care Guide is coordinating next steps</h2>
               <p className="mt-1 text-sm text-neutral-600">
                 These are updates from providers you selected. Your Care Guide will arrange the visit, callback, or next decision with you.
               </p>
-            </div>
-          </div>
-
-          <div className="mt-4 grid gap-3">
-            {active.map((match) => (
-              <MatchCard key={match.matchId || match.id} match={match} intakeId={intakeId} />
-            ))}
-          </div>
-          {!singleMatch ? (
-            <div className="mt-4">
-              <Button asChild size="sm" variant="ghost">
-                <Link href={withIntakeId("/family/results", intakeId)}>
-                  View full shortlist <ArrowRight className="h-4 w-4" />
-                </Link>
-              </Button>
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-
-      {declined.length ? (
-        <div className="rounded-2xl bg-white p-5 shadow-soft ring-1 ring-stone-200/80">
-          <p className="section-label">Provider updates</p>
-          <h2 className="mt-1 text-lg font-semibold text-ink">
-            {declined.length} provider{declined.length === 1 ? "" : "s"} declined your request
-          </h2>
-          <p className="mt-1 text-sm text-neutral-600">
-            This can happen when availability changes. Your Care Guide will help you choose the best next option.
-          </p>
-          {suggested.length ? (
-            <div className="mt-3 rounded-xl bg-brand-cream/40 px-4 py-3 text-sm text-ink/75 ring-1 ring-brand-amber/20">
-              You still have {suggested.length} other matched option{suggested.length === 1 ? "" : "s"} ready to review.
-            </div>
-          ) : null}
-          <div className="mt-4 grid gap-3">
-            {declined.map((match) => (
-              <MatchCard key={match.matchId || match.id} match={match} intakeId={intakeId} muted />
-            ))}
-          </div>
-          {suggested.length ? (
-            <div className="mt-4">
-              <Button asChild size="sm">
-                <Link href={withIntakeId("/family/results", intakeId)}>
-                  Review other matches <ArrowRight className="h-4 w-4" />
-                </Link>
-              </Button>
-            </div>
-          ) : null}
+              <div className="mt-4 grid gap-3">
+                {active.map((match) => (
+                  <MatchCard key={match.matchId || match.id} match={match} intakeId={intakeId} />
+                ))}
+              </div>
+              {declined.length ? (
+                <div className="mt-5">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Previously declined</p>
+                  <div className="mt-3 divide-y divide-stone-200">
+                    {declined.map((match) => (
+                      <DeclinedProviderRow key={match.matchId || match.id} match={match} intakeId={intakeId} />
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+              {!singleMatch ? (
+                <div className="mt-4">
+                  <Button asChild size="sm" variant="ghost">
+                    <Link href={withIntakeId("/family/results", intakeId)}>
+                      View full shortlist <ArrowRight className="h-4 w-4" />
+                    </Link>
+                  </Button>
+                </div>
+              ) : null}
+            </>
+          )}
         </div>
       ) : null}
 
@@ -166,9 +149,32 @@ export function FamilyActiveMatches({ intakeId, intakeStatus }: { intakeId: stri
   );
 }
 
-function MatchCard({ match, intakeId, muted = false }: { match: ProviderMatch; intakeId: string; muted?: boolean }) {
+function DeclinedProviderRow({ match, intakeId }: { match: ProviderMatch; intakeId: string }) {
   return (
-    <article className={`rounded-xl p-4 ring-1 ${muted ? "bg-stone-50/80 ring-stone-200" : "bg-brand-cream/20 ring-stone-200/80"}`}>
+    <div className="flex flex-col gap-3 py-4 first:pt-0 last:pb-0 sm:flex-row sm:items-start sm:justify-between">
+      <div>
+        <div className="flex flex-wrap items-center gap-2">
+          <h3 className="font-semibold text-ink">{match.name}</h3>
+          <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${matchStatusBadgeClass("DECLINED")}`}>
+            {matchStatusLabel("DECLINED")}
+          </span>
+        </div>
+        <p className="mt-1 text-sm text-neutral-600">
+          {match.type} · {match.area}
+        </p>
+      </div>
+      <Button asChild size="sm" variant="outline" className="shrink-0">
+        <Link href={withIntakeId(`/providers/${match.id}?from=dashboard`, intakeId)}>
+          View profile <ArrowRight className="h-4 w-4" />
+        </Link>
+      </Button>
+    </div>
+  );
+}
+
+function MatchCard({ match, intakeId }: { match: ProviderMatch; intakeId: string }) {
+  return (
+    <article className="rounded-xl bg-brand-cream/20 p-4 ring-1 ring-stone-200/80">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2">
@@ -186,13 +192,11 @@ function MatchCard({ match, intakeId, muted = false }: { match: ProviderMatch; i
             <p className="mt-2 text-sm leading-6 text-neutral-700">{familyMatchNextStep(match.matchStatus, match.name)}</p>
           ) : null}
         </div>
-        {!muted || match.matchStatus === "DECLINED" ? (
-          <Button asChild size="sm" variant={muted ? "outline" : "default"} className="shrink-0">
-            <Link href={withIntakeId(`/providers/${match.id}?from=dashboard`, intakeId)}>
-              {muted ? "View profile" : "Review provider"} <ArrowRight className="h-4 w-4" />
-            </Link>
-          </Button>
-        ) : null}
+        <Button asChild size="sm" className="shrink-0">
+          <Link href={withIntakeId(`/providers/${match.id}?from=dashboard`, intakeId)}>
+            Review provider <ArrowRight className="h-4 w-4" />
+          </Link>
+        </Button>
       </div>
     </article>
   );
