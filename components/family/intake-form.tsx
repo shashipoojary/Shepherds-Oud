@@ -763,7 +763,10 @@ function renderField(
 
   if (field.type === "notice") {
     return (
-      <div key={field.text} className="rounded-lg bg-brand-green-pale/25 p-4 text-[13px] text-brand-green-dark md:col-span-2">
+      <div
+        key={field.text}
+        className="mb-5 rounded-lg bg-brand-green-pale/25 p-4 text-[13px] leading-relaxed text-brand-green-dark md:col-span-2"
+      >
         {field.text}
       </div>
     );
