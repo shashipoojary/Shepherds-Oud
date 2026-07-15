@@ -99,6 +99,20 @@ type MatchStatus =
 
 const inquiryCoordinationStatuses = new Set(["VISIT_REQUESTED", "CALLBACK_REQUESTED", "ACCEPTED", "CONTACTED"]);
 
+/** Compact multi-value cells in admin tables (e.g. "A, B +3"). */
+function summarizeAdminList(value: string | string[] | null | undefined, maxVisible = 2) {
+  const items = Array.isArray(value)
+    ? value.map((item) => item.trim()).filter(Boolean)
+    : String(value || "")
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean);
+
+  if (!items.length) return "—";
+  if (items.length <= maxVisible) return items.join(", ");
+  return `${items.slice(0, maxVisible).join(", ")} +${items.length - maxVisible}`;
+}
+
 function canInviteProvider(entry: WaitlistEntry) {
   return entry.type === "FACILITY" && entry.canSendProviderInvite;
 }
@@ -577,10 +591,10 @@ function FamiliesTable({
             <th className="px-4 py-3">Family</th>
             <th className="hidden px-4 py-3 sm:table-cell">Care needed</th>
             <th className="hidden px-4 py-3 md:table-cell">Location</th>
-            <th className="hidden px-4 py-3 lg:table-cell">Urgency</th>
-            <th className="hidden px-4 py-3 lg:table-cell">Care Guide</th>
+            <th className="hidden px-4 py-3 xl:table-cell">Urgency</th>
+            <th className="hidden px-4 py-3 xl:table-cell">Care Guide</th>
             <th className="min-w-[8.5rem] whitespace-nowrap px-4 py-3">Status</th>
-            <th className="min-w-[15rem] px-4 py-3">Next action</th>
+            <th className="min-w-[9rem] px-4 py-3">Next action</th>
             <th className="whitespace-nowrap px-4 py-3">Actions</th>
           </tr>
         </thead>
@@ -605,35 +619,43 @@ function FamiliesTable({
                       </span>
                     ) : null}
                   </div>
-                  <span className="block text-xs text-neutral-500">{family.context}</span>
-                  <span className="mt-1 block font-mono text-[11px] text-neutral-400">Ref {formatReference(family.id)}</span>
-                  <span className="mt-1 block text-xs text-neutral-500 sm:hidden">{family.location}</span>
+                  <span className="mt-0.5 block text-xs text-neutral-500">
+                    {family.ageRange ? `Age ${family.ageRange}` : null}
+                    <span className="md:hidden">
+                      {family.ageRange ? " · " : ""}
+                      {family.location}
+                    </span>
+                  </span>
                 </td>
-                <td className="hidden px-4 py-3 text-sm text-neutral-600 sm:table-cell">{family.care}</td>
+                <td className="hidden max-w-[12rem] px-4 py-3 text-sm text-neutral-600 sm:table-cell">
+                  {summarizeAdminList(family.careTypes?.length ? family.careTypes : family.care, 2)}
+                </td>
                 <td className="hidden px-4 py-3 text-sm text-neutral-600 md:table-cell">{family.location}</td>
-                <td className="hidden px-4 py-3 text-sm text-neutral-600 lg:table-cell">{family.urgency}</td>
-                <td className="hidden px-4 py-3 text-sm text-neutral-600 lg:table-cell">{family.careGuideName || "—"}</td>
+                <td className="hidden max-w-[9rem] px-4 py-3 text-sm text-neutral-600 xl:table-cell">
+                  <span className="line-clamp-1">{summarizeAdminList(family.urgency, 1)}</span>
+                </td>
+                <td className="hidden max-w-[8rem] truncate px-4 py-3 text-sm text-neutral-600 xl:table-cell">
+                  {family.careGuideName || "—"}
+                </td>
                 <td className="whitespace-nowrap px-4 py-3">
                   <span className="inline-flex whitespace-nowrap rounded-full bg-sage-100 px-3 py-1 text-xs font-semibold leading-none text-sage-700">
                     {adminIntakeStatusLabel(family.status)}
                   </span>
                 </td>
                 <td className="px-4 py-3">
-                  <div className="max-w-[17rem]">
-                    <span
-                      className={cn(
-                        "inline-flex rounded-full px-2.5 py-1 text-xs font-semibold leading-none",
-                        nextAction.severity === "action"
-                          ? "bg-brand-amber/15 text-brand-amber-dark ring-1 ring-brand-amber/25"
-                          : nextAction.severity === "waiting"
-                            ? "bg-brand-cream text-ink/70 ring-1 ring-stone-200"
-                            : "bg-brand-green-pale/70 text-brand-green-dark"
-                      )}
-                    >
-                      {nextAction.label}
-                    </span>
-                    <p className="mt-1 text-xs font-medium leading-5 text-ink">{nextAction.instruction}</p>
-                  </div>
+                  <span
+                    className={cn(
+                      "inline-flex max-w-[11rem] truncate rounded-full px-2.5 py-1 text-xs font-semibold leading-none",
+                      nextAction.severity === "action"
+                        ? "bg-brand-amber/15 text-brand-amber-dark ring-1 ring-brand-amber/25"
+                        : nextAction.severity === "waiting"
+                          ? "bg-brand-cream text-ink/70 ring-1 ring-stone-200"
+                          : "bg-brand-green-pale/70 text-brand-green-dark"
+                    )}
+                    title={nextAction.instruction}
+                  >
+                    {nextAction.label}
+                  </span>
                 </td>
                 <td className="whitespace-nowrap px-4 py-3" onClick={(event) => event.stopPropagation()}>
                   <div className="flex items-center gap-1">
