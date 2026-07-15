@@ -400,11 +400,10 @@ function IntakeFormContent({
       return;
     }
 
-    setForm({});
-    setDecisionMakers([emptyDecisionMaker()]);
-    setConsentAccepted(false);
-    setStepIndex(0);
-    router.push(nextIntakeId ? withIntakeId("/family/dashboard", nextIntakeId) : "/family/dashboard");
+    // Keep the completed last step visible while navigating — do not clear fields or jump to step 1.
+    setStatusTone("success");
+    setStatus(isUpdating ? "Request updated. Opening your dashboard…" : "Intake submitted. Opening your dashboard…");
+    router.replace(nextIntakeId ? withIntakeId("/family/dashboard", nextIntakeId) : "/family/dashboard");
   }
 
   if (!ready) {

@@ -3,7 +3,13 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { withIntakeId } from "@/lib/client/case-selection";
-import { intakeStatusHint, intakeStatusLabel, formatVisitSchedule, type FamilyIntake } from "@/lib/client/intake";
+import {
+  formatVisitSchedule,
+  intakeDecisionMakers,
+  intakeStatusHint,
+  intakeStatusLabel,
+  type FamilyIntake
+} from "@/lib/client/intake";
 import { Button } from "@/components/ui/button";
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import { CareGuideCard } from "@/components/shared/care-guide-card";
@@ -18,7 +24,7 @@ function SummaryField({ label, value }: { label: string; value: React.ReactNode 
   );
 }
 
-function CareTypeTags({ items }: { items: string[] }) {
+function TagList({ items }: { items: string[] }) {
   if (!items.length) {
     return <p className="text-sm text-neutral-500">—</p>;
   }
@@ -32,6 +38,17 @@ function CareTypeTags({ items }: { items: string[] }) {
       ))}
     </div>
   );
+}
+
+function listText(items?: string[] | null) {
+  return items?.filter(Boolean).join(", ") || null;
+}
+
+function formatDischargeDate(value?: string | null) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 }
 
 function UpdateCallout({ title, children, tone = "neutral" }: { title: string; children: React.ReactNode; tone?: "neutral" | "guide" | "visit" }) {
@@ -71,8 +88,28 @@ export function IntakeSummaryCard({
   const hasMatches = !isClosed && typeof intake.matchCount === "number" && intake.matchCount > 0;
   const visitSummary = formatVisitSchedule(intake);
   const reference = intake.id.slice(0, 8).toUpperCase();
-  const hasDecisionSupport = Boolean(intake.decisionMakerName || intake.decisionMakerRelationship);
-  const hasCareDetails = Boolean(intake.mobility || intake.medicalSupportNeeds || intake.dementiaNeeds);
+  const decisionMakers = intakeDecisionMakers(intake);
+  const hasDecisionSupport = decisionMakers.length > 0 || Boolean(intake.seniorAgreedToSearch || intake.decisionParticipants);
+  const hasCareDetails = Boolean(
+    intake.mobility ||
+      intake.medicalSupportNeeds ||
+      intake.dementiaNeeds ||
+      intake.functionalNeeds?.length ||
+      intake.additionalNeeds?.length
+  );
+  const hasFundingOrLanguages = Boolean(intake.fundingTypes?.length || intake.budget || intake.languages?.length);
+  const hasPlacementPreferences = Boolean(intake.placementPreferences?.length);
+  const hasContextNotes = Boolean(
+    intake.livingSituation || intake.moveInTimeline || intake.hospitalDischargeDate || intake.notes?.trim()
+  );
+  const hasSafetyAnswers = Boolean(
+    intake.personSafeTonight ||
+      intake.urgentMedicalHelp ||
+      intake.canRemainHomeTonight ||
+      intake.caregiverBurnoutRisk ||
+      intake.immediateRiskFlags?.length
+  );
+  const hasSupportNeeds = Boolean(intake.emotionalSupportNeeds?.length || intake.supportTypes?.length);
   const hasUpdates = !isClosed && Boolean(intake.carePathway || intake.carePlanSummary || visitSummary);
 
   if (compact) {
@@ -96,6 +133,15 @@ export function IntakeSummaryCard({
             <SummaryField label="Urgency" value={intake.urgency} />
             <SummaryField label="Care needed" value={intake.careTypes.join(", ")} />
             <SummaryField label="Relationship" value={intake.relationship} />
+            {intake.fundingTypes?.length ? (
+              <SummaryField label="Funding" value={listText(intake.fundingTypes)} />
+            ) : null}
+            {decisionMakers.length ? (
+              <SummaryField
+                label="Decision-makers"
+                value={decisionMakers.map((maker) => maker.name).join(", ")}
+              />
+            ) : null}
           </dl>
 
           <p className="mt-4 text-sm leading-6 text-neutral-600">{hint}</p>
@@ -170,21 +216,26 @@ export function IntakeSummaryCard({
           </div>
 
           <section>
-            <h3 className="text-sm font-semibold text-ink">At a glance</h3>
+            <h3 className="text-sm font-semibold text-ink">Contact & location</h3>
             <dl className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <SummaryField label="Your name" value={intake.contactName} />
+              <SummaryField label="Email" value={intake.email} />
+              <SummaryField label="Phone" value={intake.phone} />
+              <SummaryField label="Relationship" value={intake.relationship} />
               <SummaryField label="Preferred area" value={intake.preferredArea} />
               <SummaryField label="Preferred distance" value={intake.preferredDistance} />
               <SummaryField label="Urgency" value={intake.urgency} />
-              <SummaryField label="Relationship" value={intake.relationship} />
               {intake.ageRange ? <SummaryField label="Age range" value={intake.ageRange} /> : null}
-              {intake.budget ? <SummaryField label="Budget" value={intake.budget} /> : null}
             </dl>
           </section>
 
           <section>
             <h3 className="text-sm font-semibold text-ink">Care needed</h3>
             <div className="mt-4 rounded-xl bg-brand-cream/20 px-4 py-4 sm:px-5">
-              <CareTypeTags items={intake.careTypes} />
+              <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Care types</p>
+              <div className="mt-2">
+                <TagList items={intake.careTypes} />
+              </div>
               {hasCareDetails ? (
                 <dl className="mt-4 grid gap-3 border-t border-stone-200/70 pt-4 sm:grid-cols-2">
                   {intake.mobility ? <SummaryField label="Mobility" value={intake.mobility} /> : null}
@@ -192,17 +243,117 @@ export function IntakeSummaryCard({
                     <SummaryField label="Medical / nursing support" value={intake.medicalSupportNeeds} />
                   ) : null}
                   {intake.dementiaNeeds ? <SummaryField label="Dementia / memory" value={intake.dementiaNeeds} /> : null}
+                  {intake.functionalNeeds?.length ? (
+                    <SummaryField label="Functional needs" value={listText(intake.functionalNeeds)} />
+                  ) : null}
+                  {intake.additionalNeeds?.length ? (
+                    <SummaryField label="Additional needs" value={listText(intake.additionalNeeds)} />
+                  ) : null}
                 </dl>
               ) : null}
             </div>
           </section>
 
+          {hasFundingOrLanguages ? (
+            <section>
+              <h3 className="text-sm font-semibold text-ink">Funding & languages</h3>
+              <dl className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {intake.fundingTypes?.length ? (
+                  <SummaryField label="Funding / indication" value={listText(intake.fundingTypes)} />
+                ) : null}
+                {intake.budget ? <SummaryField label="Budget" value={intake.budget} /> : null}
+                {intake.languages?.length ? (
+                  <SummaryField label="Preferred languages" value={listText(intake.languages)} />
+                ) : null}
+              </dl>
+            </section>
+          ) : null}
+
+          {hasPlacementPreferences ? (
+            <section>
+              <h3 className="text-sm font-semibold text-ink">Placement preferences</h3>
+              <div className="mt-4 rounded-xl bg-brand-cream/20 px-4 py-4 sm:px-5">
+                <TagList items={intake.placementPreferences || []} />
+              </div>
+            </section>
+          ) : null}
+
           {hasDecisionSupport ? (
             <section>
               <h3 className="text-sm font-semibold text-ink">Decision support</h3>
+              <div className="mt-4 space-y-3">
+                {decisionMakers.map((maker, index) => (
+                  <div key={maker.id || `${maker.name}-${index}`} className="rounded-xl bg-brand-cream/20 px-4 py-4 sm:px-5">
+                    <p className="text-sm font-semibold text-ink">{maker.name}</p>
+                    <p className="mt-1 text-sm text-neutral-600">{maker.relationship}</p>
+                    {maker.responsibilities.length ? (
+                      <div className="mt-3">
+                        <TagList items={maker.responsibilities} />
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
+                <dl className="grid gap-3 sm:grid-cols-2">
+                  {intake.seniorAgreedToSearch ? (
+                    <SummaryField label="Senior agreed to the search" value={intake.seniorAgreedToSearch} />
+                  ) : null}
+                  {intake.decisionParticipants ? (
+                    <SummaryField label="Who should participate" value={intake.decisionParticipants} />
+                  ) : null}
+                </dl>
+                {hasSupportNeeds ? (
+                  <dl className="grid gap-3 sm:grid-cols-2">
+                    {intake.emotionalSupportNeeds?.length ? (
+                      <SummaryField label="Emotional support needs" value={listText(intake.emotionalSupportNeeds)} />
+                    ) : null}
+                    {intake.supportTypes?.length ? (
+                      <SummaryField label="Support types" value={listText(intake.supportTypes)} />
+                    ) : null}
+                  </dl>
+                ) : null}
+              </div>
+            </section>
+          ) : null}
+
+          {hasContextNotes ? (
+            <section>
+              <h3 className="text-sm font-semibold text-ink">Situation & notes</h3>
               <dl className="mt-4 grid gap-3 sm:grid-cols-2">
-                <SummaryField label="Decision-maker" value={intake.decisionMakerName} />
-                <SummaryField label="Role" value={intake.decisionMakerRelationship} />
+                {intake.livingSituation ? (
+                  <SummaryField label="Living situation" value={intake.livingSituation} />
+                ) : null}
+                {intake.moveInTimeline ? (
+                  <SummaryField label="Desired move-in timeline" value={intake.moveInTimeline} />
+                ) : null}
+                {intake.hospitalDischargeDate ? (
+                  <SummaryField label="Hospital discharge date" value={formatDischargeDate(intake.hospitalDischargeDate)} />
+                ) : null}
+                {intake.notes?.trim() ? (
+                  <SummaryField label="Anything else" value={intake.notes.trim()} />
+                ) : null}
+              </dl>
+            </section>
+          ) : null}
+
+          {hasSafetyAnswers ? (
+            <section>
+              <h3 className="text-sm font-semibold text-ink">Safety check answers</h3>
+              <dl className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {intake.personSafeTonight ? (
+                  <SummaryField label="Safe tonight" value={intake.personSafeTonight} />
+                ) : null}
+                {intake.urgentMedicalHelp ? (
+                  <SummaryField label="Urgent medical help" value={intake.urgentMedicalHelp} />
+                ) : null}
+                {intake.canRemainHomeTonight ? (
+                  <SummaryField label="Can remain at home tonight" value={intake.canRemainHomeTonight} />
+                ) : null}
+                {intake.caregiverBurnoutRisk ? (
+                  <SummaryField label="Caregiver burnout risk" value={intake.caregiverBurnoutRisk} />
+                ) : null}
+                {intake.immediateRiskFlags?.length ? (
+                  <SummaryField label="Immediate risk flags" value={listText(intake.immediateRiskFlags)} />
+                ) : null}
               </dl>
             </section>
           ) : null}
