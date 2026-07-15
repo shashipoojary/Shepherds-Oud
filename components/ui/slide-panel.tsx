@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { X } from "lucide-react";
+import { ChevronDown, ChevronUp, X } from "lucide-react";
 import { cn } from "@/lib/core/utils";
 import { TOAST_DISMISS_MS } from "@/lib/client/toast-timing";
 
@@ -31,8 +31,8 @@ export function PanelNotice({ message, tone = "success" }: { message: string; to
   return (
     <div
       className={cn(
-        "rounded-lg px-4 py-3 text-sm leading-6 shadow-sm",
-        tone === "error" ? "bg-red-50 text-red-800 ring-1 ring-red-100" : "bg-brand-green-pale/40 text-brand-green-dark ring-1 ring-brand-green-pale/60"
+        "rounded-lg px-4 py-3 text-sm leading-6",
+        tone === "error" ? "bg-red-50 text-red-800" : "bg-brand-green-pale/30 text-brand-green-dark"
       )}
       role="status"
     >
@@ -135,9 +135,7 @@ export function SlidePanel({
             {children}
           </div>
           {footer ? (
-            <div className="shrink-0 border-t border-stone-200 bg-white px-4 py-4 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] sm:px-5 lg:px-6">
-              {footer}
-            </div>
+            <div className="shrink-0 border-t border-stone-200 bg-white px-4 py-4 sm:px-5 lg:px-6">{footer}</div>
           ) : null}
         </div>
       </aside>
@@ -148,9 +146,9 @@ export function SlidePanel({
 
 function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="border-b border-stone-100 py-3 last:border-b-0">
-      <dt className="text-xs font-semibold uppercase tracking-wide text-neutral-400">{label}</dt>
-      <dd className="mt-1 text-sm leading-6 text-neutral-800">{value || "—"}</dd>
+    <div className="grid gap-0.5 py-2 sm:grid-cols-[9.5rem_minmax(0,1fr)] sm:gap-4">
+      <dt className="text-xs font-medium text-neutral-500 sm:pt-0.5">{label}</dt>
+      <dd className="text-sm leading-6 text-neutral-800 break-words">{value || "—"}</dd>
     </div>
   );
 }
@@ -163,7 +161,7 @@ export function TagList({ items }: { items: string[] }) {
   return (
     <div className="flex flex-wrap gap-1.5">
       {items.map((item) => (
-        <span key={item} className="rounded-full bg-brand-cream px-2.5 py-1 text-xs font-medium text-neutral-700">
+        <span key={item} className="rounded-full bg-stone-100 px-2.5 py-1 text-xs font-medium text-neutral-700">
           {item}
         </span>
       ))}
@@ -192,6 +190,44 @@ export function PanelStep({ number }: { number: number }) {
   );
 }
 
+/** Borderless collapsible topic — same pattern as family “Your care request” nested groups. */
+export function PanelTopic({
+  title,
+  description,
+  children,
+  defaultOpen = false,
+  className
+}: {
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+  defaultOpen?: boolean;
+  className?: string;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+
+  return (
+    <details
+      open={open}
+      onToggle={(event) => setOpen(event.currentTarget.open)}
+      className={cn(className)}
+    >
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 py-2.5 marker:content-none [&::-webkit-details-marker]:hidden">
+        <span className="min-w-0">
+          <span className="block text-sm font-semibold text-ink">{title}</span>
+          {description ? <span className="mt-0.5 block text-xs leading-5 text-neutral-500">{description}</span> : null}
+        </span>
+        {open ? (
+          <ChevronUp className="h-4 w-4 shrink-0 text-neutral-400" aria-hidden />
+        ) : (
+          <ChevronDown className="h-4 w-4 shrink-0 text-neutral-400" aria-hidden />
+        )}
+      </summary>
+      <div className="pb-3 pl-0.5">{children}</div>
+    </details>
+  );
+}
+
 export function PanelSection({
   step,
   title,
@@ -199,7 +235,9 @@ export function PanelSection({
   children,
   className,
   locked,
-  lockedNote = "This step is complete. It stays visible here until the case is closed."
+  lockedNote = "This step is complete. It stays visible here until the case is closed.",
+  collapsible = false,
+  defaultOpen = true
 }: {
   step?: number;
   title: string;
@@ -208,37 +246,59 @@ export function PanelSection({
   className?: string;
   locked?: boolean;
   lockedNote?: string;
+  collapsible?: boolean;
+  defaultOpen?: boolean;
 }) {
-  return (
-    <section
-      className={cn(
-        "border-t border-stone-100 pt-5 first:border-0 first:pt-0",
-        locked && "rounded-xl border border-stone-200 bg-stone-50/70 px-4 py-4 first:border first:pt-4",
-        className
-      )}
-    >
-      <div className="mb-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <h3 className="flex items-center text-sm font-semibold text-ink">
-            {step != null ? <PanelStep number={step} /> : null}
-            {title}
-          </h3>
-          {locked ? (
-            <span className="rounded-full bg-brand-green-pale/50 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-brand-green-dark">
-              Completed
-            </span>
-          ) : null}
-        </div>
-        {description ? <p className="mt-1 text-sm leading-6 text-neutral-500">{description}</p> : null}
-        {locked ? <p className="mt-2 text-xs leading-5 text-neutral-500">{lockedNote}</p> : null}
+  const [open, setOpen] = useState(defaultOpen);
+
+  const header = (
+    <div className={cn(collapsible ? undefined : "mb-3")}>
+      <div className="flex flex-wrap items-center gap-2">
+        <h3 className="flex min-w-0 items-center text-sm font-semibold text-ink">
+          {step != null ? <PanelStep number={step} /> : null}
+          {title}
+        </h3>
+        {locked ? (
+          <span className="rounded-full bg-brand-green-pale/40 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-brand-green-dark">
+            Completed
+          </span>
+        ) : null}
+        {collapsible ? (
+          open ? (
+            <ChevronUp className="ml-auto h-4 w-4 shrink-0 text-neutral-400" aria-hidden />
+          ) : (
+            <ChevronDown className="ml-auto h-4 w-4 shrink-0 text-neutral-400" aria-hidden />
+          )
+        ) : null}
       </div>
-      <div className={locked ? "pointer-events-none opacity-70" : undefined}>{children}</div>
+      {description ? <p className="mt-1 text-sm leading-6 text-neutral-500">{description}</p> : null}
+      {locked ? <p className="mt-1.5 text-xs leading-5 text-neutral-500">{lockedNote}</p> : null}
+    </div>
+  );
+
+  const body = <div className={locked ? "pointer-events-none opacity-60" : undefined}>{children}</div>;
+
+  if (collapsible) {
+    return (
+      <details
+        open={open}
+        onToggle={(event) => setOpen(event.currentTarget.open)}
+        className={cn("border-t border-stone-100 pt-4 first:border-0 first:pt-0", className)}
+      >
+        <summary className="cursor-pointer list-none marker:content-none [&::-webkit-details-marker]:hidden">{header}</summary>
+        <div className="mt-3">{body}</div>
+      </details>
+    );
+  }
+
+  return (
+    <section className={cn("border-t border-stone-100 pt-5 first:border-0 first:pt-0", className)}>
+      {header}
+      {body}
     </section>
   );
 }
 
 export function StatusPill({ children, className }: { children: React.ReactNode; className?: string }) {
-  return (
-    <div className={cn("rounded-lg bg-brand-cream/50 px-3 py-2.5 text-sm leading-6 text-ink/80", className)}>{children}</div>
-  );
+  return <div className={cn("rounded-lg bg-stone-50 px-3 py-3 text-sm leading-6 text-ink/80", className)}>{children}</div>;
 }

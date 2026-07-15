@@ -131,8 +131,6 @@ export function CareJourneyTimeline({
                     {careGuide.email}
                   </a>
                 </p>
-              ) : isThankYou && !isClosed ? (
-                <p className="mt-1 text-sm text-neutral-500">Shown when your Care Guide closes the case after follow-up.</p>
               ) : null}
             </div>
           </li>

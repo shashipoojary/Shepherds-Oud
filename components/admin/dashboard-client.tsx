@@ -19,7 +19,7 @@ import { IconActionButton } from "@/components/ui/icon-action-button";
 import { ListSearch } from "@/components/ui/list-search";
 import { RefreshButton } from "@/components/ui/refresh-button";
 import { UnreadDot } from "@/components/ui/unread-dot";
-import { DetailList, PanelSection, panelNoticeTone, SlidePanel, StatusPill, TagList, usePanelMessage } from "@/components/ui/slide-panel";
+import { DetailList, PanelSection, PanelTopic, panelNoticeTone, SlidePanel, StatusPill, TagList, usePanelMessage } from "@/components/ui/slide-panel";
 import { StatGrid } from "@/components/ui/stat-grid";
 import { adminFitLabel, adminMatchScoreBands } from "@/components/ui/match-score";
 import type { AdminDashboardData } from "@/lib/data/admin";
@@ -1171,7 +1171,7 @@ function FamilyDetailPanel({
       {family ? (
         <div className="space-y-5">
           {family.emergencyStopped ? (
-            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-950 ring-1 ring-red-100">
+            <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-950">
               <p className="font-semibold">Emergency screening flagged</p>
               <p className="mt-1 leading-6 text-red-900">
                 The family was shown 112 instructions and blocked from the normal care-matching journey. Follow up after confirming
@@ -1181,7 +1181,7 @@ function FamilyDetailPanel({
           ) : null}
 
           {staleConflict ? (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 ring-1 ring-amber-100">
+            <div className="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-950">
               <p className="font-semibold">{INTAKE_STALE_CONFLICT_MESSAGE}</p>
               <p className="mt-1 leading-6 text-amber-900">
                 Your form may be out of date. Refresh to load the latest version before saving again.
@@ -1199,7 +1199,7 @@ function FamilyDetailPanel({
           ) : null}
 
           {isReadOnlyAssigned ? (
-            <div className="rounded-lg border border-stone-200 bg-brand-cream/80 px-4 py-3 text-sm text-ink ring-1 ring-stone-100">
+            <div className="rounded-lg bg-stone-50 px-4 py-3 text-sm text-ink">
               <p className="font-semibold">
                 Read-only — assigned to {family.careGuideName || "another Care Guide"}
               </p>
@@ -1209,22 +1209,22 @@ function FamilyDetailPanel({
             </div>
           ) : null}
 
-          <StatusPill>
+          <StatusPill className="bg-transparent px-0 py-0">
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <div>
-                <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Case status</span>
+                <span className="text-xs font-medium text-neutral-500">Case status</span>
                 <p className="mt-1 font-semibold text-ink">{adminIntakeStatusLabel(family.status)}</p>
               </div>
               <div>
-                <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Care Guide</span>
+                <span className="text-xs font-medium text-neutral-500">Care Guide</span>
                 <p className="mt-1 font-semibold text-ink">{family.careGuideName || "Not assigned"}</p>
               </div>
               <div>
-                <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Urgency</span>
+                <span className="text-xs font-medium text-neutral-500">Urgency</span>
                 <p className="mt-1 font-semibold text-ink">{family.urgency}</p>
               </div>
               <div>
-                <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Location</span>
+                <span className="text-xs font-medium text-neutral-500">Location</span>
                 <p className="mt-1 font-semibold text-ink">{family.location}</p>
               </div>
             </div>
@@ -1237,6 +1237,8 @@ function FamilyDetailPanel({
                 ? "This family case is closed. Workflow steps below are locked — review the summary or case record only."
                 : "Current milestone for this family case and what you should do next in this panel."
             }
+            collapsible
+            defaultOpen
           >
             {isClosedCase ? (
               <p className="text-sm leading-6 text-neutral-600">{adminIntakeJourneyHint(family.status)}</p>
@@ -1254,49 +1256,39 @@ function FamilyDetailPanel({
           {nextAction && !isClosedCase ? (
             <div
               className={cn(
-                "rounded-xl border px-4 py-4 shadow-sm",
+                "rounded-lg px-4 py-3.5",
                 nextAction.severity === "action"
-                  ? "border-brand-amber/30 bg-brand-amber/10"
+                  ? "bg-brand-amber/10"
                   : nextAction.severity === "waiting"
-                    ? "border-stone-200 bg-brand-cream/70"
-                    : "border-brand-green-pale bg-brand-green-pale/30"
+                    ? "bg-stone-50"
+                    : "bg-brand-green-pale/25"
               )}
             >
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-wide text-brand-amber-dark">Do this next</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-brand-amber-dark">Do this next</p>
                   <h3 className="mt-1 text-base font-semibold text-ink">{nextAction.label}</h3>
                 </div>
-                <span className="inline-flex rounded-full bg-white px-3 py-1 text-xs font-semibold text-ink shadow-sm ring-1 ring-stone-200">
+                <span className="inline-flex rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-ink">
                   {nextAction.target}
                 </span>
               </div>
-              <p className="mt-3 text-sm font-semibold leading-6 text-ink">{nextAction.instruction}</p>
+              <p className="mt-2 text-sm font-medium leading-6 text-ink">{nextAction.instruction}</p>
               <p className="mt-1 text-sm leading-6 text-neutral-600">{nextAction.description}</p>
-              <p className="mt-3 text-xs font-medium uppercase tracking-wide text-neutral-500">
+              <p className="mt-2 text-xs font-medium uppercase tracking-wide text-neutral-500">
                 {nextAction.tab === "inquiries" ? "Go to Inquiries when ready" : "Continue in this family case"}
               </p>
             </div>
           ) : null}
 
-          <details className="group rounded-xl border border-stone-200 bg-white shadow-sm">
-            <summary className="cursor-pointer list-none rounded-xl px-4 py-4 text-sm font-semibold text-ink transition hover:bg-brand-cream/60 marker:content-none [&::-webkit-details-marker]:hidden">
-              <span className="flex items-center justify-between gap-4">
-                <span>
-                  <span className="block">Intake details</span>
-                  <span className="mt-1 block text-xs font-normal leading-5 text-neutral-500">
-                    Review the family submission, care needs, decision context, and notes.
-                  </span>
-                </span>
-                <span className="inline-flex shrink-0 items-center gap-2 rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-semibold text-brand-amber shadow-sm">
-                  <span className="group-open:hidden">Show details</span>
-                  <span className="hidden group-open:inline">Hide details</span>
-                  <ChevronDown className="h-3.5 w-3.5 transition group-open:rotate-180" aria-hidden="true" />
-                </span>
-              </span>
-            </summary>
-            <div className="space-y-5 border-t border-stone-100 px-4 py-5">
-              <PanelSection title="Contact">
+          <PanelSection
+            title="Intake details"
+            description="Family submission, care needs, decision context, and notes."
+            collapsible
+            defaultOpen={false}
+          >
+            <div className="divide-y divide-stone-100">
+              <PanelTopic title="Contact" defaultOpen>
                 <DetailList
                   columns={1}
                   items={[
@@ -1309,8 +1301,8 @@ function FamilyDetailPanel({
                     { label: "Preferred distance", value: family.preferredDistance }
                   ]}
                 />
-              </PanelSection>
-              <PanelSection title="Safety & emergency">
+              </PanelTopic>
+              <PanelTopic title="Safety & emergency">
                 <DetailList
                   columns={1}
                   items={[
@@ -1322,15 +1314,15 @@ function FamilyDetailPanel({
                   ]}
                 />
                 {(family.immediateRiskFlags?.length ?? 0) > 0 ? (
-                  <div className="mt-4">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Immediate risk flags</p>
-                    <div className="mt-2">
+                  <div className="mt-2">
+                    <p className="text-xs font-medium text-neutral-500">Immediate risk flags</p>
+                    <div className="mt-1.5">
                       <TagList items={family.immediateRiskFlags ?? []} />
                     </div>
                   </div>
                 ) : null}
-              </PanelSection>
-              <PanelSection title="Decision support">
+              </PanelTopic>
+              <PanelTopic title="Decision support">
                 <DetailList
                   columns={1}
                   items={[
@@ -1345,16 +1337,16 @@ function FamilyDetailPanel({
                   ]}
                 />
                 {(family.decisionMakers?.length ?? 0) > 0 ? (
-                  <div className="mt-4 space-y-3">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Decision-makers</p>
+                  <div className="mt-2 space-y-2">
+                    <p className="text-xs font-medium text-neutral-500">Decision-makers</p>
                     {family.decisionMakers.map((maker) => (
-                      <div key={maker.id} className="rounded-lg border border-stone-200 bg-brand-cream/50 px-3 py-3">
+                      <div key={maker.id} className="py-1">
                         <p className="text-sm font-semibold text-ink">
                           {maker.name}
                           <span className="ml-2 font-normal text-neutral-500">· {maker.relationship}</span>
                         </p>
                         {maker.responsibilities.length ? (
-                          <div className="mt-2">
+                          <div className="mt-1.5">
                             <TagList items={maker.responsibilities} />
                           </div>
                         ) : null}
@@ -1362,8 +1354,8 @@ function FamilyDetailPanel({
                     ))}
                   </div>
                 ) : null}
-              </PanelSection>
-              <PanelSection title="Care needs">
+              </PanelTopic>
+              <PanelTopic title="Care needs">
                 <DetailList
                   columns={1}
                   items={[
@@ -1375,52 +1367,52 @@ function FamilyDetailPanel({
                     { label: "Hospital discharge", value: family.hospitalDischargeDate }
                   ]}
                 />
-                <div className="mt-4 space-y-4">
+                <div className="mt-2 space-y-3">
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Care types</p>
-                    <div className="mt-2">
+                    <p className="text-xs font-medium text-neutral-500">Care types</p>
+                    <div className="mt-1.5">
                       <TagList items={family.careTypes?.length ? family.careTypes : family.care.split(",").map((item) => item.trim()).filter(Boolean)} />
                     </div>
                   </div>
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Funding types</p>
-                    <div className="mt-2">
+                    <p className="text-xs font-medium text-neutral-500">Funding types</p>
+                    <div className="mt-1.5">
                       <TagList items={family.fundingTypes ?? []} />
                     </div>
                   </div>
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Functional needs</p>
-                    <div className="mt-2">
+                    <p className="text-xs font-medium text-neutral-500">Functional needs</p>
+                    <div className="mt-1.5">
                       <TagList items={family.functionalNeeds ?? []} />
                     </div>
                   </div>
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Placement preferences</p>
-                    <div className="mt-2">
+                    <p className="text-xs font-medium text-neutral-500">Placement preferences</p>
+                    <div className="mt-1.5">
                       <TagList items={family.placementPreferences ?? []} />
                     </div>
                   </div>
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Languages</p>
-                    <div className="mt-2">
+                    <p className="text-xs font-medium text-neutral-500">Languages</p>
+                    <div className="mt-1.5">
                       <TagList items={family.languages ?? []} />
                     </div>
                   </div>
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Support needed</p>
-                    <div className="mt-2">
+                    <p className="text-xs font-medium text-neutral-500">Support needed</p>
+                    <div className="mt-1.5">
                       <TagList items={family.supportTypes ?? []} />
                     </div>
                   </div>
                 </div>
-              </PanelSection>
+              </PanelTopic>
               {family.notes?.trim() ? (
-                <PanelSection title="Family notes">
+                <PanelTopic title="Family notes">
                   <p className="text-sm leading-7 text-neutral-700">{family.notes}</p>
-                </PanelSection>
+                </PanelTopic>
               ) : null}
             </div>
-          </details>
+          </PanelSection>
 
           {isClosedCase ? (
             <PanelSection
@@ -1440,7 +1432,7 @@ function FamilyDetailPanel({
               />
             </PanelSection>
           ) : (
-          <div className="space-y-6 border-t border-stone-100 pt-6">
+          <div className="space-y-5 border-t border-stone-100 pt-5">
             <PanelSection
               step={2}
               title="Assign Care Guide"
@@ -2145,9 +2137,9 @@ function ProviderDetailPanel({
       noticeTone={panelNoticeTone(panelMessage)}
     >
       {provider ? (
-        <div className="space-y-6">
+        <div className="space-y-5">
           {!provider.profileComplete ? (
-            <div className="rounded-xl border border-brand-amber/25 bg-brand-amber/10 px-4 py-3">
+            <div className="rounded-lg bg-brand-amber/10 px-4 py-3">
               <p className="text-sm font-semibold text-brand-amber-dark">Provider locked</p>
               <p className="mt-1 text-sm leading-6 text-neutral-700">
                 This provider stays locked until their facility profile is complete.
@@ -2159,266 +2151,259 @@ function ProviderDetailPanel({
               ) : null}
             </div>
           ) : !isProviderMatchable(provider.verificationStatus) ? (
-            <div className="rounded-xl border border-stone-200 bg-stone-50 px-4 py-3">
+            <div className="rounded-lg bg-stone-50 px-4 py-3">
               <p className="text-sm font-semibold text-ink">Not yet matchable</p>
               <p className="mt-1 text-sm leading-6 text-neutral-700">
                 Set verification to Verified, Onboarding complete, or Listing live before creating family matches.
               </p>
             </div>
           ) : null}
-          <StatusPill>
+
+          <StatusPill className="bg-transparent px-0 py-0">
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
               <div>
-                <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Verification</span>
+                <span className="text-xs font-medium text-neutral-500">Verification</span>
                 <p className="mt-1 font-semibold text-ink">
                   {provider.verificationLabel || providerVerificationLabel(provider.verificationStatus)}
                 </p>
               </div>
               <div>
-                <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Availability</span>
+                <span className="text-xs font-medium text-neutral-500">Availability</span>
                 <p className="mt-1 font-semibold text-ink">{availability || "Not set"}</p>
                 {availabilityUpdatedLabel ? (
                   <p className="mt-0.5 text-xs text-neutral-500">Last updated {availabilityUpdatedLabel}</p>
                 ) : null}
               </div>
               <div>
-                <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Beds</span>
+                <span className="text-xs font-medium text-neutral-500">Beds</span>
                 <p className="mt-1 font-semibold text-ink">{bedsSummary || "Not set"}</p>
               </div>
               <div>
-                <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Response time</span>
+                <span className="text-xs font-medium text-neutral-500">Response time</span>
                 <p className="mt-1 font-semibold text-ink">
                   {provider.responseTimeHours ? `${provider.responseTimeHours} hours` : "Not set"}
                 </p>
               </div>
               <div>
-                <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Visit availability</span>
+                <span className="text-xs font-medium text-neutral-500">Visit availability</span>
                 <p className="mt-1 font-semibold text-ink">{provider.visitAvailability || "Visits welcome"}</p>
               </div>
             </div>
           </StatusPill>
 
-          <div className="grid gap-6 xl:grid-cols-3">
-            <div className="space-y-5">
-              <PanelSection
-                step={1}
-                title="Verification and registration"
-                description="Controls matching eligibility. Listing live is required for public recommendation."
-              >
-                <div className="space-y-3">
-                  <label className="grid gap-2 text-sm font-medium">
-                    Verification status
-                    <select
-                      value={verificationStatus}
-                      onChange={(event) => setVerificationStatus(event.target.value)}
-                      className={adminFieldClass}
-                    >
-                      {PROVIDER_VERIFICATION_STATUSES.map((status) => (
-                        <option key={status} value={status}>
-                          {providerVerificationLabel(status)}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="grid gap-2 text-sm font-medium">
-                    Legal organisation name
-                    <input
-                      value={legalOrganisationName}
-                      onChange={(event) => setLegalOrganisationName(event.target.value)}
-                      className={adminFieldClass}
-                    />
-                  </label>
-                  <label className="grid gap-2 text-sm font-medium">
-                    KvK number
-                    <input
-                      value={kvkNumber}
-                      onChange={(event) => setKvkNumber(event.target.value)}
-                      className={adminFieldClass}
-                    />
-                  </label>
-                  <label className="grid gap-2 text-sm font-medium">
-                    AGB code
-                    <input
-                      value={agbCode}
-                      onChange={(event) => setAgbCode(event.target.value)}
-                      className={adminFieldClass}
-                    />
-                  </label>
-                  <label className="grid gap-2 text-sm font-medium">
-                    Wtza status
-                    <input
-                      value={wtzaStatus}
-                      onChange={(event) => setWtzaStatus(event.target.value)}
-                      className={adminFieldClass}
-                    />
-                  </label>
-                  <label className="grid gap-2 text-sm font-medium">
-                    Room types (comma-separated)
-                    <input
-                      value={roomTypesText}
-                      onChange={(event) => setRoomTypesText(event.target.value)}
-                      placeholder="Single room, Shared room"
-                      className={adminFieldClass}
-                    />
-                  </label>
-                  <AdminPanelActions>
-                    <Button
-                      type="button"
-                      size="sm"
-                      disabled={savingVerification || !hasUnsavedVerification}
-                      onClick={() => void saveVerification()}
-                    >
-                      {savingVerification ? "Saving..." : "Save verification"}
-                    </Button>
-                  </AdminPanelActions>
-                </div>
-              </PanelSection>
-
-              <PanelSection step={2} title="Contact">
-                <DetailList
-                  columns={1}
-                  items={[
-                    { label: "Contact name", value: provider.contactName },
-                    { label: "Email", value: provider.email },
-                    { label: "Phone", value: provider.phone },
-                    { label: "Website", value: provider.website }
-                  ]}
+          <PanelSection
+            step={1}
+            title="Verification and registration"
+            description="Controls matching eligibility. Listing live is required for public recommendation."
+            collapsible
+            defaultOpen
+          >
+            <div className="space-y-3">
+              <label className="grid gap-2 text-sm font-medium">
+                Verification status
+                <select
+                  value={verificationStatus}
+                  onChange={(event) => setVerificationStatus(event.target.value)}
+                  className={adminFieldClass}
+                >
+                  {PROVIDER_VERIFICATION_STATUSES.map((status) => (
+                    <option key={status} value={status}>
+                      {providerVerificationLabel(status)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="grid gap-2 text-sm font-medium">
+                Legal organisation name
+                <input
+                  value={legalOrganisationName}
+                  onChange={(event) => setLegalOrganisationName(event.target.value)}
+                  className={adminFieldClass}
                 />
-              </PanelSection>
-
-              <PanelSection step={3} title="Location">
-                <DetailList
-                  columns={1}
-                  items={[
-                    { label: "Facility name", value: provider.name },
-                    { label: "Type", value: provider.type },
-                    { label: "Area", value: provider.area },
-                    { label: "City", value: provider.city },
-                    { label: "Province", value: provider.province }
-                  ]}
+              </label>
+              <label className="grid gap-2 text-sm font-medium">
+                KvK number
+                <input
+                  value={kvkNumber}
+                  onChange={(event) => setKvkNumber(event.target.value)}
+                  className={adminFieldClass}
                 />
-              </PanelSection>
+              </label>
+              <label className="grid gap-2 text-sm font-medium">
+                AGB code
+                <input
+                  value={agbCode}
+                  onChange={(event) => setAgbCode(event.target.value)}
+                  className={adminFieldClass}
+                />
+              </label>
+              <label className="grid gap-2 text-sm font-medium">
+                Wtza status
+                <input
+                  value={wtzaStatus}
+                  onChange={(event) => setWtzaStatus(event.target.value)}
+                  className={adminFieldClass}
+                />
+              </label>
+              <label className="grid gap-2 text-sm font-medium">
+                Room types (comma-separated)
+                <input
+                  value={roomTypesText}
+                  onChange={(event) => setRoomTypesText(event.target.value)}
+                  placeholder="Single room, Shared room"
+                  className={adminFieldClass}
+                />
+              </label>
+              <AdminPanelActions>
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={savingVerification || !hasUnsavedVerification}
+                  onClick={() => void saveVerification()}
+                >
+                  {savingVerification ? "Saving..." : "Save verification"}
+                </Button>
+              </AdminPanelActions>
             </div>
+          </PanelSection>
 
-            <div className="space-y-5">
-              <PanelSection step={4} title="Capacity and pricing">
-                <DetailList
-                  columns={1}
-                  items={[
-                    { label: "Available beds", value: provider.bedsOpen != null ? String(provider.bedsOpen) : null },
-                    { label: "Total beds / places", value: provider.bedsTotal != null ? String(provider.bedsTotal) : null },
-                    { label: "Availability status", value: provider.availabilityStatus },
-                    { label: "Waitlist", value: provider.waitlistText },
-                    { label: "Price range", value: priceRange }
-                  ]}
-                />
-              </PanelSection>
-
-              <PanelSection step={5} title="Care profile">
-                <DetailList columns={1} items={[{ label: "Dementia capacity", value: provider.dementiaCapacity }]} />
-                <div className="mt-4">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Care levels</p>
-                  <div className="mt-2">
+          <div className="divide-y divide-stone-100 border-t border-stone-100">
+            <PanelTopic title="Contact" defaultOpen>
+              <DetailList
+                columns={1}
+                items={[
+                  { label: "Contact name", value: provider.contactName },
+                  { label: "Email", value: provider.email },
+                  { label: "Phone", value: provider.phone },
+                  { label: "Website", value: provider.website }
+                ]}
+              />
+            </PanelTopic>
+            <PanelTopic title="Location">
+              <DetailList
+                columns={1}
+                items={[
+                  { label: "Facility name", value: provider.name },
+                  { label: "Type", value: provider.type },
+                  { label: "Area", value: provider.area },
+                  { label: "City", value: provider.city },
+                  { label: "Province", value: provider.province }
+                ]}
+              />
+            </PanelTopic>
+            <PanelTopic title="Capacity and pricing">
+              <DetailList
+                columns={1}
+                items={[
+                  { label: "Available beds", value: provider.bedsOpen != null ? String(provider.bedsOpen) : null },
+                  { label: "Total beds / places", value: provider.bedsTotal != null ? String(provider.bedsTotal) : null },
+                  { label: "Availability status", value: provider.availabilityStatus },
+                  { label: "Waitlist", value: provider.waitlistText },
+                  { label: "Price range", value: priceRange }
+                ]}
+              />
+            </PanelTopic>
+            <PanelTopic title="Care profile">
+              <DetailList columns={1} items={[{ label: "Dementia capacity", value: provider.dementiaCapacity }]} />
+              <div className="mt-2 space-y-3">
+                <div>
+                  <p className="text-xs font-medium text-neutral-500">Care levels</p>
+                  <div className="mt-1.5">
                     <TagList items={provider.careLevels ?? []} />
                   </div>
                 </div>
-                <div className="mt-4">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Room types</p>
-                  <div className="mt-2">
+                <div>
+                  <p className="text-xs font-medium text-neutral-500">Room types</p>
+                  <div className="mt-1.5">
                     <TagList items={provider.roomTypes ?? []} />
                   </div>
                 </div>
-              </PanelSection>
-            </div>
-
-            <div className="space-y-5">
-              <PanelSection step={6} title="Services and languages">
-                <div className="space-y-4">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Services offered</p>
-                    <div className="mt-2">
-                      <TagList items={provider.services ?? []} />
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Languages spoken</p>
-                    <div className="mt-2">
-                      <TagList items={provider.languages ?? []} />
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Funding types accepted</p>
-                    <div className="mt-2">
-                      <TagList items={provider.fundingTypes ?? []} />
-                    </div>
+              </div>
+            </PanelTopic>
+            <PanelTopic title="Services and languages">
+              <div className="space-y-3">
+                <div>
+                  <p className="text-xs font-medium text-neutral-500">Services offered</p>
+                  <div className="mt-1.5">
+                    <TagList items={provider.services ?? []} />
                   </div>
                 </div>
-              </PanelSection>
-
-              <PanelSection step={7} title="Quality and accessibility">
-                <DetailList
-                  columns={1}
-                  items={[
-                    { label: "Quality information", value: provider.qualityInfo },
-                    { label: "Accessibility notes", value: provider.accessibilityNotes }
-                  ]}
-                />
-              </PanelSection>
-
-              <PanelSection step={8} title="Description">
-                <p className="text-sm leading-7 text-neutral-700">{provider.description?.trim() || "—"}</p>
-              </PanelSection>
-
-              <PanelSection
-                step={9}
-                title="Internal notes"
-                description="Visible to admins only. Use for vetting notes, referral context, or follow-up reminders."
-              >
-                <textarea
-                  value={adminNotes}
-                  onChange={(event) => setAdminNotes(event.target.value)}
-                  placeholder="Add internal notes about this provider..."
-                  className={`${adminFieldClass} min-h-28 w-full`}
-                />
-                <AdminPanelActions>
-                  <Button type="button" size="sm" disabled={savingNotes} onClick={() => void saveAdminNotes()}>
-                    {savingNotes ? "Saving..." : "Save notes"}
-                  </Button>
-                </AdminPanelActions>
-              </PanelSection>
-
-              <PanelSection step={10} title="Record">
-                <DetailList
-                  columns={1}
-                  items={[
-                    { label: "Provider ID", value: provider.id },
-                    { label: "Added", value: provider.createdAt },
-                    { label: "Last updated", value: provider.updatedAt }
-                  ]}
-                />
-              </PanelSection>
-
-              <PanelSection step={11} title="Quick actions">
-                <div className="flex flex-wrap gap-2">
-                  <Button asChild size="sm" variant="outline">
-                    <a href={`/providers/${provider.id}`} target="_blank" rel="noreferrer">
-                      Public profile
-                    </a>
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      void navigator.clipboard.writeText(provider.id);
-                      setPanelMessage(`Copied provider ID for ${provider.name}.`);
-                    }}
-                  >
-                    Copy ID
-                  </Button>
+                <div>
+                  <p className="text-xs font-medium text-neutral-500">Languages spoken</p>
+                  <div className="mt-1.5">
+                    <TagList items={provider.languages ?? []} />
+                  </div>
                 </div>
-              </PanelSection>
-            </div>
+                <div>
+                  <p className="text-xs font-medium text-neutral-500">Funding types accepted</p>
+                  <div className="mt-1.5">
+                    <TagList items={provider.fundingTypes ?? []} />
+                  </div>
+                </div>
+              </div>
+            </PanelTopic>
+            <PanelTopic title="Quality and accessibility">
+              <DetailList
+                columns={1}
+                items={[
+                  { label: "Quality information", value: provider.qualityInfo },
+                  { label: "Accessibility notes", value: provider.accessibilityNotes }
+                ]}
+              />
+            </PanelTopic>
+            <PanelTopic title="Description">
+              <p className="text-sm leading-7 text-neutral-700">{provider.description?.trim() || "—"}</p>
+            </PanelTopic>
+            <PanelTopic title="Record">
+              <DetailList
+                columns={1}
+                items={[
+                  { label: "Provider ID", value: provider.id },
+                  { label: "Added", value: provider.createdAt },
+                  { label: "Last updated", value: provider.updatedAt }
+                ]}
+              />
+            </PanelTopic>
           </div>
+
+          <PanelSection
+            title="Internal notes"
+            description="Visible to admins only. Use for vetting notes, referral context, or follow-up reminders."
+            collapsible
+            defaultOpen={false}
+          >
+            <textarea
+              value={adminNotes}
+              onChange={(event) => setAdminNotes(event.target.value)}
+              placeholder="Add internal notes about this provider..."
+              className={`${adminFieldClass} min-h-28 w-full`}
+            />
+            <AdminPanelActions>
+              <Button type="button" size="sm" disabled={savingNotes} onClick={() => void saveAdminNotes()}>
+                {savingNotes ? "Saving..." : "Save notes"}
+              </Button>
+            </AdminPanelActions>
+          </PanelSection>
+
+          <PanelSection title="Quick actions">
+            <div className="flex flex-wrap gap-2">
+              <Button asChild size="sm" variant="outline">
+                <a href={`/providers/${provider.id}`} target="_blank" rel="noreferrer">
+                  Public profile
+                </a>
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  void navigator.clipboard.writeText(provider.id);
+                  setPanelMessage(`Copied provider ID for ${provider.name}.`);
+                }}
+              >
+                Copy ID
+              </Button>
+            </div>
+          </PanelSection>
         </div>
       ) : null}
     </SlidePanel>
@@ -2447,7 +2432,7 @@ function SavedProviderMatchCard({ match }: { match: InquiryEntry }) {
           <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Provider</p>
           <p className="mt-1 font-medium text-ink break-words">{match.provider}</p>
         </div>
-        <StatusPill className={cn("shrink-0", matchStatusBadgeClass(match.statusRaw || "SUGGESTED"))}>
+        <StatusPill className={cn("shrink-0 px-2.5 py-1 text-xs", matchStatusBadgeClass(match.statusRaw || "SUGGESTED"))}>
           {adminMatchStatusLabel(match.statusRaw || "SUGGESTED")}
         </StatusPill>
       </div>
@@ -2875,62 +2860,61 @@ function InquiryDetailPanel({
       noticeTone={panelNoticeTone(panelMessage)}
     >
       {inquiry ? (
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_260px]">
-          <div>
-            {isReadOnly ? (
-              <div className="mb-4 rounded-lg border border-stone-200 bg-brand-cream/80 px-4 py-3 text-sm text-ink ring-1 ring-stone-100">
-                <p className="font-semibold">
-                  Read-only — assigned to {inquiry.careGuideName || "another Care Guide"}
-                </p>
-                <p className="mt-1 leading-6 text-neutral-600">
-                  You can view this inquiry. Only the assigned Care Guide can update match status.
-                </p>
-              </div>
-            ) : null}
-            <StatusPill className={matchStatusBadgeClass(inquiry.statusRaw)}>{hint}</StatusPill>
-
-            <PanelSection step={1} title="Inquiry flow" className="mt-5">
-              <ol className="list-decimal space-y-2 pl-5 text-sm leading-6 text-neutral-600">
-                <li>Create a match — family sees the provider on their shortlist.</li>
-                <li>Family requests a visit or callback.</li>
-                <li>Provider accepts or declines.</li>
-                <li>Mark the visit or call as arranged after timing is agreed.</li>
-                <li>Record the chosen provider when the family commits.</li>
-                <li>Close the provider match only if it was never used or the provider declined.</li>
-              </ol>
-            </PanelSection>
-
-            <div className="mt-6 grid gap-6 sm:grid-cols-2">
-              <PanelSection step={2} title="Family">
-                <DetailList
-                  items={details.filter((item) =>
-                    ["Family", "Phone", "Email", "Area", "Care needed", "Urgency"].includes(item.label)
-                  )}
-                />
-              </PanelSection>
-              <PanelSection step={3} title="Match">
-                <DetailList
-                  items={details.filter((item) =>
-                    ["Provider", "Match score", "Status", "Created", "Last updated", "Activity log"].includes(item.label)
-                  )}
-                />
-              </PanelSection>
+        <div className="space-y-5">
+          {isReadOnly ? (
+            <div className="rounded-lg bg-stone-50 px-4 py-3 text-sm text-ink">
+              <p className="font-semibold">
+                Read-only — assigned to {inquiry.careGuideName || "another Care Guide"}
+              </p>
+              <p className="mt-1 leading-6 text-neutral-600">
+                You can view this inquiry. Only the assigned Care Guide can update match status.
+              </p>
             </div>
+          ) : null}
+
+          <StatusPill className={cn("px-3 py-2 text-sm", matchStatusBadgeClass(inquiry.statusRaw))}>{hint}</StatusPill>
+
+          <PanelSection title="Inquiry flow" collapsible defaultOpen={false}>
+            <ol className="list-decimal space-y-2 pl-5 text-sm leading-6 text-neutral-600">
+              <li>Create a match — family sees the provider on their shortlist.</li>
+              <li>Family requests a visit or callback.</li>
+              <li>Provider accepts or declines.</li>
+              <li>Mark the visit or call as arranged after timing is agreed.</li>
+              <li>Record the chosen provider when the family commits.</li>
+              <li>Close the provider match only if it was never used or the provider declined.</li>
+            </ol>
+          </PanelSection>
+
+          <div className="divide-y divide-stone-100 border-t border-stone-100">
+            <PanelTopic title="Family" defaultOpen>
+              <DetailList
+                items={details.filter((item) =>
+                  ["Family", "Phone", "Email", "Area", "Care needed", "Urgency"].includes(item.label)
+                )}
+              />
+            </PanelTopic>
+            <PanelTopic title="Match" defaultOpen>
+              <DetailList
+                items={details.filter((item) =>
+                  ["Provider", "Match score", "Status", "Created", "Last updated", "Activity log"].includes(item.label)
+                )}
+              />
+            </PanelTopic>
           </div>
 
           {!isReadOnly ? (
-            <div className="space-y-4 lg:sticky lg:top-0 lg:self-start">
+            <div className="space-y-4 border-t border-stone-100 pt-4">
               {(inquiry.statusRaw === "VISIT_REQUESTED" ||
                 inquiry.statusRaw === "CALLBACK_REQUESTED" ||
                 inquiry.statusRaw === "ACCEPTED") && (
-                <PanelSection step={4} title={adminInquiryActionMeta("CONTACTED").label} description={adminInquiryActionMeta("CONTACTED").description}>
+                <PanelSection title={adminInquiryActionMeta("CONTACTED").label} description={adminInquiryActionMeta("CONTACTED").description}>
                   <Button size="sm" disabled={isPending} onClick={() => setConfirmContacted(true)}>
                     {pendingActionKey === `${inquiry.id}:CONTACTED` ? "Saving..." : "Confirm"}
                   </Button>
                 </PanelSection>
               )}
               {inquiry.statusRaw !== "PLACED" && inquiry.statusRaw !== "CLOSED" ? (
-                <PanelSection step={5} title={adminInquiryActionMeta("PLACED").label} description={adminInquiryActionMeta("PLACED").description}>
+                <PanelSection title={adminInquiryActionMeta("PLACED").label} description={adminInquiryActionMeta("PLACED").description}>
                   <Button
                     size="sm"
                     variant="outline"
@@ -2945,7 +2929,7 @@ function InquiryDetailPanel({
                 </PanelSection>
               ) : null}
               {canAdminCloseProviderMatch(inquiry.statusRaw) ? (
-                <PanelSection step={6} title={adminInquiryActionMeta("CLOSED").label} description={adminInquiryActionMeta("CLOSED").description}>
+                <PanelSection title={adminInquiryActionMeta("CLOSED").label} description={adminInquiryActionMeta("CLOSED").description}>
                   <Button size="sm" variant="outline" disabled={isPending} onClick={() => setConfirmClose(true)}>
                     {pendingActionKey === `${inquiry.id}:CLOSED` ? "Saving..." : "Confirm"}
                   </Button>
@@ -3409,189 +3393,177 @@ function WaitlistDetailPanel({
       noticeTone={panelNoticeTone(panelMessage)}
     >
       {entry ? (
-        <div className="space-y-6">
-          <StatusPill>
+        <div className="space-y-5">
+          <StatusPill className="bg-transparent px-0 py-0">
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <div>
-                <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Type</span>
+                <span className="text-xs font-medium text-neutral-500">Type</span>
                 <p className="mt-1 font-semibold text-ink">{entry.type}</p>
               </div>
               <div>
-                <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Status</span>
+                <span className="text-xs font-medium text-neutral-500">Status</span>
                 <p className="mt-1 font-semibold text-ink">{entry ? waitlistStatusLabel(entry.status) : "—"}</p>
               </div>
               <div>
-                <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Registered</span>
+                <span className="text-xs font-medium text-neutral-500">Registered</span>
                 <p className="mt-1 font-semibold text-ink">{entry.createdAt}</p>
               </div>
               <div>
-                <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Location</span>
+                <span className="text-xs font-medium text-neutral-500">Location</span>
                 <p className="mt-1 font-semibold text-ink">{entry.location}</p>
               </div>
             </div>
           </StatusPill>
 
-          <div className="grid gap-6 xl:grid-cols-3">
-            <div className="space-y-5">
-              <PanelSection step={1} title="Contact">
+          <div className="divide-y divide-stone-100 border-t border-stone-100">
+            <PanelTopic title="Contact" defaultOpen>
+              <DetailList
+                columns={1}
+                items={[
+                  { label: "Contact name", value: entry.contactName },
+                  { label: "Email", value: entry.email },
+                  { label: "Phone", value: entry.phone }
+                ]}
+              />
+            </PanelTopic>
+            <PanelTopic title="Location">
+              <DetailList
+                columns={1}
+                items={[
+                  { label: "City", value: entry.city },
+                  { label: "Province", value: entry.province },
+                  { label: "Full location", value: entry.location }
+                ]}
+              />
+            </PanelTopic>
+            {isFamily ? (
+              <PanelTopic title="Family context" defaultOpen>
                 <DetailList
                   columns={1}
                   items={[
-                    { label: "Contact name", value: entry.contactName },
-                    { label: "Email", value: entry.email },
-                    { label: "Phone", value: entry.phone }
+                    { label: "Relationship", value: entry.relationship },
+                    { label: "Age range", value: entry.ageRange }
                   ]}
                 />
-              </PanelSection>
-
-              <PanelSection step={2} title="Location">
+                <div className="mt-2">
+                  <p className="text-xs font-medium text-neutral-500">Care types</p>
+                  <div className="mt-1.5">
+                    <TagList items={entry.careTypes ?? []} />
+                  </div>
+                </div>
+              </PanelTopic>
+            ) : (
+              <PanelTopic title="Facility details" defaultOpen>
                 <DetailList
                   columns={1}
                   items={[
-                    { label: "City", value: entry.city },
-                    { label: "Province", value: entry.province },
-                    { label: "Full location", value: entry.location }
+                    { label: "Facility name", value: entry.facilityName },
+                    { label: "Facility type", value: entry.facilityType },
+                    { label: "KVK / registration", value: entry.registrationNumber },
+                    {
+                      label: "Registration verified",
+                      value: entry.registrationVerified ? "Yes — ready to invite" : "Not verified yet"
+                    },
+                    { label: "Total beds", value: entry.bedsTotal != null ? String(entry.bedsTotal) : null }
                   ]}
                 />
-              </PanelSection>
-            </div>
-
-            <div className="space-y-5">
-              {isFamily ? (
-                <PanelSection step={3} title="Family context">
-                  <DetailList
-                    columns={1}
-                    items={[
-                      { label: "Relationship", value: entry.relationship },
-                      { label: "Age range", value: entry.ageRange }
-                    ]}
-                  />
-                  <div className="mt-4">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Care types</p>
-                    <div className="mt-2">
-                      <TagList items={entry.careTypes ?? []} />
-                    </div>
+                <div className="mt-2">
+                  <p className="text-xs font-medium text-neutral-500">Services</p>
+                  <div className="mt-1.5">
+                    <TagList items={entry.services ?? []} />
                   </div>
-                </PanelSection>
-              ) : (
-                <PanelSection step={3} title="Facility details">
-                  <DetailList
-                    columns={1}
-                    items={[
-                      { label: "Facility name", value: entry.facilityName },
-                      { label: "Facility type", value: entry.facilityType },
-                      { label: "KVK / registration", value: entry.registrationNumber },
-                      {
-                        label: "Registration verified",
-                        value: entry.registrationVerified ? "Yes — ready to invite" : "Not verified yet"
-                      },
-                      { label: "Total beds", value: entry.bedsTotal != null ? String(entry.bedsTotal) : null }
-                    ]}
+                </div>
+                <label className="mt-3 flex items-start gap-3 py-1 text-sm text-neutral-700">
+                  <input
+                    type="checkbox"
+                    className="mt-1"
+                    checked={Boolean(entry.registrationVerified)}
+                    disabled={isPending}
+                    onChange={(event) =>
+                      void onToggleRegistrationVerified(entry.id, event.target.checked, setPanelMessage)
+                    }
                   />
-                  <div className="mt-4">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Services</p>
-                    <div className="mt-2">
-                      <TagList items={entry.services ?? []} />
-                    </div>
-                  </div>
-                  <div className="mt-4">
-                    <label className="flex items-start gap-3 rounded-xl bg-stone-50 px-4 py-3 text-sm text-neutral-700">
-                      <input
-                        type="checkbox"
-                        className="mt-1"
-                        checked={Boolean(entry.registrationVerified)}
-                        disabled={isPending}
-                        onChange={(event) =>
-                          void onToggleRegistrationVerified(entry.id, event.target.checked, setPanelMessage)
+                  <span>
+                    <span className="font-medium text-ink">Registration verified externally</span>
+                    <span className="mt-1 block text-xs text-neutral-500">
+                      Confirm the KVK or government ID outside this app before inviting the facility.
+                    </span>
+                  </span>
+                </label>
+              </PanelTopic>
+            )}
+            <PanelTopic title="Message">
+              <p className="text-sm leading-7 text-neutral-700">{entry.message?.trim() || "—"}</p>
+            </PanelTopic>
+            <PanelTopic title="Record">
+              <DetailList
+                columns={1}
+                items={[
+                  { label: "Entry ID", value: entry.id },
+                  { label: "Registered", value: entry.createdAt },
+                  { label: "Last updated", value: entry.updatedAt },
+                  ...(!isFamily
+                    ? [
+                        {
+                          label: "Provider invites",
+                          value: `${entry.providerInviteAttemptsUsed} sent · ${entry.providerInviteAttemptsRemaining} remaining`
+                        },
+                        {
+                          label: "Invite status",
+                          value: entry.hasActivePendingProviderInvite
+                            ? "Pending — waiting for provider to accept"
+                            : entry.canSendProviderInvite
+                              ? "Ready to send"
+                              : entry.providerInviteLockReason || "Not eligible"
                         }
-                      />
-                      <span>
-                        <span className="font-medium text-ink">Registration verified externally</span>
-                        <span className="mt-1 block text-xs text-neutral-500">
-                          Confirm the KVK or government ID outside this app before inviting the facility.
-                        </span>
-                      </span>
-                    </label>
-                  </div>
-                </PanelSection>
-              )}
-
-              <PanelSection step={4} title="Message">
-                <p className="text-sm leading-7 text-neutral-700">{entry.message?.trim() || "—"}</p>
-              </PanelSection>
-            </div>
-
-            <div className="space-y-5">
-              <PanelSection step={5} title="Record">
-                <DetailList
-                  columns={1}
-                  items={[
-                    { label: "Entry ID", value: entry.id },
-                    { label: "Registered", value: entry.createdAt },
-                    { label: "Last updated", value: entry.updatedAt },
-                    ...(!isFamily
-                      ? [
-                          {
-                            label: "Provider invites",
-                            value: `${entry.providerInviteAttemptsUsed} sent · ${entry.providerInviteAttemptsRemaining} remaining`
-                          },
-                          {
-                            label: "Invite status",
-                            value: entry.hasActivePendingProviderInvite
-                              ? "Pending — waiting for provider to accept"
-                              : entry.canSendProviderInvite
-                                ? "Ready to send"
-                                : entry.providerInviteLockReason || "Not eligible"
-                          }
-                        ]
-                      : [])
-                  ]}
-                />
-              </PanelSection>
-
-              <PanelSection step={6} title="Quick actions">
-                <div className="flex flex-wrap gap-2">
-                  {entry.email ? (
-                    <Button asChild size="sm" variant="outline">
-                      <a href={`mailto:${entry.email}`}>Email contact</a>
-                    </Button>
-                  ) : null}
-                  {!isFamily ? (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={isInvitePending || !canInvite}
-                      onClick={() => onInviteProvider(entry, setPanelMessage)}
-                    >
-                      {isInvitePending ? "Sending..." : inviteLabel}
-                    </Button>
-                  ) : null}
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      void navigator.clipboard.writeText(entry.id);
-                      setPanelMessage("Entry ID copied.");
-                    }}
-                  >
-                    Copy ID
-                  </Button>
-                </div>
-                <div className="mt-4 grid grid-cols-2 gap-3">
-                  <Button variant="outline" className="w-full" onClick={onClose}>
-                    Close
-                  </Button>
-                  <Button
-                    className="w-full"
-                    disabled={!canContact || isPending}
-                    onClick={() => void onMarkContacted(entry.id, entry.name, setPanelMessage)}
-                  >
-                    {isPending ? "Saving..." : canContact ? "Mark contacted" : waitlistStatusLabel(entry.status)}
-                  </Button>
-                </div>
-              </PanelSection>
-            </div>
+                      ]
+                    : [])
+                ]}
+              />
+            </PanelTopic>
           </div>
+
+          <PanelSection title="Quick actions">
+            <div className="flex flex-wrap gap-2">
+              {entry.email ? (
+                <Button asChild size="sm" variant="outline">
+                  <a href={`mailto:${entry.email}`}>Email contact</a>
+                </Button>
+              ) : null}
+              {!isFamily ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={isInvitePending || !canInvite}
+                  onClick={() => onInviteProvider(entry, setPanelMessage)}
+                >
+                  {isInvitePending ? "Sending..." : inviteLabel}
+                </Button>
+              ) : null}
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  void navigator.clipboard.writeText(entry.id);
+                  setPanelMessage("Entry ID copied.");
+                }}
+              >
+                Copy ID
+              </Button>
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <Button variant="outline" className="w-full" onClick={onClose}>
+                Close
+              </Button>
+              <Button
+                className="w-full"
+                disabled={!canContact || isPending}
+                onClick={() => void onMarkContacted(entry.id, entry.name, setPanelMessage)}
+              >
+                {isPending ? "Saving..." : canContact ? "Mark contacted" : waitlistStatusLabel(entry.status)}
+              </Button>
+            </div>
+          </PanelSection>
         </div>
       ) : null}
     </SlidePanel>
