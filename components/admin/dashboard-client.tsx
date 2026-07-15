@@ -1150,8 +1150,6 @@ function FamilyDetailPanel({
   })();
   const visitNotesLabel =
     visitType === "CALLBACK" ? "Callback notes" : visitType === "VISIT" ? "Visit notes" : "Visit or callback notes";
-  const visitNotesHint =
-    "Shared with the family on their dashboard. Providers see the scheduled date and type, not these internal coordination notes.";
   const visibleJourneySteps = JOURNEY_STEPS;
 
   return (
@@ -1432,341 +1430,344 @@ function FamilyDetailPanel({
               />
             </PanelSection>
           ) : (
-          <div className="space-y-5 border-t border-stone-100 pt-5">
+          <div className="space-y-1 border-t border-stone-100 pt-2">
             <PanelSection
               step={2}
               title="Assign Care Guide"
-              description={
-                canAssignCareGuide
-                  ? "Assign a named guide — the family timeline moves to “Care Guide assigned”."
-                  : isReadOnlyAssigned
-                    ? "This case is already assigned. Only the assigned Care Guide can reassign."
-                    : "Assign a named guide — the family timeline moves to “Care Guide assigned”. You can reassign a different guide at any time."
-              }
+              description="Pick who owns this case."
               locked={careGuideStepLocked && !canAssignCareGuide}
+              collapsible={careGuideStepLocked && !canAssignCareGuide}
+              defaultOpen={!(careGuideStepLocked && !canAssignCareGuide)}
             >
               <div className="space-y-3">
-              <label className="grid gap-2 text-sm font-medium">
-                Care Guide
-                <select
-                  value={careGuideId}
-                  onChange={(event) => setCareGuideId(event.target.value)}
-                  disabled={isReadOnlyAssigned}
-                  className={adminFieldClass}
-                >
-                  <option value="">Select Care Guide</option>
-                  {careGuides.map((guide) => (
-                    <option key={guide.id} value={guide.id}>
-                      {guide.name || guide.email}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <AdminPanelActions>
-                <Button
-                  type="button"
-                  size="sm"
-                  disabled={!careGuideId || savingCareGuide || isReadOnlyAssigned}
-                  onClick={() => void saveCareGuide()}
-                >
-                  {savingCareGuide ? "Saving..." : "Assign Care Guide"}
-                </Button>
-              </AdminPanelActions>
+                <label className="grid gap-1.5 text-sm font-medium">
+                  Care Guide
+                  <select
+                    value={careGuideId}
+                    onChange={(event) => setCareGuideId(event.target.value)}
+                    disabled={isReadOnlyAssigned}
+                    className={adminFieldClass}
+                  >
+                    <option value="">Select Care Guide</option>
+                    {careGuides.map((guide) => (
+                      <option key={guide.id} value={guide.id}>
+                        {guide.name || guide.email}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <AdminPanelActions>
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={!careGuideId || savingCareGuide || isReadOnlyAssigned}
+                    onClick={() => void saveCareGuide()}
+                  >
+                    {savingCareGuide ? "Saving..." : "Assign Care Guide"}
+                  </Button>
+                </AdminPanelActions>
               </div>
             </PanelSection>
 
             <PanelSection
               step={3}
               title="Assessment & care plan"
-              description="Save assessment notes internally, then publish the care plan summary when the family should see it."
+              description="Internal notes stay private; the care plan summary is shared with the family."
               locked={assessmentStepLocked || isReadOnlyAssigned}
+              collapsible={assessmentStepLocked || isReadOnlyAssigned}
+              defaultOpen={!(assessmentStepLocked || isReadOnlyAssigned)}
             >
               <div className="space-y-3">
-              <label className="grid gap-2 text-sm font-medium">
-                Recommended care pathway
-                <select
-                  value={carePathway}
-                  onChange={(event) => setCarePathway(event.target.value)}
-                  disabled={isReadOnlyAssigned}
-                  className={adminFieldClass}
-                >
-                  <option value="">Select pathway</option>
-                  {CARE_PATHWAYS.map((pathway) => (
-                    <option key={pathway} value={pathway}>
-                      {pathway}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="grid gap-2 text-sm font-medium">
-                Assessment notes (internal)
-                <textarea
-                  value={assessmentNotes}
-                  onChange={(event) => setAssessmentNotes(event.target.value)}
-                  disabled={isReadOnlyAssigned}
-                  className={`${adminFieldClass} min-h-24`}
-                  placeholder="Family situation, decision-makers, funding context..."
-                />
-              </label>
-              <label className="grid gap-2 text-sm font-medium">
-                Care plan summary (shared with family)
-                <textarea
-                  value={carePlanSummary}
-                  onChange={(event) => setCarePlanSummary(event.target.value)}
-                  disabled={isReadOnlyAssigned}
-                  className={`${adminFieldClass} min-h-24`}
-                  placeholder="Brief plan: recommended next steps and why this pathway fits."
-                />
-              </label>
-              <AdminPanelActions>
-                <Button
-                  type="button"
-                  size="sm"
-                  disabled={isReadOnlyAssigned || savingAssessment || carePlanButtonMode === "published"}
-                  onClick={() => void saveAndShareWithFamily()}
-                >
-                  {savingAssessment
-                    ? "Saving..."
-                    : carePlanButtonMode === "save-assessment"
-                      ? "Save assessment"
-                      : carePlanButtonMode === "save-care-plan"
-                        ? "Save care plan"
-                        : carePlanButtonMode === "publish"
-                          ? "Publish care plan"
-                          : "Care plan published"}
-                </Button>
-                {!["MATCHED", "VISIT_SCHEDULED", "PROVIDER_RESPONSE", "PLACEMENT_IN_PROGRESS", "PLACED", "CLOSED"].includes(normalizedStatus) ? (
+                <label className="grid gap-1.5 text-sm font-medium">
+                  Care pathway
+                  <select
+                    value={carePathway}
+                    onChange={(event) => setCarePathway(event.target.value)}
+                    disabled={isReadOnlyAssigned}
+                    className={adminFieldClass}
+                  >
+                    <option value="">Select pathway</option>
+                    {CARE_PATHWAYS.map((pathway) => (
+                      <option key={pathway} value={pathway}>
+                        {pathway}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="grid gap-1.5 text-sm font-medium">
+                  Assessment notes (internal)
+                  <textarea
+                    value={assessmentNotes}
+                    onChange={(event) => setAssessmentNotes(event.target.value)}
+                    disabled={isReadOnlyAssigned}
+                    className={`${adminFieldClass} min-h-20`}
+                    placeholder="Situation, decision-makers, funding…"
+                  />
+                </label>
+                <label className="grid gap-1.5 text-sm font-medium">
+                  Care plan summary (family-facing)
+                  <textarea
+                    value={carePlanSummary}
+                    onChange={(event) => setCarePlanSummary(event.target.value)}
+                    disabled={isReadOnlyAssigned}
+                    className={`${adminFieldClass} min-h-20`}
+                    placeholder="What the family should see next…"
+                  />
+                </label>
+                <AdminPanelActions>
                   <Button
                     type="button"
                     size="sm"
-                    variant="outline"
-                    disabled={
-                      isReadOnlyAssigned ||
-                      savingAssessment ||
-                      !carePlanSummary.trim() ||
-                      Boolean(shortlistDisabledReason)
-                    }
-                    onClick={() => void markShortlistReady()}
+                    disabled={isReadOnlyAssigned || savingAssessment || carePlanButtonMode === "published"}
+                    onClick={() => void saveAndShareWithFamily()}
                   >
-                    Mark shortlist ready
+                    {savingAssessment
+                      ? "Saving..."
+                      : carePlanButtonMode === "save-assessment"
+                        ? "Save assessment"
+                        : carePlanButtonMode === "save-care-plan"
+                          ? "Save care plan"
+                          : carePlanButtonMode === "publish"
+                            ? "Publish care plan"
+                            : "Care plan published"}
                   </Button>
-                ) : null}
-              </AdminPanelActions>
-              {shortlistDisabledReason ? <p className="text-xs leading-5 text-neutral-500">{shortlistDisabledReason}</p> : null}
+                  {!["MATCHED", "VISIT_SCHEDULED", "PROVIDER_RESPONSE", "PLACEMENT_IN_PROGRESS", "PLACED", "CLOSED"].includes(normalizedStatus) ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={
+                        isReadOnlyAssigned ||
+                        savingAssessment ||
+                        !carePlanSummary.trim() ||
+                        Boolean(shortlistDisabledReason)
+                      }
+                      onClick={() => void markShortlistReady()}
+                    >
+                      Mark shortlist ready
+                    </Button>
+                  ) : null}
+                </AdminPanelActions>
+                {shortlistDisabledReason ? <p className="text-xs leading-5 text-neutral-500">{shortlistDisabledReason}</p> : null}
               </div>
             </PanelSection>
 
             <PanelSection
               step={4}
               title="Create provider match"
-              description="Matched providers appear below with live status and notes. Add another provider when you are ready."
+              description="Add a provider to the family shortlist."
               locked={matchStepLocked || isReadOnlyAssigned}
+              collapsible={matchStepLocked || isReadOnlyAssigned}
+              defaultOpen={!(matchStepLocked || isReadOnlyAssigned)}
             >
-              <div className="space-y-5">
-              {matches.map((match) => (
-                <SavedProviderMatchCard key={match.id} match={match} />
-              ))}
-              {hasMatches ? (
-                <p className="text-sm font-medium text-ink">Add another provider</p>
-              ) : null}
-              <label className="grid gap-2 text-sm font-medium">
-                Provider
-                <select
-                  value={providerId}
-                  onChange={(event) => setProviderId(event.target.value)}
-                  disabled={!matchingAllowed}
-                  className={adminFieldClass}
-                >
-                  <option value="">Select provider</option>
-                  {providers
-                    .filter((provider) => providerAvailableForMatching(provider.id, matches).available)
-                    .map((provider) => {
-                      const rematch = providerAvailableForMatching(provider.id, matches).rematch;
-                      return (
-                    <option key={provider.id} value={provider.id}>
-                      {provider.name} - {provider.area}
-                      {rematch
-                        ? " (re-open declined match)"
-                        : !provider.profileComplete
-                          ? " (locked)"
-                          : !provider.matchable
-                            ? " (not verified)"
-                            : ""}
-                    </option>
-                      );
-                    })}
-                </select>
-              </label>
-              <label className="grid gap-2 text-sm font-medium">
-                Match score (%)
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={score}
-                  disabled={!matchingAllowed}
-                  onChange={(event) => setScore(event.target.value)}
-                  className={adminFieldClass}
-                />
-                <MatchScoreGuidance score={score} />
-              </label>
-              <label className="grid gap-2 text-sm font-medium">
-                Why this match (shown to family)
-                <textarea
-                  value={familyFacingReason}
-                  disabled={!matchingAllowed}
-                  onChange={(event) => setFamilyFacingReason(event.target.value)}
-                  placeholder="e.g. Strong dementia care capacity and open bed in your preferred area"
-                  className={`${adminFieldClass} min-h-20`}
-                />
-              </label>
-              <label className="grid gap-2 text-sm font-medium">
-                Internal notes (optional)
-                <textarea
-                  value={matchNotes}
-                  disabled={!matchingAllowed}
-                  onChange={(event) => setMatchNotes(event.target.value)}
-                  className={`${adminFieldClass} min-h-20`}
-                />
-              </label>
-              <AdminPanelActions>
-                <Button
-                  type="button"
-                  size="sm"
-                  disabled={!providerId || creatingMatch || Boolean(createMatchDisabledReason)}
-                  onClick={() => void createMatch()}
-                >
-                  {creatingMatch ? "Saving..." : selectedProviderRematch ? "Re-open match" : "Create match"}
-                </Button>
-              </AdminPanelActions>
-              {createMatchDisabledReason ? <p className="text-xs leading-5 text-neutral-500">{createMatchDisabledReason}</p> : null}
+              <div className="space-y-3">
+                <label className="grid gap-1.5 text-sm font-medium">
+                  Provider
+                  <select
+                    value={providerId}
+                    onChange={(event) => setProviderId(event.target.value)}
+                    disabled={!matchingAllowed}
+                    className={adminFieldClass}
+                  >
+                    <option value="">Select provider</option>
+                    {providers
+                      .filter((provider) => providerAvailableForMatching(provider.id, matches).available)
+                      .map((provider) => {
+                        const rematch = providerAvailableForMatching(provider.id, matches).rematch;
+                        return (
+                          <option key={provider.id} value={provider.id}>
+                            {provider.name} - {provider.area}
+                            {rematch
+                              ? " (re-open)"
+                              : !provider.profileComplete
+                                ? " (locked)"
+                                : !provider.matchable
+                                  ? " (not verified)"
+                                  : ""}
+                          </option>
+                        );
+                      })}
+                  </select>
+                </label>
+                <label className="grid gap-1.5 text-sm font-medium">
+                  Match score (%)
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={score}
+                    disabled={!matchingAllowed}
+                    onChange={(event) => setScore(event.target.value)}
+                    className={adminFieldClass}
+                  />
+                  <MatchScoreGuidance score={score} />
+                </label>
+                <label className="grid gap-1.5 text-sm font-medium">
+                  Why this match (shown to family)
+                  <textarea
+                    value={familyFacingReason}
+                    disabled={!matchingAllowed}
+                    onChange={(event) => setFamilyFacingReason(event.target.value)}
+                    placeholder="e.g. Strong dementia care and open bed nearby"
+                    className={`${adminFieldClass} min-h-16`}
+                  />
+                </label>
+                <label className="grid gap-1.5 text-sm font-medium">
+                  Internal notes (optional)
+                  <textarea
+                    value={matchNotes}
+                    disabled={!matchingAllowed}
+                    onChange={(event) => setMatchNotes(event.target.value)}
+                    className={`${adminFieldClass} min-h-16`}
+                  />
+                </label>
+                <AdminPanelActions>
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={!providerId || creatingMatch || Boolean(createMatchDisabledReason)}
+                    onClick={() => void createMatch()}
+                  >
+                    {creatingMatch ? "Saving..." : selectedProviderRematch ? "Re-open match" : "Create match"}
+                  </Button>
+                </AdminPanelActions>
+                {createMatchDisabledReason ? <p className="text-xs leading-5 text-neutral-500">{createMatchDisabledReason}</p> : null}
+
+                {hasMatches ? (
+                  <div className="mt-2 border-t border-stone-100 pt-3">
+                    <p className="text-xs font-medium text-neutral-500">
+                      Shortlist · {matches.length} provider{matches.length === 1 ? "" : "s"}
+                    </p>
+                    <div className="mt-1 divide-y divide-stone-100">
+                      {matches.map((match) => (
+                        <SavedProviderMatchCard key={match.id} match={match} />
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
               </div>
             </PanelSection>
 
             <PanelSection
               step={5}
               title="Schedule visit or callback"
-              description={
-                ["MATCHED", "VISIT_SCHEDULED"].includes(normalizedStatus)
-                  ? "Saving advances the family timeline to “Visit scheduled” and shows the appointment on their dashboard."
-                  : "Visit details are saved for the family dashboard. Status is not moved backward if the case has already progressed."
-              }
+              description="Shown on the family dashboard."
               locked={visitStepLocked || isReadOnlyAssigned}
+              collapsible={visitStepLocked || isReadOnlyAssigned}
+              defaultOpen={!(visitStepLocked || isReadOnlyAssigned)}
             >
               <div className="space-y-3">
-              <label className="grid gap-2 text-sm font-medium">
-                Visit or callback date & time
-                <input
-                  type="datetime-local"
-                  value={visitScheduledAt}
-                  disabled={!visitSchedulingAllowed}
-                  onChange={(event) => setVisitScheduledAt(event.target.value)}
-                  className={adminFieldClass}
-                />
-              </label>
-              <label className="grid gap-2 text-sm font-medium">
-                Type
-                <select
-                  value={visitType}
-                  disabled={!visitSchedulingAllowed}
-                  onChange={(event) => setVisitType(event.target.value as "VISIT" | "CALLBACK" | "")}
-                  className={adminFieldClass}
-                >
-                  <option value="">Select type</option>
-                  <option value="VISIT">Facility visit</option>
-                  <option value="CALLBACK">Phone callback</option>
-                </select>
-              </label>
-              <label className="grid gap-2 text-sm font-medium">
-                Provider / facility
-                <input
-                  value={visitProviderName}
-                  disabled={!visitSchedulingAllowed}
-                  onChange={(event) => setVisitProviderName(event.target.value)}
-                  className={adminFieldClass}
-                  placeholder="Provider name"
-                />
-              </label>
-              <label className="grid gap-2 text-sm font-medium">
-                {visitNotesLabel}
-                <textarea
-                  value={visitNotes}
-                  disabled={!visitSchedulingAllowed}
-                  onChange={(event) => setVisitNotes(event.target.value)}
-                  className={`${adminFieldClass} min-h-20`}
-                  placeholder={
-                    visitType === "CALLBACK"
-                      ? "Best time to call, who to ask for, topics to cover..."
-                      : "Directions, contact person, what to bring..."
-                  }
-                />
-              </label>
-              <p className="text-xs leading-5 text-neutral-500">{visitNotesHint}</p>
-              <AdminPanelActions>
-                <Button
-                  type="button"
-                  size="sm"
-                  disabled={savingVisit || !visitScheduledAt || !visitSchedulingAllowed}
-                  onClick={() => void saveVisitSchedule()}
-                >
-                  {savingVisit
-                    ? "Saving..."
-                    : ["MATCHED", "VISIT_SCHEDULED"].includes(normalizedStatus)
-                      ? "Save visit & mark scheduled"
-                      : "Update visit details"}
-                </Button>
-              </AdminPanelActions>
-              {visitDisabledReason ? <p className="text-xs leading-5 text-neutral-500">{visitDisabledReason}</p> : null}
+                <label className="grid gap-1.5 text-sm font-medium">
+                  Date & time
+                  <input
+                    type="datetime-local"
+                    value={visitScheduledAt}
+                    disabled={!visitSchedulingAllowed}
+                    onChange={(event) => setVisitScheduledAt(event.target.value)}
+                    className={adminFieldClass}
+                  />
+                </label>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="grid gap-1.5 text-sm font-medium">
+                    Type
+                    <select
+                      value={visitType}
+                      disabled={!visitSchedulingAllowed}
+                      onChange={(event) => setVisitType(event.target.value as "VISIT" | "CALLBACK" | "")}
+                      className={adminFieldClass}
+                    >
+                      <option value="">Select type</option>
+                      <option value="VISIT">Facility visit</option>
+                      <option value="CALLBACK">Phone callback</option>
+                    </select>
+                  </label>
+                  <label className="grid gap-1.5 text-sm font-medium">
+                    Provider / facility
+                    <input
+                      value={visitProviderName}
+                      disabled={!visitSchedulingAllowed}
+                      onChange={(event) => setVisitProviderName(event.target.value)}
+                      className={adminFieldClass}
+                      placeholder="Provider name"
+                    />
+                  </label>
+                </div>
+                <label className="grid gap-1.5 text-sm font-medium">
+                  {visitNotesLabel}
+                  <textarea
+                    value={visitNotes}
+                    disabled={!visitSchedulingAllowed}
+                    onChange={(event) => setVisitNotes(event.target.value)}
+                    className={`${adminFieldClass} min-h-16`}
+                    placeholder={
+                      visitType === "CALLBACK"
+                        ? "Best time to call, who to ask for…"
+                        : "Directions, contact person…"
+                    }
+                  />
+                </label>
+                <AdminPanelActions>
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={savingVisit || !visitScheduledAt || !visitSchedulingAllowed}
+                    onClick={() => void saveVisitSchedule()}
+                  >
+                    {savingVisit
+                      ? "Saving..."
+                      : ["MATCHED", "VISIT_SCHEDULED"].includes(normalizedStatus)
+                        ? "Save & mark scheduled"
+                        : "Update visit details"}
+                  </Button>
+                </AdminPanelActions>
+                {visitDisabledReason ? <p className="text-xs leading-5 text-neutral-500">{visitDisabledReason}</p> : null}
               </div>
             </PanelSection>
 
             <PanelSection
               step={6}
               title="Advance case status"
-              description="Record placement milestones after visit scheduling. Close case only when support is complete."
+              description="Placement milestones and follow-up."
               locked={advanceStepLocked || isReadOnlyAssigned}
-              lockedNote="Complete steps 2–5 (through visit scheduling) before advancing placement milestones."
+              lockedNote="Finish visit scheduling before advancing placement."
+              collapsible={advanceStepLocked || isReadOnlyAssigned}
+              defaultOpen={!(advanceStepLocked || isReadOnlyAssigned)}
             >
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {milestoneAdvanceActions.length ? (
                   milestoneAdvanceActions.map((action) => {
                     const disabledReason =
                       isReadOnlyAssigned
                         ? "Only the assigned Care Guide can advance this case."
                         : action.status === "VISIT_SCHEDULED" && !visitSchedulingAllowed
-                        ? "Wait until the family requests a visit/callback or a provider accepts before scheduling."
-                        : (action.status === "PLACEMENT_IN_PROGRESS" || action.status === "PLACED") && !placementActionAllowed
-                          ? "Coordinate with an accepted provider before recording placement."
-                          : "";
+                          ? "Wait until the family requests a visit/callback or a provider accepts."
+                          : (action.status === "PLACEMENT_IN_PROGRESS" || action.status === "PLACED") && !placementActionAllowed
+                            ? "Coordinate with an accepted provider first."
+                            : "";
 
                     return (
-                      <div key={action.status}>
-                        <AdminPanelActions>
-                          <Button
-                            size="sm"
-                            disabled={isCaseActionPending || Boolean(disabledReason)}
-                            onClick={() => void handleCaseAction(action.status)}
-                          >
-                            {isCaseActionPending && pendingAction === action.status ? "Saving..." : action.label}
-                          </Button>
-                        </AdminPanelActions>
-                        <p className="mt-2 text-xs leading-5 text-neutral-500">{disabledReason || action.description}</p>
+                      <div key={action.status} className="flex flex-wrap items-center gap-3">
+                        <Button
+                          size="sm"
+                          disabled={isCaseActionPending || Boolean(disabledReason)}
+                          onClick={() => void handleCaseAction(action.status)}
+                        >
+                          {isCaseActionPending && pendingAction === action.status ? "Saving..." : action.label}
+                        </Button>
+                        <p className="text-xs leading-5 text-neutral-500">{disabledReason || action.description}</p>
                       </div>
                     );
                   })
                 ) : (
-                  <p className="text-sm leading-6 text-neutral-600">Placement milestones will appear here after visit scheduling.</p>
+                  <p className="text-sm leading-6 text-neutral-600">Milestones appear here after visit scheduling.</p>
                 )}
               </div>
             </PanelSection>
 
             {!isReadOnlyAssigned ? (
-              <PanelSection
-                title="Case outcome"
-                description="Record why the case is ending or paused. Required when closing is recommended; can also be set earlier."
-              >
+              <PanelSection title="Case outcome" description="Why the case is ending or pausing." collapsible defaultOpen={canCloseCase}>
                 <div className="space-y-3">
-                  <label className="grid gap-2 text-sm font-medium">
+                  <label className="grid gap-1.5 text-sm font-medium">
                     Outcome
                     <select
                       value={caseOutcome}
@@ -1797,10 +1798,7 @@ function FamilyDetailPanel({
             ) : null}
 
             {canCloseCase && !isReadOnlyAssigned ? (
-              <PanelSection
-                title="Close family case"
-                description="End the whole family journey. Set a case outcome above before closing when possible. Use Inquiries → Close provider match to archive one provider thread only."
-              >
+              <PanelSection title="Close family case" description="Ends the whole family journey.">
                 <AdminPanelActions>
                   <Button
                     size="sm"
@@ -2424,43 +2422,31 @@ function parseAdminMatchScore(value: string) {
 function SavedProviderMatchCard({ match }: { match: InquiryEntry }) {
   const scoreValue = parseAdminMatchScore(match.match);
   const notes = adminMatchNotes(match.notes);
+  const rematchable = isRematchableMatchStatus(match.statusRaw);
 
   return (
-    <div className="space-y-3 border-b border-stone-200/80 pb-5 last:border-b-0 last:pb-0">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Provider</p>
-          <p className="mt-1 font-medium text-ink break-words">{match.provider}</p>
-        </div>
-        <StatusPill className={cn("shrink-0 px-2.5 py-1 text-xs", matchStatusBadgeClass(match.statusRaw || "SUGGESTED"))}>
-          {adminMatchStatusLabel(match.statusRaw || "SUGGESTED")}
-        </StatusPill>
-      </div>
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Match score (%)</p>
-        <p className="mt-1 text-sm font-medium text-ink">{formatAdminMatchScore(match.match)}</p>
-        {scoreValue != null ? (
-          <p className="mt-1 text-xs font-medium text-brand-green-dark">{adminFitLabel(scoreValue)}</p>
+    <div className="flex flex-wrap items-start justify-between gap-2 py-2.5">
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium text-ink break-words">{match.provider}</p>
+        <p className="mt-0.5 text-xs text-neutral-500">
+          {formatAdminMatchScore(match.match)}
+          {scoreValue != null ? ` · ${adminFitLabel(scoreValue)}` : ""}
+          {` · ${match.updatedAt}`}
+          {rematchable ? " · can re-open" : ""}
+        </p>
+        {notes ? <p className="mt-1 line-clamp-2 text-xs leading-5 text-neutral-600">{notes}</p> : null}
+        {match.declineReason ? (
+          <p className="mt-1 text-xs leading-5 text-neutral-600">Declined: {match.declineReason}</p>
         ) : null}
       </div>
-      {notes ? (
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Internal notes</p>
-          <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-neutral-700 break-words">{notes}</p>
-        </div>
-      ) : null}
-      {match.declineReason ? (
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Decline reason</p>
-          <p className="mt-1 text-sm leading-6 text-neutral-700 break-words">{match.declineReason}</p>
-        </div>
-      ) : null}
-      {isRematchableMatchStatus(match.statusRaw) ? (
-        <p className="text-xs leading-5 text-neutral-600">
-          You can re-open this provider below if the family should try again.
-        </p>
-      ) : null}
-      <p className="text-xs text-neutral-500">Last updated {match.updatedAt}</p>
+      <span
+        className={cn(
+          "shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold",
+          matchStatusBadgeClass(match.statusRaw || "SUGGESTED")
+        )}
+      >
+        {adminMatchStatusLabel(match.statusRaw || "SUGGESTED")}
+      </span>
     </div>
   );
 }
@@ -2469,16 +2455,11 @@ function MatchScoreGuidance({ score }: { score: string }) {
   const numericScore = Number(score);
   const validScore = Number.isFinite(numericScore) && numericScore >= 0 && numericScore <= 100;
 
-  return (
-    <div className="space-y-1 font-normal">
-      {validScore ? (
-        <p className="text-xs font-medium text-brand-green-dark">{adminFitLabel(numericScore)}</p>
-      ) : (
-        <p className="text-xs text-neutral-500">Enter a score from 0 to 100.</p>
-      )}
-      <p className="text-xs leading-5 text-neutral-500">{adminMatchScoreBands()}</p>
-    </div>
-  );
+  if (!validScore) {
+    return <p className="text-xs text-neutral-500">0–100. {adminMatchScoreBands()}</p>;
+  }
+
+  return <p className="text-xs font-medium text-brand-green-dark">{adminFitLabel(numericScore)}</p>;
 }
 
 function formatProviderPriceRange(priceMin: number | null, priceMax: number | null) {
