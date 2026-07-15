@@ -81,8 +81,8 @@ export const JOURNEY_STEPS: Array<{ status: IntakeStatus; label: string; hint: s
   },
   {
     status: "CLOSED",
-    label: "Case closed",
-    hint: "This request is complete. Reach out anytime if your needs change."
+    label: "Thank you — case closed",
+    hint: "Thank you for trusting Shepherds Oud. Your guided care journey is complete. Reach out anytime if your needs change."
   }
 ];
 
@@ -252,8 +252,8 @@ export function adminIntakeActionMeta(status: IntakeStatus) {
       };
     case "CLOSED":
       return {
-        label: "Close case",
-        description: "Archive when the family is no longer active or was helped elsewhere."
+        label: "Close case — thank you",
+        description: "Complete the journey after 90-day follow-up (or earlier if needed). The family sees a thank-you / case closed step."
       };
     default:
       return { label: status, description: "" };

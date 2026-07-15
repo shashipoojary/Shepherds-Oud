@@ -1152,7 +1152,7 @@ function FamilyDetailPanel({
     visitType === "CALLBACK" ? "Callback notes" : visitType === "VISIT" ? "Visit notes" : "Visit or callback notes";
   const visitNotesHint =
     "Shared with the family on their dashboard. Providers see the scheduled date and type, not these internal coordination notes.";
-  const visibleJourneySteps = JOURNEY_STEPS.filter((step) => step.status !== "CLOSED");
+  const visibleJourneySteps = JOURNEY_STEPS;
 
   return (
     <SlidePanel

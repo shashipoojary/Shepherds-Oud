@@ -27,15 +27,20 @@ export function CareJourneyTimeline({
 }) {
   const currentIndex = journeyStepIndex(status);
   const normalized = normalizeIntakeStatus(status);
-  const visibleSteps = JOURNEY_STEPS.filter((step) => step.status !== "CLOSED");
+  const visibleSteps = JOURNEY_STEPS;
   const isClosed = normalized === "CLOSED";
   const currentHint = familyJourneyStepHint(status, declineContext);
+  const stepBadge = isClosed
+    ? "Complete"
+    : `Step ${Math.min(Math.max(currentIndex, 0) + 1, visibleSteps.length)} of ${visibleSteps.length}`;
 
   const timeline = (
     <ol className="relative max-w-3xl lg:max-w-none">
       {visibleSteps.map((step, index) => {
-        const isComplete = currentIndex > index;
-        const isCurrent = step.status === normalized;
+        const isComplete = isClosed ? index <= currentIndex : currentIndex > index;
+        const isCurrent = !isClosed && step.status === normalized;
+        const isThankYou = step.status === "CLOSED";
+        const showThankYou = isClosed && isThankYou;
         const isLast = index === visibleSteps.length - 1;
         const showGuide = step.status === "CARE_GUIDE_ASSIGNED" && careGuide && (isComplete || isCurrent);
 
@@ -54,7 +59,7 @@ export function CareJourneyTimeline({
             <span
               className={cn(
                 "relative z-10 mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full text-xs font-bold ring-4 ring-white",
-                isComplete
+                isComplete || showThankYou
                   ? "bg-brand-green-dark text-white"
                   : isCurrent
                     ? "bg-brand-amber text-white"
@@ -62,16 +67,32 @@ export function CareJourneyTimeline({
               )}
               aria-hidden
             >
-              {isComplete ? <Check className="h-4 w-4" strokeWidth={3} /> : index + 1}
+              {isComplete || showThankYou ? <Check className="h-4 w-4" strokeWidth={3} /> : index + 1}
             </span>
 
             <div className="min-w-0 flex-1 pt-0.5">
-              <p className={cn("text-sm font-semibold", isCurrent ? "text-brand-green-dark" : isComplete ? "text-ink" : "text-neutral-500")}>
+              <p
+                className={cn(
+                  "text-sm font-semibold",
+                  showThankYou || isCurrent
+                    ? "text-brand-green-dark"
+                    : isComplete
+                      ? "text-ink"
+                      : "text-neutral-500"
+                )}
+              >
                 {step.label}
               </p>
 
-              {isCurrent ? (
-                <div className="mt-3 rounded-xl border border-brand-green-dark/20 bg-brand-green-pale/15 px-4 py-3 sm:px-5 sm:py-4">
+              {isCurrent || showThankYou ? (
+                <div
+                  className={cn(
+                    "mt-3 rounded-xl px-4 py-3 sm:px-5 sm:py-4",
+                    showThankYou
+                      ? "border border-brand-green-dark/25 bg-brand-green-pale/20"
+                      : "border border-brand-green-dark/20 bg-brand-green-pale/15"
+                  )}
+                >
                   <p className="text-sm leading-7 text-neutral-700">{currentHint}</p>
                   {showCarePlanLink && step.status === "CARE_PLAN" ? (
                     <p className="mt-3 text-sm leading-6 text-neutral-700">
@@ -110,6 +131,8 @@ export function CareJourneyTimeline({
                     {careGuide.email}
                   </a>
                 </p>
+              ) : isThankYou && !isClosed ? (
+                <p className="mt-1 text-sm text-neutral-500">Shown when your Care Guide closes the case after follow-up.</p>
               ) : null}
             </div>
           </li>
@@ -125,12 +148,12 @@ export function CareJourneyTimeline({
           <div>
             <p className="section-label">Your guided care journey</p>
             <p className="mt-1 max-w-2xl text-sm leading-6 text-neutral-600">
-              A real Care Guide supports you at each step — shared decisions, not a directory search.
+              {isClosed
+                ? "Thank you — this guided care journey is complete."
+                : "A real Care Guide supports you at each step — shared decisions, not a directory search."}
             </p>
           </div>
-          <p className="rounded-full bg-brand-green-pale/40 px-3 py-1 text-xs font-semibold text-brand-green-dark">
-            Step {Math.min(currentIndex + 1, visibleSteps.length)} of {visibleSteps.length}
-          </p>
+          <p className="rounded-full bg-brand-green-pale/40 px-3 py-1 text-xs font-semibold text-brand-green-dark">{stepBadge}</p>
         </div>
         <div className="mt-6">{timeline}</div>
       </article>
@@ -142,14 +165,12 @@ export function CareJourneyTimeline({
       title="Your guided care journey"
       description={
         isClosed
-          ? "This case is closed. Expand if you want to review the steps you completed."
+          ? "Thank you — this case is closed. Expand to review the steps you completed."
           : "A real Care Guide supports you at each step — shared decisions, not a directory search."
       }
       defaultOpen={defaultOpen}
       badge={
-        <span className="rounded-full bg-brand-green-pale/40 px-3 py-1 text-xs font-semibold text-brand-green-dark">
-          Step {Math.min(currentIndex + 1, visibleSteps.length)} of {visibleSteps.length}
-        </span>
+        <span className="rounded-full bg-brand-green-pale/40 px-3 py-1 text-xs font-semibold text-brand-green-dark">{stepBadge}</span>
       }
     >
       {timeline}
