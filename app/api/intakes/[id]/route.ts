@@ -207,9 +207,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         nextStatus = "ASSESSMENT";
       }
 
-      if (parsed.data.carePlanSummary && carePlanComplete({ carePlanSummary: parsed.data.carePlanSummary }) && !nextStatus && currentStatus === "ASSESSMENT") {
-        nextStatus = "CARE_PLAN";
-      }
+      // CARE_PLAN is only set when the client explicitly publishes (status: CARE_PLAN).
+      // Saving a draft care plan summary while still in ASSESSMENT must not auto-publish.
 
       if (nextStatus && !canTransitionIntakeStatus(currentStatus, nextStatus)) {
         return jsonError(`Cannot change case status from ${currentStatus} to ${nextStatus}.`, 400);
