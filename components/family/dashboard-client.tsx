@@ -190,7 +190,7 @@ function FamilyDashboardContent() {
                   : undefined
               }
             />
-            <IntakeSummaryCard intake={intake} showCareGuide={false} defaultOpen={!collapsedByDefault} />
+            <IntakeSummaryCard intake={intake} showCareGuide={false} defaultOpen={false} />
             <FamilyActiveMatches key={`${intake.id}-${intake.matchCount}`} intakeId={intake.id} intakeStatus={intake.status} />
             <FamilySavedProviders intakeId={intake.id} matches={matches} />
             <section className="rounded-2xl bg-white p-5 shadow-soft sm:p-6">

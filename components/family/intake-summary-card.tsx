@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, ChevronDown } from "lucide-react";
 import { withIntakeId } from "@/lib/client/case-selection";
 import {
   formatVisitSchedule,
@@ -15,33 +15,14 @@ import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import { CareGuideCard } from "@/components/shared/care-guide-card";
 import { normalizeIntakeStatus } from "@/lib/domain/intake-workflow";
 
-function SummaryField({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div className="rounded-xl bg-brand-cream/25 px-4 py-3.5">
-      <dt className="text-xs font-semibold uppercase tracking-wide text-neutral-500">{label}</dt>
-      <dd className="mt-1.5 text-sm font-semibold leading-6 text-ink">{value || "—"}</dd>
-    </div>
-  );
-}
-
-function TagList({ items }: { items: string[] }) {
-  if (!items.length) {
-    return <p className="text-sm text-neutral-500">—</p>;
-  }
-
-  return (
-    <div className="flex flex-wrap gap-2">
-      {items.map((item) => (
-        <span key={item} className="rounded-full bg-white px-3 py-1 text-xs font-medium text-neutral-700 ring-1 ring-stone-200">
-          {item}
-        </span>
-      ))}
-    </div>
-  );
-}
-
 function listText(items?: string[] | null) {
   return items?.filter(Boolean).join(", ") || null;
+}
+
+function truncateList(items: string[], max = 3) {
+  if (!items.length) return null;
+  if (items.length <= max) return items.join(", ");
+  return `${items.slice(0, max).join(", ")} +${items.length - max} more`;
 }
 
 function formatDischargeDate(value?: string | null) {
@@ -49,6 +30,28 @@ function formatDischargeDate(value?: string | null) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+}
+
+function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
+  if (!value) return null;
+  return (
+    <div className="grid gap-0.5 border-b border-stone-100 py-2.5 last:border-b-0 sm:grid-cols-[9.5rem_minmax(0,1fr)] sm:gap-4">
+      <dt className="text-xs font-medium text-neutral-500 sm:pt-0.5">{label}</dt>
+      <dd className="text-sm leading-6 text-ink break-words">{value}</dd>
+    </div>
+  );
+}
+
+function NestedGroup({ title, children, defaultOpen = false }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) {
+  return (
+    <details open={defaultOpen} className="group rounded-xl border border-stone-200/80 bg-stone-50/40">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3.5 py-3 marker:content-none [&::-webkit-details-marker]:hidden">
+        <span className="text-sm font-semibold text-ink">{title}</span>
+        <ChevronDown className="h-4 w-4 shrink-0 text-neutral-400 transition group-open:rotate-180" aria-hidden />
+      </summary>
+      <div className="border-t border-stone-200/70 px-3.5 pb-3 pt-1">{children}</div>
+    </details>
+  );
 }
 
 function UpdateCallout({ title, children, tone = "neutral" }: { title: string; children: React.ReactNode; tone?: "neutral" | "guide" | "visit" }) {
@@ -60,11 +63,21 @@ function UpdateCallout({ title, children, tone = "neutral" }: { title: string; c
         : "bg-stone-50/80 ring-1 ring-stone-200/70";
 
   return (
-    <div className={`flex flex-col self-start rounded-xl px-4 py-4 sm:px-5 sm:py-4 ${toneClass}`}>
+    <div className={`rounded-xl px-4 py-3.5 ${toneClass}`}>
       <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">{title}</p>
-      <div className="mt-2 text-sm leading-7 text-neutral-700">{children}</div>
+      <div className="mt-1.5 text-sm leading-6 text-neutral-700">{children}</div>
     </div>
   );
+}
+
+function collapsedPreview(intake: FamilyIntake) {
+  const parts = [
+    intake.preferredArea,
+    intake.urgency,
+    truncateList(intake.careTypes, 2),
+    `Ref ${intake.id.slice(0, 8).toUpperCase()}`
+  ].filter(Boolean);
+  return parts.join(" · ");
 }
 
 export function IntakeSummaryCard({
@@ -73,7 +86,7 @@ export function IntakeSummaryCard({
   showActions = false,
   showCareGuide = true,
   showShortlistCta = false,
-  defaultOpen = true
+  defaultOpen = false
 }: {
   intake: FamilyIntake;
   compact?: boolean;
@@ -95,7 +108,8 @@ export function IntakeSummaryCard({
       intake.medicalSupportNeeds ||
       intake.dementiaNeeds ||
       intake.functionalNeeds?.length ||
-      intake.additionalNeeds?.length
+      intake.additionalNeeds?.length ||
+      intake.careTypes.length
   );
   const hasFundingOrLanguages = Boolean(intake.fundingTypes?.length || intake.budget || intake.languages?.length);
   const hasPlacementPreferences = Boolean(intake.placementPreferences?.length);
@@ -122,62 +136,19 @@ export function IntakeSummaryCard({
             <div>
               <p className="section-label">Your care request</p>
               <h2 className="mt-1 text-lg font-semibold text-ink">{intake.contactName}</h2>
-              <p className="mt-1 text-sm text-neutral-500">Reference {reference}</p>
+              <p className="mt-1 text-sm text-neutral-500">{collapsedPreview(intake)}</p>
             </div>
             <span className="rounded-full bg-brand-green-pale/50 px-3 py-1 text-xs font-semibold text-brand-green-dark">{status}</span>
           </div>
 
-          <dl className="mt-4 grid gap-3 sm:grid-cols-2">
-            <SummaryField label="Area" value={intake.preferredArea} />
-            <SummaryField label="Distance" value={intake.preferredDistance} />
-            <SummaryField label="Urgency" value={intake.urgency} />
-            <SummaryField label="Care needed" value={intake.careTypes.join(", ")} />
-            <SummaryField label="Relationship" value={intake.relationship} />
-            {intake.fundingTypes?.length ? (
-              <SummaryField label="Funding" value={listText(intake.fundingTypes)} />
-            ) : null}
-            {decisionMakers.length ? (
-              <SummaryField
-                label="Decision-makers"
-                value={decisionMakers.map((maker) => maker.name).join(", ")}
-              />
-            ) : null}
+          <dl className="mt-3">
+            <DetailRow label="Care needed" value={listText(intake.careTypes)} />
+            <DetailRow label="Relationship" value={intake.relationship} />
+            {intake.fundingTypes?.length ? <DetailRow label="Funding" value={listText(intake.fundingTypes)} /> : null}
           </dl>
 
-          <p className="mt-4 text-sm leading-6 text-neutral-600">{hint}</p>
-
-          {intake.carePathway ? (
-            <div className="mt-4">
-              <UpdateCallout title="Recommended pathway" tone="neutral">
-                <strong className="text-ink">{intake.carePathway}</strong>
-              </UpdateCallout>
-            </div>
-          ) : null}
-
-          {intake.carePlanSummary ? (
-            <div className="mt-3">
-              <UpdateCallout title="From your Care Guide" tone="guide">
-                {intake.carePlanSummary}
-              </UpdateCallout>
-            </div>
-          ) : null}
-
-          {visitSummary ? (
-            <div className="mt-3">
-              <UpdateCallout title="Scheduled visit" tone="visit">
-                {visitSummary}
-              </UpdateCallout>
-            </div>
-          ) : null}
-
-          {hasMatches ? (
-            <p className="mt-3 text-sm font-medium text-brand-green-dark">
-              {intake.matchCount} provider match{intake.matchCount === 1 ? "" : "es"} on your shortlist.
-            </p>
-          ) : null}
-
           {showActions && hasMatches ? (
-            <div className="mt-5">
+            <div className="mt-4">
               <Button asChild size="sm">
                 <Link href={withIntakeId("/family/results", intake.id)}>
                   View matches <ArrowRight className="h-4 w-4" />
@@ -196,193 +167,136 @@ export function IntakeSummaryCard({
 
       <CollapsibleSection
         title={`Your care request — ${intake.contactName}`}
-        description={
-          isClosed
-            ? "Your saved request details. Collapse this section if you only need current updates."
-            : "Your saved intake details and Care Guide updates in one place."
-        }
+        description={collapsedPreview(intake)}
         defaultOpen={defaultOpen}
         badge={
           <span className="rounded-full bg-brand-green-pale/50 px-3 py-1 text-xs font-semibold text-brand-green-dark">{status}</span>
         }
       >
-        <div className="space-y-8">
-          <div>
-            <p className="text-sm text-neutral-500">
-              Reference <span className="font-medium text-neutral-700">{reference}</span>
-              {intake.preferredArea ? <> · {intake.preferredArea}</> : null}
-            </p>
-            <p className="mt-3 max-w-3xl text-sm leading-7 text-neutral-700">{hint}</p>
-          </div>
-
-          <section>
-            <h3 className="text-sm font-semibold text-ink">Contact & location</h3>
-            <dl className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              <SummaryField label="Your name" value={intake.contactName} />
-              <SummaryField label="Email" value={intake.email} />
-              <SummaryField label="Phone" value={intake.phone} />
-              <SummaryField label="Relationship" value={intake.relationship} />
-              <SummaryField label="Preferred area" value={intake.preferredArea} />
-              <SummaryField label="Preferred distance" value={intake.preferredDistance} />
-              <SummaryField label="Urgency" value={intake.urgency} />
-              {intake.ageRange ? <SummaryField label="Age range" value={intake.ageRange} /> : null}
-            </dl>
-          </section>
-
-          <section>
-            <h3 className="text-sm font-semibold text-ink">Care needed</h3>
-            <div className="mt-4 rounded-xl bg-brand-cream/20 px-4 py-4 sm:px-5">
-              <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Care types</p>
-              <div className="mt-2">
-                <TagList items={intake.careTypes} />
-              </div>
-              {hasCareDetails ? (
-                <dl className="mt-4 grid gap-3 border-t border-stone-200/70 pt-4 sm:grid-cols-2">
-                  {intake.mobility ? <SummaryField label="Mobility" value={intake.mobility} /> : null}
-                  {intake.medicalSupportNeeds ? (
-                    <SummaryField label="Medical / nursing support" value={intake.medicalSupportNeeds} />
-                  ) : null}
-                  {intake.dementiaNeeds ? <SummaryField label="Dementia / memory" value={intake.dementiaNeeds} /> : null}
-                  {intake.functionalNeeds?.length ? (
-                    <SummaryField label="Functional needs" value={listText(intake.functionalNeeds)} />
-                  ) : null}
-                  {intake.additionalNeeds?.length ? (
-                    <SummaryField label="Additional needs" value={listText(intake.additionalNeeds)} />
-                  ) : null}
-                </dl>
-              ) : null}
-            </div>
-          </section>
-
-          {hasFundingOrLanguages ? (
-            <section>
-              <h3 className="text-sm font-semibold text-ink">Funding & languages</h3>
-              <dl className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {intake.fundingTypes?.length ? (
-                  <SummaryField label="Funding / indication" value={listText(intake.fundingTypes)} />
-                ) : null}
-                {intake.budget ? <SummaryField label="Budget" value={intake.budget} /> : null}
-                {intake.languages?.length ? (
-                  <SummaryField label="Preferred languages" value={listText(intake.languages)} />
-                ) : null}
-              </dl>
-            </section>
-          ) : null}
-
-          {hasPlacementPreferences ? (
-            <section>
-              <h3 className="text-sm font-semibold text-ink">Placement preferences</h3>
-              <div className="mt-4 rounded-xl bg-brand-cream/20 px-4 py-4 sm:px-5">
-                <TagList items={intake.placementPreferences || []} />
-              </div>
-            </section>
-          ) : null}
-
-          {hasDecisionSupport ? (
-            <section>
-              <h3 className="text-sm font-semibold text-ink">Decision support</h3>
-              <div className="mt-4 space-y-3">
-                {decisionMakers.map((maker, index) => (
-                  <div key={maker.id || `${maker.name}-${index}`} className="rounded-xl bg-brand-cream/20 px-4 py-4 sm:px-5">
-                    <p className="text-sm font-semibold text-ink">{maker.name}</p>
-                    <p className="mt-1 text-sm text-neutral-600">{maker.relationship}</p>
-                    {maker.responsibilities.length ? (
-                      <div className="mt-3">
-                        <TagList items={maker.responsibilities} />
-                      </div>
-                    ) : null}
-                  </div>
-                ))}
-                <dl className="grid gap-3 sm:grid-cols-2">
-                  {intake.seniorAgreedToSearch ? (
-                    <SummaryField label="Senior agreed to the search" value={intake.seniorAgreedToSearch} />
-                  ) : null}
-                  {intake.decisionParticipants ? (
-                    <SummaryField label="Who should participate" value={intake.decisionParticipants} />
-                  ) : null}
-                </dl>
-                {hasSupportNeeds ? (
-                  <dl className="grid gap-3 sm:grid-cols-2">
-                    {intake.emotionalSupportNeeds?.length ? (
-                      <SummaryField label="Emotional support needs" value={listText(intake.emotionalSupportNeeds)} />
-                    ) : null}
-                    {intake.supportTypes?.length ? (
-                      <SummaryField label="Support types" value={listText(intake.supportTypes)} />
-                    ) : null}
-                  </dl>
-                ) : null}
-              </div>
-            </section>
-          ) : null}
-
-          {hasContextNotes ? (
-            <section>
-              <h3 className="text-sm font-semibold text-ink">Situation & notes</h3>
-              <dl className="mt-4 grid gap-3 sm:grid-cols-2">
-                {intake.livingSituation ? (
-                  <SummaryField label="Living situation" value={intake.livingSituation} />
-                ) : null}
-                {intake.moveInTimeline ? (
-                  <SummaryField label="Desired move-in timeline" value={intake.moveInTimeline} />
-                ) : null}
-                {intake.hospitalDischargeDate ? (
-                  <SummaryField label="Hospital discharge date" value={formatDischargeDate(intake.hospitalDischargeDate)} />
-                ) : null}
-                {intake.notes?.trim() ? (
-                  <SummaryField label="Anything else" value={intake.notes.trim()} />
-                ) : null}
-              </dl>
-            </section>
-          ) : null}
-
-          {hasSafetyAnswers ? (
-            <section>
-              <h3 className="text-sm font-semibold text-ink">Safety check answers</h3>
-              <dl className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {intake.personSafeTonight ? (
-                  <SummaryField label="Safe tonight" value={intake.personSafeTonight} />
-                ) : null}
-                {intake.urgentMedicalHelp ? (
-                  <SummaryField label="Urgent medical help" value={intake.urgentMedicalHelp} />
-                ) : null}
-                {intake.canRemainHomeTonight ? (
-                  <SummaryField label="Can remain at home tonight" value={intake.canRemainHomeTonight} />
-                ) : null}
-                {intake.caregiverBurnoutRisk ? (
-                  <SummaryField label="Caregiver burnout risk" value={intake.caregiverBurnoutRisk} />
-                ) : null}
-                {intake.immediateRiskFlags?.length ? (
-                  <SummaryField label="Immediate risk flags" value={listText(intake.immediateRiskFlags)} />
-                ) : null}
-              </dl>
-            </section>
-          ) : null}
+        <div className="space-y-4">
+          <p className="text-sm leading-6 text-neutral-600">{hint}</p>
 
           {hasUpdates ? (
-            <section id="care-guide-plan" className="scroll-mt-24">
+            <section id="care-guide-plan" className="scroll-mt-24 space-y-2.5">
               <h3 className="text-sm font-semibold text-ink">Updates from your Care Guide</h3>
-              <div className="mt-4 grid gap-4 lg:grid-cols-2 lg:items-start">
-                {intake.carePathway ? (
-                  <UpdateCallout title="Recommended pathway" tone="neutral">
-                    <strong className="text-ink">{intake.carePathway}</strong>
-                  </UpdateCallout>
-                ) : null}
-                {intake.carePlanSummary ? (
-                  <UpdateCallout title="Care plan summary" tone="guide">
-                    {intake.carePlanSummary}
-                  </UpdateCallout>
-                ) : null}
-                {visitSummary ? (
-                  <UpdateCallout title="Scheduled visit or callback" tone="visit">
-                    {visitSummary}
-                  </UpdateCallout>
-                ) : null}
-              </div>
+              {intake.carePathway ? (
+                <UpdateCallout title="Recommended pathway" tone="neutral">
+                  <strong className="text-ink">{intake.carePathway}</strong>
+                </UpdateCallout>
+              ) : null}
+              {intake.carePlanSummary ? (
+                <UpdateCallout title="Care plan summary" tone="guide">
+                  {intake.carePlanSummary}
+                </UpdateCallout>
+              ) : null}
+              {visitSummary ? (
+                <UpdateCallout title="Scheduled visit or callback" tone="visit">
+                  {visitSummary}
+                </UpdateCallout>
+              ) : null}
             </section>
           ) : null}
 
+          <div className="space-y-2">
+            <NestedGroup title="Contact & location" defaultOpen>
+              <dl>
+                <DetailRow label="Name" value={intake.contactName} />
+                <DetailRow label="Email" value={intake.email} />
+                <DetailRow label="Phone" value={intake.phone} />
+                <DetailRow label="Relationship" value={intake.relationship} />
+                <DetailRow label="Area" value={intake.preferredArea} />
+                <DetailRow label="Distance" value={intake.preferredDistance} />
+                <DetailRow label="Urgency" value={intake.urgency} />
+                <DetailRow label="Age range" value={intake.ageRange} />
+                <DetailRow label="Reference" value={reference} />
+              </dl>
+            </NestedGroup>
+
+            {hasCareDetails ? (
+              <NestedGroup title="Care needed">
+                <dl>
+                  <DetailRow label="Care types" value={listText(intake.careTypes)} />
+                  <DetailRow label="Mobility" value={intake.mobility} />
+                  <DetailRow label="Medical / nursing" value={intake.medicalSupportNeeds} />
+                  <DetailRow label="Dementia / memory" value={intake.dementiaNeeds} />
+                  <DetailRow label="Functional needs" value={listText(intake.functionalNeeds)} />
+                  <DetailRow label="Additional needs" value={listText(intake.additionalNeeds)} />
+                </dl>
+              </NestedGroup>
+            ) : null}
+
+            {hasFundingOrLanguages ? (
+              <NestedGroup title="Funding & languages">
+                <dl>
+                  <DetailRow label="Funding" value={listText(intake.fundingTypes)} />
+                  <DetailRow label="Budget" value={intake.budget} />
+                  <DetailRow label="Languages" value={listText(intake.languages)} />
+                </dl>
+              </NestedGroup>
+            ) : null}
+
+            {hasPlacementPreferences ? (
+              <NestedGroup title="Placement preferences">
+                <dl>
+                  <DetailRow label="Preferences" value={listText(intake.placementPreferences)} />
+                </dl>
+              </NestedGroup>
+            ) : null}
+
+            {hasDecisionSupport ? (
+              <NestedGroup title="Decision support">
+                <dl>
+                  {decisionMakers.map((maker, index) => (
+                    <DetailRow
+                      key={maker.id || `${maker.name}-${index}`}
+                      label={index === 0 ? "Decision-makers" : " "}
+                      value={
+                        <>
+                          <span className="font-medium">{maker.name}</span>
+                          {maker.relationship ? ` · ${maker.relationship}` : ""}
+                          {maker.responsibilities.length ? ` · ${maker.responsibilities.join(", ")}` : ""}
+                        </>
+                      }
+                    />
+                  ))}
+                  <DetailRow label="Senior agreed" value={intake.seniorAgreedToSearch} />
+                  <DetailRow label="Participants" value={intake.decisionParticipants} />
+                  {hasSupportNeeds ? (
+                    <>
+                      <DetailRow label="Emotional support" value={listText(intake.emotionalSupportNeeds)} />
+                      <DetailRow label="Support types" value={listText(intake.supportTypes)} />
+                    </>
+                  ) : null}
+                </dl>
+              </NestedGroup>
+            ) : null}
+
+            {hasContextNotes ? (
+              <NestedGroup title="Situation & notes">
+                <dl>
+                  <DetailRow label="Living situation" value={intake.livingSituation} />
+                  <DetailRow label="Move-in timeline" value={intake.moveInTimeline} />
+                  <DetailRow label="Hospital discharge" value={formatDischargeDate(intake.hospitalDischargeDate)} />
+                  <DetailRow label="Notes" value={intake.notes?.trim()} />
+                </dl>
+              </NestedGroup>
+            ) : null}
+
+            {hasSafetyAnswers ? (
+              <NestedGroup title="Safety check answers">
+                <dl>
+                  <DetailRow label="Safe tonight" value={intake.personSafeTonight} />
+                  <DetailRow label="Urgent medical help" value={intake.urgentMedicalHelp} />
+                  <DetailRow label="Remain at home tonight" value={intake.canRemainHomeTonight} />
+                  <DetailRow label="Caregiver burnout risk" value={intake.caregiverBurnoutRisk} />
+                  <DetailRow label="Immediate risks" value={listText(intake.immediateRiskFlags)} />
+                </dl>
+              </NestedGroup>
+            ) : null}
+          </div>
+
           {showShortlistCta && hasMatches ? (
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand-green-pale/80 bg-brand-green-pale/15 px-4 py-4 sm:px-5">
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand-green-pale/80 bg-brand-green-pale/15 px-4 py-3.5">
               <p className="text-sm font-medium text-brand-green-dark">
                 {intake.matchCount} provider match{intake.matchCount === 1 ? "" : "es"} on your shortlist.
               </p>
@@ -394,7 +308,7 @@ export function IntakeSummaryCard({
             </div>
           ) : null}
 
-          <p className="text-xs leading-5 text-neutral-500">Your request is saved to your account so you can return from any device.</p>
+          <p className="text-xs leading-5 text-neutral-500">Saved to your account — expand a topic above only when you need the detail.</p>
         </div>
       </CollapsibleSection>
     </div>
