@@ -1,6 +1,7 @@
 "use client";
 
-import { ChevronDown } from "lucide-react";
+import { useState } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/core/utils";
 
 type CollapsibleSectionProps = {
@@ -20,14 +21,13 @@ export function CollapsibleSection({
   children,
   className
 }: CollapsibleSectionProps) {
+  const [open, setOpen] = useState(defaultOpen);
+
   return (
     <details
-      open={defaultOpen}
-      className={cn(
-        "group/section rounded-2xl border border-stone-200 bg-white shadow-soft",
-        "open:[&_summary_.section-chevron]:rotate-180",
-        className
-      )}
+      open={open}
+      onToggle={(event) => setOpen(event.currentTarget.open)}
+      className={cn("rounded-2xl border border-stone-200 bg-white shadow-soft", className)}
     >
       <summary className="cursor-pointer list-none rounded-2xl px-5 py-5 marker:content-none sm:px-6 [&::-webkit-details-marker]:hidden">
         <span className="flex items-start justify-between gap-4">
@@ -39,9 +39,8 @@ export function CollapsibleSection({
             {description ? <span className="mt-1 block text-sm leading-6 text-neutral-600">{description}</span> : null}
           </span>
           <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-stone-200 bg-brand-cream/40 px-3 py-1.5 text-xs font-semibold text-neutral-600">
-            <span className="group-open/section:hidden">Expand</span>
-            <span className="hidden group-open/section:inline">Collapse</span>
-            <ChevronDown className="section-chevron h-3.5 w-3.5 transition duration-200" aria-hidden />
+            <span>{open ? "Collapse" : "Expand"}</span>
+            {open ? <ChevronUp className="h-3.5 w-3.5" aria-hidden /> : <ChevronDown className="h-3.5 w-3.5" aria-hidden />}
           </span>
         </span>
       </summary>

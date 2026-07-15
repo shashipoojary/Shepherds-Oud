@@ -1,7 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { ArrowRight, ChevronDown } from "lucide-react";
+import { ArrowRight, ChevronDown, ChevronUp } from "lucide-react";
 import { withIntakeId } from "@/lib/client/case-selection";
 import {
   formatVisitSchedule,
@@ -43,11 +44,17 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
 }
 
 function NestedGroup({ title, children, defaultOpen = false }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen);
+
   return (
-    <details open={defaultOpen} className="open:[&_summary_.topic-chevron]:rotate-180">
+    <details open={open} onToggle={(event) => setOpen(event.currentTarget.open)}>
       <summary className="flex cursor-pointer list-none items-center justify-between gap-3 py-2.5 marker:content-none [&::-webkit-details-marker]:hidden">
         <span className="text-sm font-semibold text-ink">{title}</span>
-        <ChevronDown className="topic-chevron h-4 w-4 shrink-0 text-neutral-400 transition duration-200" aria-hidden />
+        {open ? (
+          <ChevronUp className="h-4 w-4 shrink-0 text-neutral-400" aria-hidden />
+        ) : (
+          <ChevronDown className="h-4 w-4 shrink-0 text-neutral-400" aria-hidden />
+        )}
       </summary>
       <div className="pb-2 pl-0.5">{children}</div>
     </details>
