@@ -35,7 +35,7 @@ function formatDischargeDate(value?: string | null) {
 function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
   if (!value) return null;
   return (
-    <div className="grid gap-0.5 border-b border-stone-100 py-2.5 last:border-b-0 sm:grid-cols-[9.5rem_minmax(0,1fr)] sm:gap-4">
+    <div className="grid gap-0.5 py-2 last:pb-0 sm:grid-cols-[9.5rem_minmax(0,1fr)] sm:gap-4">
       <dt className="text-xs font-medium text-neutral-500 sm:pt-0.5">{label}</dt>
       <dd className="text-sm leading-6 text-ink break-words">{value}</dd>
     </div>
@@ -44,12 +44,12 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
 
 function NestedGroup({ title, children, defaultOpen = false }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) {
   return (
-    <details open={defaultOpen} className="group rounded-xl border border-stone-200/80 bg-stone-50/40">
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3.5 py-3 marker:content-none [&::-webkit-details-marker]:hidden">
+    <details open={defaultOpen} className="open:[&_summary_.topic-chevron]:rotate-180">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 py-2.5 marker:content-none [&::-webkit-details-marker]:hidden">
         <span className="text-sm font-semibold text-ink">{title}</span>
-        <ChevronDown className="h-4 w-4 shrink-0 text-neutral-400 transition group-open:rotate-180" aria-hidden />
+        <ChevronDown className="topic-chevron h-4 w-4 shrink-0 text-neutral-400 transition duration-200" aria-hidden />
       </summary>
-      <div className="border-t border-stone-200/70 px-3.5 pb-3 pt-1">{children}</div>
+      <div className="pb-2 pl-0.5">{children}</div>
     </details>
   );
 }
@@ -197,7 +197,7 @@ export function IntakeSummaryCard({
             </section>
           ) : null}
 
-          <div className="space-y-2">
+          <div className="divide-y divide-stone-100">
             <NestedGroup title="Contact & location" defaultOpen>
               <dl>
                 <DetailRow label="Name" value={intake.contactName} />
