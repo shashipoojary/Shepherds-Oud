@@ -234,8 +234,10 @@ export function PanelSection({
   description,
   children,
   className,
-  locked,
-  lockedNote = "This step is complete. It stays visible here until the case is closed.",
+  locked = false,
+  completed = false,
+  lockedNote,
+  completedNote = "This step is complete. It stays visible here until the case is closed.",
   collapsible = false,
   defaultOpen = true
 }: {
@@ -244,12 +246,36 @@ export function PanelSection({
   description?: string;
   children: React.ReactNode;
   className?: string;
+  /** Blocks interaction (prerequisites not met, or read-only). Not the same as completed. */
   locked?: boolean;
+  /** Step finished — shows Completed badge. Independent of locked. */
+  completed?: boolean;
   lockedNote?: string;
+  completedNote?: string;
   collapsible?: boolean;
   defaultOpen?: boolean;
 }) {
   const [open, setOpen] = useState(defaultOpen);
+
+  useEffect(() => {
+    setOpen(defaultOpen);
+  }, [defaultOpen]);
+
+  const statusBadge = completed ? (
+    <span className="rounded-full bg-brand-green-pale/40 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-brand-green-dark">
+      Completed
+    </span>
+  ) : locked ? (
+    <span className="rounded-full bg-stone-100 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
+      Locked
+    </span>
+  ) : null;
+
+  const statusNote = completed
+    ? completedNote
+    : locked
+      ? lockedNote
+      : undefined;
 
   const header = (
     <div className={cn(collapsible ? undefined : "mb-3")}>
@@ -258,11 +284,7 @@ export function PanelSection({
           {step != null ? <PanelStep number={step} /> : null}
           {title}
         </h3>
-        {locked ? (
-          <span className="rounded-full bg-brand-green-pale/40 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-brand-green-dark">
-            Completed
-          </span>
-        ) : null}
+        {statusBadge}
         {collapsible ? (
           open ? (
             <ChevronUp className="ml-auto h-4 w-4 shrink-0 text-neutral-400" aria-hidden />
@@ -272,7 +294,7 @@ export function PanelSection({
         ) : null}
       </div>
       {description ? <p className="mt-1 text-sm leading-6 text-neutral-500">{description}</p> : null}
-      {locked ? <p className="mt-1.5 text-xs leading-5 text-neutral-500">{lockedNote}</p> : null}
+      {statusNote ? <p className="mt-1.5 text-xs leading-5 text-neutral-500">{statusNote}</p> : null}
     </div>
   );
 

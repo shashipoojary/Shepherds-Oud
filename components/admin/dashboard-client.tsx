@@ -1120,7 +1120,6 @@ function FamilyDetailPanel({
     !declineRematchMode &&
     carePlanComplete({ carePlanSummary: family?.carePlanSummary }) &&
     currentStepIndex >= journeyStepIndex("CARE_PLAN");
-  const matchStepLocked = hasMatches && currentStepIndex >= journeyStepIndex("MATCHED");
   const visitStepLocked = Boolean(family?.visitScheduledAt) && currentStepIndex >= journeyStepIndex("VISIT_SCHEDULED");
   const advanceStepLocked = currentStepIndex < journeyStepIndex("VISIT_SCHEDULED");
   const publishedCarePlanStatuses = new Set<IntakeStatus>([
@@ -1435,7 +1434,8 @@ function FamilyDetailPanel({
               step={2}
               title="Assign Care Guide"
               description="Pick who owns this case."
-              locked={careGuideStepLocked && !canAssignCareGuide}
+              completed={careGuideStepLocked && !canAssignCareGuide}
+              locked={(careGuideStepLocked && !canAssignCareGuide) || isReadOnlyAssigned}
               collapsible={careGuideStepLocked && !canAssignCareGuide}
               defaultOpen={!(careGuideStepLocked && !canAssignCareGuide)}
             >
@@ -1473,9 +1473,10 @@ function FamilyDetailPanel({
               step={3}
               title="Assessment & care plan"
               description="Internal notes stay private; the care plan summary is shared with the family."
+              completed={assessmentStepLocked}
               locked={assessmentStepLocked || isReadOnlyAssigned}
-              collapsible={assessmentStepLocked || isReadOnlyAssigned}
-              defaultOpen={!(assessmentStepLocked || isReadOnlyAssigned)}
+              collapsible={assessmentStepLocked}
+              defaultOpen={!assessmentStepLocked && !isReadOnlyAssigned}
             >
               <div className="space-y-3">
                 <label className="grid gap-1.5 text-sm font-medium">
@@ -1555,10 +1556,9 @@ function FamilyDetailPanel({
             <PanelSection
               step={4}
               title="Create provider match"
-              description="Add a provider to the family shortlist."
-              locked={matchStepLocked || isReadOnlyAssigned}
-              collapsible={matchStepLocked || isReadOnlyAssigned}
-              defaultOpen={!(matchStepLocked || isReadOnlyAssigned)}
+              description="Add a provider to the family shortlist. Saved matches appear below."
+              locked={isReadOnlyAssigned}
+              lockedNote="Only the assigned Care Guide can create matches."
             >
               <div className="space-y-3">
                 <label className="grid gap-1.5 text-sm font-medium">
@@ -1633,18 +1633,20 @@ function FamilyDetailPanel({
                 </AdminPanelActions>
                 {createMatchDisabledReason ? <p className="text-xs leading-5 text-neutral-500">{createMatchDisabledReason}</p> : null}
 
-                {hasMatches ? (
-                  <div className="mt-2 border-t border-stone-100 pt-3">
-                    <p className="text-xs font-medium text-neutral-500">
-                      Shortlist · {matches.length} provider{matches.length === 1 ? "" : "s"}
-                    </p>
+                <div className="mt-4 border-t border-stone-200 pt-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                    Shortlist{hasMatches ? ` · ${matches.length}` : ""}
+                  </p>
+                  {hasMatches ? (
                     <div className="mt-1 divide-y divide-stone-100">
                       {matches.map((match) => (
                         <SavedProviderMatchCard key={match.id} match={match} />
                       ))}
                     </div>
-                  </div>
-                ) : null}
+                  ) : (
+                    <p className="mt-2 text-sm text-neutral-500">No providers matched yet.</p>
+                  )}
+                </div>
               </div>
             </PanelSection>
 
@@ -1652,9 +1654,10 @@ function FamilyDetailPanel({
               step={5}
               title="Schedule visit or callback"
               description="Shown on the family dashboard."
+              completed={visitStepLocked}
               locked={visitStepLocked || isReadOnlyAssigned}
-              collapsible={visitStepLocked || isReadOnlyAssigned}
-              defaultOpen={!(visitStepLocked || isReadOnlyAssigned)}
+              collapsible={visitStepLocked}
+              defaultOpen={!visitStepLocked && !isReadOnlyAssigned}
             >
               <div className="space-y-3">
                 <label className="grid gap-1.5 text-sm font-medium">
@@ -1729,9 +1732,13 @@ function FamilyDetailPanel({
               title="Advance case status"
               description="Placement milestones and follow-up."
               locked={advanceStepLocked || isReadOnlyAssigned}
-              lockedNote="Finish visit scheduling before advancing placement."
-              collapsible={advanceStepLocked || isReadOnlyAssigned}
-              defaultOpen={!(advanceStepLocked || isReadOnlyAssigned)}
+              lockedNote={
+                isReadOnlyAssigned
+                  ? "Only the assigned Care Guide can advance this case."
+                  : "Finish visit scheduling before advancing placement."
+              }
+              collapsible={advanceStepLocked}
+              defaultOpen={!advanceStepLocked && !isReadOnlyAssigned}
             >
               <div className="space-y-3">
                 {milestoneAdvanceActions.length ? (
