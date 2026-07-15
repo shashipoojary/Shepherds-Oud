@@ -1,9 +1,16 @@
-import { NextResponse } from "next/server";
 import { prisma } from "@/lib/core/db";
-import { canAccessIntake } from "@/lib/auth/case-access";
+import {
+  canAccessIntake,
+  canMutateIntake,
+  CASE_ASSIGNED_TO_OTHER_GUIDE_MESSAGE
+} from "@/lib/auth/case-access";
 import { getMatchesForIntake, getFamilyMatchHistoryForIntake } from "@/lib/data/matches";
 import { getServerSession, getUserRole } from "@/lib/auth/server";
 import { canCreateMatches, normalizeIntakeStatus } from "@/lib/domain/intake-workflow";
+import {
+  deriveFamilyFacingReasonFromNotes,
+  isProviderMatchable
+} from "@/lib/domain/provider-verification";
 import { isProviderProfileComplete } from "@/lib/providers/completeness";
 import { createMatchSchema } from "@/lib/validation/match";
 import { handleApiError, jsonError, jsonOk, rateLimitResponse, readJsonBody } from "@/lib/core/api-helpers";
@@ -14,6 +21,7 @@ import {
   isRematchableMatchStatus,
   reopenedMatchStatusForRematch
 } from "@/lib/domain/match-rematch";
+import { sendFamilyMatchCreatedEmail, sendProviderMatchCreatedEmail } from "@/lib/email/match-created-email";
 
 export const runtime = "nodejs";
 
@@ -73,6 +81,7 @@ export async function POST(request: Request) {
   try {
     const auth = await assertAdmin();
     if (auth.error) return auth.error;
+    const session = auth.session;
 
     const body = await readJsonBody(request);
     const parsed = createMatchSchema.safeParse(body);
@@ -81,7 +90,7 @@ export async function POST(request: Request) {
       return jsonError("Invalid match data.", 400, { issues: parsed.error.flatten() });
     }
 
-    const { intakeId, providerId, score, notes } = parsed.data;
+    const { intakeId, providerId, score, notes, familyFacingReason } = parsed.data;
 
     const [intake, provider] = await Promise.all([
       prisma.intake.findUnique({ where: { id: intakeId } }),
@@ -92,6 +101,10 @@ export async function POST(request: Request) {
       return jsonError("Intake or provider not found.", 404);
     }
 
+    if (!canMutateIntake(session, intake)) {
+      return jsonError(CASE_ASSIGNED_TO_OTHER_GUIDE_MESSAGE, 403);
+    }
+
     if (!canCreateMatches(intake.status, intake.carePathway)) {
       return jsonError("Complete the family assessment and select a care pathway before creating matches.", 400);
     }
@@ -100,9 +113,16 @@ export async function POST(request: Request) {
       return jsonError("This provider is locked until their facility profile is complete.", 400);
     }
 
+    if (!isProviderMatchable(provider.verificationStatus)) {
+      return jsonError("Only verified providers can be matched. Update verification status first.", 400);
+    }
+
+    const resolvedFamilyFacingReason =
+      familyFacingReason?.trim() || deriveFamilyFacingReasonFromNotes(notes) || null;
+
     const existingMatch = await prisma.match.findUnique({
       where: { intakeId_providerId: { intakeId, providerId } },
-      select: { status: true, notes: true }
+      select: { status: true, notes: true, familyFacingReason: true }
     });
 
     const reopening = isRematchableMatchStatus(existingMatch?.status);
@@ -113,6 +133,9 @@ export async function POST(request: Request) {
         ? appendMatchNotes(notes !== undefined ? notes || null : existingMatch?.notes, rematchNote)
         : undefined;
 
+    const isNewMatch = !existingMatch;
+    const shouldNotify = isNewMatch || reopening;
+
     const match = await prisma.match.upsert({
       where: {
         intakeId_providerId: { intakeId, providerId }
@@ -122,10 +145,16 @@ export async function POST(request: Request) {
         providerId,
         score,
         notes: notes || null,
+        familyFacingReason: resolvedFamilyFacingReason,
         status: "SUGGESTED"
       },
       update: {
         score,
+        ...(resolvedFamilyFacingReason
+          ? { familyFacingReason: resolvedFamilyFacingReason }
+          : familyFacingReason !== undefined
+            ? { familyFacingReason: null }
+            : {}),
         ...(reopening
           ? {
               status: rematchStatus!,
@@ -144,6 +173,29 @@ export async function POST(request: Request) {
         where: { id: intakeId },
         data: { status: "MATCHED" }
       });
+    }
+
+    if (shouldNotify) {
+      const familyCare = intake.careTypes.join(", ") || "Care support";
+      await Promise.allSettled([
+        sendFamilyMatchCreatedEmail({
+          contactName: intake.contactName,
+          email: intake.email,
+          intakeId: intake.id,
+          providerName: provider.name,
+          reopened: reopening
+        }),
+        provider.email
+          ? sendProviderMatchCreatedEmail({
+              providerEmail: provider.email,
+              providerName: provider.name,
+              familyArea: intake.preferredArea,
+              familyCare,
+              familyUrgency: intake.urgency,
+              reopened: reopening
+            })
+          : Promise.resolve()
+      ]);
     }
 
     return jsonOk(toSafeMatch(match), 201);

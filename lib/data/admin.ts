@@ -2,6 +2,7 @@ import { prisma } from "@/lib/core/db";
 import { displayVisitAvailability } from "@/lib/config/content";
 import { compareMatchPriority } from "@/lib/domain/match-status";
 import { normalizeIntakeStatus } from "@/lib/domain/intake-workflow";
+import { isProviderMatchable, providerVerificationLabel } from "@/lib/domain/provider-verification";
 import { ensureAcceptedProviderInvitesHaveProfiles, expireStalePendingProviderInvites } from "@/lib/providers/invite";
 import { summarizeProviderInviteEligibility } from "@/lib/providers/invite-access";
 import { getProviderProfileMissingRequirements } from "@/lib/providers/completeness";
@@ -40,6 +41,17 @@ export async function getAdminDashboardData() {
         hospitalDischargeDate: true,
         decisionMakerName: true,
         decisionMakerRelationship: true,
+        seniorAgreedToSearch: true,
+        decisionParticipants: true,
+        fundingTypes: true,
+        functionalNeeds: true,
+        placementPreferences: true,
+        personSafeTonight: true,
+        urgentMedicalHelp: true,
+        canRemainHomeTonight: true,
+        caregiverBurnoutRisk: true,
+        immediateRiskFlags: true,
+        emergencyStopped: true,
         emotionalSupportNeeds: true,
         supportTypes: true,
         notes: true,
@@ -55,7 +67,19 @@ export async function getAdminDashboardData() {
         followUp7At: true,
         followUp30At: true,
         followUp90At: true,
+        caseOutcome: true,
+        consentAcceptedAt: true,
+        consentVersion: true,
         careGuide: { select: { id: true, name: true, email: true } },
+        decisionMakers: {
+          orderBy: { createdAt: "asc" },
+          select: {
+            id: true,
+            name: true,
+            relationship: true,
+            responsibilities: true
+          }
+        },
         createdAt: true,
         updatedAt: true
       }
@@ -89,6 +113,14 @@ export async function getAdminDashboardData() {
         priceMin: true,
         priceMax: true,
         adminNotes: true,
+        verificationStatus: true,
+        legalOrganisationName: true,
+        kvkNumber: true,
+        agbCode: true,
+        wtzaStatus: true,
+        roomTypes: true,
+        accessibilityNotes: true,
+        qualityInfo: true,
         createdAt: true,
         updatedAt: true
       }
@@ -103,6 +135,7 @@ export async function getAdminDashboardData() {
         score: true,
         status: true,
         notes: true,
+        familyFacingReason: true,
         declineReason: true,
         createdAt: true,
         updatedAt: true,
@@ -113,7 +146,9 @@ export async function getAdminDashboardData() {
             email: true,
             preferredArea: true,
             urgency: true,
-            careTypes: true
+            careTypes: true,
+            careGuideId: true,
+            careGuide: { select: { id: true, name: true, email: true } }
           }
         },
         provider: { select: { name: true } }
@@ -138,6 +173,8 @@ export async function getAdminDashboardData() {
         facilityType: true,
         bedsTotal: true,
         services: true,
+        registrationNumber: true,
+        registrationVerified: true,
         status: true,
         createdAt: true,
         updatedAt: true
@@ -205,6 +242,18 @@ export async function getAdminDashboardData() {
       hospitalDischargeDate: intake.hospitalDischargeDate?.toLocaleDateString("en-GB") || null,
       decisionMakerName: intake.decisionMakerName,
       decisionMakerRelationship: intake.decisionMakerRelationship,
+      decisionMakers: intake.decisionMakers,
+      seniorAgreedToSearch: intake.seniorAgreedToSearch,
+      decisionParticipants: intake.decisionParticipants,
+      fundingTypes: intake.fundingTypes,
+      functionalNeeds: intake.functionalNeeds,
+      placementPreferences: intake.placementPreferences,
+      personSafeTonight: intake.personSafeTonight,
+      urgentMedicalHelp: intake.urgentMedicalHelp,
+      canRemainHomeTonight: intake.canRemainHomeTonight,
+      caregiverBurnoutRisk: intake.caregiverBurnoutRisk,
+      immediateRiskFlags: intake.immediateRiskFlags,
+      emergencyStopped: intake.emergencyStopped,
       emotionalSupportNeeds: intake.emotionalSupportNeeds,
       supportTypes: intake.supportTypes,
       notes: intake.notes,
@@ -224,6 +273,9 @@ export async function getAdminDashboardData() {
       followUp7At: intake.followUp7At?.toLocaleDateString("en-GB") || null,
       followUp30At: intake.followUp30At?.toLocaleDateString("en-GB") || null,
       followUp90At: intake.followUp90At?.toLocaleDateString("en-GB") || null,
+      caseOutcome: intake.caseOutcome,
+      consentAcceptedAt: intake.consentAcceptedAt?.toLocaleString("en-GB") || null,
+      consentVersion: intake.consentVersion,
       createdAt: intake.createdAt.toLocaleDateString("en-GB"),
       createdAtIso: intake.createdAt.toISOString(),
       updatedAt: intake.updatedAt.toLocaleDateString("en-GB"),
@@ -231,6 +283,7 @@ export async function getAdminDashboardData() {
     })),
     providerList: providers.map((provider) => {
       const profileMissingRequirements = getProviderProfileMissingRequirements(provider);
+      const profileComplete = profileMissingRequirements.length === 0;
       return {
       id: provider.id,
       name: provider.name,
@@ -256,8 +309,18 @@ export async function getAdminDashboardData() {
       visitAvailability: displayVisitAvailability(provider.visitAvailability),
       priceMin: provider.priceMin,
       priceMax: provider.priceMax,
-      profileComplete: profileMissingRequirements.length === 0,
+      profileComplete,
       profileMissingRequirements,
+      matchable: profileComplete && isProviderMatchable(provider.verificationStatus),
+      verificationStatus: provider.verificationStatus,
+      verificationLabel: providerVerificationLabel(provider.verificationStatus),
+      legalOrganisationName: provider.legalOrganisationName,
+      kvkNumber: provider.kvkNumber,
+      agbCode: provider.agbCode,
+      wtzaStatus: provider.wtzaStatus,
+      roomTypes: provider.roomTypes,
+      accessibilityNotes: provider.accessibilityNotes,
+      qualityInfo: provider.qualityInfo,
       adminNotes: provider.adminNotes,
       createdAt: provider.createdAt.toLocaleDateString("en-GB"),
       createdAtIso: provider.createdAt.toISOString(),
@@ -267,16 +330,18 @@ export async function getAdminDashboardData() {
     }),
     inquiries: matches
       .map((match) => ({
-        id: match.id,
-        intakeId: match.intakeId,
-        providerId: match.providerId,
-        family: match.intake.contactName,
-        familyPhone: match.intake.phone,
-        familyEmail: match.intake.email,
-        familyArea: match.intake.preferredArea,
-        familyUrgency: match.intake.urgency,
-        familyCare: match.intake.careTypes.join(", "),
-        provider: match.provider.name,
+      id: match.id,
+      intakeId: match.intakeId,
+      providerId: match.providerId,
+      family: match.intake.contactName,
+      familyPhone: match.intake.phone,
+      familyEmail: match.intake.email,
+      familyArea: match.intake.preferredArea,
+      familyUrgency: match.intake.urgency,
+      familyCare: match.intake.careTypes.join(", "),
+      careGuideId: match.intake.careGuideId,
+      careGuideName: match.intake.careGuide?.name || match.intake.careGuide?.email || null,
+      provider: match.provider.name,
         match: `${match.score}%`,
         date: match.createdAt.toLocaleDateString("en-GB"),
         createdAtIso: match.createdAt.toISOString(),
@@ -285,6 +350,7 @@ export async function getAdminDashboardData() {
         statusRaw: match.status,
         status: match.status.replaceAll("_", " "),
         notes: match.notes,
+        familyFacingReason: match.familyFacingReason,
         declineReason: match.declineReason
       }))
       .sort((a, b) => {
@@ -314,6 +380,8 @@ export async function getAdminDashboardData() {
       facilityType: entry.facilityType,
       bedsTotal: entry.bedsTotal,
       services: entry.services,
+      registrationNumber: entry.registrationNumber,
+      registrationVerified: entry.registrationVerified,
       location: [entry.city, entry.province].filter(Boolean).join(", ") || "—",
       status: entry.status,
       createdAt: entry.createdAt.toLocaleDateString("en-GB"),

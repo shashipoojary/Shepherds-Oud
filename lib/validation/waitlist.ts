@@ -23,7 +23,8 @@ export const facilityWaitlistSchema = z.object({
   facilityName: z.string().min(2),
   facilityType: z.string().min(1),
   bedsTotal: z.coerce.number().int().min(0).optional(),
-  services: z.array(z.string()).default([])
+  services: z.array(z.string()).default([]),
+  registrationNumber: z.string().min(4, "Enter your KVK or government registration number").max(64)
 });
 
 export const waitlistSchema = z.discriminatedUnion("type", [familyWaitlistSchema, facilityWaitlistSchema]);

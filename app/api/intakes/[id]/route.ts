@@ -1,5 +1,11 @@
 import { prisma } from "@/lib/core/db";
-import { canAccessIntake, canOwnIntake } from "@/lib/auth/case-access";
+import {
+  canAccessIntake,
+  canMutateIntake,
+  canOwnIntake,
+  CASE_ASSIGNED_TO_OTHER_GUIDE_MESSAGE,
+  isAssigningCareGuideWhenUnassigned
+} from "@/lib/auth/case-access";
 import { countVisibleMatchesForIntake } from "@/lib/data/matches";
 import { getServerSession, getUserRole } from "@/lib/auth/server";
 import {
@@ -13,6 +19,7 @@ import { sendIntakeStatusEmail } from "@/lib/email/intake-status-email";
 import { sendProviderStatusEmail } from "@/lib/email/provider-status-email";
 import { handleApiError, jsonError, jsonOk, rateLimitResponse, readJsonBody, runInBackground } from "@/lib/core/api-helpers";
 import { getIsPrelaunch } from "@/lib/config/prelaunch";
+import { INTAKE_CONSENT_VERSION } from "@/lib/domain/intake-consent";
 import { intakeSchema } from "@/lib/validation/intake";
 import { INTAKE_STALE_CONFLICT_MESSAGE, intakeUpdatedAtMatches } from "@/lib/domain/intake-stale-conflict";
 import { adminIntakeUpdateSchema } from "@/lib/validation/intake-admin";
@@ -26,10 +33,23 @@ function parseDischargeDate(value?: string) {
 }
 
 function intakeUpdateData(data: ReturnType<typeof intakeSchema.parse>) {
-  const { hospitalDischargeDate, ...rest } = data;
+  const { hospitalDischargeDate, decisionMakers, consentAccepted, ...rest } = data;
   return {
     ...rest,
-    hospitalDischargeDate: parseDischargeDate(hospitalDischargeDate)
+    ageRange: rest.ageRange || "Not specified",
+    urgency: rest.urgency || "Emergency screening",
+    hospitalDischargeDate: parseDischargeDate(hospitalDischargeDate),
+    ...(consentAccepted
+      ? { consentAcceptedAt: new Date(), consentVersion: INTAKE_CONSENT_VERSION }
+      : {}),
+    decisionMakers: {
+      deleteMany: {},
+      create: decisionMakers.map((maker) => ({
+        name: maker.name.trim(),
+        relationship: maker.relationship.trim(),
+        responsibilities: maker.responsibilities
+      }))
+    }
   };
 }
 
@@ -163,6 +183,13 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       }
 
       if (
+        !canMutateIntake(session, existing) &&
+        !isAssigningCareGuideWhenUnassigned(existing, parsed.data)
+      ) {
+        return jsonError(CASE_ASSIGNED_TO_OTHER_GUIDE_MESSAGE, 403);
+      }
+
+      if (
         parsed.data.expectedUpdatedAt &&
         !intakeUpdatedAtMatches(parsed.data.expectedUpdatedAt, existing.updatedAt)
       ) {
@@ -209,6 +236,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         ...(parsed.data.visitType !== undefined ? { visitType: parsed.data.visitType } : {}),
         ...(parsed.data.visitProviderName !== undefined ? { visitProviderName: parsed.data.visitProviderName } : {}),
         ...(parsed.data.visitNotes !== undefined ? { visitNotes: parsed.data.visitNotes } : {}),
+        ...(parsed.data.caseOutcome !== undefined ? { caseOutcome: parsed.data.caseOutcome } : {}),
         ...(nextStatus === "VISIT_SCHEDULED" && parsed.data.visitScheduledAt === undefined && !existing.visitScheduledAt
           ? { visitScheduledAt: new Date() }
           : {}),
@@ -227,6 +255,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         visitType: true,
         visitProviderName: true,
         visitNotes: true,
+        caseOutcome: true,
         careGuide: { select: { name: true, email: true } }
       } as const;
       const shouldCloseMatches = nextStatus && nextStatus !== currentStatus && nextStatus === "CLOSED";
@@ -370,10 +399,15 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         ...intakeUpdateData(parsed.data),
         status: nextStatusAfterFamilyUpdate(existing.status)
       },
-      select: { id: true, status: true }
+      select: { id: true, status: true, emergencyStopped: true }
     });
 
-    return jsonOk({ ...intake, status: normalizeIntakeStatus(intake.status), mode: "updated" });
+    return jsonOk({
+      ...intake,
+      status: normalizeIntakeStatus(intake.status),
+      emergencyStopped: intake.emergencyStopped,
+      mode: "updated"
+    });
   } catch (error) {
     return handleApiError(error, "intake_update");
   }
@@ -392,6 +426,7 @@ function isAdminUpdate(body: unknown): body is Record<string, unknown> {
     "visitScheduledAt" in record ||
     "visitType" in record ||
     "visitProviderName" in record ||
-    "visitNotes" in record
+    "visitNotes" in record ||
+    "caseOutcome" in record
   );
 }

@@ -35,12 +35,35 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       return jsonError("Provider not found.", 404);
     }
 
+    const data = parsed.data;
     const provider = await prisma.provider.update({
       where: { id },
-      data: { adminNotes: parsed.data.adminNotes?.trim() || null },
+      data: {
+        ...(data.adminNotes !== undefined ? { adminNotes: data.adminNotes?.trim() || null } : {}),
+        ...(data.verificationStatus !== undefined ? { verificationStatus: data.verificationStatus } : {}),
+        ...(data.legalOrganisationName !== undefined
+          ? { legalOrganisationName: data.legalOrganisationName?.trim() || null }
+          : {}),
+        ...(data.kvkNumber !== undefined ? { kvkNumber: data.kvkNumber?.trim() || null } : {}),
+        ...(data.agbCode !== undefined ? { agbCode: data.agbCode?.trim() || null } : {}),
+        ...(data.wtzaStatus !== undefined ? { wtzaStatus: data.wtzaStatus?.trim() || null } : {}),
+        ...(data.roomTypes !== undefined
+          ? {
+              roomTypes: data.roomTypes
+                .map((item) => item.trim())
+                .filter(Boolean)
+            }
+          : {})
+      },
       select: {
         id: true,
         adminNotes: true,
+        verificationStatus: true,
+        legalOrganisationName: true,
+        kvkNumber: true,
+        agbCode: true,
+        wtzaStatus: true,
+        roomTypes: true,
         updatedAt: true
       }
     });
@@ -48,6 +71,12 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     return jsonOk({
       id: provider.id,
       adminNotes: provider.adminNotes,
+      verificationStatus: provider.verificationStatus,
+      legalOrganisationName: provider.legalOrganisationName,
+      kvkNumber: provider.kvkNumber,
+      agbCode: provider.agbCode,
+      wtzaStatus: provider.wtzaStatus,
+      roomTypes: provider.roomTypes,
       updatedAt: provider.updatedAt.toISOString()
     });
   } catch (error) {

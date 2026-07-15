@@ -7,6 +7,7 @@ export type SafeMatch = {
   score: number;
   status: MatchStatus;
   notes: string | null;
+  familyFacingReason: string | null;
   declineReason: string | null;
   createdAt: string;
   updatedAt: string;
@@ -20,6 +21,7 @@ export function toSafeMatch(match: Match): SafeMatch {
     score: match.score,
     status: match.status,
     notes: match.notes,
+    familyFacingReason: match.familyFacingReason,
     declineReason: match.declineReason,
     createdAt: match.createdAt.toISOString(),
     updatedAt: match.updatedAt.toISOString()

@@ -43,6 +43,7 @@ import {
 } from "@/lib/client/admin-inquiry-seen";
 import { initAdminItemsSeenFromData, isAdminItemUnread, markAdminItemSeen } from "@/lib/client/admin-item-seen";
 import { CARE_PATHWAYS } from "@/lib/domain/care-pathways";
+import { CASE_OUTCOME_OPTIONS } from "@/lib/domain/case-outcomes";
 import { getAdminCaseNextAction } from "@/lib/domain/admin-case-next-action";
 import {
   adminIntakeActionMeta,
@@ -70,8 +71,15 @@ import {
 import { isRematchableMatchStatus } from "@/lib/domain/match-rematch";
 import { INTAKE_STALE_CONFLICT_MESSAGE, isIntakeStaleConflictError } from "@/lib/domain/intake-stale-conflict";
 import { displayProviderAvailability, formatAvailabilityLastUpdated } from "@/lib/domain/provider-availability";
+import {
+  PROVIDER_VERIFICATION_STATUSES,
+  isProviderMatchable,
+  providerVerificationBadgeVariant,
+  providerVerificationLabel
+} from "@/lib/domain/provider-verification";
 import { formatReference, matchesListSearch, matchesReferenceQuery } from "@/lib/domain/reference";
 import { isResolvedWaitlistStatus, waitlistStatusLabel } from "@/lib/domain/waitlist-status";
+import { Badge } from "@/components/ui/badge";
 
 type AdminTab = "families" | "providers" | "inquiries" | "waitlist";
 type WaitlistEntry = AdminDashboardData["waitlist"][number];
@@ -132,7 +140,13 @@ function providerAvailableForMatching(providerId: string, matches: InquiryEntry[
   return { available: false, rematch: false };
 }
 
-export function AdminDashboardClient({ data: initialData }: { data: AdminDashboardData }) {
+export function AdminDashboardClient({
+  data: initialData,
+  currentUserId
+}: {
+  data: AdminDashboardData;
+  currentUserId: string;
+}) {
   const [data, setData] = useState(initialData);
   const [tab, setTab] = useState<AdminTab>("families");
   const [message, setMessage] = useState("");
@@ -319,6 +333,7 @@ export function AdminDashboardClient({ data: initialData }: { data: AdminDashboa
                 inquiries={data.inquiries}
                 providers={data.providerList}
                 careGuides={data.careGuides}
+                currentUserId={currentUserId}
                 setMessage={setMessage}
                 onSync={syncDashboard}
                 onIntakeSavePendingChange={(pending) => {
@@ -349,6 +364,7 @@ export function AdminDashboardClient({ data: initialData }: { data: AdminDashboa
             data.inquiries.length ? (
               <InquiriesTable
                 inquiries={data.inquiries}
+                currentUserId={currentUserId}
                 setMessage={setMessage}
                 onSync={syncDashboard}
                 itemSeenVersion={itemSeenVersion}
@@ -385,6 +401,7 @@ function FamiliesTable({
   inquiries,
   providers,
   careGuides,
+  currentUserId,
   setMessage,
   onSync,
   onIntakeSavePendingChange,
@@ -395,6 +412,7 @@ function FamiliesTable({
   inquiries: InquiryEntry[];
   providers: ProviderOption[];
   careGuides: CareGuideOption[];
+  currentUserId: string;
   setMessage: (message: string) => void;
   onSync: () => Promise<boolean>;
   onIntakeSavePendingChange: (pending: boolean) => void;
@@ -484,7 +502,8 @@ function FamiliesTable({
                   : {}),
                 ...(body.carePathway !== undefined ? { carePathway: body.carePathway as string } : {}),
                 ...(body.assessmentNotes !== undefined ? { assessmentNotes: body.assessmentNotes as string } : {}),
-                ...(body.carePlanSummary !== undefined ? { carePlanSummary: body.carePlanSummary as string } : {})
+                ...(body.carePlanSummary !== undefined ? { carePlanSummary: body.carePlanSummary as string } : {}),
+                ...(body.caseOutcome !== undefined ? { caseOutcome: body.caseOutcome as string | null } : {})
               }
             : family
         )
@@ -500,7 +519,8 @@ function FamiliesTable({
             : {}),
           ...(body.carePathway !== undefined ? { carePathway: body.carePathway as string } : {}),
           ...(body.assessmentNotes !== undefined ? { assessmentNotes: body.assessmentNotes as string } : {}),
-          ...(body.carePlanSummary !== undefined ? { carePlanSummary: body.carePlanSummary as string } : {})
+          ...(body.carePlanSummary !== undefined ? { carePlanSummary: body.carePlanSummary as string } : {}),
+          ...(body.caseOutcome !== undefined ? { caseOutcome: body.caseOutcome as string | null } : {})
         };
       });
 
@@ -579,6 +599,11 @@ function FamiliesTable({
                   <div className="flex items-center gap-2">
                     {isUnread ? <UnreadDot /> : null}
                     <strong>{family.name}</strong>
+                    {family.emergencyStopped ? (
+                      <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-red-800">
+                        Emergency
+                      </span>
+                    ) : null}
                   </div>
                   <span className="block text-xs text-neutral-500">{family.context}</span>
                   <span className="mt-1 block font-mono text-[11px] text-neutral-400">Ref {formatReference(family.id)}</span>
@@ -636,6 +661,7 @@ function FamiliesTable({
         matches={selected ? matchesByIntakeId.get(selected.id) ?? [] : []}
         providers={providers}
         careGuides={careGuides}
+        currentUserId={currentUserId}
         onClose={() => setSelected(null)}
         onUpdateStatus={updateStatus}
         onPatchIntake={patchIntake}
@@ -652,6 +678,7 @@ function FamilyDetailPanel({
   matches,
   providers,
   careGuides,
+  currentUserId,
   onClose,
   onUpdateStatus,
   onPatchIntake,
@@ -663,6 +690,7 @@ function FamilyDetailPanel({
   matches: InquiryEntry[];
   providers: ProviderOption[];
   careGuides: CareGuideOption[];
+  currentUserId: string;
   onClose: () => void;
   onUpdateStatus: (
     id: string,
@@ -692,6 +720,7 @@ function FamilyDetailPanel({
   const [providerId, setProviderId] = useState("");
   const [score, setScore] = useState("85");
   const [matchNotes, setMatchNotes] = useState("");
+  const [familyFacingReason, setFamilyFacingReason] = useState("");
   const [creatingMatch, setCreatingMatch] = useState(false);
   const [pendingAction, setPendingAction] = useState<IntakeStatus | null>(null);
   const [confirmCloseCase, setConfirmCloseCase] = useState(false);
@@ -706,6 +735,8 @@ function FamilyDetailPanel({
   const [savingAssessment, setSavingAssessment] = useState(false);
   const [savingVisit, setSavingVisit] = useState(false);
   const [savingCareGuide, setSavingCareGuide] = useState(false);
+  const [savingCaseOutcome, setSavingCaseOutcome] = useState(false);
+  const [caseOutcome, setCaseOutcome] = useState("");
   const [loadedUpdatedAtIso, setLoadedUpdatedAtIso] = useState<string | null>(null);
   const [staleConflict, setStaleConflict] = useState(false);
   const [refreshingCase, setRefreshingCase] = useState(false);
@@ -717,7 +748,8 @@ function FamilyDetailPanel({
       visitScheduledAt !== (family.visitScheduledAt ? family.visitScheduledAt.slice(0, 16) : "") ||
       visitType !== ((family.visitType as "VISIT" | "CALLBACK") || "") ||
       visitProviderName !== (family.visitProviderName || "") ||
-      visitNotes !== (family.visitNotes || "")
+      visitNotes !== (family.visitNotes || "") ||
+      caseOutcome !== (family.caseOutcome || "")
     : false;
 
   function intakePatchBody(body: Record<string, unknown>) {
@@ -774,27 +806,39 @@ function FamilyDetailPanel({
       setVisitType((family.visitType as "VISIT" | "CALLBACK") || "");
       setVisitProviderName(family.visitProviderName || "");
       setVisitNotes(family.visitNotes || "");
+      setCaseOutcome(family.caseOutcome || "");
     }
   }, [family, staleConflict, clearPanelMessage, hasUnsavedCaseDraft]);
 
   const isCaseActionPending = family ? pendingId === family.id && pendingAction !== null : false;
   const normalizedStatus = family ? normalizeIntakeStatus(family.status) : "NEW";
   const isClosedCase = normalizedStatus === "CLOSED";
-  const matchingAllowed = family && !isClosedCase ? canCreateMatches(family.status, carePathway || family.carePathway) : false;
-  const nextAction = family ? getAdminCaseNextAction(family, matches) : null;
+  const isReadOnlyAssigned = Boolean(family?.careGuideId) && family?.careGuideId !== currentUserId;
+  const canAssignCareGuide = !family?.careGuideId;
+  const matchingAllowed =
+    family && !isClosedCase && !isReadOnlyAssigned
+      ? canCreateMatches(family.status, carePathway || family.carePathway)
+      : false;
+  const nextAction = family && !isReadOnlyAssigned ? getAdminCaseNextAction(family, matches) : null;
   const hasMatches = matches.length > 0;
   const hasFamilyRequestedMatch = matches.some((match) => match.statusRaw === "VISIT_REQUESTED" || match.statusRaw === "CALLBACK_REQUESTED");
   const hasAcceptedOrContactedMatch = matches.some((match) => match.statusRaw === "ACCEPTED" || match.statusRaw === "CONTACTED" || match.statusRaw === "PLACED");
   const visitSchedulingAllowed =
     !isClosedCase &&
+    !isReadOnlyAssigned &&
     (hasFamilyRequestedMatch || hasAcceptedOrContactedMatch || ["VISIT_SCHEDULED", "PROVIDER_RESPONSE", "PLACEMENT_IN_PROGRESS", "PLACED"].includes(normalizedStatus));
-  const placementActionAllowed = !isClosedCase && (hasAcceptedOrContactedMatch || ["PROVIDER_RESPONSE", "PLACEMENT_IN_PROGRESS", "PLACED"].includes(normalizedStatus));
+  const placementActionAllowed =
+    !isClosedCase &&
+    !isReadOnlyAssigned &&
+    (hasAcceptedOrContactedMatch || ["PROVIDER_RESPONSE", "PLACEMENT_IN_PROGRESS", "PLACED"].includes(normalizedStatus));
   const createMatchDisabledReason = !assessmentComplete({ carePathway: carePathway || family?.carePathway || null })
     ? "Select a care pathway before creating provider matches."
     : !carePlanComplete({ carePlanSummary: carePlanSummary || family?.carePlanSummary || null })
       ? "Publish the care plan summary before creating provider matches."
       : providerId && providers.find((provider) => provider.id === providerId)?.profileComplete === false
         ? "This provider is locked until their facility profile is complete."
+      : providerId && providers.find((provider) => provider.id === providerId)?.matchable === false
+        ? "Only verified providers can be matched. Update verification status in the Providers tab first."
       : !matchingAllowed
         ? "Move the case to the care-plan stage before creating matches."
         : "";
@@ -802,10 +846,23 @@ function FamilyDetailPanel({
   const visitDisabledReason = !visitSchedulingAllowed ? "Wait until the family requests a visit/callback or a provider accepts before scheduling." : "";
 
   async function handleCaseAction(status: IntakeStatus) {
-    if (!family) return;
+    if (!family || isReadOnlyAssigned) return;
     setPendingAction(status);
     try {
-      await onUpdateStatus(family.id, status, family.name, notifyPanel, loadedUpdatedAtIso);
+      if (status === "CLOSED") {
+        await onPatchIntake(
+          family.id,
+          intakePatchBody({
+            status: "CLOSED",
+            ...(caseOutcome ? { caseOutcome } : {})
+          }),
+          family.name,
+          `You closed the case for ${family.name}.`,
+          notifyPanel
+        );
+      } else {
+        await onUpdateStatus(family.id, status, family.name, notifyPanel, loadedUpdatedAtIso);
+      }
     } catch (error) {
       handleStaleConflict(error);
     } finally {
@@ -816,8 +873,28 @@ function FamilyDetailPanel({
     }
   }
 
+  async function saveCaseOutcome() {
+    if (!family || isReadOnlyAssigned) return;
+    setSavingCaseOutcome(true);
+    try {
+      await onPatchIntake(
+        family.id,
+        intakePatchBody({ caseOutcome: caseOutcome || null }),
+        family.name,
+        caseOutcome
+          ? `You set the case outcome for ${family.name}.`
+          : `You cleared the case outcome for ${family.name}.`,
+        notifyPanel
+      );
+    } catch (error) {
+      handleStaleConflict(error);
+    } finally {
+      setSavingCaseOutcome(false);
+    }
+  }
+
   async function saveCareGuide() {
-    if (!family || !careGuideId) return;
+    if (!family || !careGuideId || isReadOnlyAssigned) return;
     setSavingCareGuide(true);
     try {
       await onPatchIntake(
@@ -835,7 +912,8 @@ function FamilyDetailPanel({
   }
 
   async function saveAndShareWithFamily() {
-    if (!family || !carePathway) {
+    if (!family || isReadOnlyAssigned) return;
+    if (!carePathway) {
       notifyPanel("Select a recommended care pathway before saving.");
       return;
     }
@@ -886,7 +964,8 @@ function FamilyDetailPanel({
   }
 
   async function markShortlistReady() {
-    if (!family || !carePathway) {
+    if (!family || isReadOnlyAssigned) return;
+    if (!carePathway) {
       notifyPanel("Select a care pathway before marking the shortlist ready.");
       return;
     }
@@ -919,7 +998,8 @@ function FamilyDetailPanel({
   }
 
   async function saveVisitSchedule() {
-    if (!family || !visitScheduledAt) {
+    if (!family || isReadOnlyAssigned) return;
+    if (!visitScheduledAt) {
       notifyPanel("Set a visit or callback date and time before saving.");
       return;
     }
@@ -951,7 +1031,7 @@ function FamilyDetailPanel({
   }
 
   async function createMatch() {
-    if (!family || !providerId) return;
+    if (!family || !providerId || isReadOnlyAssigned) return;
     if (createMatchDisabledReason) {
       notifyPanel(createMatchDisabledReason);
       return;
@@ -966,7 +1046,8 @@ function FamilyDetailPanel({
           intakeId: family.id,
           providerId,
           score: Number(score),
-          notes: matchNotes || undefined
+          notes: matchNotes || undefined,
+          familyFacingReason: familyFacingReason.trim() || undefined
         })
       });
 
@@ -995,6 +1076,7 @@ function FamilyDetailPanel({
       setProviderId("");
       setScore("85");
       setMatchNotes("");
+      setFamilyFacingReason("");
       await onSync();
     } catch (error) {
       notifyPanel(error instanceof Error ? error.message : `Could not create match for ${family.name}.`);
@@ -1078,12 +1160,26 @@ function FamilyDetailPanel({
       onClose={onClose}
       size="xl"
       title={family?.name || "Family intake"}
-      subtitle={family ? `${family.location} · ${family.urgency}` : "Care intake details"}
+      subtitle={
+        family
+          ? `${family.location} · ${family.urgency}${family.emergencyStopped ? " · Emergency flagged" : ""}`
+          : "Care intake details"
+      }
       notice={staleConflict ? undefined : panelMessage}
       noticeTone={staleConflict ? "error" : panelNoticeTone(panelMessage)}
     >
       {family ? (
         <div className="space-y-5">
+          {family.emergencyStopped ? (
+            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-950 ring-1 ring-red-100">
+              <p className="font-semibold">Emergency screening flagged</p>
+              <p className="mt-1 leading-6 text-red-900">
+                The family was shown 112 instructions and blocked from the normal care-matching journey. Follow up after confirming
+                emergency needs are handled.
+              </p>
+            </div>
+          ) : null}
+
           {staleConflict ? (
             <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 ring-1 ring-amber-100">
               <p className="font-semibold">{INTAKE_STALE_CONFLICT_MESSAGE}</p>
@@ -1099,6 +1195,17 @@ function FamilyDetailPanel({
               >
                 {refreshingCase ? "Refreshing…" : "Refresh case"}
               </Button>
+            </div>
+          ) : null}
+
+          {isReadOnlyAssigned ? (
+            <div className="rounded-lg border border-stone-200 bg-brand-cream/80 px-4 py-3 text-sm text-ink ring-1 ring-stone-100">
+              <p className="font-semibold">
+                Read-only — assigned to {family.careGuideName || "another Care Guide"}
+              </p>
+              <p className="mt-1 leading-6 text-neutral-600">
+                You can view this case. Only the assigned Care Guide can edit, advance status, create matches, or schedule visits.
+              </p>
             </div>
           ) : null}
 
@@ -1203,16 +1310,58 @@ function FamilyDetailPanel({
                   ]}
                 />
               </PanelSection>
+              <PanelSection title="Safety & emergency">
+                <DetailList
+                  columns={1}
+                  items={[
+                    { label: "Emergency flagged", value: family.emergencyStopped ? "Yes — follow up urgently" : "No" },
+                    { label: "Person safe tonight", value: family.personSafeTonight },
+                    { label: "Urgent medical help", value: family.urgentMedicalHelp },
+                    { label: "Can remain home tonight", value: family.canRemainHomeTonight },
+                    { label: "Caregiver burnout risk", value: family.caregiverBurnoutRisk }
+                  ]}
+                />
+                {(family.immediateRiskFlags?.length ?? 0) > 0 ? (
+                  <div className="mt-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Immediate risk flags</p>
+                    <div className="mt-2">
+                      <TagList items={family.immediateRiskFlags ?? []} />
+                    </div>
+                  </div>
+                ) : null}
+              </PanelSection>
               <PanelSection title="Decision support">
                 <DetailList
                   columns={1}
                   items={[
-                    { label: "Decision-maker", value: family.decisionMakerName },
-                    { label: "Decision-maker role", value: family.decisionMakerRelationship },
+                    { label: "Primary decision-maker", value: family.decisionMakerName },
+                    { label: "Primary decision-maker role", value: family.decisionMakerRelationship },
+                    { label: "Person agreed to search", value: family.seniorAgreedToSearch },
+                    { label: "Other participants", value: family.decisionParticipants },
                     { label: "Living situation", value: family.livingSituation },
-                    { label: "Move-in timeline", value: family.moveInTimeline }
+                    { label: "Move-in timeline", value: family.moveInTimeline },
+                    { label: "Consent accepted", value: family.consentAcceptedAt },
+                    { label: "Consent version", value: family.consentVersion }
                   ]}
                 />
+                {(family.decisionMakers?.length ?? 0) > 0 ? (
+                  <div className="mt-4 space-y-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Decision-makers</p>
+                    {family.decisionMakers.map((maker) => (
+                      <div key={maker.id} className="rounded-lg border border-stone-200 bg-brand-cream/50 px-3 py-3">
+                        <p className="text-sm font-semibold text-ink">
+                          {maker.name}
+                          <span className="ml-2 font-normal text-neutral-500">· {maker.relationship}</span>
+                        </p>
+                        {maker.responsibilities.length ? (
+                          <div className="mt-2">
+                            <TagList items={maker.responsibilities} />
+                          </div>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
               </PanelSection>
               <PanelSection title="Care needs">
                 <DetailList
@@ -1231,6 +1380,24 @@ function FamilyDetailPanel({
                     <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Care types</p>
                     <div className="mt-2">
                       <TagList items={family.careTypes?.length ? family.careTypes : family.care.split(",").map((item) => item.trim()).filter(Boolean)} />
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Funding types</p>
+                    <div className="mt-2">
+                      <TagList items={family.fundingTypes ?? []} />
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Functional needs</p>
+                    <div className="mt-2">
+                      <TagList items={family.functionalNeeds ?? []} />
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Placement preferences</p>
+                    <div className="mt-2">
+                      <TagList items={family.placementPreferences ?? []} />
                     </div>
                   </div>
                   <div>
@@ -1264,6 +1431,7 @@ function FamilyDetailPanel({
                 columns={1}
                 items={[
                   { label: "Final status", value: adminIntakeStatusLabel(family.status) },
+                  { label: "Case outcome", value: family.caseOutcome || "Not recorded" },
                   { label: "Care Guide", value: family.careGuideName || "Not assigned" },
                   { label: "Care pathway", value: family.carePathway },
                   { label: "Last provider", value: family.visitProviderName },
@@ -1276,8 +1444,14 @@ function FamilyDetailPanel({
             <PanelSection
               step={2}
               title="Assign Care Guide"
-              description="Assign a named guide — the family timeline moves to “Care Guide assigned”. You can reassign a different guide at any time."
-              locked={careGuideStepLocked}
+              description={
+                canAssignCareGuide
+                  ? "Assign a named guide — the family timeline moves to “Care Guide assigned”."
+                  : isReadOnlyAssigned
+                    ? "This case is already assigned. Only the assigned Care Guide can reassign."
+                    : "Assign a named guide — the family timeline moves to “Care Guide assigned”. You can reassign a different guide at any time."
+              }
+              locked={careGuideStepLocked && !canAssignCareGuide}
             >
               <div className="space-y-3">
               <label className="grid gap-2 text-sm font-medium">
@@ -1285,6 +1459,7 @@ function FamilyDetailPanel({
                 <select
                   value={careGuideId}
                   onChange={(event) => setCareGuideId(event.target.value)}
+                  disabled={isReadOnlyAssigned}
                   className={adminFieldClass}
                 >
                   <option value="">Select Care Guide</option>
@@ -1296,7 +1471,12 @@ function FamilyDetailPanel({
                 </select>
               </label>
               <AdminPanelActions>
-                <Button type="button" size="sm" disabled={!careGuideId || savingCareGuide} onClick={() => void saveCareGuide()}>
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={!careGuideId || savingCareGuide || isReadOnlyAssigned}
+                  onClick={() => void saveCareGuide()}
+                >
                   {savingCareGuide ? "Saving..." : "Assign Care Guide"}
                 </Button>
               </AdminPanelActions>
@@ -1307,12 +1487,17 @@ function FamilyDetailPanel({
               step={3}
               title="Assessment & care plan"
               description="Save assessment notes internally, then publish the care plan summary when the family should see it."
-              locked={assessmentStepLocked}
+              locked={assessmentStepLocked || isReadOnlyAssigned}
             >
               <div className="space-y-3">
               <label className="grid gap-2 text-sm font-medium">
                 Recommended care pathway
-                <select value={carePathway} onChange={(event) => setCarePathway(event.target.value)} className={adminFieldClass}>
+                <select
+                  value={carePathway}
+                  onChange={(event) => setCarePathway(event.target.value)}
+                  disabled={isReadOnlyAssigned}
+                  className={adminFieldClass}
+                >
                   <option value="">Select pathway</option>
                   {CARE_PATHWAYS.map((pathway) => (
                     <option key={pathway} value={pathway}>
@@ -1326,6 +1511,7 @@ function FamilyDetailPanel({
                 <textarea
                   value={assessmentNotes}
                   onChange={(event) => setAssessmentNotes(event.target.value)}
+                  disabled={isReadOnlyAssigned}
                   className={`${adminFieldClass} min-h-24`}
                   placeholder="Family situation, decision-makers, funding context..."
                 />
@@ -1335,6 +1521,7 @@ function FamilyDetailPanel({
                 <textarea
                   value={carePlanSummary}
                   onChange={(event) => setCarePlanSummary(event.target.value)}
+                  disabled={isReadOnlyAssigned}
                   className={`${adminFieldClass} min-h-24`}
                   placeholder="Brief plan: recommended next steps and why this pathway fits."
                 />
@@ -1343,7 +1530,7 @@ function FamilyDetailPanel({
                 <Button
                   type="button"
                   size="sm"
-                  disabled={savingAssessment || carePlanButtonMode === "published"}
+                  disabled={isReadOnlyAssigned || savingAssessment || carePlanButtonMode === "published"}
                   onClick={() => void saveAndShareWithFamily()}
                 >
                   {savingAssessment
@@ -1361,7 +1548,12 @@ function FamilyDetailPanel({
                     type="button"
                     size="sm"
                     variant="outline"
-                    disabled={savingAssessment || !carePlanSummary.trim() || Boolean(shortlistDisabledReason)}
+                    disabled={
+                      isReadOnlyAssigned ||
+                      savingAssessment ||
+                      !carePlanSummary.trim() ||
+                      Boolean(shortlistDisabledReason)
+                    }
                     onClick={() => void markShortlistReady()}
                   >
                     Mark shortlist ready
@@ -1376,7 +1568,7 @@ function FamilyDetailPanel({
               step={4}
               title="Create provider match"
               description="Matched providers appear below with live status and notes. Add another provider when you are ready."
-              locked={matchStepLocked}
+              locked={matchStepLocked || isReadOnlyAssigned}
             >
               <div className="space-y-5">
               {matches.map((match) => (
@@ -1401,7 +1593,13 @@ function FamilyDetailPanel({
                       return (
                     <option key={provider.id} value={provider.id}>
                       {provider.name} - {provider.area}
-                      {rematch ? " (re-open declined match)" : !provider.profileComplete ? " (locked)" : ""}
+                      {rematch
+                        ? " (re-open declined match)"
+                        : !provider.profileComplete
+                          ? " (locked)"
+                          : !provider.matchable
+                            ? " (not verified)"
+                            : ""}
                     </option>
                       );
                     })}
@@ -1419,6 +1617,16 @@ function FamilyDetailPanel({
                   className={adminFieldClass}
                 />
                 <MatchScoreGuidance score={score} />
+              </label>
+              <label className="grid gap-2 text-sm font-medium">
+                Why this match (shown to family)
+                <textarea
+                  value={familyFacingReason}
+                  disabled={!matchingAllowed}
+                  onChange={(event) => setFamilyFacingReason(event.target.value)}
+                  placeholder="e.g. Strong dementia care capacity and open bed in your preferred area"
+                  className={`${adminFieldClass} min-h-20`}
+                />
               </label>
               <label className="grid gap-2 text-sm font-medium">
                 Internal notes (optional)
@@ -1451,7 +1659,7 @@ function FamilyDetailPanel({
                   ? "Saving advances the family timeline to “Visit scheduled” and shows the appointment on their dashboard."
                   : "Visit details are saved for the family dashboard. Status is not moved backward if the case has already progressed."
               }
-              locked={visitStepLocked}
+              locked={visitStepLocked || isReadOnlyAssigned}
             >
               <div className="space-y-3">
               <label className="grid gap-2 text-sm font-medium">
@@ -1524,14 +1732,16 @@ function FamilyDetailPanel({
               step={6}
               title="Advance case status"
               description="Record placement milestones after visit scheduling. Close case only when support is complete."
-              locked={advanceStepLocked}
+              locked={advanceStepLocked || isReadOnlyAssigned}
               lockedNote="Complete steps 2–5 (through visit scheduling) before advancing placement milestones."
             >
               <div className="space-y-4">
                 {milestoneAdvanceActions.length ? (
                   milestoneAdvanceActions.map((action) => {
                     const disabledReason =
-                      action.status === "VISIT_SCHEDULED" && !visitSchedulingAllowed
+                      isReadOnlyAssigned
+                        ? "Only the assigned Care Guide can advance this case."
+                        : action.status === "VISIT_SCHEDULED" && !visitSchedulingAllowed
                         ? "Wait until the family requests a visit/callback or a provider accepts before scheduling."
                         : (action.status === "PLACEMENT_IN_PROGRESS" || action.status === "PLACED") && !placementActionAllowed
                           ? "Coordinate with an accepted provider before recording placement."
@@ -1558,8 +1768,47 @@ function FamilyDetailPanel({
               </div>
             </PanelSection>
 
-            {canCloseCase ? (
-              <PanelSection title="Close family case" description="End the whole family journey. Use Inquiries → Close provider match to archive one provider thread only.">
+            {!isReadOnlyAssigned ? (
+              <PanelSection
+                title="Case outcome"
+                description="Record why the case is ending or paused. Required when closing is recommended; can also be set earlier."
+              >
+                <div className="space-y-3">
+                  <label className="grid gap-2 text-sm font-medium">
+                    Outcome
+                    <select
+                      value={caseOutcome}
+                      onChange={(event) => setCaseOutcome(event.target.value)}
+                      className={adminFieldClass}
+                    >
+                      <option value="">Select outcome</option>
+                      {CASE_OUTCOME_OPTIONS.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <AdminPanelActions>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={savingCaseOutcome || caseOutcome === (family.caseOutcome || "")}
+                      onClick={() => void saveCaseOutcome()}
+                    >
+                      {savingCaseOutcome ? "Saving..." : "Save outcome"}
+                    </Button>
+                  </AdminPanelActions>
+                </div>
+              </PanelSection>
+            ) : null}
+
+            {canCloseCase && !isReadOnlyAssigned ? (
+              <PanelSection
+                title="Close family case"
+                description="End the whole family journey. Set a case outcome above before closing when possible. Use Inquiries → Close provider match to archive one provider thread only."
+              >
                 <AdminPanelActions>
                   <Button
                     size="sm"
@@ -1581,6 +1830,9 @@ function FamilyDetailPanel({
               items={[
                 { label: "Reference", value: formatReference(family.id) },
                 { label: "Intake ID", value: family.id },
+                { label: "Case outcome", value: family.caseOutcome },
+                { label: "Consent accepted", value: family.consentAcceptedAt },
+                { label: "Consent version", value: family.consentVersion },
                 { label: "Care pathway", value: family.carePathway },
                 { label: "Visit scheduled", value: family.visitScheduledAtLabel },
                 { label: "Visit type", value: family.visitType },
@@ -1600,7 +1852,11 @@ function FamilyDetailPanel({
         tone="danger"
         pending={isCaseActionPending && pendingAction === "CLOSED"}
         title="Close this family case?"
-        description="This closes the entire family journey — their dashboard shows the case as archived and provider matching stops. This is different from closing a single provider match in Inquiries."
+        description={
+          caseOutcome
+            ? `This closes the entire family journey with outcome “${caseOutcome}”. The family dashboard shows the case as archived and provider matching stops.`
+            : "This closes the entire family journey — their dashboard shows the case as archived and provider matching stops. Consider selecting a case outcome before confirming."
+        }
         confirmLabel="Close family case"
         onCancel={() => setConfirmCloseCase(false)}
         onConfirm={() => void handleCaseAction("CLOSED")}
@@ -1700,11 +1956,18 @@ function ProvidersTable({
                   >
                     {provider.profileComplete ? "Active" : "Provider locked"}
                   </span>
+                  <Badge variant={providerVerificationBadgeVariant(provider.verificationStatus)}>
+                    {provider.verificationLabel || providerVerificationLabel(provider.verificationStatus)}
+                  </Badge>
                 </div>
                 <span className="mt-1 block font-mono text-[11px] font-normal text-neutral-400">Ref {formatReference(provider.id)}</span>
                 {!provider.profileComplete ? (
                   <span className="mt-1 block text-xs font-normal text-neutral-500">
                     Provider locked until profile is complete
+                  </span>
+                ) : !provider.matchable ? (
+                  <span className="mt-1 block text-xs font-normal text-neutral-500">
+                    Not matchable until verification reaches Verified or later
                   </span>
                 ) : null}
               </td>
@@ -1740,9 +2003,26 @@ function ProviderDetailPanel({
 }) {
   const { message: panelMessage, setMessage: setPanelMessage, clearMessage: clearPanelMessage } = usePanelMessage();
   const [adminNotes, setAdminNotes] = useState("");
+  const [verificationStatus, setVerificationStatus] = useState<string>("REGISTRATION_RECEIVED");
+  const [legalOrganisationName, setLegalOrganisationName] = useState("");
+  const [kvkNumber, setKvkNumber] = useState("");
+  const [agbCode, setAgbCode] = useState("");
+  const [wtzaStatus, setWtzaStatus] = useState("");
+  const [roomTypesText, setRoomTypesText] = useState("");
   const [savingNotes, setSavingNotes] = useState(false);
+  const [savingVerification, setSavingVerification] = useState(false);
   const previousProviderIdRef = useRef<string | null>(null);
+
+  const roomTypesFromProvider = (provider?.roomTypes ?? []).join(", ");
   const hasUnsavedAdminNotes = provider ? adminNotes !== (provider.adminNotes ?? "") : false;
+  const hasUnsavedVerification = provider
+    ? verificationStatus !== (provider.verificationStatus || "REGISTRATION_RECEIVED") ||
+      legalOrganisationName !== (provider.legalOrganisationName ?? "") ||
+      kvkNumber !== (provider.kvkNumber ?? "") ||
+      agbCode !== (provider.agbCode ?? "") ||
+      wtzaStatus !== (provider.wtzaStatus ?? "") ||
+      roomTypesText !== roomTypesFromProvider
+    : false;
 
   useEffect(() => {
     if (!provider) clearPanelMessage();
@@ -1752,6 +2032,12 @@ function ProviderDetailPanel({
     if (!provider) {
       previousProviderIdRef.current = null;
       setAdminNotes("");
+      setVerificationStatus("REGISTRATION_RECEIVED");
+      setLegalOrganisationName("");
+      setKvkNumber("");
+      setAgbCode("");
+      setWtzaStatus("");
+      setRoomTypesText("");
       return;
     }
 
@@ -1759,13 +2045,27 @@ function ProviderDetailPanel({
     if (isNewProvider) {
       previousProviderIdRef.current = provider.id;
       setAdminNotes(provider.adminNotes ?? "");
+      setVerificationStatus(provider.verificationStatus || "REGISTRATION_RECEIVED");
+      setLegalOrganisationName(provider.legalOrganisationName ?? "");
+      setKvkNumber(provider.kvkNumber ?? "");
+      setAgbCode(provider.agbCode ?? "");
+      setWtzaStatus(provider.wtzaStatus ?? "");
+      setRoomTypesText((provider.roomTypes ?? []).join(", "));
       return;
     }
 
     if (!hasUnsavedAdminNotes) {
       setAdminNotes(provider.adminNotes ?? "");
     }
-  }, [provider, hasUnsavedAdminNotes]);
+    if (!hasUnsavedVerification) {
+      setVerificationStatus(provider.verificationStatus || "REGISTRATION_RECEIVED");
+      setLegalOrganisationName(provider.legalOrganisationName ?? "");
+      setKvkNumber(provider.kvkNumber ?? "");
+      setAgbCode(provider.agbCode ?? "");
+      setWtzaStatus(provider.wtzaStatus ?? "");
+      setRoomTypesText((provider.roomTypes ?? []).join(", "));
+    }
+  }, [provider, hasUnsavedAdminNotes, hasUnsavedVerification]);
 
   const priceRange = provider ? formatProviderPriceRange(provider.priceMin, provider.priceMax) : null;
   const availability = provider ? displayProviderAvailability(provider) : null;
@@ -1800,6 +2100,40 @@ function ProviderDetailPanel({
     }
   }
 
+  async function saveVerification() {
+    if (!provider) return;
+    setSavingVerification(true);
+    try {
+      const roomTypes = roomTypesText
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean);
+      const response = await fetch(`/api/admin/providers/${provider.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          verificationStatus,
+          legalOrganisationName: legalOrganisationName.trim() || null,
+          kvkNumber: kvkNumber.trim() || null,
+          agbCode: agbCode.trim() || null,
+          wtzaStatus: wtzaStatus.trim() || null,
+          roomTypes
+        })
+      });
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+        setPanelMessage(payload?.error || "Could not save verification details.");
+        return;
+      }
+      const ok = await onSync();
+      setPanelMessage(ok ? "Verification details saved." : "Verification saved, but the dashboard could not refresh.");
+    } catch {
+      setPanelMessage("Could not save verification details.");
+    } finally {
+      setSavingVerification(false);
+    }
+  }
+
   return (
     <SlidePanel
       open={Boolean(provider)}
@@ -1824,9 +2158,22 @@ function ProviderDetailPanel({
                 </p>
               ) : null}
             </div>
+          ) : !isProviderMatchable(provider.verificationStatus) ? (
+            <div className="rounded-xl border border-stone-200 bg-stone-50 px-4 py-3">
+              <p className="text-sm font-semibold text-ink">Not yet matchable</p>
+              <p className="mt-1 text-sm leading-6 text-neutral-700">
+                Set verification to Verified, Onboarding complete, or Listing live before creating family matches.
+              </p>
+            </div>
           ) : null}
           <StatusPill>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+              <div>
+                <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Verification</span>
+                <p className="mt-1 font-semibold text-ink">
+                  {provider.verificationLabel || providerVerificationLabel(provider.verificationStatus)}
+                </p>
+              </div>
               <div>
                 <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Availability</span>
                 <p className="mt-1 font-semibold text-ink">{availability || "Not set"}</p>
@@ -1853,7 +2200,81 @@ function ProviderDetailPanel({
 
           <div className="grid gap-6 xl:grid-cols-3">
             <div className="space-y-5">
-              <PanelSection step={1} title="Contact">
+              <PanelSection
+                step={1}
+                title="Verification and registration"
+                description="Controls matching eligibility. Listing live is required for public recommendation."
+              >
+                <div className="space-y-3">
+                  <label className="grid gap-2 text-sm font-medium">
+                    Verification status
+                    <select
+                      value={verificationStatus}
+                      onChange={(event) => setVerificationStatus(event.target.value)}
+                      className={adminFieldClass}
+                    >
+                      {PROVIDER_VERIFICATION_STATUSES.map((status) => (
+                        <option key={status} value={status}>
+                          {providerVerificationLabel(status)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="grid gap-2 text-sm font-medium">
+                    Legal organisation name
+                    <input
+                      value={legalOrganisationName}
+                      onChange={(event) => setLegalOrganisationName(event.target.value)}
+                      className={adminFieldClass}
+                    />
+                  </label>
+                  <label className="grid gap-2 text-sm font-medium">
+                    KvK number
+                    <input
+                      value={kvkNumber}
+                      onChange={(event) => setKvkNumber(event.target.value)}
+                      className={adminFieldClass}
+                    />
+                  </label>
+                  <label className="grid gap-2 text-sm font-medium">
+                    AGB code
+                    <input
+                      value={agbCode}
+                      onChange={(event) => setAgbCode(event.target.value)}
+                      className={adminFieldClass}
+                    />
+                  </label>
+                  <label className="grid gap-2 text-sm font-medium">
+                    Wtza status
+                    <input
+                      value={wtzaStatus}
+                      onChange={(event) => setWtzaStatus(event.target.value)}
+                      className={adminFieldClass}
+                    />
+                  </label>
+                  <label className="grid gap-2 text-sm font-medium">
+                    Room types (comma-separated)
+                    <input
+                      value={roomTypesText}
+                      onChange={(event) => setRoomTypesText(event.target.value)}
+                      placeholder="Single room, Shared room"
+                      className={adminFieldClass}
+                    />
+                  </label>
+                  <AdminPanelActions>
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={savingVerification || !hasUnsavedVerification}
+                      onClick={() => void saveVerification()}
+                    >
+                      {savingVerification ? "Saving..." : "Save verification"}
+                    </Button>
+                  </AdminPanelActions>
+                </div>
+              </PanelSection>
+
+              <PanelSection step={2} title="Contact">
                 <DetailList
                   columns={1}
                   items={[
@@ -1865,7 +2286,7 @@ function ProviderDetailPanel({
                 />
               </PanelSection>
 
-              <PanelSection step={2} title="Location">
+              <PanelSection step={3} title="Location">
                 <DetailList
                   columns={1}
                   items={[
@@ -1880,7 +2301,7 @@ function ProviderDetailPanel({
             </div>
 
             <div className="space-y-5">
-              <PanelSection step={3} title="Capacity & pricing">
+              <PanelSection step={4} title="Capacity and pricing">
                 <DetailList
                   columns={1}
                   items={[
@@ -1893,7 +2314,7 @@ function ProviderDetailPanel({
                 />
               </PanelSection>
 
-              <PanelSection step={4} title="Care profile">
+              <PanelSection step={5} title="Care profile">
                 <DetailList columns={1} items={[{ label: "Dementia capacity", value: provider.dementiaCapacity }]} />
                 <div className="mt-4">
                   <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Care levels</p>
@@ -1901,11 +2322,17 @@ function ProviderDetailPanel({
                     <TagList items={provider.careLevels ?? []} />
                   </div>
                 </div>
+                <div className="mt-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Room types</p>
+                  <div className="mt-2">
+                    <TagList items={provider.roomTypes ?? []} />
+                  </div>
+                </div>
               </PanelSection>
             </div>
 
             <div className="space-y-5">
-              <PanelSection step={5} title="Services & languages">
+              <PanelSection step={6} title="Services and languages">
                 <div className="space-y-4">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Services offered</p>
@@ -1928,12 +2355,22 @@ function ProviderDetailPanel({
                 </div>
               </PanelSection>
 
-              <PanelSection step={6} title="Description">
+              <PanelSection step={7} title="Quality and accessibility">
+                <DetailList
+                  columns={1}
+                  items={[
+                    { label: "Quality information", value: provider.qualityInfo },
+                    { label: "Accessibility notes", value: provider.accessibilityNotes }
+                  ]}
+                />
+              </PanelSection>
+
+              <PanelSection step={8} title="Description">
                 <p className="text-sm leading-7 text-neutral-700">{provider.description?.trim() || "—"}</p>
               </PanelSection>
 
               <PanelSection
-                step={7}
+                step={9}
                 title="Internal notes"
                 description="Visible to admins only. Use for vetting notes, referral context, or follow-up reminders."
               >
@@ -1950,7 +2387,7 @@ function ProviderDetailPanel({
                 </AdminPanelActions>
               </PanelSection>
 
-              <PanelSection step={8} title="Record">
+              <PanelSection step={10} title="Record">
                 <DetailList
                   columns={1}
                   items={[
@@ -1961,7 +2398,7 @@ function ProviderDetailPanel({
                 />
               </PanelSection>
 
-              <PanelSection step={9} title="Quick actions">
+              <PanelSection step={11} title="Quick actions">
                 <div className="flex flex-wrap gap-2">
                   <Button asChild size="sm" variant="outline">
                     <a href={`/providers/${provider.id}`} target="_blank" rel="noreferrer">
@@ -2072,14 +2509,20 @@ function formatProviderPriceRange(priceMin: number | null, priceMax: number | nu
   return null;
 }
 
+function inquiryAssignedToOtherGuide(inquiry: InquiryEntry, currentUserId: string) {
+  return Boolean(inquiry.careGuideId) && inquiry.careGuideId !== currentUserId;
+}
+
 function InquiriesTable({
   inquiries,
+  currentUserId,
   setMessage,
   onSync,
   itemSeenVersion,
   onMarkItemSeen
 }: {
   inquiries: InquiryEntry[];
+  currentUserId: string;
   setMessage: (message: string) => void;
   onSync: () => Promise<boolean>;
   itemSeenVersion: number;
@@ -2257,7 +2700,8 @@ function InquiriesTable({
         <tbody className="divide-y divide-stone-200">
           {sortedInquiries.map((inquiry) => {
             const isPending = pendingId === inquiry.id;
-            const needsFollowUp = isAdminActionNeeded(inquiry.statusRaw);
+            const readOnly = inquiryAssignedToOtherGuide(inquiry, currentUserId);
+            const needsFollowUp = !readOnly && isAdminActionNeeded(inquiry.statusRaw);
             const placementReady = inquiry.statusRaw === "ACCEPTED" || inquiry.statusRaw === "CONTACTED";
             const isUnread =
               selected?.id !== inquiry.id &&
@@ -2278,6 +2722,11 @@ function InquiriesTable({
                   <span className="mt-1 block font-mono text-[11px] text-neutral-400">
                     Ref {formatReference(inquiry.intakeId)}
                   </span>
+                  {readOnly ? (
+                    <span className="mt-1 block text-[11px] text-neutral-500">
+                      Read-only · {inquiry.careGuideName || "another Care Guide"}
+                    </span>
+                  ) : null}
                 </td>
                 <td className="px-4 py-3 text-sm text-neutral-700">{inquiry.provider}</td>
                 <td className="px-4 py-3 text-sm font-semibold text-sage-700">{inquiry.match}</td>
@@ -2289,7 +2738,10 @@ function InquiriesTable({
                 </td>
                 <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}>
                   <div className="flex flex-wrap items-center gap-1">
-                    {inquiry.statusRaw === "VISIT_REQUESTED" || inquiry.statusRaw === "CALLBACK_REQUESTED" || inquiry.statusRaw === "ACCEPTED" ? (
+                    {!readOnly &&
+                    (inquiry.statusRaw === "VISIT_REQUESTED" ||
+                      inquiry.statusRaw === "CALLBACK_REQUESTED" ||
+                      inquiry.statusRaw === "ACCEPTED") ? (
                       <IconActionButton
                         label={adminInquiryActionMeta("CONTACTED").label}
                         icon={CalendarCheck}
@@ -2298,7 +2750,7 @@ function InquiriesTable({
                         onClick={() => setConfirmContacted(inquiry)}
                       />
                     ) : null}
-                    {placementReady ? (
+                    {!readOnly && placementReady ? (
                       <IconActionButton
                         label={adminInquiryActionMeta("PLACED").label}
                         icon={Building2}
@@ -2307,7 +2759,7 @@ function InquiriesTable({
                         onClick={() => void updateMatchStatus(inquiry.id, "PLACED")}
                       />
                     ) : null}
-                    {canAdminCloseProviderMatch(inquiry.statusRaw) ? (
+                    {!readOnly && canAdminCloseProviderMatch(inquiry.statusRaw) ? (
                       <IconActionButton
                         label={adminInquiryActionMeta("CLOSED").label}
                         icon={X}
@@ -2328,6 +2780,7 @@ function InquiriesTable({
 
       <InquiryDetailPanel
         inquiry={selected}
+        currentUserId={currentUserId}
         pendingId={pendingId}
         pendingActionKey={pendingActionKey}
         onClose={() => setSelected(null)}
@@ -2366,12 +2819,14 @@ function InquiriesTable({
 
 function InquiryDetailPanel({
   inquiry,
+  currentUserId,
   pendingId,
   pendingActionKey,
   onClose,
   onUpdateStatus
 }: {
   inquiry: InquiryEntry | null;
+  currentUserId: string;
   pendingId: string | null;
   pendingActionKey: string | null;
   onClose: () => void;
@@ -2379,6 +2834,7 @@ function InquiryDetailPanel({
 }) {
   const { message: panelMessage, setMessage: setPanelMessage, clearMessage: clearPanelMessage } = usePanelMessage();
   const isPending = inquiry ? pendingId === inquiry.id : false;
+  const isReadOnly = inquiry ? inquiryAssignedToOtherGuide(inquiry, currentUserId) : false;
   const [confirmClose, setConfirmClose] = useState(false);
   const [confirmContacted, setConfirmContacted] = useState(false);
   const hint = inquiry ? adminInquiryHint(inquiry.statusRaw) : "";
@@ -2421,6 +2877,16 @@ function InquiryDetailPanel({
       {inquiry ? (
         <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_260px]">
           <div>
+            {isReadOnly ? (
+              <div className="mb-4 rounded-lg border border-stone-200 bg-brand-cream/80 px-4 py-3 text-sm text-ink ring-1 ring-stone-100">
+                <p className="font-semibold">
+                  Read-only — assigned to {inquiry.careGuideName || "another Care Guide"}
+                </p>
+                <p className="mt-1 leading-6 text-neutral-600">
+                  You can view this inquiry. Only the assigned Care Guide can update match status.
+                </p>
+              </div>
+            ) : null}
             <StatusPill className={matchStatusBadgeClass(inquiry.statusRaw)}>{hint}</StatusPill>
 
             <PanelSection step={1} title="Inquiry flow" className="mt-5">
@@ -2452,39 +2918,41 @@ function InquiryDetailPanel({
             </div>
           </div>
 
-          <div className="space-y-4 lg:sticky lg:top-0 lg:self-start">
-            {(inquiry.statusRaw === "VISIT_REQUESTED" ||
-              inquiry.statusRaw === "CALLBACK_REQUESTED" ||
-              inquiry.statusRaw === "ACCEPTED") && (
-              <PanelSection step={4} title={adminInquiryActionMeta("CONTACTED").label} description={adminInquiryActionMeta("CONTACTED").description}>
-                <Button size="sm" disabled={isPending} onClick={() => setConfirmContacted(true)}>
-                  {pendingActionKey === `${inquiry.id}:CONTACTED` ? "Saving..." : "Confirm"}
-                </Button>
-              </PanelSection>
-            )}
-            {inquiry.statusRaw !== "PLACED" && inquiry.statusRaw !== "CLOSED" ? (
-              <PanelSection step={5} title={adminInquiryActionMeta("PLACED").label} description={adminInquiryActionMeta("PLACED").description}>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={isPending || !(inquiry.statusRaw === "ACCEPTED" || inquiry.statusRaw === "CONTACTED")}
-                  onClick={() => void updateFromPanel(inquiry.id, "PLACED")}
-                >
-                  {pendingActionKey === `${inquiry.id}:PLACED` ? "Saving..." : "Confirm"}
-                </Button>
-                {inquiry.statusRaw === "ACCEPTED" || inquiry.statusRaw === "CONTACTED" ? null : (
-                  <p className="mt-2 text-xs leading-5 text-neutral-500">Arrange the visit or call before recording the chosen provider.</p>
-                )}
-              </PanelSection>
-            ) : null}
-            {canAdminCloseProviderMatch(inquiry.statusRaw) ? (
-              <PanelSection step={6} title={adminInquiryActionMeta("CLOSED").label} description={adminInquiryActionMeta("CLOSED").description}>
-                <Button size="sm" variant="outline" disabled={isPending} onClick={() => setConfirmClose(true)}>
-                  {pendingActionKey === `${inquiry.id}:CLOSED` ? "Saving..." : "Confirm"}
-                </Button>
-              </PanelSection>
-            ) : null}
-          </div>
+          {!isReadOnly ? (
+            <div className="space-y-4 lg:sticky lg:top-0 lg:self-start">
+              {(inquiry.statusRaw === "VISIT_REQUESTED" ||
+                inquiry.statusRaw === "CALLBACK_REQUESTED" ||
+                inquiry.statusRaw === "ACCEPTED") && (
+                <PanelSection step={4} title={adminInquiryActionMeta("CONTACTED").label} description={adminInquiryActionMeta("CONTACTED").description}>
+                  <Button size="sm" disabled={isPending} onClick={() => setConfirmContacted(true)}>
+                    {pendingActionKey === `${inquiry.id}:CONTACTED` ? "Saving..." : "Confirm"}
+                  </Button>
+                </PanelSection>
+              )}
+              {inquiry.statusRaw !== "PLACED" && inquiry.statusRaw !== "CLOSED" ? (
+                <PanelSection step={5} title={adminInquiryActionMeta("PLACED").label} description={adminInquiryActionMeta("PLACED").description}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={isPending || !(inquiry.statusRaw === "ACCEPTED" || inquiry.statusRaw === "CONTACTED")}
+                    onClick={() => void updateFromPanel(inquiry.id, "PLACED")}
+                  >
+                    {pendingActionKey === `${inquiry.id}:PLACED` ? "Saving..." : "Confirm"}
+                  </Button>
+                  {inquiry.statusRaw === "ACCEPTED" || inquiry.statusRaw === "CONTACTED" ? null : (
+                    <p className="mt-2 text-xs leading-5 text-neutral-500">Arrange the visit or call before recording the chosen provider.</p>
+                  )}
+                </PanelSection>
+              ) : null}
+              {canAdminCloseProviderMatch(inquiry.statusRaw) ? (
+                <PanelSection step={6} title={adminInquiryActionMeta("CLOSED").label} description={adminInquiryActionMeta("CLOSED").description}>
+                  <Button size="sm" variant="outline" disabled={isPending} onClick={() => setConfirmClose(true)}>
+                    {pendingActionKey === `${inquiry.id}:CLOSED` ? "Saving..." : "Confirm"}
+                  </Button>
+                </PanelSection>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       ) : null}
       <ConfirmDialog
@@ -2658,6 +3126,59 @@ function WaitlistTable({
     }
   }
 
+  async function toggleRegistrationVerified(
+    id: string,
+    verified: boolean,
+    notify: (message: string) => void = setMessage
+  ) {
+    setPendingId(id);
+    try {
+      const response = await fetch(`/api/waitlist/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ registrationVerified: verified })
+      });
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(payload?.error || "Could not update registration verification.");
+      }
+
+      const result = (await response.json()) as Partial<WaitlistEntry> & { updatedAtIso?: string };
+      const updatedAtIso = result.updatedAtIso ?? new Date().toISOString();
+
+      const patch = (item: WaitlistEntry): WaitlistEntry =>
+        item.id === id
+          ? {
+              ...item,
+              registrationVerified: Boolean(result.registrationVerified ?? verified),
+              canSendProviderInvite: Boolean(result.canSendProviderInvite),
+              providerInviteAttemptsUsed:
+                result.providerInviteAttemptsUsed ?? item.providerInviteAttemptsUsed,
+              providerInviteAttemptsRemaining:
+                result.providerInviteAttemptsRemaining ?? item.providerInviteAttemptsRemaining,
+              hasActivePendingProviderInvite:
+                result.hasActivePendingProviderInvite ?? item.hasActivePendingProviderInvite,
+              providerInviteLockReason: result.providerInviteLockReason ?? null,
+              updatedAtIso,
+              updatedAt: new Date(updatedAtIso).toLocaleDateString("en-GB")
+            }
+          : item;
+
+      setEntries((current) => current.map(patch));
+      setSelected((current) => (current ? patch(current) : current));
+      notify(
+        verified
+          ? "Registration marked as verified. You can invite this provider."
+          : "Registration verification cleared."
+      );
+    } catch (error) {
+      notify(error instanceof Error ? error.message : "Could not update registration verification.");
+    } finally {
+      setPendingId(null);
+    }
+  }
+
   async function inviteProvider(entry: WaitlistEntry) {
     setPendingInviteId(entry.id);
     try {
@@ -2729,7 +3250,7 @@ function WaitlistTable({
       }
 
       setMessage(
-        `Provider invite sent to ${entry.email}. It expires in 2 days (${attemptsRemaining} re-send${attemptsRemaining === 1 ? "" : "s"} left).`
+        `Provider invite sent to ${entry.email}. It expires in 7 days (${attemptsRemaining} re-send${attemptsRemaining === 1 ? "" : "s"} left).`
       );
     } catch (error) {
       setMessage(error instanceof Error ? error.message : `Could not send provider invite to ${entry.email}. Please try again.`);
@@ -2816,6 +3337,7 @@ function WaitlistTable({
         entry={selected}
         onClose={() => setSelected(null)}
         onMarkContacted={markContacted}
+        onToggleRegistrationVerified={toggleRegistrationVerified}
         onInviteProvider={(entry, notify) => startProviderInvite(entry, notify)}
         pendingId={pendingId}
         pendingInviteId={pendingInviteId}
@@ -2825,7 +3347,7 @@ function WaitlistTable({
         title="Send provider invite?"
         description={
           confirmInvite
-            ? `Send a provider onboarding invite to ${confirmInvite.email}? The link expires in 2 days. Attempt ${confirmInvite.providerInviteAttemptsUsed + 1} of 3.`
+            ? `Send a provider onboarding invite to ${confirmInvite.email}? The link expires in 7 days. Attempt ${confirmInvite.providerInviteAttemptsUsed + 1} of 3.`
             : ""
         }
         confirmLabel="Send invite"
@@ -2847,6 +3369,7 @@ function WaitlistDetailPanel({
   entry,
   onClose,
   onMarkContacted,
+  onToggleRegistrationVerified,
   onInviteProvider,
   pendingId,
   pendingInviteId
@@ -2854,6 +3377,11 @@ function WaitlistDetailPanel({
   entry: WaitlistEntry | null;
   onClose: () => void;
   onMarkContacted: (id: string, name: string, notify?: (message: string) => void) => Promise<void>;
+  onToggleRegistrationVerified: (
+    id: string,
+    verified: boolean,
+    notify?: (message: string) => void
+  ) => Promise<void>;
   onInviteProvider: (entry: WaitlistEntry, notify?: (message: string) => void) => void;
   pendingId: string | null;
   pendingInviteId: string | null;
@@ -2952,6 +3480,11 @@ function WaitlistDetailPanel({
                     items={[
                       { label: "Facility name", value: entry.facilityName },
                       { label: "Facility type", value: entry.facilityType },
+                      { label: "KVK / registration", value: entry.registrationNumber },
+                      {
+                        label: "Registration verified",
+                        value: entry.registrationVerified ? "Yes — ready to invite" : "Not verified yet"
+                      },
                       { label: "Total beds", value: entry.bedsTotal != null ? String(entry.bedsTotal) : null }
                     ]}
                   />
@@ -2960,6 +3493,25 @@ function WaitlistDetailPanel({
                     <div className="mt-2">
                       <TagList items={entry.services ?? []} />
                     </div>
+                  </div>
+                  <div className="mt-4">
+                    <label className="flex items-start gap-3 rounded-xl bg-stone-50 px-4 py-3 text-sm text-neutral-700">
+                      <input
+                        type="checkbox"
+                        className="mt-1"
+                        checked={Boolean(entry.registrationVerified)}
+                        disabled={isPending}
+                        onChange={(event) =>
+                          void onToggleRegistrationVerified(entry.id, event.target.checked, setPanelMessage)
+                        }
+                      />
+                      <span>
+                        <span className="font-medium text-ink">Registration verified externally</span>
+                        <span className="mt-1 block text-xs text-neutral-500">
+                          Confirm the KVK or government ID outside this app before inviting the facility.
+                        </span>
+                      </span>
+                    </label>
                   </div>
                 </PanelSection>
               )}

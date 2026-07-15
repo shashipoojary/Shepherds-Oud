@@ -210,7 +210,40 @@ function FamilyDashboardContent() {
                 <Button asChild size="sm" variant="outline">
                   <a href={`mailto:${brand.email}`}>Contact Shepherds Oud</a>
                 </Button>
+                <Button asChild size="sm" variant="outline">
+                  <a
+                    href={`mailto:${brand.email}?subject=${encodeURIComponent("Placement concern")}&body=${encodeURIComponent(
+                      `Hello Shepherds Oud,\n\nI would like to report a placement concern about care request ${intake.id}.\n\n`
+                    )}`}
+                  >
+                    Report a placement concern
+                  </a>
+                </Button>
               </div>
+              <p className="mt-4 text-sm leading-6 text-neutral-600">
+                Need a new provider match?{" "}
+                {intake.careGuide ? (
+                  <>
+                    Contact your Care Guide (
+                    <a className="font-medium text-brand-amber hover:text-brand-amber-mid" href={`mailto:${intake.careGuide.email}`}>
+                      {intake.careGuide.name}
+                    </a>
+                    ) — they can add another option to your shortlist.
+                  </>
+                ) : (
+                  <>
+                    Contact{" "}
+                    <a className="font-medium text-brand-amber hover:text-brand-amber-mid" href={`mailto:${brand.email}`}>
+                      {brand.email}
+                    </a>{" "}
+                    or visit the{" "}
+                    <Link href="/contact" className="font-medium text-brand-amber hover:text-brand-amber-mid">
+                      contact page
+                    </Link>
+                    . A Care Guide will help once assigned.
+                  </>
+                )}
+              </p>
             </section>
           </>
         ) : (

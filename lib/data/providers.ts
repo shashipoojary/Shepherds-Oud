@@ -1,10 +1,15 @@
 import { prisma } from "@/lib/core/db";
 import { displayVisitAvailability } from "@/lib/config/content";
 import {
-  displayProviderAvailability,
+  availabilityConfirmedLabel,
+  familyAvailabilityLabel,
   formatAvailabilityLastUpdated,
   providerWaitEstimate
 } from "@/lib/domain/provider-availability";
+import {
+  isProviderPubliclyListable,
+  providerVerificationFamilyBadge
+} from "@/lib/domain/provider-verification";
 import type { ProviderMatch } from "@/lib/core/types";
 
 type ProviderRecord = {
@@ -26,16 +31,27 @@ type ProviderRecord = {
   bedsOpen: number | null;
   waitlistText: string | null;
   availabilityStatus: string | null;
+  verificationStatus?: string | null;
+  roomTypes?: string[];
+  qualityInfo?: string | null;
+  accessibilityNotes?: string | null;
   updatedAt?: Date;
 };
 
 export function mapProviderRecord(provider: ProviderRecord, score = 0): ProviderMatch {
   const openBeds = provider.bedsOpen ?? 0;
-  const availability = displayProviderAvailability(provider);
+  const availability = familyAvailabilityLabel(provider);
   const waitEstimate = providerWaitEstimate(provider);
   const priceLabel =
     provider.priceMin && provider.priceMax ? `EUR ${provider.priceMin}-${provider.priceMax}/mo` : "Price on request";
   const availabilityUpdatedAt = provider.updatedAt ? formatAvailabilityLastUpdated(provider.updatedAt) ?? undefined : undefined;
+  const confirmedAvailability = availabilityConfirmedLabel(provider.updatedAt);
+  const verificationBadge = providerVerificationFamilyBadge(provider.verificationStatus);
+  const roomTypes = provider.roomTypes ?? [];
+  const contact = ["Contact details will be shared after your Care Guide reviews your request."];
+  if (provider.responseTimeHours) {
+    contact.push(`Expect a response within about ${provider.responseTimeHours} hours once contact is arranged.`);
+  }
 
   return {
     id: provider.id,
@@ -62,21 +78,38 @@ export function mapProviderRecord(provider: ProviderRecord, score = 0): Provider
       Area: provider.area,
       ...(provider.bedsTotal && provider.bedsOpen != null ? { "Beds available": `${openBeds} of ${provider.bedsTotal}` } : {}),
       ...(waitEstimate ? { "Estimated wait": waitEstimate } : {}),
+      ...(confirmedAvailability ? { Availability: confirmedAvailability } : { Availability: availability }),
       ...(provider.dementiaCapacity ? { "Dementia capacity": provider.dementiaCapacity } : {}),
-      ...(provider.fundingTypes.length ? { "Funding types": provider.fundingTypes.join(", ") } : {}),
+      ...(provider.fundingTypes.length ? { "Funding accepted": provider.fundingTypes.join(", ") } : {}),
+      ...(provider.languages.length ? { Languages: provider.languages.join(", ") } : {}),
+      ...(roomTypes.length ? { "Room types": roomTypes.join(", ") } : {}),
+      ...(provider.qualityInfo?.trim() ? { "Quality information": provider.qualityInfo.trim() } : {}),
+      ...(provider.accessibilityNotes?.trim() ? { Accessibility: provider.accessibilityNotes.trim() } : {}),
       "Visit availability": displayVisitAvailability(provider.visitAvailability),
       ...(provider.priceMin && provider.priceMax
         ? { "Price range": `EUR ${provider.priceMin} - EUR ${provider.priceMax} per month` }
-        : { "Price range": "On request" })
+        : { "Price range": "On request" }),
+      ...(provider.responseTimeHours ? { "Contact expectation": `Typically responds within ${provider.responseTimeHours} hours` } : {})
     },
-    contact: ["Contact details will be shared after your Care Guide reviews your request."],
-    availabilityUpdatedAt
+    contact,
+    availabilityUpdatedAt,
+    verificationStatus: provider.verificationStatus ?? undefined,
+    verificationBadge,
+    services: provider.services,
+    careLevels: provider.careLevels,
+    languages: provider.languages,
+    fundingTypes: provider.fundingTypes,
+    roomTypes,
+    qualityInfo: provider.qualityInfo ?? null,
+    accessibilityNotes: provider.accessibilityNotes ?? null,
+    waitEstimate,
+    responseTimeHours: provider.responseTimeHours
   };
 }
 
 export async function getProviderMatches(): Promise<ProviderMatch[]> {
   const providers = await prisma.provider.findMany({ orderBy: { createdAt: "desc" } });
-  return providers.map((provider) => mapProviderRecord(provider));
+  return providers.filter((provider) => isProviderPubliclyListable(provider.verificationStatus)).map((provider) => mapProviderRecord(provider));
 }
 
 export async function getProviderById(providerId: string) {

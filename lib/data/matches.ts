@@ -3,6 +3,33 @@ import { mapProviderRecord } from "@/lib/data/providers";
 import { familyVisibleMatchStatuses } from "@/lib/domain/match-status";
 import type { ProviderMatch } from "@/lib/core/types";
 
+function toFamilyMatch(
+  match: {
+    id: string;
+    score: number;
+    status: string;
+    familyFacingReason: string | null;
+    provider: Parameters<typeof mapProviderRecord>[0];
+  },
+  actionFallback: string
+): ProviderMatch {
+  return {
+    ...mapProviderRecord(match.provider),
+    match: match.score,
+    matchId: match.id,
+    matchStatus: match.status,
+    familyFacingReason: match.familyFacingReason,
+    action:
+      match.status === "VISIT_REQUESTED"
+        ? "Visit requested"
+        : match.status === "CALLBACK_REQUESTED"
+          ? "Callback requested"
+          : match.status === "ACCEPTED"
+            ? "Accepted"
+            : actionFallback
+  };
+}
+
 export async function getMatchesForIntake(intakeId: string): Promise<ProviderMatch[]> {
   const matches = await prisma.match.findMany({
     where: {
@@ -13,20 +40,7 @@ export async function getMatchesForIntake(intakeId: string): Promise<ProviderMat
     include: { provider: true }
   });
 
-  return matches.map((match) => ({
-    ...mapProviderRecord(match.provider),
-    match: match.score,
-    matchId: match.id,
-    matchStatus: match.status,
-    action:
-      match.status === "VISIT_REQUESTED"
-        ? "Visit requested"
-        : match.status === "CALLBACK_REQUESTED"
-          ? "Callback requested"
-          : match.status === "ACCEPTED"
-            ? "Accepted"
-            : "Request visit"
-  }));
+  return matches.map((match) => toFamilyMatch(match, "Request visit"));
 }
 
 export async function countVisibleMatchesForIntake(intakeId: string) {
@@ -45,24 +59,16 @@ export async function getFamilyMatchHistoryForIntake(intakeId: string): Promise<
     include: { provider: true }
   });
 
-  return matches.map((match) => ({
-    ...mapProviderRecord(match.provider),
-    match: match.score,
-    matchId: match.id,
-    matchStatus: match.status,
-    action:
-      match.status === "VISIT_REQUESTED"
-        ? "Visit requested"
-        : match.status === "CALLBACK_REQUESTED"
-          ? "Callback requested"
-          : match.status === "ACCEPTED"
-            ? "Accepted"
-            : match.status === "PLACED"
-              ? "Placement in progress"
-              : match.status === "DECLINED"
-                ? "Declined"
-                : match.status === "CLOSED"
-                  ? "Closed"
-                  : "Suggested match"
-  }));
+  return matches.map((match) =>
+    toFamilyMatch(
+      match,
+      match.status === "PLACED"
+        ? "Placement in progress"
+        : match.status === "DECLINED"
+          ? "Declined"
+          : match.status === "CLOSED"
+            ? "Closed"
+            : "Suggested match"
+    )
+  );
 }

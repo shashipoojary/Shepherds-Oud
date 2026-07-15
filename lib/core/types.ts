@@ -11,6 +11,7 @@ export type ProviderMatch = {
   match: number;
   matchId?: string;
   matchStatus?: string;
+  familyFacingReason?: string | null;
   availability: string;
   action: string;
   tags: ProviderTag[];
@@ -19,4 +20,15 @@ export type ProviderMatch = {
   details: Record<string, string>;
   contact: string[];
   availabilityUpdatedAt?: string;
+  verificationStatus?: string;
+  verificationBadge?: string | null;
+  services?: string[];
+  careLevels?: string[];
+  languages?: string[];
+  fundingTypes?: string[];
+  roomTypes?: string[];
+  qualityInfo?: string | null;
+  accessibilityNotes?: string | null;
+  waitEstimate?: string | null;
+  responseTimeHours?: number | null;
 };

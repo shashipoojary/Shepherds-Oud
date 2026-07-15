@@ -175,7 +175,7 @@ Sign in at `/provider/login` (magic link email).
 | Rule | Expected behaviour |
 |------|-------------------|
 | Invite link required | Provider cannot sign in with magic link/Google until they open the invite link first |
-| Invite expiry | Invite expires after **2 days** |
+| Invite expiry | Invite expires after **7 days** |
 | Re-send limit | Admin can send up to **3** invite attempts per facility |
 | After expiry | Admin must send a new invite from Waitlist tab |
 

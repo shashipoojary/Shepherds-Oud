@@ -28,8 +28,11 @@ export async function GET() {
         careTypes: true,
         urgency: true,
         budget: true,
+        fundingTypes: true,
         languages: true,
         additionalNeeds: true,
+        functionalNeeds: true,
+        placementPreferences: true,
         livingSituation: true,
         moveInTimeline: true,
         mobility: true,
@@ -38,9 +41,17 @@ export async function GET() {
         hospitalDischargeDate: true,
         decisionMakerName: true,
         decisionMakerRelationship: true,
+        seniorAgreedToSearch: true,
+        decisionParticipants: true,
         emotionalSupportNeeds: true,
         supportTypes: true,
         notes: true,
+        personSafeTonight: true,
+        urgentMedicalHelp: true,
+        canRemainHomeTonight: true,
+        caregiverBurnoutRisk: true,
+        immediateRiskFlags: true,
+        emergencyStopped: true,
         status: true,
         carePathway: true,
         carePlanSummary: true,
@@ -53,6 +64,15 @@ export async function GET() {
           select: {
             name: true,
             email: true
+          }
+        },
+        decisionMakers: {
+          orderBy: { createdAt: "asc" },
+          select: {
+            id: true,
+            name: true,
+            relationship: true,
+            responsibilities: true
           }
         }
       }

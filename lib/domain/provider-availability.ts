@@ -39,3 +39,24 @@ export function formatAvailabilityLastUpdated(value: Date | string) {
   if (Number.isNaN(date.getTime())) return null;
   return date.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 }
+
+/** Prefer dated confirmation wording over a vague "available" label for family surfaces. */
+export function familyAvailabilityLabel(
+  provider: ProviderAvailabilityInput & { updatedAt?: Date | string | null }
+) {
+  const base = displayProviderAvailability(provider);
+  const confirmed = provider.updatedAt ? formatAvailabilityLastUpdated(provider.updatedAt) : null;
+  if (!confirmed) return base;
+
+  const normalized = base.toLowerCase();
+  if (normalized.includes("available now") || normalized === "available" || normalized.includes("limited availability")) {
+    return `Availability confirmed ${confirmed}`;
+  }
+
+  return base;
+}
+
+export function availabilityConfirmedLabel(updatedAt?: Date | string | null) {
+  const confirmed = updatedAt ? formatAvailabilityLastUpdated(updatedAt) : null;
+  return confirmed ? `Availability confirmed ${confirmed}` : null;
+}

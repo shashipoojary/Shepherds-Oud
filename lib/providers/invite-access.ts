@@ -75,7 +75,7 @@ export type ProviderInviteEligibility = {
 type InviteSummary = { status: string; expiresAt: Date };
 
 export function summarizeProviderInviteEligibility(
-  entry: { type: string; status: string },
+  entry: { type: string; status: string; registrationVerified?: boolean | null },
   invites: InviteSummary[]
 ): ProviderInviteEligibility {
   const attemptsUsed = invites.filter((invite) => invite.status !== "REVOKED").length;
@@ -140,6 +140,17 @@ export function summarizeProviderInviteEligibility(
     };
   }
 
+  if (!entry.registrationVerified) {
+    return {
+      canSend: false,
+      attemptsUsed,
+      attemptsRemaining,
+      hasAcceptedInvite,
+      hasActivePendingInvite,
+      lockReason: "Verify the KVK / registration number before sending a provider invite."
+    };
+  }
+
   if (entry.status !== "NEW" && entry.status !== "CONTACTED") {
     return {
       canSend: false,
@@ -166,7 +177,7 @@ export async function getProviderInviteEligibility(waitlistEntryId: string): Pro
   const [entry, invites] = await Promise.all([
     prisma.waitlistEntry.findUnique({
       where: { id: waitlistEntryId },
-      select: { id: true, type: true, status: true }
+      select: { id: true, type: true, status: true, registrationVerified: true }
     }),
     prisma.providerInvite.findMany({
       where: { waitlistEntryId },

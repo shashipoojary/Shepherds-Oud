@@ -1,9 +1,11 @@
 import { getServerSession, getUserRole } from "@/lib/auth/server";
 import { getIsPrelaunch } from "@/lib/config/prelaunch";
+import { INTAKE_CONSENT_VERSION } from "@/lib/domain/intake-consent";
 import { normalizeIntakeStatus } from "@/lib/domain/intake-workflow";
 import { sendIntakeConfirmationEmails } from "@/lib/email/intake-confirmation-email";
 import { intakeSchema } from "@/lib/validation/intake";
 import { handleApiError, jsonError, jsonOk, rateLimitResponse, readJsonBody, runInBackground } from "@/lib/core/api-helpers";
+import type { Prisma } from "@prisma/client";
 
 export const runtime = "nodejs";
 
@@ -13,11 +15,55 @@ function parseDischargeDate(value?: string) {
   return Number.isNaN(parsed.getTime()) ? undefined : parsed;
 }
 
-function intakeCreateData(data: ReturnType<typeof intakeSchema.parse>) {
-  const { hospitalDischargeDate, ...rest } = data;
+function intakeCreateData(data: ReturnType<typeof intakeSchema.parse>, ownerId: string | null): Prisma.IntakeCreateInput {
+  const { hospitalDischargeDate, decisionMakers, consentAccepted, ...rest } = data;
   return {
-    ...rest,
-    hospitalDischargeDate: parseDischargeDate(hospitalDischargeDate)
+    contactName: rest.contactName,
+    email: rest.email,
+    phone: rest.phone,
+    relationship: rest.relationship,
+    preferredArea: rest.preferredArea,
+    preferredDistance: rest.preferredDistance,
+    ageRange: rest.ageRange || "Not specified",
+    careTypes: rest.careTypes,
+    urgency: rest.urgency || "Emergency screening",
+    budget: rest.budget,
+    fundingTypes: rest.fundingTypes,
+    languages: rest.languages,
+    additionalNeeds: rest.additionalNeeds,
+    functionalNeeds: rest.functionalNeeds,
+    placementPreferences: rest.placementPreferences,
+    livingSituation: rest.livingSituation,
+    moveInTimeline: rest.moveInTimeline,
+    mobility: rest.mobility,
+    medicalSupportNeeds: rest.medicalSupportNeeds,
+    dementiaNeeds: rest.dementiaNeeds,
+    hospitalDischargeDate: parseDischargeDate(hospitalDischargeDate),
+    decisionMakerName: rest.decisionMakerName,
+    decisionMakerRelationship: rest.decisionMakerRelationship,
+    seniorAgreedToSearch: rest.seniorAgreedToSearch,
+    decisionParticipants: rest.decisionParticipants,
+    emotionalSupportNeeds: rest.emotionalSupportNeeds,
+    supportTypes: rest.supportTypes,
+    notes: rest.notes,
+    personSafeTonight: rest.personSafeTonight,
+    urgentMedicalHelp: rest.urgentMedicalHelp,
+    canRemainHomeTonight: rest.canRemainHomeTonight,
+    caregiverBurnoutRisk: rest.caregiverBurnoutRisk,
+    immediateRiskFlags: rest.immediateRiskFlags,
+    emergencyStopped: rest.emergencyStopped,
+    ...(consentAccepted
+      ? { consentAcceptedAt: new Date(), consentVersion: INTAKE_CONSENT_VERSION }
+      : {}),
+    status: "NEW",
+    ...(ownerId ? { user: { connect: { id: ownerId } } } : {}),
+    decisionMakers: {
+      create: decisionMakers.map((maker) => ({
+        name: maker.name.trim(),
+        relationship: maker.relationship.trim(),
+        responsibilities: maker.responsibilities
+      }))
+    }
   };
 }
 
@@ -38,48 +84,57 @@ export async function POST(request: Request) {
     }
 
     if (!process.env.DATABASE_URL) {
-      runInBackground(
-        () =>
-          sendIntakeConfirmationEmails({
-            contactName: parsed.data.contactName,
-            email: parsed.data.email,
-            intakeId: "demo-intake",
-            careGuide: null
-          }),
-        "intake_confirmation_email"
+      if (!parsed.data.emergencyStopped) {
+        runInBackground(
+          () =>
+            sendIntakeConfirmationEmails({
+              contactName: parsed.data.contactName,
+              email: parsed.data.email,
+              intakeId: "demo-intake",
+              careGuide: null
+            }),
+          "intake_confirmation_email"
+        );
+      }
+      return jsonOk(
+        {
+          id: "demo-intake",
+          status: "NEW",
+          emergencyStopped: parsed.data.emergencyStopped,
+          mode: "demo"
+        },
+        201
       );
-      return jsonOk({ id: "demo-intake", status: "NEW", mode: "demo" }, 201);
     }
 
     const { prisma } = await import("@/lib/core/db");
     const session = await getServerSession();
     const ownerId = session && getUserRole(session) !== "ADMIN" ? session.user.id : null;
     const intake = await prisma.intake.create({
-      data: {
-        ...intakeCreateData(parsed.data),
-        ...(ownerId ? { userId: ownerId } : {}),
-        status: "NEW"
-      },
+      data: intakeCreateData(parsed.data, ownerId),
       include: {
         careGuide: { select: { name: true, email: true } }
       }
     });
 
-    runInBackground(
-      () =>
-        sendIntakeConfirmationEmails({
-          contactName: parsed.data.contactName,
-          email: parsed.data.email,
-          intakeId: intake.id,
-          careGuide: intake.careGuide
-        }),
-      "intake_confirmation_email"
-    );
+    if (!parsed.data.emergencyStopped) {
+      runInBackground(
+        () =>
+          sendIntakeConfirmationEmails({
+            contactName: parsed.data.contactName,
+            email: parsed.data.email,
+            intakeId: intake.id,
+            careGuide: intake.careGuide
+          }),
+        "intake_confirmation_email"
+      );
+    }
 
     return jsonOk(
       {
         id: intake.id,
         status: normalizeIntakeStatus(intake.status),
+        emergencyStopped: intake.emergencyStopped,
         careGuide: intake.careGuide
           ? { name: intake.careGuide.name || "Your Care Guide", email: intake.careGuide.email }
           : null,

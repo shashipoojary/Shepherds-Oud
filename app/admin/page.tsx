@@ -10,13 +10,13 @@ export const metadata = {
 };
 
 export default async function AdminPage() {
-  await requireRole(["ADMIN"], "/admin");
+  const session = await requireRole(["ADMIN"], "/admin");
   const data = await getAdminDashboardData();
 
   return (
     <>
       <SiteHeader />
-      <AdminDashboardClient data={data} />
+      <AdminDashboardClient data={data} currentUserId={session.user.id} />
     </>
   );
 }

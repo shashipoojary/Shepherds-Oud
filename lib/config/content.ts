@@ -1,10 +1,16 @@
 import {
-  decisionMakerRelationshipOptions,
+  CARE_TYPE_OPTIONS,
+  DECISION_MAKER_RESPONSIBILITY_OPTIONS,
+  FUNCTIONAL_NEEDS_OPTIONS,
+  FUNDING_TYPE_OPTIONS,
+  IMMEDIATE_RISK_OPTIONS,
   INTAKE_AGE_RANGE_OPTIONS,
   INTAKE_RELATIONSHIP_FIELD_LABEL,
   MEDICAL_SUPPORT_OPTIONS,
+  PLACEMENT_PREFERENCE_OPTIONS,
   PREFERRED_DISTANCE_OPTIONS,
-  relationshipToPersonNeedingCareOptions
+  relationshipToPersonNeedingCareOptions,
+  YES_NO_UNSURE_OPTIONS
 } from "@/lib/domain/intake-field-utils";
 import { getIsPrelaunch } from "@/lib/config/prelaunch";
 
@@ -13,26 +19,48 @@ export { getIsPrelaunch } from "@/lib/config/prelaunch";
 export const ubuntuTagline = "No one should navigate care alone when mobility is limited.";
 
 export {
+  CARE_TYPE_OPTIONS,
+  DECISION_MAKER_RESPONSIBILITY_OPTIONS,
   decisionMakerRelationshipOptions,
+  FUNCTIONAL_NEEDS_OPTIONS,
+  FUNDING_TYPE_OPTIONS,
+  IMMEDIATE_RISK_OPTIONS,
   INTAKE_AGE_RANGE_OPTIONS,
   INTAKE_OTHER_OPTION,
   INTAKE_RELATIONSHIP_FIELD_LABEL,
   MEDICAL_SUPPORT_OPTIONS,
+  PLACEMENT_PREFERENCE_OPTIONS,
   PREFERRED_DISTANCE_OPTIONS,
   relationshipToPersonNeedingCareOptions,
-  relationshipToSeniorOptions
+  relationshipToSeniorOptions,
+  YES_NO_UNSURE_OPTIONS
 } from "@/lib/domain/intake-field-utils";
 
 export function homeHeroCopy(prelaunch = getIsPrelaunch()) {
   return {
-    badge: prelaunch ? "Preparing for nationwide launch" : "Netherlands care navigation platform",
+    badge: prelaunch ? "Early registrations open" : "Care navigation in the Netherlands",
     intro: prelaunch
-      ? "Shepherds Oud is a guided care navigation service — not a directory. Register your interest and a Care Guide will support you when we open in your area."
-      : "We help people across the Netherlands find the right care when mobility is limited — with a dedicated Care Guide, clearer guidance, and shared decision support at every step."
+      ? "We are currently accepting early family registrations and provider applications. Personal matching will begin in selected municipalities before national expansion."
+      : "We help people find the right care when mobility is limited — with a dedicated Care Guide, clearer guidance, and shared decision support at every step. Personal matching begins in selected municipalities before national expansion."
   };
 }
 
 export const homeContent = {
+  freeSupportLine:
+    "Free support for families. Shepherds Oud is compensated by participating care providers. Your options are never limited to providers based only on payment.",
+  responseTimeNote: "We aim to respond within one business day.",
+  ourRole: {
+    title: "Our role",
+    description:
+      "Shepherds Oud helps with care navigation, provider matching, and coordination. We do not give medical advice, guarantee admission to any facility, replace your doctor, municipality, care office (zorgkantoor), or emergency services, or make final eligibility decisions.",
+    points: [
+      "Navigation, matching, and coordination support",
+      "Not medical advice",
+      "Not a guarantee of admission",
+      "Does not replace your doctor, municipality, care office, or emergency services",
+      "Does not make final eligibility decisions"
+    ]
+  },
   familySteps: [
     {
       title: "Tell us about your situation",
@@ -62,9 +90,9 @@ export const homeContent = {
     }
   ],
   prelaunch: {
-    title: "Join before launch",
+    title: "Register your interest",
     description:
-      "Shepherds Oud is preparing for nationwide rollout. Register now — we will contact you when guided care navigation opens in your area.",
+      "We are currently accepting early family registrations and provider applications. Personal matching will begin in selected municipalities before national expansion.",
     familyCta: "Register your interest",
     facilityCta: "Register your care facility"
   },
@@ -94,6 +122,41 @@ export const intakeSteps = [
         otherPlaceholder: "Please describe your relationship"
       },
       { type: "text", label: "Preferred city or province", placeholder: "e.g. Utrecht, Noord-Brabant" }
+    ]
+  },
+  {
+    title: "Safety check",
+    fields: [
+      {
+        type: "notice",
+        text: "If someone is in immediate danger, call 112 first. Shepherds Oud cannot replace emergency services."
+      },
+      {
+        type: "select",
+        label: "Is the person currently safe tonight?",
+        options: [...YES_NO_UNSURE_OPTIONS]
+      },
+      {
+        type: "select",
+        label: "Is urgent medical help required?",
+        options: [...YES_NO_UNSURE_OPTIONS]
+      },
+      {
+        type: "select",
+        label: "Can the person remain at home tonight?",
+        options: [...YES_NO_UNSURE_OPTIONS]
+      },
+      {
+        type: "select",
+        label: "Is the caregiver at risk of burnout?",
+        options: [...YES_NO_UNSURE_OPTIONS]
+      },
+      {
+        type: "chips",
+        label: "Immediate risk flags",
+        options: [...IMMEDIATE_RISK_OPTIONS],
+        optional: true
+      }
     ]
   },
   {
@@ -128,22 +191,31 @@ export const intakeSteps = [
       {
         type: "chips",
         label: "Type of care needed",
-        options: ["Assisted living", "Home care", "Dementia / memory care", "Nursing care", "Rehabilitation", "Palliative care"]
+        options: [...CARE_TYPE_OPTIONS]
       },
       { type: "chips", label: "How urgent is the care need?", options: ["Within 1 week", "Within 1 month", "1-3 months", "No set timeline"] },
+      {
+        type: "chips",
+        label: "Functional needs",
+        options: [...FUNCTIONAL_NEEDS_OPTIONS],
+        optional: true
+      },
       { type: "date", label: "Hospital discharge date (if applicable)", placeholder: "Optional" }
     ]
   },
   {
     title: "Family decision support",
     fields: [
-      { type: "text", label: "Primary family decision-maker", placeholder: "Who leads care decisions?" },
+      { type: "decisionMakers" },
       {
         type: "select",
-        label: "Decision-maker relationship",
-        options: decisionMakerRelationshipOptions,
-        allowsOther: true,
-        otherPlaceholder: "Please describe the decision-maker role"
+        label: "Has the person needing care agreed to this search?",
+        options: [...YES_NO_UNSURE_OPTIONS]
+      },
+      {
+        type: "textarea",
+        label: "Who else participates in care decisions?",
+        placeholder: "e.g. siblings, partner, legal representative, GP"
       },
       {
         type: "chips",
@@ -174,9 +246,22 @@ export const intakeSteps = [
     title: "Care requirements",
     fields: [
       {
+        type: "chips",
+        label: "Funding types",
+        options: [...FUNDING_TYPE_OPTIONS],
+        optional: true
+      },
+      {
         type: "select",
         label: "Monthly budget range",
-        options: ["Under EUR 1,500", "EUR 1,500 - EUR 2,500", "EUR 2,500 - EUR 4,000", "EUR 4,000 - EUR 6,000", "Above EUR 6,000"]
+        options: ["Under EUR 1,500", "EUR 1,500 - EUR 2,500", "EUR 2,500 - EUR 4,000", "EUR 4,000 - EUR 6,000", "Above EUR 6,000"],
+        optional: true
+      },
+      {
+        type: "chips",
+        label: "Placement preferences",
+        options: [...PLACEMENT_PREFERENCE_OPTIONS],
+        optional: true
       },
       { type: "chips", label: "Preferred languages", options: ["Dutch", "English", "Arabic", "Turkish", "French", "Other"], allowsOther: true, otherPlaceholder: "Which language?" },
       {
@@ -232,14 +317,15 @@ export const facilityTypes = [
   "Other care facility"
 ];
 
-export const careTypeOptions = [
-  "Assisted living",
-  "Home care",
-  "Dementia / memory care",
-  "Nursing care",
-  "Rehabilitation",
-  "Palliative care"
-];
+export const careTypeOptions = [...CARE_TYPE_OPTIONS];
+
+/** @deprecated Prefer FUNDING_TYPE_OPTIONS for family intake; this remains for provider profiles */
+export const intakeFundingTypeOptions = [...FUNDING_TYPE_OPTIONS];
+export const decisionMakerResponsibilityOptions = [...DECISION_MAKER_RESPONSIBILITY_OPTIONS];
+export const functionalNeedsOptions = [...FUNCTIONAL_NEEDS_OPTIONS];
+export const placementPreferenceOptions = [...PLACEMENT_PREFERENCE_OPTIONS];
+export const yesNoUnsureOptions = [...YES_NO_UNSURE_OPTIONS];
+export const immediateRiskOptions = [...IMMEDIATE_RISK_OPTIONS];
 
 export const careLevelOptions = ["Low care", "Medium care", "High care", "Specialist dementia", "Nursing / 24h"];
 export const fundingTypeOptions = ["WLZ funded", "Private pay", "Combination WLZ + private", "Insurance / other"];

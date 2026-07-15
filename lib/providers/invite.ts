@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from "crypto";
 import { prisma } from "@/lib/core/db";
 
-export const PROVIDER_INVITE_EXPIRY_DAYS = 2;
+export const PROVIDER_INVITE_EXPIRY_DAYS = 7;
 export const MAX_PROVIDER_INVITE_ATTEMPTS = 3;
 
 const DEFAULT_INVITE_DAYS = PROVIDER_INVITE_EXPIRY_DAYS;
@@ -149,6 +149,7 @@ function providerDataFromWaitlistEntry(waitlistEntry: {
   phone: string | null;
   bedsTotal: number | null;
   services: string[];
+  registrationNumber?: string | null;
 }, email: string, fallbackName?: string | null) {
   return {
     name: waitlistEntry.facilityName?.trim() || waitlistEntry.contactName || email,
@@ -164,7 +165,9 @@ function providerDataFromWaitlistEntry(waitlistEntry: {
     services: waitlistEntry.services,
     careLevels: [],
     languages: [],
-    fundingTypes: []
+    fundingTypes: [],
+    kvkNumber: waitlistEntry.registrationNumber?.trim() || null,
+    verificationStatus: "VERIFICATION_PENDING"
   };
 }
 

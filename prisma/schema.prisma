@@ -85,8 +85,11 @@ model Intake {
   careTypes                 String[]
   urgency                   String
   budget                    String?
+  fundingTypes              String[]     @default([])
   languages                 String[]
   additionalNeeds           String[]
+  functionalNeeds           String[]     @default([])
+  placementPreferences      String[]     @default([])
   livingSituation           String?
   moveInTimeline            String?
   mobility                  String?
@@ -94,11 +97,22 @@ model Intake {
   hospitalDischargeDate     DateTime?
   decisionMakerName         String?
   decisionMakerRelationship String?
+  seniorAgreedToSearch      String?
+  decisionParticipants      String?
   emotionalSupportNeeds     String[]
   supportTypes              String[]
   notes                     String?
   preferredDistance         String?
   medicalSupportNeeds       String?
+  personSafeTonight         String?
+  urgentMedicalHelp         String?
+  canRemainHomeTonight      String?
+  caregiverBurnoutRisk      String?
+  immediateRiskFlags        String[]     @default([])
+  emergencyStopped          Boolean      @default(false)
+  consentAcceptedAt         DateTime?
+  consentVersion            String?
+  caseOutcome               String?
   status                    IntakeStatus @default(NEW)
   careGuideId               String?
   carePathway               String?
@@ -114,55 +128,79 @@ model Intake {
   createdAt                 DateTime     @default(now())
   updatedAt                 DateTime     @updatedAt
 
-  userId    String?
-  user      User?   @relation(fields: [userId], references: [id])
-  careGuide User?   @relation("CareGuideIntakes", fields: [careGuideId], references: [id])
-  matches   Match[]
+  userId         String?
+  user           User?           @relation(fields: [userId], references: [id])
+  careGuide      User?           @relation("CareGuideIntakes", fields: [careGuideId], references: [id])
+  matches        Match[]
+  decisionMakers DecisionMaker[]
 
   @@index([careGuideId])
 }
 
+model DecisionMaker {
+  id               String   @id @default(cuid())
+  name             String
+  relationship     String
+  responsibilities String[] @default([])
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  intakeId String
+  intake   Intake @relation(fields: [intakeId], references: [id], onDelete: Cascade)
+
+  @@index([intakeId])
+}
+
 model Provider {
-  id                 String   @id @default(cuid())
-  name               String
-  type               String
-  area               String
-  description        String   @default("")
-  languages          String[]
-  services           String[]
-  careLevels         String[] @default([])
-  dementiaCapacity   String?
-  fundingTypes       String[] @default([])
-  responseTimeHours  Int?
-  visitAvailability  String?
-  priceMin           Int?
-  priceMax           Int?
-  bedsTotal          Int?
-  bedsOpen           Int?
-  waitlistText       String?
-  contactName        String?
-  email              String?
-  phone              String?
-  city               String?
-  province           String?
-  website            String?
-  availabilityStatus String?
-  adminNotes         String?
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  id                     String   @id @default(cuid())
+  name                   String
+  type                   String
+  area                   String
+  description            String   @default("")
+  languages              String[]
+  services               String[]
+  careLevels             String[] @default([])
+  dementiaCapacity       String?
+  fundingTypes           String[] @default([])
+  responseTimeHours      Int?
+  visitAvailability      String?
+  priceMin               Int?
+  priceMax               Int?
+  bedsTotal              Int?
+  bedsOpen               Int?
+  waitlistText           String?
+  contactName            String?
+  email                  String?
+  phone                  String?
+  city                   String?
+  province               String?
+  website                String?
+  availabilityStatus     String?
+  adminNotes             String?
+  verificationStatus     String   @default("REGISTRATION_RECEIVED")
+  legalOrganisationName  String?
+  kvkNumber              String?
+  agbCode                String?
+  wtzaStatus             String?
+  roomTypes              String[] @default([])
+  accessibilityNotes     String?
+  qualityInfo            String?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
 
   user    User?
   matches Match[]
 }
 
 model Match {
-  id            String      @id @default(cuid())
-  score         Int
-  status        MatchStatus @default(SUGGESTED)
-  notes         String?
-  declineReason String?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  id                 String      @id @default(cuid())
+  score              Int
+  status             MatchStatus @default(SUGGESTED)
+  notes              String?
+  familyFacingReason String?
+  declineReason      String?
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
 
   intakeId   String
   providerId String
@@ -228,24 +266,26 @@ enum WaitlistStatus {
 }
 
 model WaitlistEntry {
-  id           String         @id @default(cuid())
-  type         WaitlistType
-  contactName  String
-  email        String
-  phone        String?
-  city         String?
-  province     String?
-  message      String?
-  relationship String?
-  ageRange     String?
-  careTypes    String[]       @default([])
-  facilityName String?
-  facilityType String?
-  bedsTotal    Int?
-  services     String[]       @default([])
-  status       WaitlistStatus @default(NEW)
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  id                    String         @id @default(cuid())
+  type                  WaitlistType
+  contactName           String
+  email                 String
+  phone                 String?
+  city                  String?
+  province              String?
+  message               String?
+  relationship          String?
+  ageRange              String?
+  careTypes             String[]       @default([])
+  facilityName          String?
+  facilityType          String?
+  bedsTotal             Int?
+  services              String[]       @default([])
+  registrationNumber    String?
+  registrationVerified  Boolean        @default(false)
+  status                WaitlistStatus @default(NEW)
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
 
   providerInvites ProviderInvite[]
 }

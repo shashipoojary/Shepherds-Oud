@@ -26,6 +26,14 @@ export type SafeProvider = {
   visitAvailability: string | null;
   priceMin: number | null;
   priceMax: number | null;
+  verificationStatus: string;
+  legalOrganisationName: string | null;
+  kvkNumber: string | null;
+  agbCode: string | null;
+  wtzaStatus: string | null;
+  roomTypes: string[];
+  accessibilityNotes: string | null;
+  qualityInfo: string | null;
 };
 
 type ProviderInquiryIntake = {
@@ -110,7 +118,15 @@ export function toSafeProvider(provider: Provider | null): SafeProvider | null {
     responseTimeHours: provider.responseTimeHours,
     visitAvailability: provider.visitAvailability,
     priceMin: provider.priceMin,
-    priceMax: provider.priceMax
+    priceMax: provider.priceMax,
+    verificationStatus: provider.verificationStatus,
+    legalOrganisationName: provider.legalOrganisationName,
+    kvkNumber: provider.kvkNumber,
+    agbCode: provider.agbCode,
+    wtzaStatus: provider.wtzaStatus,
+    roomTypes: provider.roomTypes,
+    accessibilityNotes: provider.accessibilityNotes,
+    qualityInfo: provider.qualityInfo
   };
 }
 

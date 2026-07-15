@@ -1,5 +1,9 @@
 import { prisma } from "@/lib/core/db";
-import { canAccessIntake } from "@/lib/auth/case-access";
+import {
+  canAccessIntake,
+  canMutateIntake,
+  CASE_ASSIGNED_TO_OTHER_GUIDE_MESSAGE
+} from "@/lib/auth/case-access";
 import { getServerSession, getUserRole } from "@/lib/auth/server";
 import { getUserLinkedProvider } from "@/lib/providers/server";
 import { isProviderProfileComplete } from "@/lib/providers/completeness";
@@ -98,6 +102,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         }
         actor = "provider";
       } else if (role === "ADMIN") {
+        if (!canMutateIntake(session, existing.intake)) {
+          return jsonError(CASE_ASSIGNED_TO_OTHER_GUIDE_MESSAGE, 403);
+        }
         actor = "admin";
       } else {
         return jsonError("Forbidden", 403);

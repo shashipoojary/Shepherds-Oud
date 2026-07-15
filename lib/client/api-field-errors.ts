@@ -25,7 +25,11 @@ const INTAKE_FIELD_LABELS: Record<string, string> = {
   urgency: "How urgent is the care need?",
   decisionMakerName: "Primary family decision-maker",
   decisionMakerRelationship: "Decision-maker relationship",
+  decisionMakers: "Decision-makers",
+  seniorAgreedToSearch: "Has the person needing care agreed to this search?",
+  decisionParticipants: "Who else participates in care decisions?",
   budget: "Monthly budget range",
+  fundingTypes: "Funding types",
   livingSituation: "Current living situation",
   moveInTimeline: "Desired move-in timeline",
   mobility: "Mobility level",
@@ -34,9 +38,17 @@ const INTAKE_FIELD_LABELS: Record<string, string> = {
   hospitalDischargeDate: "Hospital discharge date",
   languages: "Preferred languages",
   additionalNeeds: "Additional needs",
+  functionalNeeds: "Functional needs",
+  placementPreferences: "Placement preferences",
   emotionalSupportNeeds: "Emotional support needs",
   supportTypes: "Type of support you need",
-  notes: "Anything else we should know?"
+  notes: "Anything else we should know?",
+  personSafeTonight: "Is the person currently safe tonight?",
+  urgentMedicalHelp: "Is urgent medical help required?",
+  canRemainHomeTonight: "Can the person remain at home tonight?",
+  caregiverBurnoutRisk: "Is the caregiver at risk of burnout?",
+  immediateRiskFlags: "Immediate risk flags",
+  consentAccepted: "Consent"
 };
 
 const WAITLIST_FIELD_LABELS: Record<string, string> = {
@@ -47,6 +59,7 @@ const WAITLIST_FIELD_LABELS: Record<string, string> = {
   province: "Province",
   facilityName: "Facility name",
   facilityType: "Facility type",
+  registrationNumber: "KVK or government registration number",
   relationship: "Relationship to the person needing care",
   ageRange: "Age range",
   careTypes: "Type of care needed",

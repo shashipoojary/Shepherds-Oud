@@ -96,6 +96,25 @@ function visibleTags(provider: ProviderMatch, limit = 5) {
   return { shown: tags.slice(0, limit), extra: tags.length - limit };
 }
 
+function familyDetailLines(provider: ProviderMatch) {
+  const care = [...(provider.careLevels ?? []), ...(provider.services ?? [])].filter(Boolean);
+  const uniqueCare = [...new Set(care)];
+  return {
+    whyMatched: provider.familyFacingReason?.trim() || null,
+    care: uniqueCare.length ? uniqueCare.join(", ") : null,
+    languages: provider.languages?.length ? provider.languages.join(", ") : null,
+    funding: provider.fundingTypes?.length ? provider.fundingTypes.join(", ") : null,
+    roomTypes: provider.roomTypes?.length ? provider.roomTypes.join(", ") : null,
+    qualityInfo: provider.qualityInfo?.trim() || null,
+    accessibilityNotes: provider.accessibilityNotes?.trim() || null,
+    wait: provider.waitEstimate || null,
+    contactExpectation: provider.responseTimeHours
+      ? `Typically responds within ${provider.responseTimeHours} hours`
+      : null,
+    verificationBadge: provider.verificationBadge || null
+  };
+}
+
 function showStatusNote(status?: string) {
   return isFamilyActionableMatchStatus(status) || status === "DECLINED";
 }
@@ -328,6 +347,7 @@ function ResultsPageContent() {
 
   const featuredMeta = parseMeta(recommended.meta);
   const featuredTags = visibleTags(recommended);
+  const featuredDetails = familyDetailLines(recommended);
   const featuredMatchId = recommended.matchId;
   const featuredVisitSent = recommended.matchStatus === "VISIT_REQUESTED";
   const featuredCallbackSent = recommended.matchStatus === "CALLBACK_REQUESTED";
@@ -364,32 +384,87 @@ function ResultsPageContent() {
           <div>
             <MatchScore score={recommended.match} size="lg" className="max-w-md" />
 
-            <p className="mt-5 max-w-2xl text-[15px] leading-7 text-ink/80">{recommended.description}</p>
+            {featuredDetails.whyMatched ? (
+              <p className="mt-5 max-w-2xl rounded-lg bg-brand-cream px-4 py-3 text-[15px] leading-7 text-ink/80">
+                <span className="font-medium text-ink">Why this match: </span>
+                {featuredDetails.whyMatched}
+              </p>
+            ) : null}
+
+            <p className={`max-w-2xl text-[15px] leading-7 text-ink/80 ${featuredDetails.whyMatched ? "mt-4" : "mt-5"}`}>
+              {recommended.description}
+            </p>
 
             <dl className="mt-6 flex flex-wrap gap-x-6 gap-y-3 text-sm text-ink/70">
               <Fact icon={MapPin} label={recommended.area} />
               {featuredMeta.beds ? <Fact icon={BedDouble} label={featuredMeta.beds} /> : null}
               <Fact icon={CircleDollarSign} label={featuredMeta.price} />
-              {featuredMeta.wait ? <Fact icon={Clock} label={`Est. wait: ${featuredMeta.wait}`} /> : null}
+              {featuredDetails.wait || featuredMeta.wait ? (
+                <Fact icon={Clock} label={`Est. wait: ${featuredDetails.wait || featuredMeta.wait}`} />
+              ) : null}
             </dl>
 
             <div className="mt-5 flex flex-wrap items-center gap-2">
               <Badge variant={availabilityBadgeVariant(recommended.availability)}>{recommended.availability}</Badge>
+              {featuredDetails.verificationBadge ? <Badge variant="placed">{featuredDetails.verificationBadge}</Badge> : null}
               {recommended.matchStatus && showStatusNote(recommended.matchStatus) ? (
                 <Badge variant="matched">{matchStatusLabel(recommended.matchStatus)}</Badge>
               ) : null}
             </div>
-            {recommended.availabilityUpdatedAt ? (
-              <p className="mt-2 text-xs text-ink/50">Availability last updated {recommended.availabilityUpdatedAt}</p>
+            {recommended.availabilityUpdatedAt && !recommended.availability.toLowerCase().includes("availability confirmed") ? (
+              <p className="mt-2 text-xs text-ink/50">Availability confirmed {recommended.availabilityUpdatedAt}</p>
             ) : null}
 
-            {recommended.tags.length ? (
-              <p className="mt-4 text-sm text-ink/60">
-                <span className="font-medium text-ink/75">Services & languages: </span>
-                {featuredTags.shown.join(", ")}
-                {featuredTags.extra ? ` +${featuredTags.extra} more` : ""}
-              </p>
-            ) : null}
+            <div className="mt-4 space-y-2 text-sm text-ink/60">
+              {featuredDetails.care ? (
+                <p>
+                  <span className="font-medium text-ink/75">Care and services: </span>
+                  {featuredDetails.care}
+                </p>
+              ) : recommended.tags.length ? (
+                <p>
+                  <span className="font-medium text-ink/75">Services and languages: </span>
+                  {featuredTags.shown.join(", ")}
+                  {featuredTags.extra ? ` +${featuredTags.extra} more` : ""}
+                </p>
+              ) : null}
+              {featuredDetails.languages ? (
+                <p>
+                  <span className="font-medium text-ink/75">Languages: </span>
+                  {featuredDetails.languages}
+                </p>
+              ) : null}
+              {featuredDetails.funding ? (
+                <p>
+                  <span className="font-medium text-ink/75">Funding accepted: </span>
+                  {featuredDetails.funding}
+                </p>
+              ) : null}
+              {featuredDetails.roomTypes ? (
+                <p>
+                  <span className="font-medium text-ink/75">Room types: </span>
+                  {featuredDetails.roomTypes}
+                </p>
+              ) : null}
+              {featuredDetails.qualityInfo ? (
+                <p>
+                  <span className="font-medium text-ink/75">Quality: </span>
+                  {featuredDetails.qualityInfo}
+                </p>
+              ) : null}
+              {featuredDetails.accessibilityNotes ? (
+                <p>
+                  <span className="font-medium text-ink/75">Accessibility: </span>
+                  {featuredDetails.accessibilityNotes}
+                </p>
+              ) : null}
+              {featuredDetails.contactExpectation ? (
+                <p>
+                  <span className="font-medium text-ink/75">Contact expectation: </span>
+                  {featuredDetails.contactExpectation}
+                </p>
+              ) : null}
+            </div>
 
             {recommended.matchStatus && showStatusNote(recommended.matchStatus) ? (
               <p className="mt-4 rounded-lg bg-brand-cream px-4 py-3 text-sm text-ink/70">
@@ -523,6 +598,10 @@ function ResultsPageContent() {
         </div>
       </section>
       ) : null}
+
+      <p className="mt-8 text-sm leading-6 text-ink/55">
+        Availability is subject to provider confirmation and eligibility assessment.
+      </p>
     </main>
   );
 }
@@ -552,6 +631,7 @@ function CompareRow({
   readOnly?: boolean;
 }) {
   const meta = parseMeta(provider.meta);
+  const details = familyDetailLines(provider);
   const visitSent = provider.matchStatus === "VISIT_REQUESTED";
   const callbackSent = provider.matchStatus === "CALLBACK_REQUESTED";
   const accepted = matchIsInProgress(provider.matchStatus);
@@ -566,17 +646,34 @@ function CompareRow({
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="font-semibold text-ink">{provider.name}</h3>
             <Badge variant={availabilityBadgeVariant(provider.availability)}>{provider.availability}</Badge>
+            {details.verificationBadge ? <Badge variant="placed">{details.verificationBadge}</Badge> : null}
           </div>
-          {provider.availabilityUpdatedAt ? (
-            <p className="mt-1 text-xs text-ink/45">Availability last updated {provider.availabilityUpdatedAt}</p>
+          {provider.availabilityUpdatedAt && !provider.availability.toLowerCase().includes("availability confirmed") ? (
+            <p className="mt-1 text-xs text-ink/45">Availability confirmed {provider.availabilityUpdatedAt}</p>
           ) : null}
           <p className="mt-1 text-sm text-ink/55">
             {provider.type} · {provider.area}
           </p>
           <MatchScore score={provider.match} size="sm" variant="compact" className="mt-2 block" />
+          {details.whyMatched ? (
+            <p className="mt-2 text-sm text-ink/70">
+              <span className="font-medium text-ink/80">Why matched: </span>
+              {details.whyMatched}
+            </p>
+          ) : null}
           <p className="mt-2 text-sm text-ink/60">
-            {[meta.beds, meta.price, meta.wait ? `Est. wait: ${meta.wait}` : null].filter(Boolean).join(" · ")}
+            {[
+              meta.beds,
+              meta.price,
+              details.wait || meta.wait ? `Est. wait: ${details.wait || meta.wait}` : null,
+              details.languages ? `Languages: ${details.languages}` : null,
+              details.funding ? `Funding: ${details.funding}` : null,
+              details.roomTypes ? `Rooms: ${details.roomTypes}` : null
+            ]
+              .filter(Boolean)
+              .join(" · ")}
           </p>
+          {details.contactExpectation ? <p className="mt-1 text-xs text-ink/50">{details.contactExpectation}</p> : null}
           {provider.matchStatus && showStatusNote(provider.matchStatus) ? (
             <p className={`mt-2 text-sm leading-6 ${declined ? "text-neutral-600" : "text-brand-green-dark"}`}>
               {familyMatchNextStep(provider.matchStatus, provider.name)}

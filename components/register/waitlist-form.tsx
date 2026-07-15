@@ -38,7 +38,8 @@ export function WaitlistForm({ type }: WaitlistFormProps) {
     facilityName: "",
     facilityType: facilityTypes[0],
     bedsTotal: "",
-    services: [] as string[]
+    services: [] as string[],
+    registrationNumber: ""
   });
 
   function toggleChip(field: "careTypes" | "services", value: string) {
@@ -91,7 +92,8 @@ export function WaitlistForm({ type }: WaitlistFormProps) {
             facilityName: form.facilityName,
             facilityType: form.facilityType,
             bedsTotal: form.bedsTotal ? Number(form.bedsTotal) : undefined,
-            services: form.services
+            services: form.services,
+            registrationNumber: form.registrationNumber.trim()
           };
 
     try {
@@ -220,6 +222,24 @@ export function WaitlistForm({ type }: WaitlistFormProps) {
         <>
           <Field label="Facility type" error={fieldErrors.facilityType}>
             <CustomSelect value={form.facilityType} onChange={(value) => setForm({ ...form, facilityType: value })} options={facilityTypes} />
+          </Field>
+          <Field
+            label="KVK or government registration number"
+            error={fieldErrors.registrationNumber}
+          >
+            <input
+              className={fieldClass(Boolean(fieldErrors.registrationNumber))}
+              value={form.registrationNumber}
+              onChange={(e) => {
+                clearFieldError("registrationNumber");
+                setForm({ ...form, registrationNumber: e.target.value });
+              }}
+              placeholder="e.g. 12345678"
+              required
+            />
+            <span className="text-xs text-neutral-500">
+              Used to verify your organisation before onboarding. We check this manually.
+            </span>
           </Field>
           <Field label="Total beds or places (optional)" error={fieldErrors.bedsTotal}>
             <input

@@ -53,6 +53,82 @@ export const decisionMakerRelationshipOptions = [
   INTAKE_OTHER_OPTION
 ] as const;
 
+export const FUNDING_TYPE_OPTIONS = [
+  "Wlz indication",
+  "Wmo support",
+  "Zvw-funded care",
+  "PGB",
+  "Private funding",
+  "Application in progress",
+  "No funding information yet"
+] as const;
+
+export const FUNCTIONAL_NEEDS_OPTIONS = [
+  "Mobility",
+  "Transfers",
+  "Toileting",
+  "Bathing",
+  "Eating",
+  "Medication support",
+  "Cognitive condition",
+  "Behavioural concerns",
+  "Wandering risk",
+  "Fall risk",
+  "Medical equipment",
+  "Two-person assistance"
+] as const;
+
+export const PLACEMENT_PREFERENCE_OPTIONS = [
+  "Private room",
+  "Shared room",
+  "Cultural or religious preferences",
+  "Couples placement",
+  "Pet accommodation",
+  "Smoking policy",
+  "Outdoor access",
+  "Gender preference for caregivers",
+  "Dietary requirements"
+] as const;
+
+export const DECISION_MAKER_RESPONSIBILITY_OPTIONS = [
+  "Financial",
+  "Medical",
+  "Daily care",
+  "Legal / power of attorney",
+  "Placement decisions"
+] as const;
+
+export const YES_NO_UNSURE_OPTIONS = ["Yes", "No", "Unsure"] as const;
+
+export const IMMEDIATE_RISK_OPTIONS = ["Wandering", "Falling", "Violence", "Neglect"] as const;
+
+export const CARE_TYPE_OPTIONS = [
+  "Assisted living",
+  "Home care",
+  "Dementia / memory care",
+  "Nursing care",
+  "Rehabilitation",
+  "Palliative care",
+  "Respite care",
+  "Day activities",
+  "Night care",
+  "Household support",
+  "Companionship"
+] as const;
+
+const CRITICAL_IMMEDIATE_RISKS = new Set(["Violence", "Neglect"]);
+
+export function isEmergencyIntakeStop(input: {
+  personSafeTonight?: string | null;
+  urgentMedicalHelp?: string | null;
+  immediateRiskFlags?: string[] | null;
+}) {
+  const urgentHelp = input.urgentMedicalHelp?.trim() === "Yes";
+  const notSafe = input.personSafeTonight?.trim() === "No";
+  const criticalRisk = (input.immediateRiskFlags ?? []).some((flag) => CRITICAL_IMMEDIATE_RISKS.has(flag));
+  return urgentHelp || notSafe || criticalRisk;
+}
+
 export function fieldKeyFor(label: string) {
   return label
     .toLowerCase()

@@ -15,7 +15,7 @@ type LegalPageProps = {
   updated: string;
   intro: string;
   sections: LegalSection[];
-  relatedHref: "/terms" | "/privacy";
+  relatedHref: string;
   relatedLabel: string;
 };
 

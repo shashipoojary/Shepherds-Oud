@@ -3,16 +3,17 @@ import { normalizeIntakeStatus } from "@/lib/domain/intake-workflow";
 /**
  * Email volume policy — keep inboxes usable at scale (e.g. 50+ families).
  *
- * Family journey: max ~4 emails per case
+ * Family journey emails per case
  *   1. Intake received (first)
- *   2. Provider shortlist ready / MATCHED (one middle milestone)
- *   3. Visit/callback scheduled / VISIT_SCHEDULED (time-sensitive)
- *   4. Care arranged / PLACED (last)
+ *   2. Individual match created / re-opened (immediate, per match)
+ *   3. Provider shortlist ready / MATCHED status milestone (when status advances)
+ *   4. Visit/callback scheduled / VISIT_SCHEDULED (time-sensitive)
+ *   5. Care arranged / PLACED (last)
  *
  * Everything else (assessment, care plan, visit tweaks, provider replies,
  * follow-ups) is shown on the dashboard only — no email.
  *
- * Provider: magic-link sign-in + visit/callback request (action required).
+ * Provider: magic-link sign-in, match created (heads-up), visit/callback request (action required).
  * Advisor: new intake only (review everything else in admin).
  * Waitlist: confirmation to registrant only.
  */

@@ -1,7 +1,7 @@
 import type { LegalSection } from "@/components/legal/legal-page";
 import { brand } from "@/lib/config/brand";
 
-const legalUpdated = "23 June 2026";
+const legalUpdated = "15 July 2026";
 
 const privacyIntro =
   `${brand.name} ("we", "us") provides human-guided care navigation for people with limited mobility and for care facilities in the Netherlands. This privacy policy explains what personal data we collect, why we use it, and the choices you have. We process personal data in line with the EU General Data Protection Regulation (GDPR) and Dutch privacy law.`;
@@ -157,6 +157,178 @@ const termsSections: LegalSection[] = [
   }
 ];
 
+const cookiesIntro =
+  `This cookies policy explains how ${brand.name} uses cookies and similar technologies on shepherdsoud.nl. We aim to keep tracking limited and transparent while operating a secure care-navigation service in the Netherlands.`;
+
+const cookiesSections: LegalSection[] = [
+  {
+    title: "What cookies are",
+    paragraphs: [
+      "Cookies are small text files stored on your device when you visit a website. They help the site remember preferences, keep you signed in, and protect against abuse. Similar technologies may include local storage used by the browser."
+    ]
+  },
+  {
+    title: "Cookies we use",
+    paragraphs: ["Depending on how you use the platform, we may use:"],
+    list: [
+      "Strictly necessary cookies for security, session management, and sign-in",
+      "Functional cookies that remember basic preferences related to using the service",
+      "Limited analytics cookies, if enabled, to understand how the public site is used so we can improve clarity and accessibility"
+    ]
+  },
+  {
+    title: "Legal basis",
+    paragraphs: [
+      "Strictly necessary cookies are used because they are required to provide the service you request and to keep the platform secure. Where non-essential cookies are used, we rely on your consent where required under the ePrivacy rules and GDPR."
+    ]
+  },
+  {
+    title: "Managing cookies",
+    paragraphs: [
+      "You can control cookies through your browser settings, including blocking or deleting cookies. If you block strictly necessary cookies, parts of the service such as secure sign-in may not work correctly.",
+      `For questions about cookies or related data processing, contact ${brand.email}. More detail on personal data is in our privacy policy.`
+    ]
+  },
+  {
+    title: "Updates",
+    paragraphs: [
+      "We may update this cookies policy when our technology or legal requirements change. The date at the top of this page shows when it was last revised."
+    ]
+  }
+];
+
+const complaintsIntro =
+  `${brand.name} wants families, care seekers, and providers to be able to raise concerns safely. This page explains how to submit a complaint about our care-navigation service and how we handle it.`;
+
+const complaintsSections: LegalSection[] = [
+  {
+    title: "What you can complain about",
+    paragraphs: [
+      "You may complain about our communication, the handling of an intake or match, how personal data was used, accessibility of the website, or the conduct of someone acting for Shepherds Oud in a navigation or coordination role.",
+      "Complaints about a care facility's clinical care, admission decision, or contract should usually be raised with that provider first. We can help you understand next steps where appropriate, but we do not decide facility admissions."
+    ]
+  },
+  {
+    title: "How to submit a complaint",
+    paragraphs: [
+      `Email ${brand.email} with the subject line "Complaint", your name, the best way to reach you, and a clear description of what happened and what outcome you are seeking. Include any case reference if you have one.`,
+      "If your complaint concerns personal data under GDPR, say so clearly so we can treat it as a data-protection request where needed."
+    ]
+  },
+  {
+    title: "How we handle complaints",
+    paragraphs: [
+      "We aim to acknowledge complaints within one business day and to provide a substantive response as soon as reasonably possible, usually within 14 days. Complex matters may take longer; we will tell you if more time is needed.",
+      "We review the facts, speak with relevant Care Guides or staff where appropriate, and explain our findings and any steps we will take."
+    ]
+  },
+  {
+    title: "External options",
+    paragraphs: [
+      "If you are not satisfied with our response about personal data, you may lodge a complaint with the Dutch Data Protection Authority (Autoriteit Persoonsgegevens). Other sector or consumer bodies may also be available depending on the issue."
+    ]
+  }
+];
+
+const dataDeletionIntro =
+  `Under the GDPR you may ask ${brand.name} to erase personal data in certain circumstances. This page explains how to request deletion and what we typically need to process your request.`;
+
+const dataDeletionSections: LegalSection[] = [
+  {
+    title: "Your right to erasure",
+    paragraphs: [
+      "You may request erasure when personal data is no longer needed for the purposes it was collected, when you withdraw consent and there is no other legal basis, when you object and we have no overriding legitimate grounds, or in other situations set out in Article 17 GDPR.",
+      "Erasure is not absolute. We may retain data where necessary to comply with a legal obligation, establish or defend legal claims, or for other limited grounds recognised under GDPR."
+    ]
+  },
+  {
+    title: "How to request deletion",
+    paragraphs: [
+      `Send an email to ${brand.email} with the subject line "Data deletion request". Include the email address used on the platform, your full name, and whether the request concerns a family intake, waitlist entry, provider account, or another record.`,
+      "To protect privacy, we may ask you to confirm your identity before deleting or restricting access to data."
+    ]
+  },
+  {
+    title: "What happens next",
+    paragraphs: [
+      "We aim to acknowledge deletion requests within one business day and to complete or respond to the request within one month, as required by GDPR. If the request is complex or we need more information, we will tell you.",
+      "Where we cannot fully erase data, we will explain why and what alternatives may apply, such as restriction of processing."
+    ]
+  },
+  {
+    title: "Related rights",
+    paragraphs: [
+      "You may also request access, correction, restriction, or a portable copy of data you provided. Details are in our privacy policy. You can withdraw waitlist or marketing consent at any time by contacting us."
+    ]
+  }
+];
+
+const accessibilityIntro =
+  `${brand.name} is committed to making care navigation information usable for people with limited mobility, older adults, caregivers, and people who use assistive technologies. We work toward the spirit of the Web Content Accessibility Guidelines (WCAG) 2.2 Level AA.`;
+
+const accessibilitySections: LegalSection[] = [
+  {
+    title: "Our approach",
+    paragraphs: [
+      "We design public pages and key forms with clear language, sufficient colour contrast, keyboard-reachable controls, and readable typography. We continue to improve accessibility as the platform expands from early registration to full guided matching."
+    ]
+  },
+  {
+    title: "Known limitations",
+    paragraphs: [
+      "Some interactive dashboards and third-party sign-in or email flows may not yet meet every accessibility criterion. We prioritise fixes that affect family intake, waitlist registration, and core reading of care guidance."
+    ]
+  },
+  {
+    title: "Feedback and assistance",
+    paragraphs: [
+      `If you encounter a barrier — for example content that is hard to read, a form that cannot be completed with a keyboard or screen reader, or information you need in an alternative format — contact ${brand.email}. Please describe the page and the problem so we can help.`,
+      "We aim to acknowledge accessibility feedback within one business day and to provide a reasonable alternative where a quick fix is not yet available."
+    ]
+  },
+  {
+    title: "Continuous improvement",
+    paragraphs: [
+      "Accessibility is an ongoing effort. We review feedback, update components, and test critical journeys as we roll out personal matching in selected municipalities and later nationally."
+    ]
+  }
+];
+
+const companyIntro =
+  `This page provides company details for ${brand.name}, the care-navigation service operated in the Netherlands. Some registration details remain placeholders until company registration is complete.`;
+
+const companySections: LegalSection[] = [
+  {
+    title: "Legal entity",
+    paragraphs: [
+      `Trading name: ${brand.name}`,
+      `Legal entity: ${brand.legalEntityName}`,
+      `Chamber of Commerce (KvK) number: ${brand.kvkNumber}`,
+      `Registered address: ${brand.registeredAddress}`
+    ]
+  },
+  {
+    title: "Contact",
+    paragraphs: [
+      `Email: ${brand.email}`,
+      brand.phone ? `Phone: ${brand.phone}` : "Phone: not published yet — please use email for contact.",
+      "We aim to respond to general enquiries within one business day."
+    ]
+  },
+  {
+    title: "Our role",
+    paragraphs: [
+      `${brand.name} provides care navigation, matching support, and coordination. We do not provide medical advice, guarantee admission to any facility, replace your doctor, municipality, care office (zorgkantoor), or emergency services, or make final eligibility decisions for publicly funded care.`
+    ]
+  },
+  {
+    title: "Complaints and privacy",
+    paragraphs: [
+      "For complaints, data-deletion requests, or privacy questions, use the dedicated pages linked in the website footer, or email us directly."
+    ]
+  }
+];
+
 export const legalPages = {
   privacy: {
     label: "Legal",
@@ -175,10 +347,60 @@ export const legalPages = {
     sections: termsSections,
     relatedHref: "/privacy" as const,
     relatedLabel: "Privacy policy"
+  },
+  cookies: {
+    label: "Legal",
+    title: "Cookies policy",
+    updated: legalUpdated,
+    intro: cookiesIntro,
+    sections: cookiesSections,
+    relatedHref: "/privacy" as const,
+    relatedLabel: "Privacy policy"
+  },
+  complaints: {
+    label: "Legal",
+    title: "Complaints",
+    updated: legalUpdated,
+    intro: complaintsIntro,
+    sections: complaintsSections,
+    relatedHref: "/privacy" as const,
+    relatedLabel: "Privacy policy"
+  },
+  "data-deletion": {
+    label: "Legal",
+    title: "Data deletion",
+    updated: legalUpdated,
+    intro: dataDeletionIntro,
+    sections: dataDeletionSections,
+    relatedHref: "/privacy" as const,
+    relatedLabel: "Privacy policy"
+  },
+  accessibility: {
+    label: "Legal",
+    title: "Accessibility",
+    updated: legalUpdated,
+    intro: accessibilityIntro,
+    sections: accessibilitySections,
+    relatedHref: "/company" as const,
+    relatedLabel: "Company details"
+  },
+  company: {
+    label: "Legal",
+    title: "Company details",
+    updated: legalUpdated,
+    intro: companyIntro,
+    sections: companySections,
+    relatedHref: "/privacy" as const,
+    relatedLabel: "Privacy policy"
   }
 } as const;
 
 export const legalFooterLinks = [
-  { label: "Terms of service", href: "/terms" },
-  { label: "Privacy policy", href: "/privacy" }
+  { label: "Privacy", href: "/privacy" },
+  { label: "Terms", href: "/terms" },
+  { label: "Cookies", href: "/cookies" },
+  { label: "Complaints", href: "/complaints" },
+  { label: "Data deletion", href: "/data-deletion" },
+  { label: "Accessibility", href: "/accessibility" },
+  { label: "Company details", href: "/company" }
 ] as const;

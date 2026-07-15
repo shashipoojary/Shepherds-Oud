@@ -4,7 +4,8 @@ export const createMatchSchema = z.object({
   intakeId: z.string().min(1),
   providerId: z.string().min(1),
   score: z.number().int().min(0).max(100),
-  notes: z.string().optional()
+  notes: z.string().max(5000).optional(),
+  familyFacingReason: z.string().max(500).optional()
 });
 
 export const updateMatchSchema = z.object({

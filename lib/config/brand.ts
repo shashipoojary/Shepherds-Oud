@@ -8,5 +8,10 @@ export const brand = {
   /** Sage green illustration for cream/white backgrounds. */
   logoFullPath: "/brand/logo.png",
   /** White illustration with transparent background — for dark green footer/nav. */
-  logoLightPath: "/brand/logo-light.png"
+  logoLightPath: "/brand/logo-light.png",
+  /** Placeholder company details until registration is complete. */
+  legalEntityName: "Shepherds Oud B.V.",
+  kvkNumber: "Pending registration",
+  registeredAddress: "Netherlands",
+  phone: null as string | null
 } as const;

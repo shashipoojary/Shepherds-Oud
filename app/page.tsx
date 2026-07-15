@@ -57,9 +57,10 @@ export default function HomePage() {
                 </Button>
               ) : null}
             </ButtonRow>
+            <p className="mx-auto mt-4 max-w-lg text-sm leading-relaxed text-ink/65">{homeContent.freeSupportLine}</p>
             {isPrelaunch ? (
-              <p className="mx-auto mt-4 max-w-md text-sm text-ink/60">
-                Full guided intake opens at launch. Register now and we will contact you when your area goes live.
+              <p className="mx-auto mt-3 max-w-md text-sm text-ink/60">
+                Full guided intake opens as matching rolls out. Register now and we will contact you when your area goes live.
               </p>
             ) : null}
           </div>
@@ -116,9 +117,22 @@ export default function HomePage() {
           </div>
         </section>
 
-        {isPrelaunch ? (
         <section className="bg-brand-cream px-4 py-14 sm:px-6 lg:px-[max(2rem,calc((100vw-1040px)/2))]">
-          <SectionHeader label="Pre-launch" title={homeContent.prelaunch.title} description={homeContent.prelaunch.description} />
+          <SectionHeader
+            label="Trust"
+            title={homeContent.ourRole.title}
+            description={homeContent.ourRole.description}
+          />
+          <ul className="mx-auto mt-2 max-w-3xl list-disc space-y-2 pl-5 text-body text-ink/75">
+            {homeContent.ourRole.points.map((point) => (
+              <li key={point}>{point}</li>
+            ))}
+          </ul>
+        </section>
+
+        {isPrelaunch ? (
+        <section className="bg-white px-4 py-14 sm:px-6 lg:px-[max(2rem,calc((100vw-1040px)/2))]">
+          <SectionHeader label="Early access" title={homeContent.prelaunch.title} description={homeContent.prelaunch.description} />
           <div className="mx-auto grid max-w-4xl gap-5 md:grid-cols-2">
             <Card hover>
               <p className="section-label">Families and care seekers</p>
@@ -129,21 +143,23 @@ export default function HomePage() {
               <Button asChild className="mt-5">
                 <Link href={publicRoutes.waitlistFamily}>{homeContent.prelaunch.familyCta}</Link>
               </Button>
+              <p className="mt-3 text-sm text-ink/60">{homeContent.responseTimeNote}</p>
             </Card>
             <Card hover className="bg-brand-beige-light/30">
               <p className="section-label">Care facilities</p>
               <h3 className="mt-2 text-h3 font-semibold">Want to list your facility?</h3>
               <p className="mt-2 text-body text-ink/75">
-                We are preparing for launch. Register your facility now and we will reach out when you can list your services.
+                Register your facility now and we will reach out when provider onboarding opens in your area.
               </p>
               <Button asChild className="mt-5 w-full">
                 <Link href={publicRoutes.waitlistFacility}>{homeContent.prelaunch.facilityCta}</Link>
               </Button>
+              <p className="mt-3 text-sm text-ink/60">{homeContent.responseTimeNote}</p>
             </Card>
           </div>
         </section>
         ) : (
-        <section className="bg-brand-cream px-4 py-14 sm:px-6 lg:px-[max(2rem,calc((100vw-1040px)/2))]">
+        <section className="bg-white px-4 py-14 sm:px-6 lg:px-[max(2rem,calc((100vw-1040px)/2))]">
           <SectionHeader label="Get started" title={homeContent.live.title} description={homeContent.live.description} />
           <div className="mx-auto grid max-w-4xl gap-5 md:grid-cols-2">
             <Card hover>
@@ -155,6 +171,7 @@ export default function HomePage() {
               <Button asChild className="mt-5">
                 <Link href={publicRoutes.intake}>{homeContent.live.familyCta}</Link>
               </Button>
+              <p className="mt-3 text-sm text-ink/60">{homeContent.responseTimeNote}</p>
             </Card>
             <Card hover className="bg-brand-beige-light/30">
               <p className="section-label">Care facilities</p>
@@ -165,6 +182,7 @@ export default function HomePage() {
               <Button asChild className="mt-5 w-full">
                 <Link href={publicRoutes.waitlistFacility}>{homeContent.live.facilityCta}</Link>
               </Button>
+              <p className="mt-3 text-sm text-ink/60">{homeContent.responseTimeNote}</p>
             </Card>
           </div>
         </section>
