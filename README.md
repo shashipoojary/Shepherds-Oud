@@ -2,6 +2,8 @@
 
 Shepherds Oud is a production-ready MVP for a care navigation service. It helps people with limited mobility explain their care situation, receive matched care options, and stay guided through placement. Providers can manage availability and respond to requests, while admins can oversee cases, providers, waitlist entries, and follow-ups.
 
+Production GitHub repository: https://github.com/dminoue15/shepherds-Oud-Care
+
 The product is built as one Next.js application with separate experiences for the public site, family journey, provider dashboard, and admin panel.
 
 ## Product Overview
