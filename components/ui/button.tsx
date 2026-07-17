@@ -4,14 +4,17 @@ import type { ButtonHTMLAttributes } from "react";
 import { cn } from "@/lib/core/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-amber disabled:pointer-events-none disabled:opacity-50",
+  "inline-flex items-center justify-center gap-2 rounded-lg font-medium touch-manipulation transition-[colors,transform,opacity,box-shadow] duration-150 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-amber disabled:pointer-events-none disabled:opacity-50 active:scale-[0.97]",
   {
     variants: {
       variant: {
-        default: "bg-brand-amber text-white hover:bg-brand-amber-mid",
-        primary: "bg-brand-amber text-white hover:bg-brand-amber-mid",
-        outline: "border border-brand-amber bg-transparent text-brand-amber hover:bg-brand-amber/10",
-        ghost: "border-0 bg-transparent text-ink hover:bg-brand-cream"
+        default:
+          "bg-brand-amber text-white hover:bg-brand-amber-mid active:bg-brand-amber-dark active:shadow-inner",
+        primary:
+          "bg-brand-amber text-white hover:bg-brand-amber-mid active:bg-brand-amber-dark active:shadow-inner",
+        outline:
+          "border border-brand-amber bg-transparent text-brand-amber hover:bg-brand-amber/10 active:bg-brand-amber/20 active:border-brand-amber-mid",
+        ghost: "border-0 bg-transparent text-ink hover:bg-brand-cream active:bg-brand-cream/80"
       },
       size: {
         xs: "min-h-7 rounded-md px-2.5 py-1 text-xs",
@@ -35,5 +38,12 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> &
 
 export function Button({ className, variant, size, asChild = false, type = "button", ...props }: ButtonProps) {
   const Comp = asChild ? Slot : "button";
-  return <Comp className={cn(buttonVariants({ variant, size, className }))} type={asChild ? undefined : type} {...props} />;
+  return (
+    <Comp
+      className={cn(buttonVariants({ variant, size }), "pressable", className)}
+      type={asChild ? undefined : type}
+      data-pressable={asChild ? "" : undefined}
+      {...props}
+    />
+  );
 }

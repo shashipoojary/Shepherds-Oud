@@ -216,7 +216,7 @@ export default async function HomePage() {
                   <Link
                     key={item.title}
                     href={item.href}
-                    className="group block px-1 py-8 transition-colors first:pt-0 last:pb-0 hover:bg-white/40 sm:px-6 sm:py-2 sm:first:pl-0 sm:last:pr-0 sm:hover:bg-transparent"
+                    className="pressable group block px-1 py-8 transition-colors first:pt-0 last:pb-0 hover:bg-white/40 sm:px-6 sm:py-2 sm:first:pl-0 sm:last:pr-0 sm:hover:bg-transparent"
                   >
                     <span className="inline-flex text-brand-green-dark transition-transform duration-300 group-hover:translate-x-0.5">
                       <Icon className="h-5 w-5" strokeWidth={1.75} />

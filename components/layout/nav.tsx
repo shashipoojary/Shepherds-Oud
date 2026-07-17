@@ -66,7 +66,7 @@ export function Nav({ hideAuth = false, variant = "public" }: NavProps) {
               {!isAdmin && phoneHref ? (
                 <a
                   href={phoneHref}
-                  className="grid h-11 w-11 place-items-center rounded-lg border border-white/20 bg-white/10 text-white"
+                  className="grid h-11 w-11 place-items-center rounded-lg border border-white/20 bg-white/10 text-white touch-manipulation transition active:scale-95 active:bg-white/20"
                   aria-label={`${brandPhoneLabel(locale)}: ${brand.phone}`}
                 >
                   <Phone className="h-5 w-5" aria-hidden />
@@ -74,7 +74,7 @@ export function Nav({ hideAuth = false, variant = "public" }: NavProps) {
               ) : null}
               <button
                 type="button"
-                className="grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-white/20 bg-white/10 text-white"
+                className="grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-white/20 bg-white/10 text-white touch-manipulation transition active:scale-95 active:bg-white/20"
                 onClick={() => setOpen(true)}
                 aria-expanded={open}
                 aria-label={isAdmin ? nav.adminMenu : nav.openMenu}
@@ -100,7 +100,7 @@ export function Nav({ hideAuth = false, variant = "public" }: NavProps) {
               {!isAdmin && phoneHref ? (
                 <a
                   href={phoneHref}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-brand-amber/60 bg-brand-amber/15 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-amber/25"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-brand-amber/60 bg-brand-amber/15 px-3 py-1.5 text-sm font-medium text-white touch-manipulation transition hover:bg-brand-amber/25 active:scale-[0.97] active:bg-brand-amber/35"
                 >
                   <Phone className="h-3.5 w-3.5 shrink-0" aria-hidden />
                   <span className="hidden lg:inline">{brand.phone}</span>
