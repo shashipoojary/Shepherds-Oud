@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerSession, getUserRole } from "@/lib/auth/server";
+import { isAdminDataResetEnabled } from "@/lib/config/env";
 import { resetOperationalData } from "@/lib/data/reset-demo-data";
 
 export async function POST() {
@@ -7,6 +8,13 @@ export async function POST() {
     const session = await getServerSession();
     if (!session || getUserRole(session) !== "ADMIN") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    if (!isAdminDataResetEnabled()) {
+      return NextResponse.json(
+        { error: "Data reset is disabled. Set ALLOW_ADMIN_DATA_RESET=true to enable." },
+        { status: 403 }
+      );
     }
 
     if (!process.env.DATABASE_URL) {
