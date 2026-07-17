@@ -39,6 +39,7 @@ function FamilyDashboardContent() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [matches, setMatches] = useState<ProviderMatch[]>([]);
+  const [matchesLoading, setMatchesLoading] = useState(false);
 
   const refreshStatus = useCallback(async () => {
     const sessionIntakes = await getSessionFamilyIntakes();
@@ -65,25 +66,34 @@ function FamilyDashboardContent() {
   useEffect(() => {
     if (!intake?.id) {
       setMatches([]);
+      setMatchesLoading(false);
       return;
     }
 
     const intakeId = intake.id;
+    let cancelled = false;
 
     async function loadMatches() {
+      setMatchesLoading(true);
       try {
         const response = await fetch(`/api/matches?intakeId=${encodeURIComponent(intakeId)}`);
+        if (cancelled) return;
         if (response.ok) {
           setMatches((await response.json()) as ProviderMatch[]);
         } else {
           setMatches([]);
         }
       } catch {
-        setMatches([]);
+        if (!cancelled) setMatches([]);
+      } finally {
+        if (!cancelled) setMatchesLoading(false);
       }
     }
 
     void loadMatches();
+    return () => {
+      cancelled = true;
+    };
   }, [intake?.id, intake?.status, refreshing]);
 
   const declineContext = useMemo(
@@ -191,7 +201,13 @@ function FamilyDashboardContent() {
               }
             />
             <IntakeSummaryCard intake={intake} showCareGuide={false} defaultOpen={false} />
-            <FamilyActiveMatches key={`${intake.id}-${intake.matchCount}`} intakeId={intake.id} intakeStatus={intake.status} />
+            <FamilyActiveMatches
+              key={intake.id}
+              intakeId={intake.id}
+              intakeStatus={intake.status}
+              matches={matches}
+              loading={matchesLoading}
+            />
             <FamilySavedProviders intakeId={intake.id} matches={matches} />
             <section className="rounded-2xl bg-white p-5 shadow-soft sm:p-6">
               <p className="section-label">{ui.family.questionsTitle}</p>

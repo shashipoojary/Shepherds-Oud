@@ -1,6 +1,5 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import {
@@ -18,27 +17,22 @@ import { optionLabel } from "@/lib/i18n/ui";
 import type { ProviderMatch } from "@/lib/core/types";
 import { Button } from "@/components/ui/button";
 
-export function FamilyActiveMatches({ intakeId, intakeStatus }: { intakeId: string; intakeStatus: string }) {
+type FamilyActiveMatchesProps = {
+  intakeId: string;
+  intakeStatus: string;
+  /** Reuse matches already loaded by the parent dashboard (avoids a second API call). */
+  matches: ProviderMatch[];
+  loading?: boolean;
+};
+
+export function FamilyActiveMatches({
+  intakeId,
+  intakeStatus,
+  matches,
+  loading = false
+}: FamilyActiveMatchesProps) {
   const { locale, ui } = useLocale();
-  const [matches, setMatches] = useState<ProviderMatch[]>([]);
-  const [loading, setLoading] = useState(true);
   const caseClosed = normalizeIntakeStatus(intakeStatus) === "CLOSED";
-
-  const loadMatches = useCallback(async () => {
-    setLoading(true);
-    try {
-      const response = await fetch(`/api/matches?intakeId=${encodeURIComponent(intakeId)}`);
-      if (response.ok) {
-        setMatches((await response.json()) as ProviderMatch[]);
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [intakeId]);
-
-  useEffect(() => {
-    void loadMatches();
-  }, [loadMatches]);
 
   if (caseClosed) {
     return null;

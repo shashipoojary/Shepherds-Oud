@@ -54,6 +54,25 @@ export async function countVisibleMatchesForIntake(intakeId: string) {
   });
 }
 
+/** One grouped query for many intakes — avoids N+1 on family dashboard. */
+export async function countVisibleMatchesForIntakes(intakeIds: string[]) {
+  const uniqueIds = [...new Set(intakeIds.filter(Boolean))];
+  if (!uniqueIds.length) {
+    return new Map<string, number>();
+  }
+
+  const rows = await prisma.match.groupBy({
+    by: ["intakeId"],
+    where: {
+      intakeId: { in: uniqueIds },
+      status: { in: [...familyVisibleMatchStatuses] }
+    },
+    _count: { _all: true }
+  });
+
+  return new Map(rows.map((row) => [row.intakeId, row._count._all]));
+}
+
 export async function getFamilyMatchHistoryForIntake(intakeId: string, locale: Locale = "nl"): Promise<ProviderMatch[]> {
   const matches = await prisma.match.findMany({
     where: { intakeId },
