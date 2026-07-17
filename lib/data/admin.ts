@@ -122,6 +122,7 @@ export async function getAdminDashboardData() {
         roomTypes: true,
         accessibilityNotes: true,
         qualityInfo: true,
+        preferredLocale: true,
         createdAt: true,
         updatedAt: true
       }
@@ -323,6 +324,7 @@ export async function getAdminDashboardData() {
       roomTypes: provider.roomTypes,
       accessibilityNotes: provider.accessibilityNotes,
       qualityInfo: provider.qualityInfo,
+      preferredLocale: provider.preferredLocale === "en" ? "en" : "nl",
       adminNotes: provider.adminNotes,
       createdAt: provider.createdAt.toLocaleDateString("en-GB"),
       createdAtIso: provider.createdAt.toISOString(),
