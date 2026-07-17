@@ -100,7 +100,7 @@ export default async function ProviderDetailPage({
 
             <section className="rounded-card bg-brand-cream p-5 lg:mt-0">
               <h2 className="section-label">{detail.contactAndNextSteps}</h2>
-              <Card className="mt-3 border-0 bg-brand-green-pale/20 p-5 shadow-none">
+              <Card className="mt-3 border-0 bg-brand-green-pale/20 p-5 shadow-none sm:border-0">
                 <div className="grid gap-2 text-body text-brand-green-dark">
                   {provider.contact.map((line) => (
                     <div key={line}>{line}</div>

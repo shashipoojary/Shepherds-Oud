@@ -25,15 +25,16 @@ export default async function ContactPage() {
   return (
     <>
       <SiteHeader />
-      <main className="bg-brand-cream px-4 py-12 sm:px-6 sm:py-16">
-        <article className="mx-auto max-w-3xl rounded-2xl bg-white p-6 shadow-soft sm:p-10">
+      <main className="bg-brand-cream px-4 py-10 sm:px-6 sm:py-16">
+        {/* Flat on phones; white shell only from sm up — avoids box-in-box borders */}
+        <article className="mx-auto max-w-3xl sm:rounded-2xl sm:bg-white sm:p-10 sm:shadow-soft">
           <p className="section-label">{copy.label}</p>
           <h1 className="mt-2 font-brand text-3xl font-bold text-ink sm:text-4xl">{copy.title}</h1>
           <p className="mt-6 text-body leading-relaxed text-ink/80">{copy.intro}</p>
           <p className="mt-2 text-sm text-ink/65">{brandRegionNote(locale)}</p>
 
           {phoneHref ? (
-            <section className="mt-8 rounded-xl border border-brand-green-pale/80 bg-brand-green-pale/15 p-5">
+            <section className="mt-8 rounded-xl bg-brand-green-pale/25 px-4 py-5 sm:px-5">
               <h2 className="text-sm font-semibold text-ink">{brandPhoneLabel(locale)}</h2>
               <a
                 href={phoneHref}
@@ -46,8 +47,8 @@ export default async function ContactPage() {
             </section>
           ) : null}
 
-          <div className="mt-10 grid gap-6 sm:grid-cols-2">
-            <section className="rounded-xl border border-stone-200 bg-brand-cream/30 p-5">
+          <div className="mt-10 grid gap-8 sm:grid-cols-2 sm:gap-10">
+            <section>
               <h2 className="text-sm font-semibold text-ink">{ui.common.families}</h2>
               <p className="mt-2 text-sm leading-relaxed text-ink/70">
                 {isPrelaunch ? copy.familiesPrelaunch : copy.familiesLive}
@@ -65,7 +66,7 @@ export default async function ContactPage() {
               </div>
             </section>
 
-            <section className="rounded-xl border border-stone-200 bg-brand-cream/30 p-5">
+            <section className="border-t border-stone-200/80 pt-8 sm:border-t-0 sm:pt-0">
               <h2 className="text-sm font-semibold text-ink">{ui.common.careProviders}</h2>
               <p className="mt-2 text-sm leading-relaxed text-ink/70">{copy.providersBlurb}</p>
               <div className="mt-4 flex flex-col gap-2">
@@ -79,7 +80,7 @@ export default async function ContactPage() {
             </section>
           </div>
 
-          <section className="mt-8 rounded-xl border border-stone-200 bg-brand-cream/30 p-5">
+          <section className="mt-10 border-t border-stone-200/80 pt-8">
             <h2 className="text-sm font-semibold text-ink">{ui.common.email}</h2>
             <a href={`mailto:${brand.email}`} className="mt-2 inline-block text-lg font-medium text-brand-amber hover:text-brand-amber-mid">
               {brand.email}

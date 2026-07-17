@@ -25,8 +25,8 @@ export default async function RegisterPage() {
   return (
     <>
       <SiteHeader />
-      <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
-        <section className="rounded-2xl bg-white p-6 shadow-soft sm:p-8">
+      <main className="bg-brand-cream px-4 py-10 sm:px-6 sm:py-16">
+        <section className="mx-auto max-w-5xl sm:rounded-2xl sm:bg-white sm:p-8 sm:shadow-soft">
           <p className="text-xs font-semibold uppercase tracking-wide text-sage-700">
             {isPrelaunch ? ui.common.earlyRegistration : copy.waitlistLabel}
           </p>
@@ -39,8 +39,8 @@ export default async function RegisterPage() {
               : copy.registerInterestDesc(brandRegionNote(locale))}
           </p>
 
-          <div className="mt-8 grid gap-4 md:grid-cols-2">
-            <article className="rounded-2xl border border-stone-200 p-5">
+          <div className="mt-8 grid gap-8 md:grid-cols-2 md:gap-10">
+            <article>
               <h2 className="text-lg font-semibold">{ui.common.families}</h2>
               <p className="mt-2 text-sm leading-6 text-neutral-600">
                 {isPrelaunch ? copy.familiesPrelaunch : copy.familiesWaitlist}
@@ -59,7 +59,7 @@ export default async function RegisterPage() {
               </div>
             </article>
 
-            <article className="rounded-2xl border border-stone-200 p-5">
+            <article className="border-t border-stone-200/80 pt-8 md:border-t-0 md:pt-0">
               <h2 className="text-lg font-semibold">{ui.common.careProviders}</h2>
               <p className="mt-2 text-sm leading-6 text-neutral-600">{copy.providersBlurb}</p>
               <div className="mt-5 flex flex-wrap gap-3">

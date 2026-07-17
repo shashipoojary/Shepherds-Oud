@@ -23,8 +23,8 @@ export function LegalPage({ label, title, updated, intro, sections, relatedHref,
   return (
     <>
       <SiteHeader />
-      <main className="bg-brand-cream px-4 py-12 sm:px-6 sm:py-16">
-        <article className="mx-auto max-w-3xl rounded-2xl bg-white p-6 shadow-soft sm:p-10">
+      <main className="bg-brand-cream px-4 py-10 sm:px-6 sm:py-16">
+        <article className="mx-auto max-w-3xl sm:rounded-2xl sm:bg-white sm:p-10 sm:shadow-soft">
           <p className="section-label">{label}</p>
           <h1 className="mt-2 font-brand text-3xl font-bold text-ink sm:text-4xl">{title}</h1>
           <p className="mt-3 text-sm text-ink/60">Last updated: {updated}</p>
