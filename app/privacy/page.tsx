@@ -1,12 +1,14 @@
-import type { Metadata } from "next";
 import { LegalPage } from "@/components/legal/legal-page";
 import { legalPages } from "@/lib/config/legal";
+import { getLocale } from "@/lib/i18n/get-locale";
 
-export const metadata: Metadata = {
-  title: "Privacy policy | Shepherds Oud",
-  description: "How Shepherds Oud collects, uses, and protects personal data under GDPR."
-};
+export async function generateMetadata() {
+  const locale = await getLocale();
+  const copy = legalPages(locale).privacy;
+  return { title: copy.metaTitle, description: copy.metaDescription };
+}
 
-export default function PrivacyPage() {
-  return <LegalPage {...legalPages.privacy} />;
+export default async function PrivacyPage() {
+  const locale = await getLocale();
+  return <LegalPage {...legalPages(locale).privacy} />;
 }

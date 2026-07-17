@@ -71,7 +71,7 @@ export default async function ContactPage() {
               <p className="mt-2 text-sm leading-relaxed text-ink/70">{copy.providersBlurb}</p>
               <div className="mt-4 flex flex-col gap-2">
                 <Button asChild size="sm" variant="outline">
-                  <Link href="/voor-zorgaanbieders">{ui.common.pricingTerms}</Link>
+                  <Link href="/for-providers">{ui.common.pricingTerms}</Link>
                 </Button>
                 <Button asChild size="sm" variant="outline">
                   <Link href={publicRoutes.waitlistFacility}>{ui.common.registerLocation}</Link>
@@ -98,7 +98,7 @@ export default async function ContactPage() {
               {ui.nav.howItWorks}
             </Link>
             {" · "}
-            <Link href="/veelgestelde-vragen" className="text-brand-amber hover:text-brand-amber-mid">
+            <Link href="/faq" className="text-brand-amber hover:text-brand-amber-mid">
               {ui.nav.faq}
             </Link>
             {" · "}

@@ -320,13 +320,13 @@ export const productUiNl = {
     allRequests: "Alle zorgaanvragen",
     updateRequest: "Aanvraag bijwerken",
     startNewRequest: "Nieuwe aanvraag",
-    startIntake: "Start intake",
+    startIntake: "Intake starten",
     noRequestYet: "Nog geen zorgaanvraag",
     noRequestHint: "Rond de intake af om uw zorgaanvraag te starten en matching te openen.",
     questionsTitle: "Vragen voor uw team",
     needToAsk: "Iets vragen?",
     emailCareGuide: "Mail Care Guide",
-    contactUs: "Contact Shepherds Oud",
+    contactUs: "Neem contact op met Shepherds Oud",
     reportConcern: "Melding over plaatsing",
     caseNotFound: "We konden die zorgaanvraag niet vinden op uw account. Kies hieronder een opgeslagen aanvraag.",
     journeyTitle: "Uw begeleide zorgreis",
@@ -791,7 +791,7 @@ export const productUiNl = {
     faq: "Veelgestelde vragen",
     forInternationals: "Voor internationals",
     contact: "Contact",
-    startIntake: "Start intake",
+    startIntake: "Intake starten",
     howItWorks: "Hoe het werkt",
     about: "Over ons",
     call: "Bellen",
@@ -813,13 +813,24 @@ export const productUiNl = {
     copyrightSuffix: "Zorgnavigatie in Nederland.",
     prelaunchStatus: "Pre-launch — begeleide intake opent binnenkort",
     liveStatus: "Voor families en zorgaanbieders.",
-    legalLabel: (href: string, fallback: string) => fallback
+    legalLabel: (href: string, fallback: string) =>
+      (
+        {
+          "/privacy": "Privacybeleid",
+          "/terms": "Voorwaarden",
+          "/cookies": "Cookiebeleid",
+          "/complaints": "Klachten",
+          "/data-deletion": "Gegevens wissen",
+          "/accessibility": "Toegankelijkheid",
+          "/company": "Bedrijfsgegevens"
+        } as Record<string, string>
+      )[href] || fallback
   },
   common: {
     families: "Families",
     careProviders: "Zorgaanbieders",
     registerInterest: "Interest registreren",
-    startIntake: "Start intake",
+    startIntake: "Intake starten",
     pricingTerms: "Prijzen & voorwaarden",
     registerLocation: "Locatie registreren",
     backHome: "Terug naar home",

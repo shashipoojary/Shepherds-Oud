@@ -7,6 +7,13 @@ const nextConfig = {
   turbopack: {
     root: path.resolve(".")
   },
+  async redirects() {
+    return [
+      // Keep old Dutch slugs working after English path normalization.
+      { source: "/veelgestelde-vragen", destination: "/faq", permanent: true },
+      { source: "/voor-zorgaanbieders", destination: "/for-providers", permanent: true }
+    ];
+  },
   async headers() {
     const globalHeaders = [
       { key: "X-Frame-Options", value: "DENY" },
