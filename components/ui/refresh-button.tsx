@@ -20,8 +20,8 @@ export function RefreshButton({
       aria-label={loading ? "Refreshing" : label}
       title={loading ? "Refreshing" : label}
       className={cn(
-        "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-neutral-400 transition-colors",
-        "hover:bg-stone-100 hover:text-neutral-700",
+        "inline-flex h-8 w-8 shrink-0 touch-manipulation items-center justify-center rounded-md text-neutral-400 transition-[colors,transform] duration-150",
+        "hover:bg-stone-100 hover:text-neutral-700 active:scale-95 active:bg-stone-200/80",
         "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-amber",
         "disabled:cursor-default disabled:opacity-50"
       )}

@@ -45,7 +45,37 @@ textarea {
   font: inherit;
 }
 
+@layer base {
+  /* Site-wide: faster taps + clear press feedback on every control */
+  button,
+  [type="button"],
+  [type="submit"],
+  [type="reset"],
+  [role="button"] {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button:not(:disabled):active,
+  [type="button"]:not(:disabled):active,
+  [type="submit"]:not(:disabled):active,
+  [type="reset"]:not(:disabled):active,
+  [role="button"]:not([aria-disabled="true"]):active {
+    filter: brightness(0.9);
+  }
+
+  /* CTA-style links (Button asChild, marketing actions) */
+  a[href].pressable:active,
+  a[href][data-pressable]:active {
+    filter: brightness(0.92);
+  }
+}
+
 @layer components {
+  .pressable {
+    @apply touch-manipulation transition duration-150 ease-out active:scale-[0.98] active:opacity-90;
+  }
+
   .section-label {
     @apply text-[11px] font-semibold uppercase tracking-[1px] text-brand-amber;
   }

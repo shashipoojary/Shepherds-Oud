@@ -10,10 +10,10 @@ export function Chip({ className, selected = false, type = "button", ...props }:
     <button
       type={type}
       className={cn(
-        "rounded-chip border-[1.5px] px-4 py-2 text-sm transition",
+        "rounded-chip border-[1.5px] px-4 py-2 text-sm transition-[colors,transform,filter] duration-150 touch-manipulation active:scale-[0.97]",
         selected
           ? "border-brand-amber bg-[var(--chip-selected-bg)] font-medium text-brand-amber-dark"
-          : "border-[var(--chip-border)] bg-white text-[var(--chip-text)] hover:border-brand-amber",
+          : "border-[var(--chip-border)] bg-white text-[var(--chip-text)] hover:border-brand-amber active:border-brand-amber",
         className
       )}
       {...props}

@@ -64,7 +64,12 @@ export function BrandLogo({
 
   if (href) {
     return (
-      <Link href={href} onClick={onClick} className="inline-flex min-w-0">
+      <Link
+        href={href}
+        onClick={onClick}
+        prefetch
+        className="inline-flex min-w-0 touch-manipulation transition-opacity duration-150 active:opacity-80"
+      >
         {content}
       </Link>
     );

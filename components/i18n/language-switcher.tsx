@@ -28,7 +28,7 @@ export function LanguageSwitcher({ className, tone = "light" }: { className?: st
       <button
         type="button"
         onClick={() => select("nl")}
-        className={cn("rounded-md px-2 py-1 transition", locale === "nl" ? active : "")}
+        className={cn("rounded-md px-2 py-1 touch-manipulation transition active:scale-95", locale === "nl" ? active : "")}
         aria-pressed={locale === "nl"}
       >
         NL
@@ -36,7 +36,7 @@ export function LanguageSwitcher({ className, tone = "light" }: { className?: st
       <button
         type="button"
         onClick={() => select("en")}
-        className={cn("rounded-md px-2 py-1 transition", locale === "en" ? active : "")}
+        className={cn("rounded-md px-2 py-1 touch-manipulation transition active:scale-95", locale === "en" ? active : "")}
         aria-pressed={locale === "en"}
       >
         EN

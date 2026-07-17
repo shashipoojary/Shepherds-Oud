@@ -33,7 +33,7 @@ export function RoleAwareNav({ variant = "desktop", onNavigate }: RoleAwareNavPr
             key={item.href}
             href={item.href}
             onNavigate={onNavigate}
-            className="rounded-xl px-4 py-3.5 text-base font-medium text-ink hover:bg-brand-cream hover:text-brand-amber"
+            className="rounded-xl px-4 py-3.5 text-base font-medium text-ink hover:bg-brand-cream hover:text-brand-amber active:bg-brand-cream active:scale-[0.99]"
           >
             {item.label}
           </LoadingLink>
@@ -48,7 +48,11 @@ export function RoleAwareNav({ variant = "desktop", onNavigate }: RoleAwareNavPr
         <LoadingLink
           key={item.href}
           href={item.href}
-          className="border-b-2 border-transparent py-1 text-sm text-white/90 transition hover:border-brand-amber hover:text-white"
+          className={
+            pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href))
+              ? "border-b-2 border-brand-amber py-1 text-sm text-white"
+              : "border-b-2 border-transparent py-1 text-sm text-white/90 transition hover:border-brand-amber hover:text-white"
+          }
         >
           {item.label}
         </LoadingLink>
