@@ -80,6 +80,7 @@ import {
 import { formatReference, matchesListSearch, matchesReferenceQuery } from "@/lib/domain/reference";
 import { isResolvedWaitlistStatus, waitlistStatusLabel } from "@/lib/domain/waitlist-status";
 import { Badge } from "@/components/ui/badge";
+import type { Locale } from "@/lib/i18n/config";
 
 type AdminTab = "families" | "providers" | "inquiries" | "waitlist";
 type WaitlistEntry = AdminDashboardData["waitlist"][number];
@@ -98,6 +99,39 @@ type MatchStatus =
   | "CLOSED";
 
 const inquiryCoordinationStatuses = new Set(["VISIT_REQUESTED", "CALLBACK_REQUESTED", "ACCEPTED", "CONTACTED"]);
+
+function normalizeRecordLocale(value?: string | null): Locale {
+  return value === "en" ? "en" : "nl";
+}
+
+function localeLanguageLabel(locale: Locale) {
+  return locale === "en" ? "English" : "Dutch";
+}
+
+function AdminAudienceLocaleNotice({
+  audience,
+  locale,
+  writeTarget
+}: {
+  audience: "family" | "provider";
+  locale: Locale;
+  /** e.g. "the care plan summary" → "Write the care plan summary in Dutch" */
+  writeTarget?: string;
+}) {
+  const language = localeLanguageLabel(locale);
+  const who = audience === "family" ? "family" : "provider";
+  const writeLine = writeTarget ? `Write ${writeTarget} in ${language}` : `Write in ${language}`;
+
+  return (
+    <div
+      className="rounded-lg border border-amber-200/80 bg-amber-50 px-3 py-2.5 text-sm leading-relaxed text-amber-950"
+      role="note"
+    >
+      This {who} uses <strong>{language}</strong> in the app and emails. {writeLine} — free text is <strong>not</strong>{" "}
+      auto-translated.
+    </div>
+  );
+}
 
 /** Compact multi-value cells in admin tables (e.g. "A, B +3"). */
 function summarizeAdminList(value: string | string[] | null | undefined, maxVisible = 2) {
@@ -740,6 +774,11 @@ function FamilyDetailPanel({
     setGlobalMessage(message);
   }
   const [providerId, setProviderId] = useState("");
+  const selectedProvider = useMemo(
+    () => providers.find((item) => item.id === providerId) ?? null,
+    [providers, providerId]
+  );
+  const familyLocale = normalizeRecordLocale(family?.preferredLocale);
   const [score, setScore] = useState("85");
   const [matchNotes, setMatchNotes] = useState("");
   const [familyFacingReason, setFamilyFacingReason] = useState("");
@@ -1413,9 +1452,7 @@ function FamilyDetailPanel({
                   </div>
                   <div>
                     <p className="text-xs font-medium text-neutral-500">UI language (emails)</p>
-                    <p className="mt-1.5 text-sm font-medium text-ink">
-                      {family.preferredLocale === "en" ? "English" : "Dutch"}
-                    </p>
+                    <p className="mt-1.5 text-sm font-medium text-ink">{localeLanguageLabel(familyLocale)}</p>
                   </div>
                   <div>
                     <p className="text-xs font-medium text-neutral-500">Languages</p>
@@ -1523,6 +1560,12 @@ function FamilyDetailPanel({
                     ))}
                   </select>
                 </label>
+                {selectedProvider ? (
+                  <p className="text-xs leading-5 text-neutral-600">
+                    Selected provider uses <strong>{localeLanguageLabel(normalizeRecordLocale(selectedProvider.preferredLocale))}</strong>{" "}
+                    in the app and emails. Match notifications to this provider use that language.
+                  </p>
+                ) : null}
                 <label className="grid gap-1.5 text-sm font-medium">
                   Assessment notes (internal)
                   <textarea
@@ -1535,31 +1578,20 @@ function FamilyDetailPanel({
                 </label>
                 <label className="grid gap-1.5 text-sm font-medium">
                   Care plan summary (family-facing)
-                  <div
-                    className="rounded-lg border border-amber-200/80 bg-amber-50 px-3 py-2.5 text-sm leading-relaxed text-amber-950"
-                    role="note"
-                  >
-                    {family.preferredLocale === "en" ? (
-                      <>
-                        This family uses <strong>English</strong> in the app and emails. Write the care plan summary in
-                        English — free text is <strong>not</strong> auto-translated.
-                      </>
-                    ) : (
-                      <>
-                        This family uses <strong>Dutch</strong> in the app and emails. Write the care plan summary in{" "}
-                        <strong>Nederlands</strong> — free text is <strong>not</strong> auto-translated.
-                      </>
-                    )}
-                  </div>
+                  <AdminAudienceLocaleNotice
+                    audience="family"
+                    locale={familyLocale}
+                    writeTarget="the care plan summary"
+                  />
                   <textarea
                     value={carePlanSummary}
                     onChange={(event) => setCarePlanSummary(event.target.value)}
                     disabled={isReadOnlyAssigned}
                     className={`${adminFieldClass} min-h-20`}
                     placeholder={
-                      family.preferredLocale === "en"
+                      familyLocale === "en"
                         ? "What the family should see next, in English…"
-                        : "Wat de familie nu moet weten, in het Nederlands…"
+                        : "What the family should see next, in Dutch…"
                     }
                   />
                 </label>
@@ -1652,11 +1684,16 @@ function FamilyDetailPanel({
                 </label>
                 <label className="grid gap-1.5 text-sm font-medium">
                   Why this match (shown to family)
+                  <AdminAudienceLocaleNotice audience="family" locale={familyLocale} writeTarget="this match reason" />
                   <textarea
                     value={familyFacingReason}
                     disabled={!matchingAllowed}
                     onChange={(event) => setFamilyFacingReason(event.target.value)}
-                    placeholder="e.g. Strong dementia care and open bed nearby"
+                    placeholder={
+                      familyLocale === "en"
+                        ? "e.g. Strong dementia care and open bed nearby"
+                        : "e.g. Sterke dementiezorg en een bed in de buurt"
+                    }
                     className={`${adminFieldClass} min-h-16`}
                   />
                 </label>
@@ -1745,6 +1782,11 @@ function FamilyDetailPanel({
                 </div>
                 <label className="grid gap-1.5 text-sm font-medium">
                   {visitNotesLabel}
+                  <AdminAudienceLocaleNotice
+                    audience="family"
+                    locale={familyLocale}
+                    writeTarget={visitType === "CALLBACK" ? "callback notes" : "visit notes"}
+                  />
                   <textarea
                     value={visitNotes}
                     disabled={!visitSchedulingAllowed}
@@ -1752,8 +1794,12 @@ function FamilyDetailPanel({
                     className={`${adminFieldClass} min-h-16`}
                     placeholder={
                       visitType === "CALLBACK"
-                        ? "Best time to call, who to ask for…"
-                        : "Directions, contact person…"
+                        ? familyLocale === "en"
+                          ? "Best time to call, who to ask for…"
+                          : "Beste tijd om te bellen, wie te vragen…"
+                        : familyLocale === "en"
+                          ? "Directions, contact person…"
+                          : "Route, contactpersoon…"
                     }
                   />
                 </label>
@@ -2328,7 +2374,11 @@ function ProviderDetailPanel({
                   { label: "Contact name", value: provider.contactName },
                   { label: "Email", value: provider.email },
                   { label: "Phone", value: provider.phone },
-                  { label: "Website", value: provider.website }
+                  { label: "Website", value: provider.website },
+                  {
+                    label: "UI language (emails)",
+                    value: localeLanguageLabel(normalizeRecordLocale(provider.preferredLocale))
+                  }
                 ]}
               />
             </PanelTopic>
