@@ -3,7 +3,8 @@ import { getIsPrelaunch } from "@/lib/config/prelaunch";
 import { INTAKE_CONSENT_VERSION } from "@/lib/domain/intake-consent";
 import { normalizeIntakeStatus } from "@/lib/domain/intake-workflow";
 import { sendIntakeConfirmationEmails } from "@/lib/email/intake-confirmation-email";
-import { intakeSchema } from "@/lib/validation/intake";
+import { getLocale } from "@/lib/i18n/get-locale";
+import { intakeSchemaFor } from "@/lib/validation/intake";
 import { handleApiError, jsonError, jsonOk, rateLimitResponse, readJsonBody, runInBackground } from "@/lib/core/api-helpers";
 import type { Prisma } from "@prisma/client";
 
@@ -15,7 +16,11 @@ function parseDischargeDate(value?: string) {
   return Number.isNaN(parsed.getTime()) ? undefined : parsed;
 }
 
-function intakeCreateData(data: ReturnType<typeof intakeSchema.parse>, ownerId: string | null): Prisma.IntakeCreateInput {
+function intakeCreateData(
+  data: ReturnType<ReturnType<typeof intakeSchemaFor>["parse"]>,
+  ownerId: string | null,
+  preferredLocale: "nl" | "en"
+): Prisma.IntakeCreateInput {
   const { hospitalDischargeDate, decisionMakers, consentAccepted, ...rest } = data;
   return {
     contactName: rest.contactName,
@@ -30,6 +35,7 @@ function intakeCreateData(data: ReturnType<typeof intakeSchema.parse>, ownerId: 
     budget: rest.budget,
     fundingTypes: rest.fundingTypes,
     languages: rest.languages,
+    preferredLocale,
     additionalNeeds: rest.additionalNeeds,
     functionalNeeds: rest.functionalNeeds,
     placementPreferences: rest.placementPreferences,
@@ -77,7 +83,8 @@ export async function POST(request: Request) {
 
   try {
     const body = await readJsonBody(request);
-    const parsed = intakeSchema.safeParse(body);
+    const locale = await getLocale();
+    const parsed = intakeSchemaFor(locale).safeParse(body);
 
     if (!parsed.success) {
       return jsonError("Invalid intake", 400, { issues: parsed.error.flatten() });
@@ -91,7 +98,8 @@ export async function POST(request: Request) {
               contactName: parsed.data.contactName,
               email: parsed.data.email,
               intakeId: "demo-intake",
-              careGuide: null
+              careGuide: null,
+              locale
             }),
           "intake_confirmation_email"
         );
@@ -111,7 +119,7 @@ export async function POST(request: Request) {
     const session = await getServerSession();
     const ownerId = session && getUserRole(session) !== "ADMIN" ? session.user.id : null;
     const intake = await prisma.intake.create({
-      data: intakeCreateData(parsed.data, ownerId),
+      data: intakeCreateData(parsed.data, ownerId, locale),
       include: {
         careGuide: { select: { name: true, email: true } }
       }
@@ -124,7 +132,8 @@ export async function POST(request: Request) {
             contactName: parsed.data.contactName,
             email: parsed.data.email,
             intakeId: intake.id,
-            careGuide: intake.careGuide
+            careGuide: intake.careGuide,
+            locale: intake.preferredLocale === "en" ? "en" : "nl"
           }),
         "intake_confirmation_email"
       );

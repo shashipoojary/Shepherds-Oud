@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { sendWaitlistConfirmationEmails } from "@/lib/email/waitlist-confirmation-email";
-import { waitlistSchema } from "@/lib/validation/waitlist";
+import { getLocale } from "@/lib/i18n/get-locale";
+import { waitlistSchemaFor } from "@/lib/validation/waitlist";
 import { handleApiError, jsonError, jsonOk, rateLimitResponse, readJsonBody, runInBackground } from "@/lib/core/api-helpers";
 
 export const runtime = "nodejs";
@@ -11,7 +12,8 @@ export async function POST(request: Request) {
 
   try {
     const body = await readJsonBody(request);
-    const parsed = waitlistSchema.safeParse(body);
+    const locale = await getLocale();
+    const parsed = waitlistSchemaFor(locale).safeParse(body);
 
     if (!parsed.success) {
       return jsonError("Invalid registration", 400, { issues: parsed.error.flatten() });
@@ -23,7 +25,8 @@ export async function POST(request: Request) {
           sendWaitlistConfirmationEmails({
             contactName: parsed.data.contactName,
             email: parsed.data.email,
-            type: parsed.data.type
+            type: parsed.data.type,
+            locale
           }),
         "waitlist_confirmation_email"
       );
@@ -31,14 +34,17 @@ export async function POST(request: Request) {
     }
 
     const { prisma } = await import("@/lib/core/db");
-    const entry = await prisma.waitlistEntry.create({ data: parsed.data });
+    const entry = await prisma.waitlistEntry.create({
+      data: { ...parsed.data, preferredLocale: locale }
+    });
 
     runInBackground(
       () =>
         sendWaitlistConfirmationEmails({
           contactName: parsed.data.contactName,
           email: parsed.data.email,
-          type: parsed.data.type
+          type: parsed.data.type,
+          locale: entry.preferredLocale === "en" ? "en" : "nl"
         }),
       "waitlist_confirmation_email"
     );

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getSessionCookie } from "better-auth/cookies";
 import { isFamilyFlowPath, getIsPrelaunch, isProviderPath, prelaunchFamilyRedirect } from "@/lib/config/prelaunch";
 import { securityHeaders } from "@/lib/core/security-headers";
+import { DEFAULT_LOCALE, LOCALE_COOKIE, LOCALE_COOKIE_MAX_AGE, isLocale } from "@/lib/i18n/config";
 
 const publicProviderPaths = new Set(["/provider/login"]);
 
@@ -26,6 +27,21 @@ function applySecurityHeaders(response: NextResponse) {
   return response;
 }
 
+function withLocaleCookie(request: NextRequest, response: NextResponse) {
+  const existing = request.cookies.get(LOCALE_COOKIE)?.value;
+  if (isLocale(existing)) {
+    return response;
+  }
+
+  // No Accept-Language inspection — first visit always defaults to Dutch.
+  response.cookies.set(LOCALE_COOKIE, DEFAULT_LOCALE, {
+    path: "/",
+    maxAge: LOCALE_COOKIE_MAX_AGE,
+    sameSite: "lax"
+  });
+  return response;
+}
+
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const requestHeaders = new Headers(request.headers);
@@ -33,22 +49,25 @@ export function proxy(request: NextRequest) {
 
   if (getIsPrelaunch() && isFamilyFlowPath(pathname)) {
     const redirectUrl = new URL(prelaunchFamilyRedirect(pathname), request.url);
-    return applySecurityHeaders(NextResponse.redirect(redirectUrl));
+    return withLocaleCookie(request, applySecurityHeaders(NextResponse.redirect(redirectUrl)));
   }
 
   if (getIsPrelaunch() && isProviderPath(pathname)) {
     const redirectUrl = new URL("/register/facility", request.url);
-    return applySecurityHeaders(NextResponse.redirect(redirectUrl));
+    return withLocaleCookie(request, applySecurityHeaders(NextResponse.redirect(redirectUrl)));
   }
 
   const needsProviderAuth = isProtectedProviderPath(pathname);
   const needsAdminAuth = isProtectedAdminPath(pathname);
 
   if (!needsProviderAuth && !needsAdminAuth) {
-    return applySecurityHeaders(
-      NextResponse.next({
-        request: { headers: requestHeaders }
-      })
+    return withLocaleCookie(
+      request,
+      applySecurityHeaders(
+        NextResponse.next({
+          request: { headers: requestHeaders }
+        })
+      )
     );
   }
 
@@ -57,16 +76,19 @@ export function proxy(request: NextRequest) {
   if (!sessionCookie) {
     const loginUrl = new URL(needsProviderAuth ? "/provider/login" : "/login", request.url);
     loginUrl.searchParams.set("callbackUrl", pathname);
-    return applySecurityHeaders(NextResponse.redirect(loginUrl));
+    return withLocaleCookie(request, applySecurityHeaders(NextResponse.redirect(loginUrl)));
   }
 
-  return applySecurityHeaders(
-    NextResponse.next({
-      request: { headers: requestHeaders }
-    })
+  return withLocaleCookie(
+    request,
+    applySecurityHeaders(
+      NextResponse.next({
+        request: { headers: requestHeaders }
+      })
+    )
   );
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/provider/:path*", "/admin", "/provider", "/family/:path*"]
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|brand|api).*)"]
 };

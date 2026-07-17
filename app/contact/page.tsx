@@ -1,76 +1,109 @@
-import type { Metadata } from "next";
 import Link from "next/link";
+import { Phone } from "lucide-react";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
 import { Button } from "@/components/ui/button";
-import { brand } from "@/lib/config/brand";
+import { brand, brandPhoneLabel, brandRegionNote } from "@/lib/config/brand";
 import { getIsPrelaunch, getPublicRoutes } from "@/lib/config/prelaunch";
+import { getLocale } from "@/lib/i18n/get-locale";
+import { productUi } from "@/lib/i18n/ui";
 
-export const metadata: Metadata = {
-  title: `Contact | ${brand.name}`,
-  description: `Get in touch with ${brand.name} for care navigation support in the Netherlands.`
-};
+export async function generateMetadata() {
+  const locale = await getLocale();
+  const copy = productUi(locale).pages.contact;
+  return { title: copy.metaTitle, description: copy.metaDescription };
+}
 
-export default function ContactPage() {
+export default async function ContactPage() {
+  const locale = await getLocale();
+  const ui = productUi(locale);
+  const copy = ui.pages.contact;
   const isPrelaunch = getIsPrelaunch();
   const publicRoutes = getPublicRoutes(isPrelaunch);
+  const phoneHref = brand.phone ? `tel:${brand.phone.replace(/\s+/g, "")}` : null;
 
   return (
     <>
       <SiteHeader />
       <main className="bg-brand-cream px-4 py-12 sm:px-6 sm:py-16">
         <article className="mx-auto max-w-3xl rounded-2xl bg-white p-6 shadow-soft sm:p-10">
-          <p className="section-label">Contact</p>
-          <h1 className="mt-2 font-brand text-3xl font-bold text-ink sm:text-4xl">We are here to help</h1>
-          <p className="mt-6 text-body leading-relaxed text-ink/80">
-            Whether you are exploring care for yourself, supporting a family member, or registering a facility — reach out and we will respond as soon as we can.
-          </p>
+          <p className="section-label">{copy.label}</p>
+          <h1 className="mt-2 font-brand text-3xl font-bold text-ink sm:text-4xl">{copy.title}</h1>
+          <p className="mt-6 text-body leading-relaxed text-ink/80">{copy.intro}</p>
+          <p className="mt-2 text-sm text-ink/65">{brandRegionNote(locale)}</p>
+
+          {phoneHref ? (
+            <section className="mt-8 rounded-xl border border-brand-green-pale/80 bg-brand-green-pale/15 p-5">
+              <h2 className="text-sm font-semibold text-ink">{brandPhoneLabel(locale)}</h2>
+              <a
+                href={phoneHref}
+                className="mt-2 inline-flex items-center gap-2 text-lg font-medium text-brand-amber hover:text-brand-amber-mid"
+              >
+                <Phone className="h-5 w-5" />
+                {brand.phone}
+              </a>
+              <p className="mt-2 text-sm text-ink/65">{copy.phoneHint}</p>
+            </section>
+          ) : null}
 
           <div className="mt-10 grid gap-6 sm:grid-cols-2">
             <section className="rounded-xl border border-stone-200 bg-brand-cream/30 p-5">
-              <h2 className="text-sm font-semibold text-ink">Families & individuals</h2>
+              <h2 className="text-sm font-semibold text-ink">{ui.common.families}</h2>
               <p className="mt-2 text-sm leading-relaxed text-ink/70">
-                {isPrelaunch
-                  ? "Guided intake opens at launch. Join the waitlist and we will contact you."
-                  : "Start the intake online or email us with questions before you begin."}
+                {isPrelaunch ? copy.familiesPrelaunch : copy.familiesLive}
               </p>
               <div className="mt-4 flex flex-col gap-2">
                 {!isPrelaunch ? (
                   <Button asChild size="sm">
-                    <Link href={publicRoutes.intake}>Start intake</Link>
+                    <Link href={publicRoutes.intake}>{ui.common.startIntake}</Link>
                   </Button>
                 ) : (
                   <Button asChild size="sm">
-                    <Link href={publicRoutes.waitlistFamily}>Register for care</Link>
+                    <Link href={publicRoutes.waitlistFamily}>{ui.common.registerInterest}</Link>
                   </Button>
                 )}
               </div>
             </section>
 
             <section className="rounded-xl border border-stone-200 bg-brand-cream/30 p-5">
-              <h2 className="text-sm font-semibold text-ink">Care providers</h2>
-              <p className="mt-2 text-sm leading-relaxed text-ink/70">
-                Facilities and home care agencies can register interest or ask about joining our provider network.
-              </p>
-              <div className="mt-4">
+              <h2 className="text-sm font-semibold text-ink">{ui.common.careProviders}</h2>
+              <p className="mt-2 text-sm leading-relaxed text-ink/70">{copy.providersBlurb}</p>
+              <div className="mt-4 flex flex-col gap-2">
                 <Button asChild size="sm" variant="outline">
-                  <Link href={publicRoutes.waitlistFacility}>Register a facility</Link>
+                  <Link href="/voor-zorgaanbieders">{ui.common.pricingTerms}</Link>
+                </Button>
+                <Button asChild size="sm" variant="outline">
+                  <Link href={publicRoutes.waitlistFacility}>{ui.common.registerLocation}</Link>
                 </Button>
               </div>
             </section>
           </div>
 
-          <section className="mt-8 rounded-xl border border-brand-green-pale/80 bg-brand-green-pale/15 p-5">
-            <h2 className="text-sm font-semibold text-ink">Email</h2>
+          <section className="mt-8 rounded-xl border border-stone-200 bg-brand-cream/30 p-5">
+            <h2 className="text-sm font-semibold text-ink">{ui.common.email}</h2>
             <a href={`mailto:${brand.email}`} className="mt-2 inline-block text-lg font-medium text-brand-amber hover:text-brand-amber-mid">
               {brand.email}
             </a>
-            <p className="mt-2 text-sm text-ink/65">We typically respond within one business day.</p>
+            <p className="mt-2 text-sm text-ink/65">{copy.emailHint}</p>
           </section>
 
           <p className="mt-8 text-sm text-ink/60">
-            Learn more on our <Link href="/about" className="text-brand-amber hover:text-brand-amber-mid">About</Link> and{" "}
-            <Link href="/how-it-works" className="text-brand-amber hover:text-brand-amber-mid">How it works</Link> pages.
+            {ui.common.readMore}{" "}
+            <Link href="/about" className="text-brand-amber hover:text-brand-amber-mid">
+              {ui.nav.about}
+            </Link>
+            {" · "}
+            <Link href="/how-it-works" className="text-brand-amber hover:text-brand-amber-mid">
+              {ui.nav.howItWorks}
+            </Link>
+            {" · "}
+            <Link href="/veelgestelde-vragen" className="text-brand-amber hover:text-brand-amber-mid">
+              {ui.nav.faq}
+            </Link>
+            {" · "}
+            <Link href="/internationals" className="text-brand-amber hover:text-brand-amber-mid">
+              {ui.nav.forInternationals}
+            </Link>
           </p>
         </article>
       </main>

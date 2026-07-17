@@ -3,6 +3,7 @@
 import { Check, ChevronDown } from "lucide-react";
 import { createPortal } from "react-dom";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useLocale } from "@/components/i18n/locale-provider";
 import { cn } from "@/lib/core/utils";
 
 /** Above slide panels (z-201) and their overlays (z-200). */
@@ -15,6 +16,8 @@ type CustomSelectProps = {
   options: readonly string[];
   onChange: (value: string) => void;
   className?: string;
+  /** Map stored option value → display label (e.g. Dutch). Value submitted stays unchanged. */
+  formatOption?: (value: string) => string;
 };
 
 type MenuPosition = {
@@ -24,7 +27,18 @@ type MenuPosition = {
   maxHeight: number;
 };
 
-export function CustomSelect({ label, value, placeholder = "Select...", options, onChange, className }: CustomSelectProps) {
+export function CustomSelect({
+  label,
+  value,
+  placeholder,
+  options,
+  onChange,
+  className,
+  formatOption
+}: CustomSelectProps) {
+  const { ui } = useLocale();
+  const resolvedPlaceholder = placeholder ?? ui.intake.selectPlaceholder;
+  const display = (option: string) => (formatOption ? formatOption(option) : option);
   const [open, setOpen] = useState(false);
   const [menuPosition, setMenuPosition] = useState<MenuPosition | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -102,7 +116,7 @@ export function CustomSelect({ label, value, placeholder = "Select...", options,
                 }}
                 className="flex min-h-10 w-full items-center justify-between gap-3 px-3.5 py-2 text-left text-sm text-ink/80 transition hover:bg-brand-cream hover:text-brand-amber"
               >
-                <span>{option}</span>
+                <span>{display(option)}</span>
                 {value === option ? <Check className="h-4 w-4 text-brand-amber" /> : null}
               </button>
             ))}
@@ -121,7 +135,7 @@ export function CustomSelect({ label, value, placeholder = "Select...", options,
         className="flex min-h-11 w-full items-center justify-between gap-3 rounded-lg border-[1.5px] border-[var(--card-border)] bg-white px-3.5 py-2.5 text-left text-body text-ink transition hover:border-brand-amber focus:border-brand-amber focus:outline-none"
         aria-expanded={open}
       >
-        <span className={value ? "text-neutral-900" : "text-neutral-400"}>{value || placeholder}</span>
+        <span className={value ? "text-neutral-900" : "text-neutral-400"}>{value ? display(value) : resolvedPlaceholder}</span>
         <ChevronDown className={cn("h-4 w-4 shrink-0 text-ink/40 transition", open && "rotate-180 text-brand-amber")} />
       </button>
       {menu}

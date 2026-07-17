@@ -1,3 +1,6 @@
+import type { Locale } from "@/lib/i18n/config";
+import { productUi } from "@/lib/i18n/ui";
+
 export const PROVIDER_LOGIN_ERROR = {
   PENDING: "provider-pending",
   INVITE_PENDING: "invite-pending",
@@ -7,28 +10,33 @@ export const PROVIDER_LOGIN_ERROR = {
 
 export type ProviderLoginErrorCode = (typeof PROVIDER_LOGIN_ERROR)[keyof typeof PROVIDER_LOGIN_ERROR];
 
+/** @deprecated Prefer providerLoginErrorMessage(code, locale). */
 export const PROVIDER_ACCOUNT_NOT_FOUND_MESSAGE =
-  "No provider account was found for this email. Join the facility waitlist — once Shepherds Oud invites you, you can sign in here.";
+  "Er is geen locatie-account gevonden voor dit e-mailadres. Meld u aan op de aanbiederswachtlijst — zodra Shepherds Oud u uitnodigt, kunt u hier inloggen.";
 
+/** @deprecated Prefer providerLoginErrorMessage(code, locale). */
 export const PROVIDER_INVITE_PENDING_MESSAGE =
-  "You have a pending invitation. Open the invite link from your Shepherds Oud email first to accept it, then you can sign in here.";
+  "U heeft een openstaande uitnodiging. Open eerst de uitnodigingslink uit uw Shepherds Oud-e-mail om te accepteren, daarna kunt u hier inloggen.";
 
+/** @deprecated Prefer providerLoginErrorMessage(code, locale). */
 export const PROVIDER_INVITE_EXPIRED_MESSAGE =
-  "This invitation link has expired. Contact Shepherds Oud support to request a new provider invite.";
+  "Deze uitnodigingslink is verlopen. Neem contact op met Shepherds Oud support voor een nieuwe uitnodiging.";
 
+/** @deprecated Prefer providerLoginErrorMessage(code, locale). */
 export const PROVIDER_INVITE_EMAIL_MISMATCH_MESSAGE =
-  "This invite belongs to a different email address. Sign in with the email address from your Shepherds Oud invite.";
+  "Deze uitnodiging hoort bij een ander e-mailadres. Log in met het e-mailadres uit uw Shepherds Oud-uitnodiging.";
 
-export function providerLoginErrorMessage(code: string | null | undefined) {
+export function providerLoginErrorMessage(code: string | null | undefined, locale: Locale = "nl") {
+  const auth = productUi(locale).auth;
   switch (code) {
     case PROVIDER_LOGIN_ERROR.INVITE_EMAIL:
-      return PROVIDER_INVITE_EMAIL_MISMATCH_MESSAGE;
+      return auth.providerInviteEmailMismatch;
     case PROVIDER_LOGIN_ERROR.INVITE_PENDING:
-      return PROVIDER_INVITE_PENDING_MESSAGE;
+      return auth.providerInvitePending;
     case PROVIDER_LOGIN_ERROR.INVITE_EXPIRED:
-      return PROVIDER_INVITE_EXPIRED_MESSAGE;
+      return auth.providerInviteExpired;
     case PROVIDER_LOGIN_ERROR.PENDING:
-      return PROVIDER_ACCOUNT_NOT_FOUND_MESSAGE;
+      return auth.providerAccountNotFound;
     default:
       return null;
   }

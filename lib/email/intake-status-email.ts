@@ -1,7 +1,9 @@
 import { sendBrevoEmail } from "@/lib/email/brevo";
 import { shouldSendFamilyStatusEmail } from "@/lib/email/email-policy";
+import { emailCopy, emailGreeting, formatEmailDateTime, resolveEmailLocale } from "@/lib/email/email-copy";
 import { renderTransactionalEmail } from "@/lib/email/transactional-template";
 import { intakeStatusLabel, normalizeIntakeStatus } from "@/lib/domain/intake-workflow";
+import type { Locale } from "@/lib/i18n/config";
 
 const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.BETTER_AUTH_URL || "https://shepherds-oud.vercel.app";
 
@@ -14,6 +16,7 @@ export async function sendIntakeStatusEmail(input: {
   careGuide?: { name: string | null; email: string } | null;
   visitProviderName?: string | null;
   visitScheduledAt?: Date | null;
+  locale?: Locale;
 }) {
   const status = normalizeIntakeStatus(input.status);
 
@@ -21,39 +24,41 @@ export async function sendIntakeStatusEmail(input: {
     return { skipped: true as const };
   }
 
-  const guideName = input.careGuide?.name || "Your Care Guide";
+  const locale = await resolveEmailLocale(input.locale);
+  const copy = emailCopy(locale).intakeStatus;
+  const guideName = input.careGuide?.name || copy.guideFallback;
   const dashboardUrl = `${appUrl}/family/dashboard?intakeId=${encodeURIComponent(input.intakeId)}`;
   const visitWhen =
     input.visitScheduledAt && !Number.isNaN(input.visitScheduledAt.getTime())
-      ? input.visitScheduledAt.toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })
-      : "the agreed time";
+      ? formatEmailDateTime(locale, input.visitScheduledAt)
+      : copy.agreedMoment;
 
   const messages: Partial<Record<string, { title: string; paragraphs: string[] }>> = {
     MATCHED: {
-      title: "Your provider shortlist is ready",
+      title: copy.matched.title,
       paragraphs: [
-        `Hello ${input.contactName},`,
-        "Matched providers are now on your shortlist — the main update in your guided journey.",
-        `${guideName} is here if you have questions while you compare options together.`,
-        "Open your dashboard to review matches and request visits."
+        emailGreeting(locale, input.contactName),
+        copy.matched.body,
+        copy.matched.guide(guideName),
+        copy.matched.ctaHint
       ]
     },
     VISIT_SCHEDULED: {
-      title: "Your visit or callback is scheduled",
+      title: copy.visit.title,
       paragraphs: [
-        `Hello ${input.contactName},`,
-        `${guideName} has scheduled the next step${input.visitProviderName ? ` with ${input.visitProviderName}` : ""}.`,
-        `Timing: ${visitWhen}.`,
-        "Open your dashboard to review the details and any notes from your Care Guide."
+        emailGreeting(locale, input.contactName),
+        copy.visit.planned(guideName, input.visitProviderName),
+        copy.visit.when(visitWhen),
+        copy.visit.hint
       ]
     },
     PLACED: {
-      title: "Care has been arranged",
+      title: copy.placed.title,
       paragraphs: [
-        `Hello ${input.contactName},`,
-        "We are glad to share that care has been arranged.",
-        `${guideName} remains available if you need support during the transition.`,
-        "Your dashboard has the latest details."
+        emailGreeting(locale, input.contactName),
+        copy.placed.body,
+        copy.placed.guide(guideName),
+        copy.placed.hint
       ]
     }
   };
@@ -61,13 +66,17 @@ export async function sendIntakeStatusEmail(input: {
   const content = messages[status];
   if (!content) return { skipped: true as const };
 
+  const reference = input.intakeId.slice(0, 8).toUpperCase();
+  const statusLabel = intakeStatusLabel(status, locale);
+
   const htmlContent = renderTransactionalEmail({
+    locale,
     preheader: content.title,
-    eyebrow: "Your guided care journey",
+    eyebrow: copy.eyebrow,
     title: content.title,
     paragraphs: content.paragraphs,
-    cta: { label: "Open your dashboard", url: dashboardUrl },
-    footerNote: `Reference ${input.intakeId.slice(0, 8).toUpperCase()} · Status: ${intakeStatusLabel(status)}`
+    cta: { label: copy.cta, url: dashboardUrl },
+    footerNote: copy.footer(reference, statusLabel)
   });
 
   await sendBrevoEmail({

@@ -11,6 +11,9 @@ import {
   providerVerificationFamilyBadge
 } from "@/lib/domain/provider-verification";
 import type { ProviderMatch } from "@/lib/core/types";
+import type { Locale } from "@/lib/i18n/config";
+import { formatEuroMonthlyRange, formatProviderPriceLabel } from "@/lib/i18n/format";
+import { productUi } from "@/lib/i18n/ui";
 
 type ProviderRecord = {
   id: string;
@@ -38,20 +41,25 @@ type ProviderRecord = {
   updatedAt?: Date;
 };
 
-export function mapProviderRecord(provider: ProviderRecord, score = 0): ProviderMatch {
+export function mapProviderRecord(provider: ProviderRecord, score = 0, locale: Locale = "nl"): ProviderMatch {
   const openBeds = provider.bedsOpen ?? 0;
   const availability = familyAvailabilityLabel(provider);
   const waitEstimate = providerWaitEstimate(provider);
-  const priceLabel =
-    provider.priceMin && provider.priceMax ? `EUR ${provider.priceMin}-${provider.priceMax}/mo` : "Price on request";
+  const priceLabel = formatProviderPriceLabel(locale, provider.priceMin, provider.priceMax);
   const availabilityUpdatedAt = provider.updatedAt ? formatAvailabilityLastUpdated(provider.updatedAt) ?? undefined : undefined;
   const confirmedAvailability = availabilityConfirmedLabel(provider.updatedAt);
   const verificationBadge = providerVerificationFamilyBadge(provider.verificationStatus);
   const roomTypes = provider.roomTypes ?? [];
+  const ui = productUi(locale);
   const contact = ["Contact details will be shared after your Care Guide reviews your request."];
   if (provider.responseTimeHours) {
     contact.push(`Expect a response within about ${provider.responseTimeHours} hours once contact is arranged.`);
   }
+
+  const priceRangeDetail =
+    provider.priceMin && provider.priceMax
+      ? formatEuroMonthlyRange(locale, provider.priceMin, provider.priceMax)
+      : ui.family.priceOnRequest;
 
   return {
     id: provider.id,
@@ -86,9 +94,7 @@ export function mapProviderRecord(provider: ProviderRecord, score = 0): Provider
       ...(provider.qualityInfo?.trim() ? { "Quality information": provider.qualityInfo.trim() } : {}),
       ...(provider.accessibilityNotes?.trim() ? { Accessibility: provider.accessibilityNotes.trim() } : {}),
       "Visit availability": displayVisitAvailability(provider.visitAvailability),
-      ...(provider.priceMin && provider.priceMax
-        ? { "Price range": `EUR ${provider.priceMin} - EUR ${provider.priceMax} per month` }
-        : { "Price range": "On request" }),
+      "Price range": priceRangeDetail,
       ...(provider.responseTimeHours ? { "Contact expectation": `Typically responds within ${provider.responseTimeHours} hours` } : {})
     },
     contact,
@@ -107,13 +113,15 @@ export function mapProviderRecord(provider: ProviderRecord, score = 0): Provider
   };
 }
 
-export async function getProviderMatches(): Promise<ProviderMatch[]> {
+export async function getProviderMatches(locale: Locale = "nl"): Promise<ProviderMatch[]> {
   const providers = await prisma.provider.findMany({ orderBy: { createdAt: "desc" } });
-  return providers.filter((provider) => isProviderPubliclyListable(provider.verificationStatus)).map((provider) => mapProviderRecord(provider));
+  return providers
+    .filter((provider) => isProviderPubliclyListable(provider.verificationStatus))
+    .map((provider) => mapProviderRecord(provider, 0, locale));
 }
 
-export async function getProviderById(providerId: string) {
+export async function getProviderById(providerId: string, locale: Locale = "nl") {
   const provider = await prisma.provider.findUnique({ where: { id: providerId } });
   if (!provider) return null;
-  return mapProviderRecord(provider);
+  return mapProviderRecord(provider, 0, locale);
 }

@@ -33,7 +33,8 @@ export async function POST(request: Request) {
         status: true,
         contactName: true,
         email: true,
-        facilityName: true
+        facilityName: true,
+        preferredLocale: true
       }
     });
 
@@ -58,7 +59,8 @@ export async function POST(request: Request) {
         contactName: waitlistEntry.contactName,
         facilityName: waitlistEntry.facilityName,
         token,
-        expiresAt: invite.expiresAt
+        expiresAt: invite.expiresAt,
+        locale: waitlistEntry.preferredLocale === "en" ? "en" : "nl"
       });
 
       if (waitlistEntry.status === "NEW") {

@@ -1,3 +1,6 @@
+import { fieldLabel } from "@/lib/i18n/ui";
+import type { Locale } from "@/lib/i18n/config";
+
 export function parseZodFieldErrors(payload: unknown): Record<string, string> {
   if (!payload || typeof payload !== "object") return {};
   const issues = (payload as { issues?: { fieldErrors?: Record<string, string[]> } }).issues;
@@ -13,6 +16,7 @@ export function parseZodFieldErrors(payload: unknown): Record<string, string> {
   return result;
 }
 
+/** English labels used for fieldKeyFor mapping — display via fieldLabel(locale, …). */
 const INTAKE_FIELD_LABELS: Record<string, string> = {
   contactName: "Your name",
   email: "Email address",
@@ -51,15 +55,15 @@ const INTAKE_FIELD_LABELS: Record<string, string> = {
   consentAccepted: "Consent"
 };
 
-const WAITLIST_FIELD_LABELS: Record<string, string> = {
-  contactName: "Contact name",
+const WAITLIST_FIELD_LABELS_EN: Record<string, string> = {
+  contactName: "Your name",
   email: "Email address",
   phone: "Phone number",
   city: "City",
   province: "Province",
   facilityName: "Facility name",
   facilityType: "Facility type",
-  registrationNumber: "KVK or government registration number",
+  registrationNumber: "Chamber of Commerce / registration number",
   relationship: "Relationship to the person needing care",
   ageRange: "Age range",
   careTypes: "Type of care needed",
@@ -67,12 +71,33 @@ const WAITLIST_FIELD_LABELS: Record<string, string> = {
   message: "Message"
 };
 
-export function intakeFieldLabel(apiKey: string) {
+const WAITLIST_FIELD_LABELS_NL: Record<string, string> = {
+  contactName: "Uw naam",
+  email: "E-mailadres",
+  phone: "Telefoonnummer",
+  city: "Plaats",
+  province: "Provincie",
+  facilityName: "Naam locatie",
+  facilityType: "Type locatie",
+  registrationNumber: "KvK- of registratienummer",
+  relationship: "Relatie tot de zorgvrager",
+  ageRange: "Leeftijdscategorie",
+  careTypes: "Gewenst zorgtype",
+  services: "Aangeboden zorg",
+  message: "Bericht"
+};
+
+export function intakeFieldEnglishLabel(apiKey: string) {
   return INTAKE_FIELD_LABELS[apiKey] || apiKey;
 }
 
-export function waitlistFieldLabel(apiKey: string) {
-  return WAITLIST_FIELD_LABELS[apiKey] || apiKey;
+export function intakeFieldLabel(apiKey: string, locale: Locale = "nl") {
+  return fieldLabel(locale, intakeFieldEnglishLabel(apiKey));
+}
+
+export function waitlistFieldLabel(apiKey: string, locale: Locale = "nl") {
+  const labels = locale === "en" ? WAITLIST_FIELD_LABELS_EN : WAITLIST_FIELD_LABELS_NL;
+  return labels[apiKey] || apiKey;
 }
 
 export function formatFieldErrorSummary(errors: Record<string, string>, labelForKey: (key: string) => string) {

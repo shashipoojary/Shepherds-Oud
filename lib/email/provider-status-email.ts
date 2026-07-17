@@ -1,5 +1,8 @@
+import { brandTagline } from "@/lib/config/brand";
 import { sendBrevoEmail } from "@/lib/email/brevo";
+import { emailCopy, emailGreeting, formatEmailDateTime, resolveEmailLocale } from "@/lib/email/email-copy";
 import { renderTransactionalEmail } from "@/lib/email/transactional-template";
+import type { Locale } from "@/lib/i18n/config";
 
 const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.BETTER_AUTH_URL || "https://shepherds-oud.vercel.app";
 
@@ -13,41 +16,45 @@ export async function sendProviderStatusEmail(input: {
   visitScheduledAt?: Date | null;
   visitType?: string | null;
   visitNotes?: string | null;
+  locale?: Locale;
 }) {
+  const locale = await resolveEmailLocale(input.locale);
+  const copy = emailCopy(locale).providerStatus;
   const dashboardUrl = `${appUrl}/provider`;
   const isVisit = input.kind === "visit_scheduled";
-  const title = isVisit ? "Visit or callback details confirmed" : "A family chose your facility";
+  const title = isVisit ? copy.visitTitle : copy.chosenTitle;
   const visitLine =
     input.visitScheduledAt && !Number.isNaN(input.visitScheduledAt.getTime())
-      ? `Timing: ${input.visitScheduledAt.toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}.`
-      : "Open your dashboard for the latest timing and notes.";
+      ? copy.visitWhen(formatEmailDateTime(locale, input.visitScheduledAt))
+      : copy.visitOpenDashboard;
 
   const paragraphs = isVisit
     ? [
-        `Hello ${input.providerName},`,
-        `A Care Guide scheduled the next step for ${input.familyName}.`,
-        `${input.visitType || "Visit or callback"} - ${visitLine}`,
-        input.visitNotes ? `Notes: ${input.visitNotes}` : "Please check your facility dashboard for the family context."
+        emailGreeting(locale, input.providerName),
+        copy.visitPlanned(input.familyName),
+        `${input.visitType || copy.visitDefaultType} — ${visitLine}`,
+        input.visitNotes ? copy.notes(input.visitNotes) : copy.visitHint
       ]
     : [
-        `Hello ${input.providerName},`,
-        `${input.familyName} has chosen to move forward with your facility.`,
-        "A Care Guide will continue coordinating final details with the family and your team.",
-        "Open your facility dashboard for the latest inquiry status."
+        emailGreeting(locale, input.providerName),
+        copy.chosenBody(input.familyName),
+        copy.chosenGuide,
+        copy.chosenHint
       ];
 
   const htmlContent = renderTransactionalEmail({
+    locale,
     preheader: title,
-    eyebrow: "Care Guide update",
+    eyebrow: copy.eyebrow,
     title,
     paragraphs,
-    cta: { label: "Open facility dashboard", url: dashboardUrl },
-    footerNote: "This update was sent by Shepherds Oud after Care Guide review."
+    cta: { label: copy.cta, url: dashboardUrl },
+    footerNote: copy.footerTagline(brandTagline(locale))
   });
 
   return sendBrevoEmail({
     to: [{ email: input.providerEmail, name: input.providerName }],
-    subject: `${title} - Shepherds Oud`,
+    subject: `${title} — Shepherds Oud`,
     htmlContent,
     textContent: `${title}. ${paragraphs.join(" ")} Dashboard: ${dashboardUrl}`
   });

@@ -220,8 +220,10 @@ Google login requires a Google OAuth client:
 Create a Brevo account and generate a transactional email API key:
 
 - `BREVO_API_KEY`
-- `BREVO_FROM_EMAIL`
-- `BREVO_FROM_NAME`
+- `BREVO_FROM_EMAIL` — verified sender, e.g. `dominique@shepherdsoud.com` (single From source for all emails via `lib/email/brevo.ts`)
+- `BREVO_FROM_NAME` — display name, e.g. `Shepherds Oud`
+
+Also authenticate the sending domain in Brevo (Senders → Domains: Brevo code + DKIM + DMARC). Sender-email verification alone is not enough: without domain authentication Brevo rewrites From to `@<accountId>.brevosend.com`, which triggers Gmail rate limits.
 
 Set `ADVISOR_EMAIL` to the care guide or operations inbox that should receive intake alerts.
 

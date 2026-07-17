@@ -22,6 +22,8 @@ import {
   reopenedMatchStatusForRematch
 } from "@/lib/domain/match-rematch";
 import { sendFamilyMatchCreatedEmail, sendProviderMatchCreatedEmail } from "@/lib/email/match-created-email";
+import { resolveFamilyEmailLocale, resolveProviderEmailLocale } from "@/lib/email/locale-from-intake";
+import { getLocale } from "@/lib/i18n/get-locale";
 
 export const runtime = "nodejs";
 
@@ -70,7 +72,10 @@ export async function GET(request: Request) {
       return jsonError("Forbidden", 403);
     }
 
-    const matches = includeHistory ? await getFamilyMatchHistoryForIntake(intakeId) : await getMatchesForIntake(intakeId);
+    const locale = await getLocale();
+    const matches = includeHistory
+      ? await getFamilyMatchHistoryForIntake(intakeId, locale)
+      : await getMatchesForIntake(intakeId, locale);
     return jsonOk(matches, 200);
   } catch (error) {
     return handleApiError(error, "matches_read");
@@ -177,13 +182,19 @@ export async function POST(request: Request) {
 
     if (shouldNotify) {
       const familyCare = intake.careTypes.join(", ") || "Care support";
+      const familyLocale = resolveFamilyEmailLocale({
+        preferredLocale: intake.preferredLocale,
+        languages: intake.languages
+      });
+      const providerLocale = resolveProviderEmailLocale(provider.preferredLocale);
       await Promise.allSettled([
         sendFamilyMatchCreatedEmail({
           contactName: intake.contactName,
           email: intake.email,
           intakeId: intake.id,
           providerName: provider.name,
-          reopened: reopening
+          reopened: reopening,
+          locale: familyLocale
         }),
         provider.email
           ? sendProviderMatchCreatedEmail({
@@ -192,7 +203,8 @@ export async function POST(request: Request) {
               familyArea: intake.preferredArea,
               familyCare,
               familyUrgency: intake.urgency,
-              reopened: reopening
+              reopened: reopening,
+              locale: providerLocale
             })
           : Promise.resolve()
       ]);

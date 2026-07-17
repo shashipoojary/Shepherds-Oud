@@ -1,34 +1,38 @@
+import { brandTagline } from "@/lib/config/brand";
 import { sendBrevoEmail } from "@/lib/email/brevo";
+import { emailCopy, resolveEmailLocale } from "@/lib/email/email-copy";
 import { renderTransactionalEmail } from "@/lib/email/transactional-template";
+import type { Locale } from "@/lib/i18n/config";
 
-export async function sendProviderMagicLinkEmail(email: string, url: string) {
-  const subject = "Sign in to Shepherds Oud";
+export async function sendProviderMagicLinkEmail(email: string, url: string, localeHint?: Locale) {
+  const locale = await resolveEmailLocale(localeHint);
+  const copy = emailCopy(locale).providerMagicLink;
+  const tagline = brandTagline(locale);
+
   const textContent = [
-    "Sign in to your facility dashboard",
+    copy.textLead,
     "",
-    "Use this secure link to open your provider dashboard:",
+    copy.textBody,
     url,
     "",
-    "This link expires in 15 minutes. If you did not request it, you can ignore this email.",
+    copy.textExpiry,
     "",
-    "Shepherds Oud — Finding the right care together."
+    `Shepherds Oud — ${tagline}`
   ].join("\n");
 
   const htmlContent = renderTransactionalEmail({
-    preheader: "Your secure sign-in link for the Shepherds Oud facility dashboard.",
-    eyebrow: "Provider sign in",
-    title: "Open your facility dashboard",
-    paragraphs: [
-      "Click the button below to sign in securely. This link works with any email address, including Apple, Microsoft, Gmail, and your facility domain.",
-      "For your security, this link can only be used once and expires in 15 minutes."
-    ],
-    cta: { label: "Open facility dashboard", url },
-    footerNote: "If you did not request this email, you can safely ignore it. No changes will be made to your account."
+    locale,
+    preheader: copy.preheader,
+    eyebrow: copy.eyebrow,
+    title: copy.title,
+    paragraphs: copy.paragraphs,
+    cta: { label: copy.cta, url },
+    footerNote: copy.footerNote
   });
 
   const result = await sendBrevoEmail({
     to: [{ email }],
-    subject,
+    subject: copy.subject,
     htmlContent,
     textContent
   });

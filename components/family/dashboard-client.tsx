@@ -9,6 +9,7 @@ import { getSessionFamilyIntakes, type FamilyIntake } from "@/lib/client/intake"
 import { computeFamilyDeclineContext } from "@/lib/domain/match-status";
 import { normalizeIntakeStatus, canFamilyEditIntake } from "@/lib/domain/intake-workflow";
 import type { ProviderMatch } from "@/lib/core/types";
+import { useLocale } from "@/components/i18n/locale-provider";
 import { brand } from "@/lib/config/brand";
 import { CareJourneyTimeline } from "@/components/family/care-journey-timeline";
 import { FamilyActiveMatches } from "@/components/family/active-matches";
@@ -31,6 +32,7 @@ export function FamilyDashboardClient() {
 }
 
 function FamilyDashboardContent() {
+  const { ui } = useLocale();
   const searchParams = useSearchParams();
   const requestedIntakeId = searchParams.get("intakeId");
   const [intakes, setIntakes] = useState<FamilyIntake[]>([]);
@@ -112,7 +114,7 @@ function FamilyDashboardContent() {
       <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
         {selection.state === "not-found" ? (
           <div className="mb-5 rounded-xl border border-brand-amber/30 bg-brand-cream px-4 py-3 text-sm text-brand-amber-dark">
-            We could not find that care request on your account. Choose one of your saved requests below.
+            {ui.family.caseNotFound}
           </div>
         ) : null}
         <FamilyCasePicker intakes={intakes} />
@@ -129,7 +131,7 @@ function FamilyDashboardContent() {
             className="inline-flex items-center gap-1.5 text-sm font-medium text-ink/60 transition hover:text-brand-amber"
           >
             <ChevronLeft className="h-4 w-4" aria-hidden />
-            All care requests
+            {ui.family.allRequests}
           </Link>
         </div>
       ) : null}
@@ -137,11 +139,9 @@ function FamilyDashboardContent() {
       <header className="rounded-2xl bg-white p-5 shadow-soft sm:p-7">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <p className="section-label">Family dashboard</p>
-            <h1 className="mt-2 text-2xl font-semibold text-ink">Your guided care journey</h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">
-              Follow each step with your dedicated Care Guide. Shared decision support — not a directory search.
-            </p>
+            <p className="section-label">{ui.family.dashboardTitle}</p>
+            <h1 className="mt-2 text-2xl font-semibold text-ink">{ui.family.journeyTitle}</h1>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">{ui.family.dashboardIntro}</p>
             {intake && intakes.length > 1 ? (
               <div className="mt-5">
                 <FamilyCaseSwitcher intakes={intakes} currentIntakeId={intake.id} />
@@ -159,16 +159,16 @@ function FamilyDashboardContent() {
             <>
               {canEditIntake ? (
                 <Button asChild className="w-full">
-                  <Link href={withIntakeId("/family/intake?update=1", intake.id)}>Update your request</Link>
+                  <Link href={withIntakeId("/family/intake?update=1", intake.id)}>{ui.family.updateRequest}</Link>
                 </Button>
               ) : null}
               <Button asChild variant="outline" className="w-full">
-                <Link href="/family/intake">Start new request</Link>
+                <Link href="/family/intake">{ui.family.startNewRequest}</Link>
               </Button>
             </>
           ) : (
             <Button asChild className="w-full">
-              <Link href="/family/intake">Start intake</Link>
+              <Link href="/family/intake">{ui.family.startIntake}</Link>
             </Button>
           )}
         </ButtonRow>
@@ -194,53 +194,53 @@ function FamilyDashboardContent() {
             <FamilyActiveMatches key={`${intake.id}-${intake.matchCount}`} intakeId={intake.id} intakeStatus={intake.status} />
             <FamilySavedProviders intakeId={intake.id} matches={matches} />
             <section className="rounded-2xl bg-white p-5 shadow-soft sm:p-6">
-              <p className="section-label">Questions for your team</p>
-              <h2 className="mt-1 text-lg font-semibold text-ink">Need to ask something?</h2>
+              <p className="section-label">{ui.family.questionsTitle}</p>
+              <h2 className="mt-1 text-lg font-semibold text-ink">{ui.family.needToAsk}</h2>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">
                 {intake.careGuide
-                  ? `Email your Care Guide, ${intake.careGuide.name}, for updates about your case. General platform questions go to the Shepherds Oud team.`
-                  : "Email the Shepherds Oud team if you need help while your Care Guide is being assigned."}
+                  ? ui.family.helpWithGuide(intake.careGuide.name)
+                  : ui.family.helpWithoutGuide}
               </p>
               <div className="mt-4 flex flex-wrap gap-3">
                 {intake.careGuide ? (
                   <Button asChild size="sm" variant="outline">
-                    <a href={`mailto:${intake.careGuide.email}`}>Email Care Guide</a>
+                    <a href={`mailto:${intake.careGuide.email}`}>{ui.family.emailCareGuide}</a>
                   </Button>
                 ) : null}
                 <Button asChild size="sm" variant="outline">
-                  <a href={`mailto:${brand.email}`}>Contact Shepherds Oud</a>
+                  <a href={`mailto:${brand.email}`}>{ui.family.contactUs}</a>
                 </Button>
                 <Button asChild size="sm" variant="outline">
                   <a
-                    href={`mailto:${brand.email}?subject=${encodeURIComponent("Placement concern")}&body=${encodeURIComponent(
-                      `Hello Shepherds Oud,\n\nI would like to report a placement concern about care request ${intake.id}.\n\n`
+                    href={`mailto:${brand.email}?subject=${encodeURIComponent(ui.family.reportConcernSubject)}&body=${encodeURIComponent(
+                      ui.family.reportConcernBody(intake.id)
                     )}`}
                   >
-                    Report a placement concern
+                    {ui.family.reportConcern}
                   </a>
                 </Button>
               </div>
               <p className="mt-4 text-sm leading-6 text-neutral-600">
-                Need a new provider match?{" "}
+                {ui.family.needNewProvider}{" "}
                 {intake.careGuide ? (
                   <>
-                    Contact your Care Guide (
+                    {ui.family.contactGuideAddPrefix} (
                     <a className="font-medium text-brand-amber hover:text-brand-amber-mid" href={`mailto:${intake.careGuide.email}`}>
                       {intake.careGuide.name}
                     </a>
-                    ) — they can add another option to your shortlist.
+                    ) {ui.family.contactGuideAddSuffix}
                   </>
                 ) : (
                   <>
-                    Contact{" "}
+                    {ui.family.contactViaPrefix}{" "}
                     <a className="font-medium text-brand-amber hover:text-brand-amber-mid" href={`mailto:${brand.email}`}>
                       {brand.email}
                     </a>{" "}
-                    or visit the{" "}
+                    {ui.family.contactViaOr}{" "}
                     <Link href="/contact" className="font-medium text-brand-amber hover:text-brand-amber-mid">
-                      contact page
+                      {ui.family.contactPage}
                     </Link>
-                    . A Care Guide will help once assigned.
+                    . {ui.family.contactWhileAssigningSuffix}
                   </>
                 )}
               </p>
@@ -249,8 +249,8 @@ function FamilyDashboardContent() {
         ) : (
           <div className="rounded-2xl bg-white shadow-soft">
             <EmptyState
-              title="No care request yet"
-              description="Complete the intake form to create your care request. A Care Guide will be assigned to support you through each step."
+              title={ui.family.noRequestYet}
+              description={ui.family.noRequestHint}
             />
           </div>
         )}

@@ -1,5 +1,4 @@
 import { brand } from "@/lib/config/brand";
-import { ubuntuTagline } from "@/lib/config/content";
 import { sendBrevoEmail } from "@/lib/email/brevo";
 import { advisorAlertSubject } from "@/lib/email/email-policy";
 import { renderTransactionalEmail } from "@/lib/email/transactional-template";
@@ -22,6 +21,7 @@ export async function sendAdvisorAlertEmail(input: {
   const adminUrl = `${appUrl}/admin`;
 
   const htmlContent = renderTransactionalEmail({
+    locale: "en",
     preheader: subject,
     eyebrow: "Care Guide team",
     title: subject,

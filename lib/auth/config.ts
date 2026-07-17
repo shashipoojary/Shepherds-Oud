@@ -6,7 +6,9 @@ import { customSession, magicLink } from "better-auth/plugins";
 import { prisma } from "@/lib/core/db";
 import { isAdminEmail, resolveRole, resolveRoleForUser } from "@/lib/auth/roles";
 import { extractInviteFromRedirectUrl } from "@/lib/auth/login-context";
-import { providerLoginErrorMessage, PROVIDER_ACCOUNT_NOT_FOUND_MESSAGE } from "@/lib/auth/provider-login-errors";
+import { providerLoginErrorMessage } from "@/lib/auth/provider-login-errors";
+import { getLocale } from "@/lib/i18n/get-locale";
+import { productUi } from "@/lib/i18n/ui";
 import { PROVIDER_DASHBOARD_PATH } from "@/lib/auth/routes";
 import { sendFamilyMagicLinkEmail } from "@/lib/email/family-magic-link";
 import { sendProviderMagicLinkEmail } from "@/lib/email/provider-magic-link";
@@ -112,16 +114,23 @@ const authOptions = {
         }
 
         if (isFamilyMagicLink(url)) {
-          await sendFamilyMagicLinkEmail(email, url);
+          const locale = await getLocale();
+          await sendFamilyMagicLinkEmail(email, url, locale);
           return;
         }
 
         if (isProviderMagicLink(url)) {
+          const locale = await getLocale();
           const inviteToken = extractInviteFromRedirectUrl(url);
           const access = await resolveProviderLoginAccess(email, inviteToken);
           if (!access.allowed) {
-            throw new Error(providerLoginErrorMessage(access.code) || PROVIDER_ACCOUNT_NOT_FOUND_MESSAGE);
+            throw new Error(
+              providerLoginErrorMessage(access.code, locale) ||
+                productUi(locale).auth.providerAccountNotFound
+            );
           }
+          await sendProviderMagicLinkEmail(email, url, locale);
+          return;
         }
 
         await sendProviderMagicLinkEmail(email, url);

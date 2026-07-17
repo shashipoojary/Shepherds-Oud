@@ -42,6 +42,9 @@ import {
   markProviderInquiryTabSeen
 } from "@/lib/client/provider-inquiry-tab-seen";
 import { TOAST_DISMISS_MS } from "@/lib/client/toast-timing";
+import { useLocale } from "@/components/i18n/locale-provider";
+import { dateLocale, optionLabel, productUi } from "@/lib/i18n/ui";
+import type { Locale } from "@/lib/i18n/config";
 import { brand } from "@/lib/config/brand";
 import { cn } from "@/lib/core/utils";
 import { formatReference, matchesListSearch, matchesReferenceQuery } from "@/lib/domain/reference";
@@ -197,61 +200,64 @@ function parseRequiredIntField(value: string): number | undefined | "invalid" {
   return parsed;
 }
 
-function formatProviderVisit(inquiry: Inquiry) {
+function formatProviderVisit(inquiry: Inquiry, locale: Locale) {
+  const p = productUi(locale).provider;
   if (!inquiry.intake.visitScheduledAt) return null;
   const date = new Date(inquiry.intake.visitScheduledAt);
   if (Number.isNaN(date.getTime())) return null;
-  const when = date.toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" });
-  const providerName = inquiry.intake.visitProviderName ? ` with ${inquiry.intake.visitProviderName}` : "";
-  return `${inquiry.intake.visitType || "Visit or callback"}${providerName} — ${when}`;
+  const when = date.toLocaleString(dateLocale(locale), { dateStyle: "medium", timeStyle: "short" });
+  const kind = inquiry.intake.visitType === "CALLBACK" ? p.visitCallback : p.visitOnSite;
+  const providerName = inquiry.intake.visitProviderName ? p.visitWithProvider(inquiry.intake.visitProviderName) : "";
+  return `${kind}${providerName} — ${when}`;
 }
 
-function providerNextStep(inquiry: Inquiry) {
-  const visit = formatProviderVisit(inquiry);
+function providerNextStep(inquiry: Inquiry, locale: Locale) {
+  const p = productUi(locale).provider;
+  const visit = formatProviderVisit(inquiry, locale);
 
   switch (inquiry.status) {
     case "ACCEPTED":
       if (visit) {
         return {
-          title: "Visit or call scheduled",
-          description: "Your Care Guide has arranged the next step with this family.",
+          title: p.nextStepAcceptedVisitTitle,
+          description: p.nextStepAcceptedVisitDesc,
           visitLine: visit,
           tone: "visit" as const
         };
       }
       return {
-        title: "Accepted — waiting for Care Guide",
-        description: "No extra action is needed right now. The Care Guide will arrange the visit or callback and update you here."
+        title: p.nextStepAcceptedWaitTitle,
+        description: p.nextStepAcceptedWaitDesc
       };
     case "CONTACTED":
       return {
-        title: "Visit or call arranged",
-        description: visit ? "Confirmed with the family. Use the details below if you need to prepare." : "The Care Guide has coordinated the next step. Watch for timing details here or by email.",
+        title: p.nextStepContactedTitle,
+        description: visit ? p.nextStepContactedDescWithVisit : p.nextStepContactedDescNoVisit,
         visitLine: visit || undefined,
         tone: visit ? ("visit" as const) : undefined
       };
     case "PLACED":
       return {
-        title: "Family chose your facility",
-        description: "The family is moving forward with your facility. The Care Guide will coordinate final details."
+        title: p.nextStepPlacedTitle,
+        description: p.nextStepPlacedDesc
       };
     case "DECLINED":
       return {
-        title: "Previously declined",
-        description:
-          "You declined this inquiry earlier. If your Care Guide re-opens it after case updates, it will appear under New with accept/decline actions again."
+        title: p.nextStepDeclinedTitle,
+        description: p.nextStepDeclinedDesc
       };
     case "CLOSED":
       return {
-        title: "Inquiry closed",
-        description: "No further action is needed for this family."
+        title: p.nextStepClosedTitle,
+        description: p.nextStepClosedDesc
       };
     default:
       return null;
   }
 }
 
-async function readApiError(response: Response) {
+async function readApiError(response: Response, locale: Locale) {
+  const fallback = productUi(locale).provider.requestFailed;
   try {
     const data = (await response.json()) as { error?: string; issues?: { fieldErrors?: Record<string, string[]> } };
     const fieldErrors = data.issues?.fieldErrors;
@@ -259,13 +265,14 @@ async function readApiError(response: Response) {
       const first = Object.values(fieldErrors).flat()[0];
       if (first) return sanitizeClientErrorMessage(first);
     }
-    return sanitizeClientErrorMessage(data.error || "Request failed.");
+    return sanitizeClientErrorMessage(data.error || fallback);
   } catch {
-    return "Request failed.";
+    return fallback;
   }
 }
 
 export function ProviderDashboardClient({ initialData }: { initialData?: DashboardData }) {
+  const { locale, ui } = useLocale();
   const [form, setForm] = useState<FormState>(() => toForm(initialData?.provider ?? null));
   const [inquiries, setInquiries] = useState<Inquiry[]>(initialData?.inquiries ?? []);
   const [profileComplete, setProfileComplete] = useState(initialData?.profileComplete ?? false);
@@ -330,14 +337,14 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
           return fresh;
         });
         setMessageTone("success");
-        setMessage("Your dashboard is up to date.");
+        setMessage(ui.provider.dashboardRefreshed);
       } else {
         setMessageTone("error");
-        setMessage(await readApiError(response));
+        setMessage(await readApiError(response, locale));
       }
     } catch {
       setMessageTone("error");
-      setMessage("Could not refresh dashboard.");
+      setMessage(ui.provider.refreshFailed);
     } finally {
       setRefreshing(false);
     }
@@ -358,18 +365,18 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
           setProviderId(data.provider?.id ?? null);
         } else {
           setMessageTone("error");
-          setMessage(await readApiError(response));
+          setMessage(await readApiError(response, locale));
         }
       } catch {
         setMessageTone("error");
-        setMessage("Could not load provider dashboard.");
+        setMessage(ui.provider.loadFailed);
       } finally {
         setLoading(false);
       }
     }
 
     void load();
-  }, [initialData]);
+  }, [initialData, locale]);
 
   useEffect(() => {
     initProviderInquirySeenFromData(inquiries.map((item) => ({ id: item.id, updatedAt: item.updatedAt })));
@@ -436,7 +443,7 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
     setMessage(text);
   }) {
     if (form.name.trim().length < 2) {
-      notify("Facility name must be at least 2 characters.", "error");
+      notify(ui.provider.nameMinLength, "error");
       return;
     }
 
@@ -445,21 +452,21 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
 
     const bedsTotal = parseRequiredIntField(form.bedsTotal);
     if (bedsTotal === "invalid") {
-      notify("Total beds must be a whole number (0 or more).", "error");
+      notify(ui.provider.bedsTotalInvalid, "error");
       setSaving(false);
       return;
     }
 
     const bedsOpen = parseRequiredIntField(form.bedsOpen);
     if (bedsOpen === "invalid") {
-      notify("Available beds must be a whole number (0 or more).", "error");
+      notify(ui.provider.bedsOpenInvalid, "error");
       setSaving(false);
       return;
     }
 
     const responseTimeHours = parseOptionalInt(form.responseTimeHours);
     if (form.responseTimeHours.trim() && responseTimeHours === undefined) {
-      notify("Response time must be a whole number of hours.", "error");
+      notify(ui.provider.responseTimeInvalid, "error");
       setSaving(false);
       return;
     }
@@ -494,14 +501,14 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
       });
 
       if (!response.ok) {
-        notify(await readApiError(response), "error");
+        notify(await readApiError(response, locale), "error");
         return;
       }
 
       const data = (await response.json()) as DashboardData;
       const provider = data.provider;
       if (!provider) {
-        notify("Could not read the saved provider profile.", "error");
+        notify(ui.provider.profileReadFailed, "error");
         return;
       }
       setForm(toForm(provider));
@@ -510,9 +517,7 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
       setProfileMissingRequirements(data.profileMissingRequirements);
       setInquiries(data.inquiries ?? []);
       notify(
-        data.profileComplete
-          ? "You saved your facility profile. You can now receive care requests."
-          : "You saved your facility profile. Complete the remaining items to receive care requests."
+        data.profileComplete ? ui.provider.profileSavedComplete : ui.provider.profileSavedIncomplete
       );
 
       try {
@@ -527,7 +532,7 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
         // Profile save succeeded; action log is non-blocking.
       }
     } catch {
-      notify("Could not save your facility profile. Please check your connection and try again.", "error");
+      notify(ui.provider.profileSaveFailed, "error");
     } finally {
       setSaving(false);
     }
@@ -551,10 +556,10 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
       });
 
       if (!response.ok) {
-        const errorMessage = await readApiError(response);
+        const errorMessage = await readApiError(response, locale);
         setInquiryFeedback((current) => ({
           ...current,
-          [id]: errorMessage || "Could not update this inquiry. Please try again."
+          [id]: errorMessage || ui.provider.inquiryUpdateFailed
         }));
         return;
       }
@@ -564,12 +569,12 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
       setSelectedInquiry((current) => (current?.id === id ? { ...current, ...updated } : current));
       markProviderInquirySeen(id, updated.updatedAt);
       bumpInquirySeen();
-      const feedback = providerInquiryActionMessage(updated.status, familyName, priorStatus);
+      const feedback = providerInquiryActionMessage(updated.status, familyName, priorStatus, locale);
       setInquiryFeedback((current) => ({ ...current, [id]: feedback }));
     } catch {
       setInquiryFeedback((current) => ({
         ...current,
-        [id]: "Could not update this inquiry. Please check your connection and try again."
+        [id]: ui.provider.inquiryUpdateConnectionFailed
       }));
     } finally {
       setPendingInquiryId(null);
@@ -617,11 +622,9 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
     <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
       <header className="mb-5 flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className="section-label">Provider dashboard</p>
-          <h1 className="mt-1 text-h2 font-semibold text-ink">Family inquiries</h1>
-          <p className="mt-2 max-w-2xl text-body text-ink/70">
-            Review matched families, accept or decline requests, and track updates from your Care Guide.
-          </p>
+          <p className="section-label">{ui.provider.dashboardTitle}</p>
+          <h1 className="mt-1 text-h2 font-semibold text-ink">{ui.provider.inquiries}</h1>
+          <p className="mt-2 max-w-2xl text-body text-ink/70">{ui.provider.inquiriesIntro}</p>
         </div>
         <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
           <Button
@@ -632,11 +635,11 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
             onClick={() => setProfilePanelOpen(true)}
           >
             <Settings className="h-4 w-4 shrink-0" aria-hidden />
-            <span className="truncate">Facility profile</span>
+            <span className="truncate">{ui.provider.facilityProfileButton}</span>
             {!profileComplete ? (
               <span
                 className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-brand-amber px-1.5 text-[11px] font-bold leading-none tabular-nums text-white"
-                aria-label={`${profileMissingRequirements.length} profile item${profileMissingRequirements.length === 1 ? "" : "s"} still needed`}
+                aria-label={ui.provider.profileItemsNeededAria(profileMissingRequirements.length)}
               >
                 {profileMissingRequirements.length}
               </span>
@@ -660,10 +663,10 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
       <StatGrid
         className="mb-5"
         stats={[
-          [bedsDisplay, "Available beds"],
-          [profileComplete ? String(newInquiries) : "Locked", "Action needed"],
-          [form.availabilityStatus, "Availability"],
-          [profileComplete ? "Complete" : `${profileMissingRequirements.length} missing`, "Profile status"]
+          [bedsDisplay, ui.provider.availableBeds],
+          [profileComplete ? String(newInquiries) : ui.provider.locked, ui.provider.actionNeeded],
+          [optionLabel(locale, form.availabilityStatus), ui.provider.availability],
+          [profileComplete ? ui.provider.complete : ui.provider.missingCount(profileMissingRequirements.length), ui.provider.profileStatus]
         ]}
       />
 
@@ -671,10 +674,8 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
         <section className="mb-5 rounded-xl border border-brand-amber/25 bg-brand-amber/10 px-4 py-4 sm:px-5">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <h2 className="font-semibold text-ink">Complete your facility profile to unlock inquiries</h2>
-              <p className="mt-1 max-w-2xl text-sm leading-6 text-ink/70">
-                Care requests stay locked until your profile and availability are ready for families and Care Guides to review.
-              </p>
+              <h2 className="font-semibold text-ink">{ui.provider.completeProfile}</h2>
+              <p className="mt-1 max-w-2xl text-sm leading-6 text-ink/70">{ui.provider.profileLockHint}</p>
               <ul className="mt-3 flex flex-wrap gap-2">
                 {profileMissingRequirements.map((item) => (
                   <li key={item} className="rounded-full bg-white/80 px-3 py-1.5 text-xs font-medium text-ink/75">
@@ -684,7 +685,7 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
               </ul>
             </div>
             <Button type="button" size="sm" className="w-full shrink-0 sm:w-auto" onClick={() => setProfilePanelOpen(true)}>
-              Open facility profile
+              {ui.provider.openProfile}
             </Button>
           </div>
         </section>
@@ -706,7 +707,7 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
               )}
             >
               <span className="inline-flex items-center gap-2">
-                {providerInquiryTabLabel(item)}
+                {providerInquiryTabLabel(item, locale)}
                 {badge > 0 && !isActive ? (
                   <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-amber px-1.5 text-[10px] font-bold leading-none text-white">
                     {badge > 9 ? "9+" : badge}
@@ -723,15 +724,16 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-lg font-semibold text-ink">Inquiry queue</h2>
+                <h2 className="text-lg font-semibold text-ink">{ui.provider.inquiryQueue}</h2>
               </div>
-              <p className="mt-1 text-sm text-ink/60">
-                Open an inquiry to review details, accept or decline requests, and track updates from your Care Guide.
-              </p>
+              <p className="mt-1 text-sm text-ink/60">{ui.provider.inquiryQueueIntro}</p>
             </div>
             {inquiries.length ? (
               <span className="shrink-0 rounded-full bg-brand-cream px-3 py-1 text-xs font-semibold text-ink/55">
-                {filteredInquiries.length} in {providerInquiryTabLabel(inquiryTab).toLowerCase()}
+                {ui.provider.inquiryCountInTab(
+                  filteredInquiries.length,
+                  providerInquiryTabLabel(inquiryTab, locale).toLowerCase()
+                )}
               </span>
             ) : null}
           </div>
@@ -742,7 +744,7 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
             <ListSearch
               value={inquirySearch}
               onChange={setInquirySearch}
-              placeholder="Search inquiries by family name, area, or reference…"
+              placeholder={ui.provider.searchPlaceholder}
             />
           </div>
         ) : null}
@@ -750,22 +752,22 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
         {!profileComplete ? (
           <div className="flex flex-col items-center justify-center gap-4 p-8">
             <EmptyState
-              title="Complete your profile to receive care requests"
-              description="Open your facility profile to add contact details, services, care levels, and availability."
+              title={ui.provider.completeProfile}
+              description={ui.provider.emptyProfileDescription}
             />
             <Button type="button" size="sm" onClick={() => setProfilePanelOpen(true)}>
-              Open facility profile
+              {ui.provider.openProfile}
             </Button>
           </div>
         ) : !inquiries.length ? (
           <EmptyState
-            title="No inquiries yet"
-            description="When Shepherds Oud matches a family to your facility, the inquiry will appear here for you to review."
+            title={ui.provider.noInquiries}
+            description={ui.provider.noInquiriesHint}
           />
         ) : !filteredInquiries.length ? (
           <EmptyState
-            title={`No ${providerInquiryTabLabel(inquiryTab).toLowerCase()} inquiries`}
-            description="Try another tab to see inquiries in a different stage."
+            title={ui.provider.noInquiriesInTab(providerInquiryTabLabel(inquiryTab, locale).toLowerCase())}
+            description={ui.provider.tryAnotherTab}
           />
         ) : (
           <>
@@ -773,12 +775,12 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
               <table className="w-full min-w-[760px] border-collapse text-left">
                 <thead className="bg-cream text-xs uppercase tracking-wide text-neutral-500">
                   <tr>
-                    <th className="px-4 py-3">Family</th>
-                    <th className="hidden px-4 py-3 sm:table-cell">Care needed</th>
-                    <th className="hidden px-4 py-3 md:table-cell">Location</th>
-                    <th className="hidden px-4 py-3 lg:table-cell">Updated</th>
-                    <th className="px-4 py-3">Status</th>
-                    <th className="px-4 py-3">Actions</th>
+                    <th className="px-4 py-3">{ui.provider.colFamily}</th>
+                    <th className="hidden px-4 py-3 sm:table-cell">{ui.provider.colCareNeeded}</th>
+                    <th className="hidden px-4 py-3 md:table-cell">{ui.provider.colLocation}</th>
+                    <th className="hidden px-4 py-3 lg:table-cell">{ui.provider.colUpdated}</th>
+                    <th className="px-4 py-3">{ui.provider.colStatus}</th>
+                    <th className="px-4 py-3">{ui.provider.colActions}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-stone-200">
@@ -801,26 +803,26 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
                             <strong className="text-ink">{inquiry.intake.contactName}</strong>
                           </div>
                           <span className="mt-1 block text-xs text-neutral-500">
-                            {inquiry.score}% match · {inquiry.intake.urgency}
+                            {inquiry.score}% match · {optionLabel(locale, inquiry.intake.urgency)}
                           </span>
                           <span className="mt-1 block font-mono text-[11px] text-neutral-400">
-                            Ref {formatReference(inquiry.intakeId)}
+                            {ui.provider.refLabel} {formatReference(inquiry.intakeId)}
                           </span>
                           <span className="mt-1 block text-xs text-neutral-500 sm:hidden">{inquiry.intake.preferredArea}</span>
                         </td>
                         <td className="hidden px-4 py-3 text-sm text-neutral-600 sm:table-cell">
-                          {inquiry.intake.careTypes.join(", ") || "—"}
+                          {inquiry.intake.careTypes.map((item) => optionLabel(locale, item)).join(", ") || "—"}
                         </td>
                         <td className="hidden px-4 py-3 text-sm text-neutral-600 md:table-cell">{inquiry.intake.preferredArea}</td>
                         <td className="hidden px-4 py-3 text-sm text-neutral-600 lg:table-cell">
-                          {new Date(inquiry.updatedAt).toLocaleString("en-GB", {
+                          {new Date(inquiry.updatedAt).toLocaleString(dateLocale(locale), {
                             dateStyle: "medium",
                             timeStyle: "short"
                           })}
                         </td>
                         <td className="px-4 py-3">
                           <span className={cn("inline-flex rounded-full px-3 py-1 text-xs font-semibold leading-snug", matchStatusBadgeClass(inquiry.status))}>
-                            {providerInquiryStatusLabel(inquiry.status)}
+                            {providerInquiryStatusLabel(inquiry.status, locale)}
                           </span>
                         </td>
                         <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}>
@@ -832,7 +834,7 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
                             disabled={isPending}
                             onClick={() => openInquiry(inquiry)}
                           >
-                            Open
+                            {ui.provider.open}
                             <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
                           </Button>
                         </td>
@@ -859,11 +861,11 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
       <section className="mt-5 rounded-xl border border-stone-200 bg-white px-4 py-4 shadow-soft sm:px-5 sm:py-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-sm font-semibold text-ink">Need help from Shepherds Oud?</p>
-            <p className="mt-1 text-sm text-ink/65">Platform or profile questions — not family-specific coordination.</p>
+            <p className="text-sm font-semibold text-ink">{ui.provider.needHelp}</p>
+            <p className="mt-1 text-sm text-ink/65">{ui.provider.supportHint}</p>
           </div>
           <Button asChild size="sm" variant="outline" className="w-full sm:w-auto">
-            <a href={`mailto:${brand.email}`}>Email support</a>
+            <a href={`mailto:${brand.email}`}>{ui.provider.emailSupport}</a>
           </Button>
         </div>
       </section>
@@ -893,9 +895,9 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
         open={Boolean(confirmDecline)}
         tone="danger"
         pending={Boolean(confirmDecline && pendingAction === `${confirmDecline.id}:DECLINED`)}
-        title="Decline this inquiry?"
-        description="Please select a reason. The family and their Care Guide will see that your facility cannot help right now."
-        confirmLabel="Decline inquiry"
+        title={ui.provider.declineTitle}
+        description={ui.provider.declineDescription}
+        confirmLabel={ui.provider.declineConfirm}
         onCancel={() => {
           setConfirmDecline(null);
           setDeclineReason(declineReasonOptions[0]);
@@ -914,8 +916,8 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
         }}
       >
         <label className="mt-4 grid gap-2 text-left text-sm font-medium text-ink">
-          Decline reason
-          <CustomSelect value={declineReason} onChange={setDeclineReason} options={declineReasonOptions} />
+          {ui.provider.declineReasonLabel}
+          <CustomSelect value={declineReason} onChange={setDeclineReason} options={declineReasonOptions} formatOption={(value) => optionLabel(locale, value)} />
         </label>
       </ConfirmDialog>
     </main>
@@ -942,36 +944,38 @@ function ProviderInquiryDetailPanel({
   onAccept: (inquiry: Inquiry) => void;
   onDecline: (inquiry: Inquiry) => void;
 }) {
+  const { locale, ui } = useLocale();
   const isPending = inquiry ? pendingInquiryId === inquiry.id : false;
   const needsResponse = inquiry ? isProviderActionNeeded(inquiry.status) : false;
-  const banner = inquiry ? providerInquiryBanner(inquiry.status) : null;
-  const nextStep = inquiry ? providerNextStep(inquiry) : null;
+  const banner = inquiry ? providerInquiryBanner(inquiry.status, locale) : null;
+  const nextStep = inquiry ? providerNextStep(inquiry, locale) : null;
   const activityNotes = inquiry ? providerMatchNotes(inquiry.notes) : null;
   const cardFeedback = inquiry ? inquiryFeedback[inquiry.id] : undefined;
-  const visitSummary = inquiry ? formatProviderVisit(inquiry) : null;
+  const visitSummary = inquiry ? formatProviderVisit(inquiry, locale) : null;
   const showVisitInBanner = Boolean(nextStep?.visitLine);
+  const p = ui.provider;
 
   const details = inquiry
     ? [
-        { label: "Family contact", value: inquiry.intake.contactName },
-        { label: "Phone", value: inquiry.intake.phone },
-        { label: "Email", value: inquiry.intake.email },
-        { label: "Preferred area", value: inquiry.intake.preferredArea },
-        { label: "Care needed", value: inquiry.intake.careTypes.join(", ") || "—" },
-        { label: "Urgency", value: inquiry.intake.urgency },
-        { label: "Age range", value: inquiry.intake.ageRange },
-        { label: "Match score", value: `${inquiry.score}%` },
-        { label: "Status", value: providerInquiryStatusLabel(inquiry.status) },
+        { label: p.detailFamilyContact, value: inquiry.intake.contactName },
+        { label: p.detailPhone, value: inquiry.intake.phone },
+        { label: p.detailEmail, value: inquiry.intake.email },
+        { label: p.detailPreferredArea, value: inquiry.intake.preferredArea },
+        { label: p.detailCareNeeded, value: inquiry.intake.careTypes.map((item) => optionLabel(locale, item)).join(", ") || "—" },
+        { label: p.detailUrgency, value: optionLabel(locale, inquiry.intake.urgency) },
+        { label: p.detailAgeRange, value: optionLabel(locale, inquiry.intake.ageRange) },
+        { label: p.detailMatchScore, value: `${inquiry.score}%` },
+        { label: p.detailStatus, value: providerInquiryStatusLabel(inquiry.status, locale) },
         {
-          label: "Received",
-          value: new Date(inquiry.createdAt).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })
+          label: p.detailReceived,
+          value: new Date(inquiry.createdAt).toLocaleString(dateLocale(locale), { dateStyle: "medium", timeStyle: "short" })
         },
         {
-          label: "Last updated",
-          value: new Date(inquiry.updatedAt).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })
+          label: p.detailLastUpdated,
+          value: new Date(inquiry.updatedAt).toLocaleString(dateLocale(locale), { dateStyle: "medium", timeStyle: "short" })
         },
-        ...(visitSummary && !showVisitInBanner ? [{ label: "Visit or call", value: visitSummary }] : []),
-        ...(activityNotes ? [{ label: "Activity", value: <span className="whitespace-pre-line">{activityNotes}</span> }] : [])
+        ...(visitSummary && !showVisitInBanner ? [{ label: p.detailVisitOrPhone, value: visitSummary }] : []),
+        ...(activityNotes ? [{ label: p.detailActivity, value: <span className="whitespace-pre-line">{activityNotes}</span> }] : [])
       ]
     : [];
 
@@ -980,20 +984,20 @@ function ProviderInquiryDetailPanel({
       open={Boolean(inquiry)}
       onClose={onClose}
       size="wide"
-      title={inquiry?.intake.contactName || "Family inquiry"}
+      title={inquiry?.intake.contactName || p.inquiryTitleFallback}
       subtitle={
         inquiry
-          ? `${providerInquiryStatusLabel(inquiry.status)} · ${inquiry.score}% match · ${inquiry.intake.preferredArea}`
-          : "Inquiry details"
+          ? `${providerInquiryStatusLabel(inquiry.status, locale)} · ${inquiry.score}% match · ${inquiry.intake.preferredArea}`
+          : p.inquiryDetailsSubtitle
       }
       footer={
         inquiry && needsResponse ? (
           <div className="flex w-full flex-wrap gap-2">
             <Button type="button" disabled={isPending} onClick={() => onAccept(inquiry)}>
-              {pendingAction === `${inquiry.id}:ACCEPTED` ? "Accepting..." : providerAcceptButtonLabel(inquiry.status)}
+              {pendingAction === `${inquiry.id}:ACCEPTED` ? p.accepting : providerAcceptButtonLabel(inquiry.status, locale)}
             </Button>
             <Button type="button" variant="outline" className="bg-white" disabled={isPending} onClick={() => onDecline(inquiry)}>
-              {pendingAction === `${inquiry.id}:DECLINED` ? "Declining..." : "Decline"}
+              {pendingAction === `${inquiry.id}:DECLINED` ? p.declining : ui.provider.decline}
             </Button>
           </div>
         ) : inquiry ? (
@@ -1001,16 +1005,16 @@ function ProviderInquiryDetailPanel({
             {nextStep?.visitLine
               ? nextStep.visitLine
               : inquiry.status === "ACCEPTED"
-                ? "Accepted — your Care Guide will coordinate next steps."
+                ? p.footerAccepted
                 : inquiry.status === "CONTACTED"
-                  ? "Visit or call coordinated — watch for timing details here or by email."
+                  ? p.footerContacted
                   : inquiry.status === "PLACED"
-                    ? "Placement in progress for this family."
+                    ? p.footerPlaced
                     : inquiry.status === "DECLINED"
-                      ? "You declined this inquiry."
+                      ? p.footerDeclined
                       : inquiry.status === "CLOSED"
-                        ? "This inquiry is closed."
-                        : "No action needed right now."}
+                        ? p.footerClosed
+                        : p.footerNoAction}
           </p>
         ) : null
       }
@@ -1020,7 +1024,7 @@ function ProviderInquiryDetailPanel({
           {banner ? <StatusPill className={matchStatusBadgeClass(inquiry.status)}>{banner}</StatusPill> : null}
 
           {nextStep ? (
-            <PanelSection title="What happens next">
+            <PanelSection title={ui.provider.whatNext}>
               <div
                 className={cn(
                   "rounded-xl px-4 py-4",
@@ -1040,7 +1044,7 @@ function ProviderInquiryDetailPanel({
             </PanelSection>
           ) : null}
 
-          <PanelSection title="Family details">
+          <PanelSection title={ui.provider.familyDetails}>
             <DetailList items={details} columns={2} />
           </PanelSection>
 
@@ -1048,7 +1052,7 @@ function ProviderInquiryDetailPanel({
             <p
               className={cn(
                 "rounded-xl px-4 py-3 text-sm leading-6",
-                cardFeedback.startsWith("Could not")
+                p.feedbackErrorPrefixes.some((prefix) => cardFeedback.startsWith(prefix))
                   ? "border border-red-200 bg-red-50 text-red-800"
                   : "border border-brand-green-pale bg-brand-green-pale/20 text-brand-green-dark"
               )}
@@ -1086,6 +1090,8 @@ function ProviderProfilePanel({
   profileMissingRequirements: string[];
   onSave: (notify: (message: string, tone?: "success" | "error") => void) => void;
 }) {
+  const { locale, ui } = useLocale();
+  const p = ui.provider;
   const { message: panelMessage, setMessage: setPanelMessage, clearMessage: clearPanelMessage } = usePanelMessage();
 
   useEffect(() => {
@@ -1101,17 +1107,17 @@ function ProviderProfilePanel({
       open={open}
       onClose={onClose}
       size="wide"
-      title="Facility profile & availability"
+      title={ui.provider.facilityProfile}
       subtitle={
         profileComplete
-          ? "Update how your facility appears to families and Care Guides."
-          : `${profileMissingRequirements.length} item${profileMissingRequirements.length === 1 ? "" : "s"} still needed before inquiries unlock.`
+          ? p.profileSubtitleComplete
+          : p.profileSubtitleIncomplete(profileMissingRequirements.length)
       }
       notice={panelMessage}
       noticeTone={panelNoticeTone(panelMessage)}
       footer={
         <Button type="submit" form="provider-facility-profile-form" disabled={saving} className="w-full sm:w-auto sm:min-w-[200px]">
-          {saving ? "Saving..." : providerId ? "Save facility profile" : "Create facility profile"}
+          {saving ? p.saving : providerId ? ui.provider.saveProfile : p.createProfile}
         </Button>
       }
     >
@@ -1125,94 +1131,94 @@ function ProviderProfilePanel({
           });
         }}
       >
-        <PanelSection step={1} title="Availability" description="Keep beds and status current so families see accurate capacity.">
+        <PanelSection step={1} title={ui.provider.availability} description={p.availabilitySectionDesc}>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Available beds">
+            <Field label={ui.provider.availableBeds}>
               <input
                 type="number"
                 min="0"
                 value={form.bedsOpen}
-                placeholder="Not set"
+                placeholder={p.notSetPlaceholder}
                 onChange={(event) => updateForm("bedsOpen", event.target.value)}
                 className={inputClass}
               />
             </Field>
-            <Field label="Availability status">
-              <CustomSelect value={form.availabilityStatus} onChange={(value) => updateForm("availabilityStatus", value)} options={availabilityOptions} />
+            <Field label={p.availabilityStatusLabel}>
+              <CustomSelect value={form.availabilityStatus} onChange={(value) => updateForm("availabilityStatus", value)} options={availabilityOptions} formatOption={(value) => optionLabel(locale, value)} />
             </Field>
-            <Field label="Total beds or places">
-              <input type="number" min="0" value={form.bedsTotal} onChange={(e) => updateForm("bedsTotal", e.target.value)} className={inputClass} placeholder="Optional" />
+            <Field label={p.totalBedsLabel}>
+              <input type="number" min="0" value={form.bedsTotal} onChange={(e) => updateForm("bedsTotal", e.target.value)} className={inputClass} placeholder={p.optionalPlaceholder} />
             </Field>
           </div>
         </PanelSection>
 
-        <PanelSection step={2} title="Facility details" description="Core information families and Care Guides use to assess fit.">
+        <PanelSection step={2} title={ui.provider.facilityDetails} description={p.facilityDetailsDesc}>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Facility name *">
+            <Field label={p.facilityNameLabel}>
               <input value={form.name} onChange={(e) => updateForm("name", e.target.value)} className={inputClass} required minLength={2} />
             </Field>
-            <Field label="Facility type">
-              <CustomSelect value={form.type} onChange={(value) => updateForm("type", value)} options={facilityTypes} />
+            <Field label={p.facilityTypeLabel}>
+              <CustomSelect value={form.type} onChange={(value) => updateForm("type", value)} options={facilityTypes} formatOption={(value) => optionLabel(locale, value)} />
             </Field>
-            <Field label="Contact person">
+            <Field label={p.contactPersonLabel}>
               <input value={form.contactName} onChange={(e) => updateForm("contactName", e.target.value)} className={inputClass} />
             </Field>
-            <Field label="Email">
+            <Field label={p.detailEmail}>
               <input type="email" value={form.email} onChange={(e) => updateForm("email", e.target.value)} className={inputClass} placeholder="contact@facility.nl" />
             </Field>
-            <Field label="Phone">
+            <Field label={p.detailPhone}>
               <input value={form.phone} onChange={(e) => updateForm("phone", e.target.value)} className={inputClass} placeholder="+31 6 ..." />
             </Field>
-            <Field label="City">
-              <input value={form.city} onChange={(e) => updateForm("city", e.target.value)} className={inputClass} placeholder="e.g. Utrecht" />
+            <Field label={p.cityLabel}>
+              <input value={form.city} onChange={(e) => updateForm("city", e.target.value)} className={inputClass} placeholder={p.cityPlaceholder} />
             </Field>
-            <Field label="Province">
+            <Field label={p.provinceLabel}>
               <CustomSelect value={form.province} onChange={(value) => updateForm("province", value)} options={dutchProvinces} />
             </Field>
           </div>
           <div className="mt-4">
-            <Field label="Facility description">
-              <textarea value={form.description} onChange={(e) => updateForm("description", e.target.value)} className={`${inputClass} min-h-24`} placeholder="Describe your care approach, environment, and specialties." />
+            <Field label={p.descriptionLabel}>
+              <textarea value={form.description} onChange={(e) => updateForm("description", e.target.value)} className={`${inputClass} min-h-24`} placeholder={p.descriptionPlaceholder} />
             </Field>
           </div>
         </PanelSection>
 
-        <PanelSection step={3} title="Care profile" description="Services, languages, and care levels you offer.">
+        <PanelSection step={3} title={ui.provider.careProfile} description={p.careProfileDesc}>
           <div className="space-y-4">
-            <ChipField label="Services offered" options={careTypeOptions} selected={form.services} onToggle={(value) => toggleList("services", value)} />
-            <ChipField label="Care levels" options={careLevelOptions} selected={form.careLevels} onToggle={(value) => toggleList("careLevels", value)} />
-            <ChipField label="Languages spoken" options={["Dutch", "English", "Arabic", "Turkish", "German", "French"]} selected={form.languages} onToggle={(value) => toggleList("languages", value)} />
+            <ChipField label={p.servicesOfferedLabel} options={careTypeOptions} selected={form.services} onToggle={(value) => toggleList("services", value)} locale={locale} />
+            <ChipField label={p.careLevelsLabel} options={careLevelOptions} selected={form.careLevels} onToggle={(value) => toggleList("careLevels", value)} locale={locale} />
+            <ChipField label={p.languagesSpokenLabel} options={["Dutch", "English", "Arabic", "Turkish", "German", "French"]} selected={form.languages} onToggle={(value) => toggleList("languages", value)} locale={locale} />
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Dementia capacity">
-                <CustomSelect value={form.dementiaCapacity} onChange={(value) => updateForm("dementiaCapacity", value)} options={dementiaCapacityOptions} />
+              <Field label={p.dementiaCapacityLabel}>
+                <CustomSelect value={form.dementiaCapacity} onChange={(value) => updateForm("dementiaCapacity", value)} options={dementiaCapacityOptions} formatOption={(value) => optionLabel(locale, value)} />
               </Field>
-              <Field label="Visit availability">
-                <CustomSelect value={form.visitAvailability} onChange={(value) => updateForm("visitAvailability", value)} options={visitAvailabilityOptions} />
+              <Field label={p.visitAvailabilityLabel}>
+                <CustomSelect value={form.visitAvailability} onChange={(value) => updateForm("visitAvailability", value)} options={visitAvailabilityOptions} formatOption={(value) => optionLabel(locale, value)} />
               </Field>
             </div>
           </div>
         </PanelSection>
 
-        <PanelSection step={4} title="Pricing & response" description="Optional details that help families compare options.">
+        <PanelSection step={4} title={ui.provider.pricingResponse} description={p.pricingSectionDesc}>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Typical response time (hours)">
-              <input type="number" min="1" max="168" value={form.responseTimeHours} onChange={(e) => updateForm("responseTimeHours", e.target.value)} className={inputClass} placeholder="e.g. 24" />
+            <Field label={p.typicalResponseLabel}>
+              <input type="number" min="1" max="168" value={form.responseTimeHours} onChange={(e) => updateForm("responseTimeHours", e.target.value)} className={inputClass} placeholder={p.exampleResponsePlaceholder} />
             </Field>
-            <Field label="Monthly price min (EUR)">
-              <input type="number" min="0" value={form.priceMin} onChange={(e) => updateForm("priceMin", e.target.value)} className={inputClass} placeholder="Optional" />
+            <Field label={p.priceMinLabel}>
+              <input type="number" min="0" value={form.priceMin} onChange={(e) => updateForm("priceMin", e.target.value)} className={inputClass} placeholder={p.optionalPlaceholder} />
             </Field>
-            <Field label="Monthly price max (EUR)">
-              <input type="number" min="0" value={form.priceMax} onChange={(e) => updateForm("priceMax", e.target.value)} className={inputClass} placeholder="Optional" />
+            <Field label={p.priceMaxLabel}>
+              <input type="number" min="0" value={form.priceMax} onChange={(e) => updateForm("priceMax", e.target.value)} className={inputClass} placeholder={p.optionalPlaceholder} />
             </Field>
           </div>
           <div className="mt-4">
-            <ChipField label="Funding types accepted" options={fundingTypeOptions} selected={form.fundingTypes} onToggle={(value) => toggleList("fundingTypes", value)} />
+            <ChipField label={p.fundingAcceptedLabel} options={fundingTypeOptions} selected={form.fundingTypes} onToggle={(value) => toggleList("fundingTypes", value)} locale={locale} />
           </div>
         </PanelSection>
 
         {!profileComplete && profileMissingRequirements.length ? (
           <div className="rounded-xl border border-brand-amber/25 bg-brand-amber/10 px-4 py-3">
-            <p className="text-sm font-semibold text-ink">Still needed for inquiries</p>
+            <p className="text-sm font-semibold text-ink">{p.stillNeededForInquiries}</p>
             <ul className="mt-2 flex flex-wrap gap-2">
               {profileMissingRequirements.map((item) => (
                 <li key={item} className="rounded-full bg-white/80 px-3 py-1 text-xs font-medium text-ink/75">
@@ -1240,12 +1246,14 @@ function ChipField({
   label,
   options,
   selected,
-  onToggle
+  onToggle,
+  locale
 }: {
   label: string;
   options: string[];
   selected: string[];
   onToggle: (value: string) => void;
+  locale: ReturnType<typeof useLocale>["locale"];
 }) {
   return (
     <div className="grid gap-2">
@@ -1253,7 +1261,7 @@ function ChipField({
       <div className="flex flex-wrap gap-2">
         {options.map((option) => (
           <Chip key={option} selected={selected.includes(option)} onClick={() => onToggle(option)}>
-            {option}
+            {optionLabel(locale, option)}
           </Chip>
         ))}
       </div>

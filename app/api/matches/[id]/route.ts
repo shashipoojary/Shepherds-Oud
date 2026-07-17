@@ -11,6 +11,7 @@ import { updateMatchSchema } from "@/lib/validation/match";
 import { syncIntakeCaseFromMatch } from "@/lib/domain/intake-case-sync";
 import { sendProviderInquiryEmail } from "@/lib/email/provider-inquiry-email";
 import { sendProviderStatusEmail } from "@/lib/email/provider-status-email";
+import { resolveProviderEmailLocale } from "@/lib/email/locale-from-intake";
 import { familyRequestNote } from "@/lib/domain/match-status";
 import { handleApiError, jsonError, jsonOk, readJsonBody, runInBackground } from "@/lib/core/api-helpers";
 import { toSafeMatch } from "@/lib/serializers/match";
@@ -133,6 +134,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     });
 
     const providerEmail = existing.provider.email;
+    const providerLocale = resolveProviderEmailLocale(existing.provider.preferredLocale);
     if (isFamilyAction && providerEmail) {
       runInBackground(
         () =>
@@ -143,7 +145,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
             familyArea: existing.intake.preferredArea,
             familyCare: existing.intake.careTypes.join(", ") || "Not specified",
             familyUrgency: existing.intake.urgency,
-            requestType: nextStatus as "VISIT_REQUESTED" | "CALLBACK_REQUESTED"
+            requestType: nextStatus as "VISIT_REQUESTED" | "CALLBACK_REQUESTED",
+            locale: providerLocale
           }),
         "provider_inquiry_email"
       );
@@ -160,7 +163,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
             providerEmail,
             providerName: existing.provider.name,
             familyName: existing.intake.contactName,
-            kind: "care_chosen"
+            kind: "care_chosen",
+            locale: providerLocale
           }),
         "provider_care_chosen_email"
       );

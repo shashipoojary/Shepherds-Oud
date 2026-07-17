@@ -1,7 +1,9 @@
-import { ubuntuTagline } from "@/lib/config/content";
+import { siteTagline } from "@/lib/config/marketing-en";
 import { sendBrevoEmail } from "@/lib/email/brevo";
 import { sendAdvisorAlertEmail } from "@/lib/email/advisor-alert-email";
+import { emailCopy, emailGreeting, resolveEmailLocale } from "@/lib/email/email-copy";
 import { renderTransactionalEmail } from "@/lib/email/transactional-template";
+import type { Locale } from "@/lib/i18n/config";
 
 const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.BETTER_AUTH_URL || "https://shepherds-oud.vercel.app";
 
@@ -10,40 +12,44 @@ export async function sendIntakeConfirmationEmails(input: {
   email: string;
   intakeId: string;
   careGuide: { name: string | null; email: string } | null;
+  locale?: Locale;
 }) {
+  const locale = await resolveEmailLocale(input.locale);
+  const copy = emailCopy(locale).intakeConfirmation;
   const dashboardUrl = `${appUrl}/family/dashboard`;
   const reference = input.intakeId.slice(0, 8).toUpperCase();
-  const guideName = input.careGuide?.name || "Your Care Guide";
+  const guideName = input.careGuide?.name || copy.guideFallback;
 
-  const familyParagraphs = input.careGuide
+  const paragraphs = input.careGuide
     ? [
-        `Hello ${input.contactName},`,
-        `We received your care request. Your reference is ${reference}.`,
-        `${guideName} (${input.careGuide.email}) is your dedicated Care Guide and will personally review your case.`,
-        ubuntuTagline
+        emailGreeting(locale, input.contactName),
+        copy.received(reference),
+        copy.guideAssigned(guideName, input.careGuide.email),
+        siteTagline(locale)
       ]
     : [
-        `Hello ${input.contactName},`,
-        `We received your care request. Your reference is ${reference}.`,
-        "A Care Guide will be assigned shortly to guide you through each decision.",
-        ubuntuTagline
+        emailGreeting(locale, input.contactName),
+        copy.received(reference),
+        copy.guidePending,
+        siteTagline(locale)
       ];
 
   const familyHtml = renderTransactionalEmail({
-    preheader: "We received your Shepherds Oud care request.",
-    eyebrow: "Care request received",
-    title: "Thank you — we are with you",
-    paragraphs: familyParagraphs,
-    cta: { label: "Open your dashboard", url: dashboardUrl },
-    footerNote: `Reference ${reference}. Save this email for your records.`
+    locale,
+    preheader: copy.preheader,
+    eyebrow: copy.eyebrow,
+    title: copy.title,
+    paragraphs,
+    cta: { label: copy.cta, url: dashboardUrl },
+    footerNote: copy.footerNote(reference)
   });
 
   await Promise.allSettled([
     sendBrevoEmail({
       to: [{ email: input.email, name: input.contactName }],
-      subject: "We received your Shepherds Oud care request",
+      subject: copy.subject,
       htmlContent: familyHtml,
-      textContent: familyParagraphs.join(" ")
+      textContent: paragraphs.join(" ")
     }),
     sendAdvisorAlertEmail({
       kind: "new_intake",

@@ -3,6 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ArrowRight, ChevronDown, ChevronUp } from "lucide-react";
+import { useLocale } from "@/components/i18n/locale-provider";
+import { dateLocale, fieldLabel, optionLabel } from "@/lib/i18n/ui";
 import { withIntakeId } from "@/lib/client/case-selection";
 import {
   formatVisitSchedule,
@@ -15,22 +17,27 @@ import { Button } from "@/components/ui/button";
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import { CareGuideCard } from "@/components/shared/care-guide-card";
 import { normalizeIntakeStatus } from "@/lib/domain/intake-workflow";
+import type { Locale } from "@/lib/i18n/config";
 
-function listText(items?: string[] | null) {
-  return items?.filter(Boolean).join(", ") || null;
+function listText(locale: Locale, items?: string[] | null) {
+  return items?.filter(Boolean).map((item) => optionLabel(locale, item)).join(", ") || null;
 }
 
-function truncateList(items: string[], max = 3) {
+function truncateList(locale: Locale, items: string[], moreLabel: (n: number) => string, max = 3) {
   if (!items.length) return null;
-  if (items.length <= max) return items.join(", ");
-  return `${items.slice(0, max).join(", ")} +${items.length - max} more`;
+  if (items.length <= max) return items.map((item) => optionLabel(locale, item)).join(", ");
+  return `${items.slice(0, max).map((item) => optionLabel(locale, item)).join(", ")} ${moreLabel(items.length - max)}`;
 }
 
-function formatDischargeDate(value?: string | null) {
+function formatDischargeDate(locale: Locale, value?: string | null) {
   if (!value) return null;
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  return date.toLocaleDateString(dateLocale(locale), { day: "numeric", month: "short", year: "numeric" });
+}
+
+function displayValue(locale: Locale, value?: string | null) {
+  return value ? optionLabel(locale, value) : null;
 }
 
 function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
@@ -77,11 +84,11 @@ function UpdateCallout({ title, children, tone = "neutral" }: { title: string; c
   );
 }
 
-function collapsedPreview(intake: FamilyIntake) {
+function collapsedPreview(locale: Locale, intake: FamilyIntake, moreLabel: (n: number) => string) {
   const parts = [
     intake.preferredArea,
-    intake.urgency,
-    truncateList(intake.careTypes, 2),
+    intake.urgency ? optionLabel(locale, intake.urgency) : null,
+    truncateList(locale, intake.careTypes, moreLabel, 2),
     `Ref ${intake.id.slice(0, 8).toUpperCase()}`
   ].filter(Boolean);
   return parts.join(" · ");
@@ -102,11 +109,12 @@ export function IntakeSummaryCard({
   showShortlistCta?: boolean;
   defaultOpen?: boolean;
 }) {
-  const status = intakeStatusLabel(intake.status);
-  const hint = intakeStatusHint(intake.status);
+  const { locale, ui } = useLocale();
+  const status = intakeStatusLabel(intake.status, locale);
+  const hint = intakeStatusHint(intake.status, locale);
   const isClosed = normalizeIntakeStatus(intake.status) === "CLOSED";
   const hasMatches = !isClosed && typeof intake.matchCount === "number" && intake.matchCount > 0;
-  const visitSummary = formatVisitSchedule(intake);
+  const visitSummary = formatVisitSchedule(intake, locale);
   const reference = intake.id.slice(0, 8).toUpperCase();
   const decisionMakers = intakeDecisionMakers(intake);
   const hasDecisionSupport = decisionMakers.length > 0 || Boolean(intake.seniorAgreedToSearch || intake.decisionParticipants);
@@ -141,24 +149,24 @@ export function IntakeSummaryCard({
         <article className="rounded-2xl border border-stone-200 bg-white p-4 shadow-soft sm:p-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <p className="section-label">Your care request</p>
+              <p className="section-label">{ui.family.intakeRequestLabel}</p>
               <h2 className="mt-1 text-lg font-semibold text-ink">{intake.contactName}</h2>
-              <p className="mt-1 text-sm text-neutral-500">{collapsedPreview(intake)}</p>
+              <p className="mt-1 text-sm text-neutral-500">{collapsedPreview(locale, intake, ui.family.moreCount)}</p>
             </div>
             <span className="rounded-full bg-brand-green-pale/50 px-3 py-1 text-xs font-semibold text-brand-green-dark">{status}</span>
           </div>
 
           <dl className="mt-3">
-            <DetailRow label="Care needed" value={listText(intake.careTypes)} />
-            <DetailRow label="Relationship" value={intake.relationship} />
-            {intake.fundingTypes?.length ? <DetailRow label="Funding" value={listText(intake.fundingTypes)} /> : null}
+            <DetailRow label={fieldLabel(locale, "Type of care needed")} value={listText(locale, intake.careTypes)} />
+            <DetailRow label={fieldLabel(locale, "Your relationship to the person needing care")} value={displayValue(locale, intake.relationship)} />
+            {intake.fundingTypes?.length ? <DetailRow label={fieldLabel(locale, "Funding types")} value={listText(locale, intake.fundingTypes)} /> : null}
           </dl>
 
           {showActions && hasMatches ? (
             <div className="mt-4">
               <Button asChild size="sm">
                 <Link href={withIntakeId("/family/results", intake.id)}>
-                  View matches <ArrowRight className="h-4 w-4" />
+                  {ui.family.viewMatches} <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
             </div>
@@ -173,8 +181,8 @@ export function IntakeSummaryCard({
       {intake.careGuide && showCareGuide ? <CareGuideCard guide={intake.careGuide} /> : null}
 
       <CollapsibleSection
-        title={`Your care request — ${intake.contactName}`}
-        description={collapsedPreview(intake)}
+        title={ui.family.intakeRequestTitle(intake.contactName)}
+        description={collapsedPreview(locale, intake, ui.family.moreCount)}
         defaultOpen={defaultOpen}
         badge={
           <span className="rounded-full bg-brand-green-pale/50 px-3 py-1 text-xs font-semibold text-brand-green-dark">{status}</span>
@@ -185,19 +193,19 @@ export function IntakeSummaryCard({
 
           {hasUpdates ? (
             <section id="care-guide-plan" className="scroll-mt-24 space-y-2.5">
-              <h3 className="text-sm font-semibold text-ink">Updates from your Care Guide</h3>
+              <h3 className="text-sm font-semibold text-ink">{ui.family.careGuideUpdates}</h3>
               {intake.carePathway ? (
-                <UpdateCallout title="Recommended pathway" tone="neutral">
+                <UpdateCallout title={ui.family.recommendedPathway} tone="neutral">
                   <strong className="text-ink">{intake.carePathway}</strong>
                 </UpdateCallout>
               ) : null}
               {intake.carePlanSummary ? (
-                <UpdateCallout title="Care plan summary" tone="guide">
+                <UpdateCallout title={ui.family.carePlanSummary} tone="guide">
                   {intake.carePlanSummary}
                 </UpdateCallout>
               ) : null}
               {visitSummary ? (
-                <UpdateCallout title="Scheduled visit or callback" tone="visit">
+                <UpdateCallout title={ui.family.visitScheduled} tone="visit">
                   {visitSummary}
                 </UpdateCallout>
               ) : null}
@@ -205,73 +213,73 @@ export function IntakeSummaryCard({
           ) : null}
 
           <div className="divide-y divide-stone-100">
-            <NestedGroup title="Contact & location" defaultOpen>
+            <NestedGroup title={ui.family.contactLocation} defaultOpen>
               <dl>
-                <DetailRow label="Name" value={intake.contactName} />
-                <DetailRow label="Email" value={intake.email} />
-                <DetailRow label="Phone" value={intake.phone} />
-                <DetailRow label="Relationship" value={intake.relationship} />
-                <DetailRow label="Area" value={intake.preferredArea} />
-                <DetailRow label="Distance" value={intake.preferredDistance} />
-                <DetailRow label="Urgency" value={intake.urgency} />
-                <DetailRow label="Age range" value={intake.ageRange} />
-                <DetailRow label="Reference" value={reference} />
+                <DetailRow label={fieldLabel(locale, "Your name")} value={intake.contactName} />
+                <DetailRow label={fieldLabel(locale, "Email address")} value={intake.email} />
+                <DetailRow label={fieldLabel(locale, "Phone number")} value={intake.phone} />
+                <DetailRow label={fieldLabel(locale, "Your relationship to the person needing care")} value={displayValue(locale, intake.relationship)} />
+                <DetailRow label={ui.family.area} value={intake.preferredArea} />
+                <DetailRow label={fieldLabel(locale, "Preferred distance from your location")} value={displayValue(locale, intake.preferredDistance)} />
+                <DetailRow label={fieldLabel(locale, "How urgent is the care need?")} value={displayValue(locale, intake.urgency)} />
+                <DetailRow label={fieldLabel(locale, "Age range")} value={displayValue(locale, intake.ageRange)} />
+                <DetailRow label={ui.family.reference} value={reference} />
               </dl>
             </NestedGroup>
 
             {hasCareDetails ? (
-              <NestedGroup title="Care needed">
+              <NestedGroup title={ui.family.careNeeded}>
                 <dl>
-                  <DetailRow label="Care types" value={listText(intake.careTypes)} />
-                  <DetailRow label="Mobility" value={intake.mobility} />
-                  <DetailRow label="Medical / nursing" value={intake.medicalSupportNeeds} />
-                  <DetailRow label="Dementia / memory" value={intake.dementiaNeeds} />
-                  <DetailRow label="Functional needs" value={listText(intake.functionalNeeds)} />
-                  <DetailRow label="Additional needs" value={listText(intake.additionalNeeds)} />
+                  <DetailRow label={fieldLabel(locale, "Type of care needed")} value={listText(locale, intake.careTypes)} />
+                  <DetailRow label={fieldLabel(locale, "Mobility level")} value={displayValue(locale, intake.mobility)} />
+                  <DetailRow label={fieldLabel(locale, "Medical or nursing support needed")} value={displayValue(locale, intake.medicalSupportNeeds)} />
+                  <DetailRow label={fieldLabel(locale, "Dementia or memory care needs")} value={displayValue(locale, intake.dementiaNeeds)} />
+                  <DetailRow label={fieldLabel(locale, "Functional needs")} value={listText(locale, intake.functionalNeeds)} />
+                  <DetailRow label={fieldLabel(locale, "Additional needs")} value={listText(locale, intake.additionalNeeds)} />
                 </dl>
               </NestedGroup>
             ) : null}
 
             {hasFundingOrLanguages ? (
-              <NestedGroup title="Funding & languages">
+              <NestedGroup title={ui.family.fundingLanguages}>
                 <dl>
-                  <DetailRow label="Funding" value={listText(intake.fundingTypes)} />
-                  <DetailRow label="Budget" value={intake.budget} />
-                  <DetailRow label="Languages" value={listText(intake.languages)} />
+                  <DetailRow label={fieldLabel(locale, "Funding types")} value={listText(locale, intake.fundingTypes)} />
+                  <DetailRow label={fieldLabel(locale, "Monthly budget range")} value={displayValue(locale, intake.budget)} />
+                  <DetailRow label={fieldLabel(locale, "Preferred languages")} value={listText(locale, intake.languages)} />
                 </dl>
               </NestedGroup>
             ) : null}
 
             {hasPlacementPreferences ? (
-              <NestedGroup title="Placement preferences">
+              <NestedGroup title={fieldLabel(locale, "Placement preferences")}>
                 <dl>
-                  <DetailRow label="Preferences" value={listText(intake.placementPreferences)} />
+                  <DetailRow label={ui.family.preferences} value={listText(locale, intake.placementPreferences)} />
                 </dl>
               </NestedGroup>
             ) : null}
 
             {hasDecisionSupport ? (
-              <NestedGroup title="Decision support">
+              <NestedGroup title={ui.family.decisionSupport}>
                 <dl>
                   {decisionMakers.map((maker, index) => (
                     <DetailRow
                       key={maker.id || `${maker.name}-${index}`}
-                      label={index === 0 ? "Decision-makers" : " "}
+                      label={index === 0 ? fieldLabel(locale, "Decision-makers") : " "}
                       value={
                         <>
                           <span className="font-medium">{maker.name}</span>
-                          {maker.relationship ? ` · ${maker.relationship}` : ""}
-                          {maker.responsibilities.length ? ` · ${maker.responsibilities.join(", ")}` : ""}
+                          {maker.relationship ? ` · ${optionLabel(locale, maker.relationship)}` : ""}
+                          {maker.responsibilities.length ? ` · ${maker.responsibilities.map((item) => optionLabel(locale, item)).join(", ")}` : ""}
                         </>
                       }
                     />
                   ))}
-                  <DetailRow label="Senior agreed" value={intake.seniorAgreedToSearch} />
-                  <DetailRow label="Participants" value={intake.decisionParticipants} />
+                  <DetailRow label={ui.family.seniorAgreed} value={displayValue(locale, intake.seniorAgreedToSearch)} />
+                  <DetailRow label={ui.family.participants} value={displayValue(locale, intake.decisionParticipants)} />
                   {hasSupportNeeds ? (
                     <>
-                      <DetailRow label="Emotional support" value={listText(intake.emotionalSupportNeeds)} />
-                      <DetailRow label="Support types" value={listText(intake.supportTypes)} />
+                      <DetailRow label={fieldLabel(locale, "Emotional support needs")} value={listText(locale, intake.emotionalSupportNeeds)} />
+                      <DetailRow label={fieldLabel(locale, "Type of support you need")} value={listText(locale, intake.supportTypes)} />
                     </>
                   ) : null}
                 </dl>
@@ -279,24 +287,24 @@ export function IntakeSummaryCard({
             ) : null}
 
             {hasContextNotes ? (
-              <NestedGroup title="Situation & notes">
+              <NestedGroup title={ui.family.situationNotes}>
                 <dl>
-                  <DetailRow label="Living situation" value={intake.livingSituation} />
-                  <DetailRow label="Move-in timeline" value={intake.moveInTimeline} />
-                  <DetailRow label="Hospital discharge" value={formatDischargeDate(intake.hospitalDischargeDate)} />
-                  <DetailRow label="Notes" value={intake.notes?.trim()} />
+                  <DetailRow label={fieldLabel(locale, "Current living situation")} value={displayValue(locale, intake.livingSituation)} />
+                  <DetailRow label={fieldLabel(locale, "Desired move-in timeline")} value={displayValue(locale, intake.moveInTimeline)} />
+                  <DetailRow label={fieldLabel(locale, "Hospital discharge date")} value={formatDischargeDate(locale, intake.hospitalDischargeDate)} />
+                  <DetailRow label={ui.family.notes} value={intake.notes?.trim()} />
                 </dl>
               </NestedGroup>
             ) : null}
 
             {hasSafetyAnswers ? (
-              <NestedGroup title="Safety check answers">
+              <NestedGroup title={ui.family.safetyCheck}>
                 <dl>
-                  <DetailRow label="Safe tonight" value={intake.personSafeTonight} />
-                  <DetailRow label="Urgent medical help" value={intake.urgentMedicalHelp} />
-                  <DetailRow label="Remain at home tonight" value={intake.canRemainHomeTonight} />
-                  <DetailRow label="Caregiver burnout risk" value={intake.caregiverBurnoutRisk} />
-                  <DetailRow label="Immediate risks" value={listText(intake.immediateRiskFlags)} />
+                  <DetailRow label={fieldLabel(locale, "Is the person currently safe tonight?")} value={displayValue(locale, intake.personSafeTonight)} />
+                  <DetailRow label={fieldLabel(locale, "Is urgent medical help required?")} value={displayValue(locale, intake.urgentMedicalHelp)} />
+                  <DetailRow label={fieldLabel(locale, "Can the person remain at home tonight?")} value={displayValue(locale, intake.canRemainHomeTonight)} />
+                  <DetailRow label={fieldLabel(locale, "Is the caregiver at risk of burnout?")} value={displayValue(locale, intake.caregiverBurnoutRisk)} />
+                  <DetailRow label={fieldLabel(locale, "Immediate risk flags")} value={listText(locale, intake.immediateRiskFlags)} />
                 </dl>
               </NestedGroup>
             ) : null}
@@ -305,17 +313,17 @@ export function IntakeSummaryCard({
           {showShortlistCta && hasMatches ? (
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand-green-pale/80 bg-brand-green-pale/15 px-4 py-3.5">
               <p className="text-sm font-medium text-brand-green-dark">
-                {intake.matchCount} provider match{intake.matchCount === 1 ? "" : "es"} on your shortlist.
+                {ui.family.shortlistCount(intake.matchCount ?? 0)}
               </p>
               <Button asChild size="sm" variant="outline">
                 <Link href={withIntakeId("/family/results", intake.id)}>
-                  View matches <ArrowRight className="h-3.5 w-3.5" />
+                  {ui.family.viewMatches} <ArrowRight className="h-3.5 w-3.5" />
                 </Link>
               </Button>
             </div>
           ) : null}
 
-          <p className="text-xs leading-5 text-neutral-500">Saved to your account — expand a topic above only when you need the detail.</p>
+          <p className="text-xs leading-5 text-neutral-500">{ui.family.savedOnAccount}</p>
         </div>
       </CollapsibleSection>
     </div>

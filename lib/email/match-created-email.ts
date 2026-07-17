@@ -1,5 +1,7 @@
 import { sendBrevoEmail } from "@/lib/email/brevo";
+import { emailCopy, emailGreeting, resolveEmailLocale } from "@/lib/email/email-copy";
 import { renderTransactionalEmail } from "@/lib/email/transactional-template";
+import type { Locale } from "@/lib/i18n/config";
 
 const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.BETTER_AUTH_URL || "https://shepherds-oud.vercel.app";
 
@@ -10,34 +12,24 @@ export async function sendFamilyMatchCreatedEmail(input: {
   intakeId: string;
   providerName: string;
   reopened?: boolean;
+  locale?: Locale;
 }) {
+  const locale = await resolveEmailLocale(input.locale);
+  const copy = emailCopy(locale).familyMatch;
   const dashboardUrl = `${appUrl}/family/dashboard?intakeId=${encodeURIComponent(input.intakeId)}`;
   const resultsUrl = `${appUrl}/family/results?intakeId=${encodeURIComponent(input.intakeId)}`;
-  const title = input.reopened
-    ? `${input.providerName} is available on your shortlist again`
-    : `You've been matched with ${input.providerName}`;
-
-  const paragraphs = input.reopened
-    ? [
-        `Hello ${input.contactName},`,
-        `Your Care Guide has re-opened ${input.providerName} on your shortlist so you can consider them again.`,
-        "Review the match and request a visit or callback when you are ready.",
-        "Your Care Guide remains available if you want help deciding."
-      ]
-    : [
-        `Hello ${input.contactName},`,
-        `You've been matched with ${input.providerName}.`,
-        "This facility is now on your shortlist. Review the details and request a visit or callback when you are ready.",
-        "Your Care Guide is here if you have questions while you compare options."
-      ];
+  const title = input.reopened ? copy.reopenedTitle(input.providerName) : copy.newTitle(input.providerName);
+  const body = input.reopened ? copy.reopenedBody(input.providerName) : copy.newBody(input.providerName);
+  const paragraphs = [emailGreeting(locale, input.contactName), ...body];
 
   const htmlContent = renderTransactionalEmail({
+    locale,
     preheader: title,
-    eyebrow: "New provider match",
+    eyebrow: copy.eyebrow,
     title,
     paragraphs,
-    cta: { label: "Review your matches", url: resultsUrl },
-    footerNote: `You can also open your dashboard anytime: ${dashboardUrl}`
+    cta: { label: copy.cta, url: resultsUrl },
+    footerNote: copy.footer(dashboardUrl)
   });
 
   return sendBrevoEmail({
@@ -56,28 +48,28 @@ export async function sendProviderMatchCreatedEmail(input: {
   familyCare: string;
   familyUrgency: string;
   reopened?: boolean;
+  locale?: Locale;
 }) {
+  const locale = await resolveEmailLocale(input.locale);
+  const copy = emailCopy(locale).providerMatch;
   const dashboardUrl = `${appUrl}/provider`;
-  const title = input.reopened
-    ? "A previous referral has been re-opened"
-    : "You have a new potential referral";
+  const title = input.reopened ? copy.reopenedTitle : copy.newTitle;
 
   const paragraphs = [
-    `Hello ${input.providerName},`,
-    input.reopened
-      ? "A Care Guide has re-opened a family referral to your facility."
-      : "You have a new potential referral from Shepherds Oud.",
-    `Area: ${input.familyArea}. Care needs: ${input.familyCare}. Urgency: ${input.familyUrgency}.`,
-    "The family can review your profile and may request a visit to your facility or a callback. Open your dashboard for context when they do."
+    emailGreeting(locale, input.providerName),
+    input.reopened ? copy.reopenedBody : copy.newBody,
+    copy.details(input.familyArea, input.familyCare, input.familyUrgency),
+    copy.hint
   ];
 
   const htmlContent = renderTransactionalEmail({
+    locale,
     preheader: title,
-    eyebrow: "Potential referral",
+    eyebrow: copy.eyebrow,
     title,
     paragraphs,
-    cta: { label: "Open facility dashboard", url: dashboardUrl },
-    footerNote: "No action is required until the family requests a visit or callback."
+    cta: { label: copy.cta, url: dashboardUrl },
+    footerNote: copy.footer
   });
 
   return sendBrevoEmail({

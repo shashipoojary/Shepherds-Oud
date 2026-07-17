@@ -1,7 +1,10 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
+import { useLocale } from "@/components/i18n/locale-provider";
 import { cn } from "@/lib/core/utils";
-import { brand } from "@/lib/config/brand";
+import { brand, brandTagline } from "@/lib/config/brand";
 
 type BrandLogoProps = {
   className?: string;
@@ -25,6 +28,7 @@ export function BrandLogo({
   onClick,
   tone = "dark"
 }: BrandLogoProps) {
+  const { locale } = useLocale();
   const isLight = tone === "light";
   const showIllustration = !compact && variant === "footer";
   const isFooter = variant === "footer";
@@ -50,7 +54,9 @@ export function BrandLogo({
           {brand.name}
         </span>
         {showTagline ? (
-          <span className={cn("mt-0.5 block text-xs sm:text-sm italic text-brand-amber")}>{brand.tagline}</span>
+          <span className={cn("mt-0.5 block text-xs sm:text-sm italic text-brand-amber")}>
+            {brandTagline(locale)}
+          </span>
         ) : null}
       </span>
     </span>

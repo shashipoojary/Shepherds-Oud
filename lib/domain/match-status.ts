@@ -1,3 +1,5 @@
+import type { Locale } from "@/lib/i18n/config";
+
 const familyVisibleStatusList = [
   "SUGGESTED",
   "CONTACTED",
@@ -48,16 +50,28 @@ export function filterProviderInquiriesByTab<T extends { status: string }>(items
   return items.filter((item) => providerInquiryTabForStatus(item.status) === tab);
 }
 
-export function providerInquiryTabLabel(tab: ProviderInquiryTab) {
+export function providerInquiryTabLabel(tab: ProviderInquiryTab, locale: Locale = "nl") {
+  if (locale === "en") {
+    switch (tab) {
+      case "new":
+        return "New";
+      case "ongoing":
+        return "Ongoing";
+      case "closed":
+        return "Closed";
+      default:
+        return "All";
+    }
+  }
   switch (tab) {
     case "new":
-      return "New";
+      return "Nieuw";
     case "ongoing":
-      return "Ongoing";
+      return "Lopend";
     case "closed":
-      return "Closed";
+      return "Afgesloten";
     default:
-      return "All";
+      return "Alles";
   }
 }
 
@@ -65,24 +79,45 @@ export function isAdminActionNeeded(status: string) {
   return ["VISIT_REQUESTED", "CALLBACK_REQUESTED", "ACCEPTED"].includes(status);
 }
 
-export function matchStatusLabel(status: string) {
+export function matchStatusLabel(status: string, locale: Locale = "nl") {
+  if (locale === "en") {
+    switch (status) {
+      case "CONTACTED":
+        return "Visit or call coordinated";
+      case "VISIT_REQUESTED":
+        return "Visit requested";
+      case "CALLBACK_REQUESTED":
+        return "Callback requested";
+      case "ACCEPTED":
+        return "Provider accepted";
+      case "DECLINED":
+        return "Provider declined";
+      case "PLACED":
+        return "Placement in progress";
+      case "CLOSED":
+        return "Closed";
+      default:
+        return "Suggested match";
+    }
+  }
+
   switch (status) {
     case "CONTACTED":
-      return "Visit or call coordinated";
+      return "Bezoek of gesprek gecoördineerd";
     case "VISIT_REQUESTED":
-      return "Visit requested";
+      return "Bezoek aangevraagd";
     case "CALLBACK_REQUESTED":
-      return "Callback requested";
+      return "Terugbelverzoek";
     case "ACCEPTED":
-      return "Provider accepted";
+      return "Aanbieder heeft geaccepteerd";
     case "DECLINED":
-      return "Provider declined";
+      return "Aanbieder heeft afgewezen";
     case "PLACED":
-      return "Placement in progress";
+      return "Plaatsing loopt";
     case "CLOSED":
-      return "Closed";
+      return "Afgesloten";
     default:
-      return "Suggested match";
+      return "Voorgestelde match";
   }
 }
 
@@ -128,26 +163,52 @@ export function matchStatusBadgeClass(status: string) {
   }
 }
 
-export function matchStatusHint(status: string, providerName: string) {
-  return familyMatchNextStep(status, providerName) || "This provider was matched to your request by your Care Guide.";
+export function matchStatusHint(status: string, providerName: string, locale: Locale = "nl") {
+  return (
+    familyMatchNextStep(status, providerName, locale) ||
+    (locale === "en"
+      ? "This provider was matched to your request by your Care Guide."
+      : "Deze aanbieder is door uw Care Guide aan uw aanvraag gekoppeld.")
+  );
 }
 
-export function familyMatchNextStep(status: string, providerName: string) {
+export function familyMatchNextStep(status: string, providerName: string, locale: Locale = "nl") {
+  if (locale === "en") {
+    switch (status) {
+      case "VISIT_REQUESTED":
+        return `You asked to visit ${providerName}. The facility will accept or decline, then your Care Guide helps schedule.`;
+      case "CALLBACK_REQUESTED":
+        return `You asked ${providerName} to call you back. The facility will respond, then your Care Guide follows up.`;
+      case "ACCEPTED":
+        return `${providerName} accepted your request. Your Care Guide will contact you to arrange the visit or call.`;
+      case "CONTACTED":
+        return `Your Care Guide coordinated with ${providerName}. Expect contact soon about timing and next steps.`;
+      case "PLACED":
+        return `Placement is in progress with ${providerName}. Your Care Guide will share final details.`;
+      case "DECLINED":
+        return `${providerName} is not available for this request right now. View other matches on your shortlist.`;
+      case "CLOSED":
+        return `This match with ${providerName} is closed.`;
+      default:
+        return "";
+    }
+  }
+
   switch (status) {
     case "VISIT_REQUESTED":
-      return `You asked to visit ${providerName}. The facility will accept or decline, then your Care Guide helps schedule.`;
+      return `U heeft een bezoek bij ${providerName} aangevraagd. De locatie accepteert of wijst af; daarna plant uw Care Guide mee.`;
     case "CALLBACK_REQUESTED":
-      return `You asked ${providerName} to call you back. The facility will respond, then your Care Guide follows up.`;
+      return `U heeft ${providerName} gevraagd terug te bellen. De locatie reageert; uw Care Guide volgt op.`;
     case "ACCEPTED":
-      return `${providerName} accepted your request. Your Care Guide will contact you to arrange the visit or call.`;
+      return `${providerName} heeft uw verzoek geaccepteerd. Uw Care Guide neemt contact op om bezoek of gesprek te plannen.`;
     case "CONTACTED":
-      return `Your Care Guide coordinated with ${providerName}. Expect contact soon about timing and next steps.`;
+      return `Uw Care Guide heeft gecoördineerd met ${providerName}. Verwacht spoedig contact over timing en vervolgstappen.`;
     case "PLACED":
-      return `Placement is in progress with ${providerName}. Your Care Guide will share final details.`;
+      return `Plaatsing loopt met ${providerName}. Uw Care Guide deelt de laatste details.`;
     case "DECLINED":
-      return `${providerName} is not available for this request right now. Review other matches on your shortlist or wait for your Care Guide to suggest alternatives.`;
+      return `${providerName} is nu niet beschikbaar voor dit verzoek. Bekijk andere matches of wacht op nieuwe voorstellen van uw Care Guide.`;
     case "CLOSED":
-      return `This match with ${providerName} is closed.`;
+      return `Deze match met ${providerName} is afgesloten.`;
     default:
       return "";
   }
@@ -163,12 +224,20 @@ export function isFamilyForwardMatchStatus(status?: string | null) {
   );
 }
 
-export function familyDeclineRecoveryMessage(hasAlternativeMatches: boolean) {
-  if (hasAlternativeMatches) {
-    return "A provider could not help with your last request. Review other facilities on your shortlist, or request a visit or callback with another option. Your Care Guide can help you decide.";
+export function familyDeclineRecoveryMessage(hasAlternativeMatches: boolean, locale: Locale = "nl") {
+  if (locale === "en") {
+    if (hasAlternativeMatches) {
+      return "A provider could not help with your last request. Review other facilities on your shortlist, or request a visit or callback with another option. Your Care Guide can help you decide.";
+    }
+
+    return "A provider could not help with your last request. Your Care Guide is reviewing your care plan and will suggest next options — usually within one business day.";
   }
 
-  return "A provider could not help with your last request. Your Care Guide is reviewing your care plan and will suggest next options — usually within one business day.";
+  if (hasAlternativeMatches) {
+    return "Een aanbieder kon niet helpen bij uw laatste verzoek. Bekijk andere locaties op uw shortlist, of vraag een bezoek of terugbelafspraak bij een andere optie. Uw Care Guide denkt mee.";
+  }
+
+  return "Een aanbieder kon niet helpen bij uw laatste verzoek. Uw Care Guide bekijkt uw zorgplan en stelt volgende opties voor — meestal binnen één werkdag.";
 }
 
 export function computeFamilyDeclineContext(
@@ -219,83 +288,120 @@ export function adminInquiryActionMeta(status: MatchAdminAction) {
 
 type MatchAdminAction = "CONTACTED" | "PLACED" | "CLOSED";
 
-export function providerInquiryStatusLabel(status: string) {
+export function providerInquiryStatusLabel(status: string, locale: Locale = "nl") {
+  const en = locale === "en";
   switch (status) {
     case "SUGGESTED":
-      return "New match";
+      return en ? "New match" : "Nieuwe match";
     case "VISIT_REQUESTED":
-      return "Visit requested";
+      return en ? "Visit requested" : "Bezoek aangevraagd";
     case "CALLBACK_REQUESTED":
-      return "Callback requested";
+      return en ? "Callback requested" : "Terugbelverzoek";
     case "CONTACTED":
-      return "Coordinating";
+      return en ? "In coordination" : "In coördinatie";
     case "ACCEPTED":
-      return "Accepted by you";
+      return en ? "Accepted by you" : "Door u geaccepteerd";
     case "DECLINED":
-      return "Declined by you";
+      return en ? "Declined by you" : "Door u afgewezen";
     case "PLACED":
-      return "Placement in progress";
+      return en ? "Placement in progress" : "Plaatsing loopt";
     case "CLOSED":
-      return "Closed";
+      return en ? "Closed" : "Afgesloten";
     default:
       return status.replaceAll("_", " ");
   }
 }
 
-export function providerInquiryBanner(status: string) {
+export function providerInquiryBanner(status: string, locale: Locale = "nl") {
+  const en = locale === "en";
   switch (status) {
     case "VISIT_REQUESTED":
-      return "A family requested a visit to your facility. Accept if you can host them, or decline if you cannot help right now.";
+      return en
+        ? "A family requested a visit to your facility. Accept if you can host them, or decline if you cannot help right now."
+        : "Een familie heeft een bezoek aan uw locatie aangevraagd. Accepteer als u hen kunt ontvangen, of wijs af als u nu niet kunt helpen.";
     case "CALLBACK_REQUESTED":
-      return "A family asked you to call them back. Accept if you can help, or decline if you are not available.";
+      return en
+        ? "A family is asking you to call them back. Accept if you can help, or decline if you are unavailable."
+        : "Een familie vraagt u terug te bellen. Accepteer als u kunt helpen, of wijs af als u niet beschikbaar bent.";
     case "SUGGESTED":
-      return "Shepherds Oud matched this family to your facility. They may request a visit or callback soon.";
+      return en
+        ? "Shepherds Oud matched this family to your facility. They may request a visit or callback soon."
+        : "Shepherds Oud heeft deze familie aan uw locatie gematcht. Zij kunnen binnenkort een bezoek of terugbelverzoek doen.";
     case "ACCEPTED":
-      return "You accepted this inquiry. The family's Care Guide will contact you to coordinate next steps.";
+      return en
+        ? "You accepted this inquiry. The family's Care Guide will contact you to coordinate next steps."
+        : "U heeft deze aanvraag geaccepteerd. De Care Guide van de familie neemt contact op om de volgende stappen te coördineren.";
     case "CONTACTED":
-      return "The Care Guide is coordinating the visit or call with this family.";
+      return en
+        ? "The Care Guide is coordinating the visit or call with this family."
+        : "De Care Guide coördineert het bezoek of gesprek met deze familie.";
     case "PLACED":
-      return "Placement is in progress for this family at your facility.";
+      return en
+        ? "Placement is in progress for this family at your facility."
+        : "Plaatsing loopt voor deze familie bij uw locatie.";
     case "CLOSED":
-      return "This inquiry is closed. No further action is needed on your side.";
+      return en
+        ? "This inquiry is closed. No further action is needed."
+        : "Deze aanvraag is afgesloten. Er is geen verdere actie nodig.";
     case "DECLINED":
-      return "You declined this inquiry. The family may be matched with another facility.";
+      return en
+        ? "You declined this inquiry. The family may be matched to another facility."
+        : "U heeft deze aanvraag afgewezen. De familie kan aan een andere locatie worden gematcht.";
     default:
       return null;
   }
 }
 
-export function providerAcceptButtonLabel(status: string) {
+export function providerAcceptButtonLabel(status: string, locale: Locale = "nl") {
+  const en = locale === "en";
   switch (status) {
     case "VISIT_REQUESTED":
-      return "Accept visit request";
+      return en ? "Accept visit request" : "Bezoekverzoek accepteren";
     case "CALLBACK_REQUESTED":
-      return "Accept callback request";
+      return en ? "Accept callback request" : "Terugbelverzoek accepteren";
     default:
-      return "Accept inquiry";
+      return en ? "Accept inquiry" : "Aanvraag accepteren";
   }
 }
 
-export function providerInquiryActionMessage(status: string, familyName: string, priorStatus?: string) {
+export function providerInquiryActionMessage(
+  status: string,
+  familyName: string,
+  priorStatus?: string,
+  locale: Locale = "nl"
+) {
+  const en = locale === "en";
   switch (status) {
     case "ACCEPTED":
       if (priorStatus === "VISIT_REQUESTED") {
-        return `You accepted the visit request from ${familyName}. Their Care Guide will help arrange timing with you.`;
+        return en
+          ? `You accepted the visit request from ${familyName}. Their Care Guide will help align timing with you.`
+          : `U heeft het bezoekverzoek van ${familyName} geaccepteerd. Hun Care Guide helpt de timing met u af te stemmen.`;
       }
       if (priorStatus === "CALLBACK_REQUESTED") {
-        return `You accepted the callback request from ${familyName}. Their Care Guide will follow up to coordinate.`;
+        return en
+          ? `You accepted the callback request from ${familyName}. Their Care Guide will follow up to coordinate.`
+          : `U heeft het terugbelverzoek van ${familyName} geaccepteerd. Hun Care Guide volgt op om te coördineren.`;
       }
-      return `You accepted the inquiry from ${familyName}. Their Care Guide will coordinate next steps with you.`;
+      return en
+        ? `You accepted the inquiry from ${familyName}. Their Care Guide will coordinate next steps with you.`
+        : `U heeft de aanvraag van ${familyName} geaccepteerd. Hun Care Guide coördineert de volgende stappen met u.`;
     case "DECLINED":
       if (priorStatus === "VISIT_REQUESTED") {
-        return `You declined the visit request from ${familyName}.`;
+        return en
+          ? `You declined the visit request from ${familyName}.`
+          : `U heeft het bezoekverzoek van ${familyName} afgewezen.`;
       }
       if (priorStatus === "CALLBACK_REQUESTED") {
-        return `You declined the callback request from ${familyName}.`;
+        return en
+          ? `You declined the callback request from ${familyName}.`
+          : `U heeft het terugbelverzoek van ${familyName} afgewezen.`;
       }
-      return `You declined the inquiry from ${familyName}.`;
+      return en
+        ? `You declined the inquiry from ${familyName}.`
+        : `U heeft de aanvraag van ${familyName} afgewezen.`;
     default:
-      return "Inquiry updated.";
+      return en ? "Inquiry updated." : "Aanvraag bijgewerkt.";
   }
 }
 

@@ -5,9 +5,11 @@ import Link from "next/link";
 import { Heart } from "lucide-react";
 import { withIntakeId } from "@/lib/client/case-selection";
 import { getSavedProviders, type SavedProviderEntry } from "@/lib/client/favourites";
+import { useLocale } from "@/components/i18n/locale-provider";
 import type { ProviderMatch } from "@/lib/core/types";
 
 export function FamilySavedProviders({ intakeId, matches }: { intakeId: string; matches: ProviderMatch[] }) {
+  const { ui } = useLocale();
   const [saved, setSaved] = useState<SavedProviderEntry[]>([]);
 
   const refreshSaved = useCallback(() => {
@@ -41,11 +43,9 @@ export function FamilySavedProviders({ intakeId, matches }: { intakeId: string; 
           <Heart className="h-4 w-4 fill-brand-amber" aria-hidden />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="section-label">Saved on this device</p>
-          <h2 className="mt-1 text-lg font-semibold text-ink">Your saved providers</h2>
-          <p className="mt-1 text-sm leading-6 text-neutral-600">
-            Providers you saved from your shortlist or profile pages. Saved locally on this browser.
-          </p>
+          <p className="section-label">{ui.family.savedOnDevice}</p>
+          <h2 className="mt-1 text-lg font-semibold text-ink">{ui.family.savedProvidersTitle}</h2>
+          <p className="mt-1 text-sm leading-6 text-neutral-600">{ui.family.savedProvidersDesc}</p>
         </div>
       </div>
 
@@ -57,18 +57,18 @@ export function FamilySavedProviders({ intakeId, matches }: { intakeId: string; 
               href={withIntakeId(`/providers/${entry.id}`, intakeId)}
               className="text-sm font-semibold text-brand-amber hover:text-brand-amber-mid"
             >
-              Open profile
+              {ui.family.openProfile}
             </Link>
           </li>
         ))}
       </ul>
 
       <p className="mt-3 text-xs leading-5 text-neutral-500">
-        Tip: save providers from your{" "}
+        {ui.family.savedTipPrefix}{" "}
         <Link href={withIntakeId("/family/results", intakeId)} className="font-medium text-brand-amber hover:text-brand-amber-mid">
           shortlist
         </Link>{" "}
-        while you compare options.
+        {ui.family.savedTipSuffix}
       </p>
     </section>
   );

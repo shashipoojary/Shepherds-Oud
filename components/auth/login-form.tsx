@@ -3,32 +3,33 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
+import { useLocale } from "@/components/i18n/locale-provider";
+import { productUi } from "@/lib/i18n/ui";
+import type { Locale } from "@/lib/i18n/config";
 import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth/client";
 import { TOAST_DISMISS_MS } from "@/lib/client/toast-timing";
 import { PROVIDER_DASHBOARD_PATH } from "@/lib/auth/routes";
 import { providerLoginErrorMessage } from "@/lib/auth/provider-login-errors";
 
-function errorMessage(code: string | null, isProvider: boolean) {
+function errorMessage(code: string | null, isProvider: boolean, locale: Locale, ui: ReturnType<typeof productUi>) {
   if (code === "unauthorized") {
-    return isProvider
-      ? "You need a care facility account for this page. Use List your facility to sign in."
-      : "This page is for administrators only. Use your approved admin Google account.";
+    return isProvider ? ui.auth.providerAccountNeeded : ui.auth.adminOnly;
   }
 
   if (code === "oauth-config") {
-    return "Google sign-in is not configured yet. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in Vercel, then redeploy.";
+    return ui.auth.oauthNotConfigured;
   }
 
   if (code === "oauth") {
-    return "Google sign-in could not be completed. Please try again or contact support.";
+    return ui.auth.oauthFailed;
   }
 
   if (code === "magic-link") {
-    return "That sign-in link is invalid or has expired. Request a new link below.";
+    return ui.auth.invalidLink;
   }
 
-  const providerMessage = providerLoginErrorMessage(code);
+  const providerMessage = providerLoginErrorMessage(code, locale);
   if (providerMessage) {
     return providerMessage;
   }
@@ -41,6 +42,7 @@ type AuthLoginFormProps = {
 };
 
 export function AuthLoginForm({ intent }: AuthLoginFormProps) {
+  const { locale, ui } = useLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackParam = searchParams.get("callbackUrl");
@@ -66,7 +68,7 @@ export function AuthLoginForm({ intent }: AuthLoginFormProps) {
   }
   const callbackUrl = callbackUrlParams.size ? `/login/continue?${callbackUrlParams.toString()}` : "/login/continue";
   const error = searchParams.get("error");
-  const message = errorMessage(error, Boolean(isProvider));
+  const message = errorMessage(error, Boolean(isProvider), locale, ui);
   const [loadingGoogle, setLoadingGoogle] = useState(false);
   const [loadingEmail, setLoadingEmail] = useState(false);
   const [email, setEmail] = useState("");
@@ -96,7 +98,7 @@ export function AuthLoginForm({ intent }: AuthLoginFormProps) {
     const trimmed = email.trim().toLowerCase();
     if (!trimmed || !trimmed.includes("@")) {
       setEmailFeedbackTone("error");
-      setEmailFeedback("Enter a valid email address.");
+      setEmailFeedback(ui.auth.invalidEmail);
       return;
     }
 
@@ -114,7 +116,7 @@ export function AuthLoginForm({ intent }: AuthLoginFormProps) {
         if (!accessResponse.ok) {
           const data = (await accessResponse.json().catch(() => null)) as { error?: string } | null;
           setEmailFeedbackTone("error");
-          setEmailFeedback(data?.error || "Your facility account is not approved yet.");
+          setEmailFeedback(data?.error || ui.auth.providerNotApproved);
           return;
         }
       }
@@ -133,15 +135,15 @@ export function AuthLoginForm({ intent }: AuthLoginFormProps) {
         setEmailFeedbackTone("error");
         const errorRecord = signInError as { message?: string; status?: number; error?: { message?: string } };
         const serverMessage = errorRecord.message || errorRecord.error?.message || "";
-        setEmailFeedback(serverMessage || "Could not send sign-in link.");
+        setEmailFeedback(serverMessage || ui.auth.sendFailed);
         return;
       }
 
       setEmailFeedbackTone("success");
-      setEmailFeedback(`Sign-in link sent to ${trimmed}. Open it on this device within 15 minutes.`);
+      setEmailFeedback(ui.auth.linkSent(trimmed));
     } catch {
       setEmailFeedbackTone("error");
-      setEmailFeedback("Could not send sign-in link. Please try again.");
+      setEmailFeedback(ui.auth.sendFailed);
     } finally {
       setLoadingEmail(false);
     }
@@ -155,12 +157,12 @@ export function AuthLoginForm({ intent }: AuthLoginFormProps) {
         ) : null}
         {isProvider && inviteParam ? (
           <p className="rounded-xl border border-brand-green-pale bg-brand-green-pale/20 px-4 py-3 text-sm leading-6 text-brand-green-dark">
-            Use the invited facility email to finish onboarding. After sign-in, you will land on your provider dashboard.
+            {ui.auth.providerInviteHint}
           </p>
         ) : null}
 
         <label className="grid gap-2 text-sm font-medium text-ink">
-          Email address
+          {ui.auth.emailLabel}
           <input
             type="email"
             autoComplete="email"
@@ -175,10 +177,10 @@ export function AuthLoginForm({ intent }: AuthLoginFormProps) {
           {loadingEmail ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
-              Sending link...
+              {ui.auth.sendingLink}
             </>
           ) : (
-            "Email me a sign-in link"
+            ui.auth.emailLink
           )}
         </Button>
 
@@ -197,7 +199,7 @@ export function AuthLoginForm({ intent }: AuthLoginFormProps) {
 
         <div className="flex items-center gap-3 text-xs uppercase tracking-wide text-neutral-400">
           <span className="h-px flex-1 bg-stone-200" />
-          <span>or</span>
+          <span>{ui.auth.or}</span>
           <span className="h-px flex-1 bg-stone-200" />
         </div>
 
@@ -205,15 +207,15 @@ export function AuthLoginForm({ intent }: AuthLoginFormProps) {
           {loadingGoogle ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
-              Redirecting to Google...
+              {ui.auth.redirectingGoogle}
             </>
           ) : (
-            "Continue with Google"
+            ui.auth.continueGoogle
           )}
         </Button>
 
         <p className="text-center text-xs leading-5 text-neutral-500">
-          Use your facility work email — Gmail, Microsoft, Apple, or your own domain.
+          {ui.auth.workEmailHint}
         </p>
       </div>
     );
@@ -229,15 +231,15 @@ export function AuthLoginForm({ intent }: AuthLoginFormProps) {
         {loadingGoogle ? (
           <>
             <Loader2 className="h-4 w-4 animate-spin" />
-            Redirecting to Google...
+            {ui.auth.redirectingGoogle}
           </>
         ) : (
-          "Continue with Google"
+          ui.auth.continueGoogle
         )}
       </Button>
 
       <p className="text-center text-xs leading-5 text-neutral-500">
-        Administrator access is limited to approved Care Guide accounts.
+        {ui.auth.adminOnly}
       </p>
     </div>
   );

@@ -1,5 +1,7 @@
 import { sendBrevoEmail } from "@/lib/email/brevo";
+import { emailCopy, emailGreeting, resolveEmailLocale } from "@/lib/email/email-copy";
 import { renderTransactionalEmail } from "@/lib/email/transactional-template";
+import type { Locale } from "@/lib/i18n/config";
 
 const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.BETTER_AUTH_URL || "https://shepherds-oud.vercel.app";
 
@@ -12,25 +14,29 @@ export async function sendProviderInquiryEmail(input: {
   familyCare: string;
   familyUrgency: string;
   requestType: "VISIT_REQUESTED" | "CALLBACK_REQUESTED";
+  locale?: Locale;
 }) {
+  const locale = await resolveEmailLocale(input.locale);
+  const copy = emailCopy(locale).providerInquiry;
   const dashboardUrl = `${appUrl}/provider`;
   const isVisit = input.requestType === "VISIT_REQUESTED";
-  const title = isVisit ? "A family requested a visit" : "A family requested a callback";
+  const title = isVisit ? copy.visitTitle : copy.callbackTitle;
 
   const paragraphs = [
-    `Hello ${input.providerName},`,
-    `${input.familyName} from ${input.familyArea} has requested ${isVisit ? "a visit" : "a callback"} through Shepherds Oud.`,
-    `Care needs: ${input.familyCare}. Urgency: ${input.familyUrgency}.`,
-    "Open your facility dashboard to accept or decline this inquiry."
+    emailGreeting(locale, input.providerName),
+    copy.body(input.familyName, input.familyArea, isVisit),
+    copy.details(input.familyCare, input.familyUrgency),
+    copy.hint
   ];
 
   const htmlContent = renderTransactionalEmail({
+    locale,
     preheader: title,
-    eyebrow: "New family inquiry",
+    eyebrow: copy.eyebrow,
     title,
     paragraphs,
-    cta: { label: "Open facility dashboard", url: dashboardUrl },
-    footerNote: "Respond promptly so families know you received their request."
+    cta: { label: copy.cta, url: dashboardUrl },
+    footerNote: copy.footer
   });
 
   return sendBrevoEmail({
