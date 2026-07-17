@@ -19,8 +19,8 @@ export default async function FacilityRegisterPage() {
   return (
     <>
       <SiteHeader />
-      <main className="bg-brand-cream px-4 py-10 sm:px-6 sm:py-16">
-        <section className="mx-auto max-w-3xl sm:rounded-2xl sm:bg-white sm:p-8 sm:shadow-soft">
+      <main className="page-gutter">
+        <section className="page-panel-md max-w-3xl">
           <p className="section-label">{copy.label}</p>
           <h1 className="mt-2 text-3xl font-semibold">{copy.title}</h1>
           <p className="mt-3 text-base leading-7 text-ink/75">

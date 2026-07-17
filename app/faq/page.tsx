@@ -21,17 +21,17 @@ export default async function FaqPage() {
   return (
     <>
       <SiteHeader />
-      <main className="bg-brand-cream px-4 py-12 sm:px-6 sm:py-16">
+      <main className="page-gutter">
         <article className="mx-auto max-w-3xl">
           <p className="section-label">{copy.label}</p>
           <h1 className="mt-2 font-brand text-3xl font-bold text-ink sm:text-4xl">{copy.title}</h1>
           <p className="mt-3 text-body text-ink/75">{copy.intro}</p>
 
-          <div className="mt-10 divide-y divide-stone-200/80 border-y border-stone-200/80 sm:space-y-3 sm:divide-y-0 sm:border-0">
+          <div className="mt-10 space-y-3">
             {copy.items.map((item) => (
               <details
                 key={item.q}
-                className="group py-4 sm:rounded-2xl sm:border sm:border-stone-200 sm:bg-white sm:px-5 sm:py-4 sm:shadow-soft sm:open:shadow-none"
+                className="group rounded-xl border border-stone-200/80 bg-white px-4 py-3.5 shadow-soft open:shadow-none sm:rounded-2xl sm:px-5 sm:py-4"
               >
                 <summary className="cursor-pointer list-none font-semibold text-ink marker:content-none [&::-webkit-details-marker]:hidden">
                   {item.q}
