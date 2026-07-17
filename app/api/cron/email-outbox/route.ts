@@ -7,6 +7,9 @@ export const dynamic = "force-dynamic";
 /**
  * Drains durable EmailOutbox retries.
  * Auth: Authorization: Bearer ${CRON_SECRET}
+ *
+ * Schedule: once daily (Hobby-compatible). Immediate sends still happen in-request;
+ * this cron only retries failed/pending jobs.
  */
 export async function GET(request: Request) {
   const authorization = request.headers.get("authorization");
