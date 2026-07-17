@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Chip } from "@/components/ui/chip";
 import { CustomSelect } from "@/components/ui/custom-select";
 import { careTypeOptions, dutchProvinces, facilityTypes } from "@/lib/config/content";
 import { useLocale } from "@/components/i18n/locale-provider";
@@ -326,19 +327,11 @@ function ChipField({
     <div className="grid gap-2">
       <span className="text-sm font-medium text-neutral-800">{label}</span>
       <div className="flex flex-wrap gap-2">
-        {options.map((option) => {
-          const active = selected.includes(option);
-          return (
-            <button
-              key={option}
-              type="button"
-              onClick={() => onToggle(option)}
-              className={`rounded-full px-3 py-2 text-sm transition ${active ? "bg-sage-600 text-white" : "bg-stone-100 text-neutral-700 hover:bg-sage-100"}`}
-            >
-              {format(option)}
-            </button>
-          );
-        })}
+        {options.map((option) => (
+          <Chip key={option} selected={selected.includes(option)} onClick={() => onToggle(option)}>
+            {format(option)}
+          </Chip>
+        ))}
       </div>
     </div>
   );

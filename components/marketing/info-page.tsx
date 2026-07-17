@@ -26,9 +26,8 @@ export async function InfoPage({ label, title, intro, sections, cta, children }:
   return (
     <>
       <SiteHeader />
-      <main className="bg-brand-cream px-4 py-10 sm:px-6 sm:py-16">
-        {/* Flat on phones; white shell from sm up */}
-        <article className="mx-auto max-w-3xl sm:rounded-2xl sm:bg-white sm:p-10 sm:shadow-soft">
+      <main className="page-gutter">
+        <article className="page-panel max-w-3xl">
           <p className="section-label">{label}</p>
           <h1 className="mt-2 font-brand text-3xl font-bold text-ink sm:text-4xl">{title}</h1>
           <p className="mt-6 text-body leading-relaxed text-ink/80">{intro}</p>

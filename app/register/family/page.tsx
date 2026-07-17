@@ -21,8 +21,8 @@ export default async function FamilyRegisterPage() {
   return (
     <>
       <SiteHeader />
-      <main className="bg-brand-cream px-4 py-10 sm:px-6 sm:py-16">
-        <section className="mx-auto max-w-3xl sm:rounded-2xl sm:bg-white sm:p-8 sm:shadow-soft">
+      <main className="page-gutter">
+        <section className="page-panel-md max-w-3xl">
           <p className="text-xs font-semibold uppercase tracking-wide text-sage-700">{copy.label}</p>
           <h1 className="mt-2 text-3xl font-semibold">{copy.title}</h1>
           <p className="mt-3 text-sm leading-7 text-neutral-600">

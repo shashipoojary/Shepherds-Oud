@@ -25,8 +25,8 @@ export default async function RegisterPage() {
   return (
     <>
       <SiteHeader />
-      <main className="bg-brand-cream px-4 py-10 sm:px-6 sm:py-16">
-        <section className="mx-auto max-w-5xl sm:rounded-2xl sm:bg-white sm:p-8 sm:shadow-soft">
+      <main className="page-gutter">
+        <section className="page-panel-md max-w-5xl">
           <p className="text-xs font-semibold uppercase tracking-wide text-sage-700">
             {isPrelaunch ? ui.common.earlyRegistration : copy.waitlistLabel}
           </p>
