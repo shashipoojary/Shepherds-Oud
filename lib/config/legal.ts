@@ -1,5 +1,5 @@
 import type { LegalSection } from "@/components/legal/legal-page";
-import { brand } from "@/lib/config/brand";
+import { brand, brandHasKvK, brandKvKLabel } from "@/lib/config/brand";
 
 const legalUpdated = "15 July 2026";
 
@@ -294,8 +294,9 @@ const accessibilitySections: LegalSection[] = [
   }
 ];
 
-const companyIntro =
-  `This page provides company details for ${brand.name}, the care-navigation service operated in the Netherlands. Some registration details remain placeholders until company registration is complete.`;
+const companyIntro = brandHasKvK()
+  ? `This page provides company details for ${brand.name}, the care-navigation service operated in the Netherlands.`
+  : `This page provides company details for ${brand.name}, the care-navigation service operated in the Netherlands. Chamber of Commerce (KvK) registration is in progress; the number will appear here once issued.`;
 
 const companySections: LegalSection[] = [
   {
@@ -303,7 +304,7 @@ const companySections: LegalSection[] = [
     paragraphs: [
       `Trading name: ${brand.name}`,
       `Legal entity: ${brand.legalEntityName}`,
-      `Chamber of Commerce (KvK) number: ${brand.kvkNumber}`,
+      `Chamber of Commerce (KvK) number: ${brandKvKLabel("en")}`,
       `Registered address: ${brand.registeredAddress}`
     ]
   },

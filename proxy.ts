@@ -19,9 +19,14 @@ function isProtectedAdminPath(pathname: string) {
   return pathname === "/admin" || pathname.startsWith("/admin/");
 }
 
-function applySecurityHeaders(response: NextResponse) {
+function applySecurityHeaders(request: NextRequest, response: NextResponse) {
   for (const [key, value] of Object.entries(securityHeaders)) {
     response.headers.set(key, value);
+  }
+
+  const proto = request.headers.get("x-forwarded-proto") || request.nextUrl.protocol.replace(":", "");
+  if (proto === "https") {
+    response.headers.set("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload");
   }
 
   return response;
@@ -49,12 +54,12 @@ export function proxy(request: NextRequest) {
 
   if (getIsPrelaunch() && isFamilyFlowPath(pathname)) {
     const redirectUrl = new URL(prelaunchFamilyRedirect(pathname), request.url);
-    return withLocaleCookie(request, applySecurityHeaders(NextResponse.redirect(redirectUrl)));
+    return withLocaleCookie(request, applySecurityHeaders(request, NextResponse.redirect(redirectUrl)));
   }
 
   if (getIsPrelaunch() && isProviderPath(pathname)) {
     const redirectUrl = new URL("/register/facility", request.url);
-    return withLocaleCookie(request, applySecurityHeaders(NextResponse.redirect(redirectUrl)));
+    return withLocaleCookie(request, applySecurityHeaders(request, NextResponse.redirect(redirectUrl)));
   }
 
   const needsProviderAuth = isProtectedProviderPath(pathname);
@@ -64,6 +69,7 @@ export function proxy(request: NextRequest) {
     return withLocaleCookie(
       request,
       applySecurityHeaders(
+        request,
         NextResponse.next({
           request: { headers: requestHeaders }
         })
@@ -76,12 +82,13 @@ export function proxy(request: NextRequest) {
   if (!sessionCookie) {
     const loginUrl = new URL(needsProviderAuth ? "/provider/login" : "/login", request.url);
     loginUrl.searchParams.set("callbackUrl", pathname);
-    return withLocaleCookie(request, applySecurityHeaders(NextResponse.redirect(loginUrl)));
+    return withLocaleCookie(request, applySecurityHeaders(request, NextResponse.redirect(loginUrl)));
   }
 
   return withLocaleCookie(
     request,
     applySecurityHeaders(
+      request,
       NextResponse.next({
         request: { headers: requestHeaders }
       })
