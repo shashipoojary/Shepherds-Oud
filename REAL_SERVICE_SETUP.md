@@ -85,8 +85,8 @@ BETTER_AUTH_SECRET="replace-with-openssl-rand-base64-32"
 BETTER_AUTH_URL="http://localhost:3000"
 BETTER_AUTH_API_KEY="copy-from-better-auth-dash"
 BREVO_API_KEY="xkeysib_..."
-ADVISOR_EMAIL="care@shepherdsoud.nl"
-BREVO_FROM_EMAIL="care@shepherdsoud.nl"
+ADVISOR_EMAIL="dominique@shepherdsoud.com"
+BREVO_FROM_EMAIL="dominique@shepherdsoud.com"
 BREVO_FROM_NAME="Shepherds Oud"
 ```
 
