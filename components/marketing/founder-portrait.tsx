@@ -9,7 +9,7 @@ export function FounderPortrait() {
   const [failed, setFailed] = useState(false);
 
   return (
-    <div className="relative mx-auto aspect-square w-40 overflow-hidden rounded-2xl bg-brand-green-dark md:mx-0 md:w-full">
+    <div className="relative mx-auto aspect-square w-44 overflow-hidden rounded-2xl bg-brand-green-dark shadow-[0_16px_40px_rgba(64,77,60,0.18)] md:mx-0 md:w-full">
       {!failed ? (
         // eslint-disable-next-line @next/next/no-img-element -- optional local asset until founder.jpg ships
         <img
