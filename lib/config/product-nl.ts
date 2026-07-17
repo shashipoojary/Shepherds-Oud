@@ -797,7 +797,10 @@ export const productUiNl = {
     call: "Bellen",
     openMenu: "Menu openen",
     mainMenu: "Hoofdmenu",
-    myFacility: "Mijn locatie"
+    myFacility: "Mijn locatie",
+    adminPanel: "Beheer",
+    viewSite: "Naar website",
+    adminMenu: "Beheermenu"
   },
   footer: {
     navAria: "Footer navigatie",

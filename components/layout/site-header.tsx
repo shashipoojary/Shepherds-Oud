@@ -1,5 +1,10 @@
 import { Nav } from "@/components/layout/nav";
 
-export function SiteHeader({ hideAuth = false }: { hideAuth?: boolean }) {
-  return <Nav hideAuth={hideAuth} />;
+type SiteHeaderProps = {
+  hideAuth?: boolean;
+  variant?: "public" | "admin";
+};
+
+export function SiteHeader({ hideAuth = false, variant = "public" }: SiteHeaderProps) {
+  return <Nav hideAuth={hideAuth} variant={variant} />;
 }
