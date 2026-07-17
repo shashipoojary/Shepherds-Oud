@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { Menu, Phone } from "lucide-react";
 import { useEffect, useState } from "react";
 import { LanguageSwitcher } from "@/components/i18n/language-switcher";
@@ -86,12 +87,12 @@ export function Nav({ hideAuth = false, variant = "public" }: NavProps) {
               aria-label={isAdmin ? nav.adminMenu : nav.mainMenu}
             >
               {isAdmin ? (
-                <LoadingLink
+                <Link
                   href="/"
                   className="border-b-2 border-transparent py-1 text-sm text-white/90 transition hover:border-brand-amber hover:text-white"
                 >
                   {nav.viewSite}
-                </LoadingLink>
+                </Link>
               ) : (
                 <RoleAwareNav variant="desktop" />
               )}
@@ -119,13 +120,13 @@ export function Nav({ hideAuth = false, variant = "public" }: NavProps) {
         menu={
           isAdmin ? (
             <div className="grid gap-1">
-              <LoadingLink
+              <Link
                 href="/"
-                onNavigate={closeMenu}
+                onClick={closeMenu}
                 className="rounded-xl px-4 py-3.5 text-base font-medium text-ink hover:bg-brand-cream hover:text-brand-amber"
               >
                 {nav.viewSite}
-              </LoadingLink>
+              </Link>
             </div>
           ) : (
             <div className="grid gap-3">

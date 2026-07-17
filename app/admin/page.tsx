@@ -9,6 +9,8 @@ export const metadata = {
   title: "Admin | Shepherds Oud"
 };
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminPage() {
   const session = await requireRole(["ADMIN"], "/admin");
   const data = await getAdminDashboardData();
