@@ -4,6 +4,7 @@ export async function resetOperationalData() {
   return prisma.$transaction(async (tx) => {
     const matches = await tx.match.deleteMany();
     const actionLogs = await tx.actionLog.deleteMany();
+    const emailOutbox = await tx.emailOutbox.deleteMany();
     const intakes = await tx.intake.deleteMany();
     const waitlist = await tx.waitlistEntry.deleteMany();
     await tx.user.updateMany({ data: { linkedProviderId: null } });
@@ -12,6 +13,7 @@ export async function resetOperationalData() {
     return {
       matches: matches.count,
       actionLogs: actionLogs.count,
+      emailOutbox: emailOutbox.count,
       intakes: intakes.count,
       waitlist: waitlist.count,
       providers: providers.count

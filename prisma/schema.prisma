@@ -324,3 +324,31 @@ enum ProviderInviteStatus {
   EXPIRED
   REVOKED
 }
+
+// Durable outbound email jobs — Neon outbox + cron worker (no paid queue).
+model EmailOutbox {
+  id             String            @id @default(cuid())
+  toJson         Json
+  subject        String
+  htmlContent    String            @db.Text
+  textContent    String?           @db.Text
+  status         EmailOutboxStatus @default(PENDING)
+  attempts       Int               @default(0)
+  maxAttempts    Int               @default(5)
+  nextAttemptAt  DateTime          @default(now())
+  lastError      String?           @db.Text
+  brevoMessageId String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  sentAt         DateTime?
+
+  @@index([status, nextAttemptAt])
+  @@index([createdAt])
+}
+
+enum EmailOutboxStatus {
+  PENDING
+  SENDING
+  SENT
+  FAILED
+}

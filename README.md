@@ -225,6 +225,8 @@ Create a Brevo account and generate a transactional email API key:
 
 Also authenticate the sending domain in Brevo (Senders → Domains: Brevo code + DKIM + DMARC). Sender-email verification alone is not enough: without domain authentication Brevo rewrites From to `@<accountId>.brevosend.com`, which triggers Gmail rate limits.
 
+Outbound sends go through `sendBrevoEmail` with a **Neon email outbox** (free/open): each message is recorded, sent immediately, and retried by `/api/cron/email-outbox` if Brevo fails. Set `CRON_SECRET` so the cron can authenticate (`Authorization: Bearer …`).
+
 Set `ADVISOR_EMAIL` to the care guide or operations inbox that should receive intake alerts (e.g. `dominique@shepherdsoud.com`).
 
 ## Local Development

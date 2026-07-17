@@ -1,85 +1,84 @@
 /**
  * Single source of truth for Brevo transactional "From" identity.
  *
- * All app email (magic links, invites, waitlist, intake, matches) goes through
- * `sendBrevoEmail` → this resolver. Better Auth does not send mail itself; its
- * magicLink plugin calls our hooks, which call `sendBrevoEmail`.
+ * All app email goes through `sendBrevoEmail`. Delivery path (safe / non-breaking):
+ * 1. Best-effort persist + claim EmailOutbox row (Neon).
+ * 2. Send immediately via Brevo (same latency as before).
+ * 3. Mark SENT, or release to PENDING with backoff for cron retries.
+ * 4. If outbox is unavailable, send directly (legacy behavior).
  *
- * Env (only these are used — there is no BREVO_SENDER_EMAIL / SMTP_FROM / EMAIL_FROM):
- * - BREVO_API_KEY
- * - BREVO_FROM_EMAIL  (required) e.g. dominique@shepherdsoud.com
- * - BREVO_FROM_NAME   (optional, default "Shepherds Oud")
- *
- * Important: passing a verified sender email is necessary but not sufficient.
- * If `shepherdsoud.com` is not domain-authenticated in Brevo (Brevo code + DKIM
- * + DMARC), Brevo rewrites the visible From to something like
- * `dominique@<accountId>.brevosend.com`. That rewrite is server-side at Brevo —
- * it cannot be fixed by changing this payload. Fix it under Senders → Domains.
+ * Env: BREVO_API_KEY, BREVO_FROM_EMAIL, BREVO_FROM_NAME
  */
 
-export type BrevoSender = {
-  name: string;
-  email: string;
-};
+import { prisma } from "@/lib/core/db";
+import { logWarn } from "@/lib/core/logger";
+import { deliverBrevoEmail, resolveBrevoSender, type BrevoEmailPayload } from "@/lib/email/brevo-deliver";
+import {
+  createEmailOutboxJob,
+  markEmailOutboxRetry,
+  markEmailOutboxSent
+} from "@/lib/email/email-outbox";
 
-export function resolveBrevoSender(): BrevoSender | null {
-  const email = (process.env.BREVO_FROM_EMAIL || "").trim().toLowerCase();
-  const name = (process.env.BREVO_FROM_NAME || "Shepherds Oud").trim() || "Shepherds Oud";
+export type { BrevoSender } from "@/lib/email/brevo-deliver";
+export { resolveBrevoSender } from "@/lib/email/brevo-deliver";
 
-  if (!email) {
-    return null;
+type BrevoEmail = BrevoEmailPayload;
+
+async function claimOutboxForImmediateSend(id: string) {
+  try {
+    const updated = await prisma.emailOutbox.updateMany({
+      where: { id, status: "PENDING" },
+      data: { status: "SENDING" }
+    });
+    return updated.count === 1;
+  } catch (error) {
+    logWarn("email_outbox_claim_failed", {
+      id,
+      message: error instanceof Error ? error.message : "claim failed"
+    });
+    return false;
   }
-
-  return { name, email };
 }
 
-type BrevoEmail = {
-  to: Array<{ email: string; name?: string }>;
-  subject: string;
-  htmlContent: string;
-  textContent?: string;
-};
-
 export async function sendBrevoEmail(email: BrevoEmail) {
-  const apiKey = process.env.BREVO_API_KEY;
   const sender = resolveBrevoSender();
+  const apiKey = process.env.BREVO_API_KEY;
 
   if (!apiKey || !sender) {
     return { mode: "demo" as const, skipped: true };
   }
 
-  const response = await fetch("https://api.brevo.com/v3/smtp/email", {
-    method: "POST",
-    headers: {
-      accept: "application/json",
-      "api-key": apiKey,
-      "content-type": "application/json"
-    },
-    body: JSON.stringify({
-      // Explicit From on every call — never omit (omission lets Brevo use account defaults).
-      sender: {
-        name: sender.name,
-        email: sender.email
-      },
-      replyTo: {
-        name: sender.name,
-        email: sender.email
-      },
-      to: email.to,
-      subject: email.subject,
-      htmlContent: email.htmlContent,
-      textContent: email.textContent
-    })
-  });
-
-  if (!response.ok) {
-    const detail = await response.text().catch(() => "");
-    throw new Error(`Brevo email failed with status ${response.status}${detail ? `: ${detail}` : ""}`);
+  // Best-effort durable record — never blocks sending if DB/outbox is unavailable.
+  const outbox = await createEmailOutboxJob(email);
+  if (outbox?.id) {
+    await claimOutboxForImmediateSend(outbox.id);
   }
 
-  return {
-    mode: "brevo" as const,
-    result: await response.json(),
-    sender
-  };
+  try {
+    const result = await deliverBrevoEmail(email);
+
+    if (result.mode === "demo") {
+      return result;
+    }
+
+    if (outbox?.id) {
+      const messageId =
+        result.result && typeof result.result === "object" && "messageId" in result.result
+          ? String((result.result as { messageId?: unknown }).messageId ?? "")
+          : null;
+      await markEmailOutboxSent(outbox.id, messageId || null);
+    }
+
+    return {
+      ...result,
+      outboxId: outbox?.id ?? null
+    };
+  } catch (error) {
+    if (outbox?.id) {
+      await markEmailOutboxRetry(outbox.id, error);
+    }
+    // Preserve previous behavior: callers still see the throw.
+    // Cron retries from the outbox row when present.
+    throw error;
+  }
 }

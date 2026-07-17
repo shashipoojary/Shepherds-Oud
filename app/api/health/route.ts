@@ -21,6 +21,18 @@ export async function GET() {
   const healthy = database && env.ok;
   const status = healthy ? "ok" : database ? "degraded" : "down";
 
+  let emailOutboxPending: number | null = null;
+  if (database) {
+    try {
+      const { prisma } = await import("@/lib/core/db");
+      emailOutboxPending = await prisma.emailOutbox.count({
+        where: { status: { in: ["PENDING", "SENDING"] } }
+      });
+    } catch {
+      emailOutboxPending = null;
+    }
+  }
+
   return NextResponse.json(
     {
       status,
@@ -28,7 +40,8 @@ export async function GET() {
         database,
         env: env.ok,
         email: env.emailConfigured,
-        careGuide: env.careGuideConfigured
+        careGuide: env.careGuideConfigured,
+        emailOutboxPending
       },
       missingEnv: env.missing,
       timestamp: new Date().toISOString()
