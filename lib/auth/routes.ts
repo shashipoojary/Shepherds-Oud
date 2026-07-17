@@ -53,15 +53,15 @@ export function buildNavItems(
   if (prelaunch) {
     items.push({ label: nav.waitlist, href: publicRoutes.waitlist });
     items.push({ label: nav.about, href: "/about" });
-    items.push({ label: nav.faq, href: "/veelgestelde-vragen" });
+    items.push({ label: nav.faq, href: "/faq" });
     items.push({ label: nav.contact, href: "/contact" });
   } else {
     items.push({ label: nav.howItWorks, href: "/how-it-works" });
     items.push({ label: nav.startIntake, href: publicRoutes.intake });
-    items.push({ label: nav.faq, href: "/veelgestelde-vragen" });
+    items.push({ label: nav.faq, href: "/faq" });
   }
 
-  items.push({ label: nav.forProviders, href: "/voor-zorgaanbieders" });
+  items.push({ label: nav.forProviders, href: "/for-providers" });
   items.push({ label: nav.forInternationals, href: "/internationals" });
 
   if (signedIn && role === "PROVIDER") {

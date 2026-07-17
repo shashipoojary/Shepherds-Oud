@@ -1,12 +1,14 @@
-import type { Metadata } from "next";
 import { LegalPage } from "@/components/legal/legal-page";
 import { legalPages } from "@/lib/config/legal";
+import { getLocale } from "@/lib/i18n/get-locale";
 
-export const metadata: Metadata = {
-  title: "Data deletion | Shepherds Oud",
-  description: "How to request erasure of personal data held by Shepherds Oud under GDPR."
-};
+export async function generateMetadata() {
+  const locale = await getLocale();
+  const copy = legalPages(locale)["data-deletion"];
+  return { title: copy.metaTitle, description: copy.metaDescription };
+}
 
-export default function DataDeletionPage() {
-  return <LegalPage {...legalPages["data-deletion"]} />;
+export default async function DataDeletionPage() {
+  const locale = await getLocale();
+  return <LegalPage {...legalPages(locale)["data-deletion"]} />;
 }

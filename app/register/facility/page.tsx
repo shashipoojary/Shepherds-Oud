@@ -25,7 +25,7 @@ export default async function FacilityRegisterPage() {
           <h1 className="mt-2 text-3xl font-semibold">{copy.title}</h1>
           <p className="mt-3 text-base leading-7 text-ink/75">
             {copy.introLead} {brandRegionNote(locale)}{" "}
-            <Link href="/voor-zorgaanbieders" className="font-medium text-brand-amber hover:text-brand-amber-mid">
+            <Link href="/for-providers" className="font-medium text-brand-amber hover:text-brand-amber-mid">
               {copy.readPricing}
             </Link>
             .

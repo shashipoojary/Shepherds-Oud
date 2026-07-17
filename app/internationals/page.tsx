@@ -106,7 +106,7 @@ export default function InternationalsPage() {
                 homepage
               </Link>{" "}
               ·{" "}
-              <Link href="/veelgestelde-vragen" className="text-brand-amber hover:text-brand-amber-mid">
+              <Link href="/faq" className="text-brand-amber hover:text-brand-amber-mid">
                 FAQ
               </Link>
             </p>

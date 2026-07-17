@@ -1,13 +1,14 @@
-import type { Metadata } from "next";
 import { LegalPage } from "@/components/legal/legal-page";
-import { brand } from "@/lib/config/brand";
 import { legalPages } from "@/lib/config/legal";
+import { getLocale } from "@/lib/i18n/get-locale";
 
-export const metadata: Metadata = {
-  title: "Terms of service | Shepherds Oud",
-  description: `Terms governing use of the ${brand.name} care navigation platform.`
-};
+export async function generateMetadata() {
+  const locale = await getLocale();
+  const copy = legalPages(locale).terms;
+  return { title: copy.metaTitle, description: copy.metaDescription };
+}
 
-export default function TermsPage() {
-  return <LegalPage {...legalPages.terms} />;
+export default async function TermsPage() {
+  const locale = await getLocale();
+  return <LegalPage {...legalPages(locale).terms} />;
 }

@@ -1,12 +1,14 @@
-import type { Metadata } from "next";
 import { LegalPage } from "@/components/legal/legal-page";
 import { legalPages } from "@/lib/config/legal";
+import { getLocale } from "@/lib/i18n/get-locale";
 
-export const metadata: Metadata = {
-  title: "Cookies policy | Shepherds Oud",
-  description: "How Shepherds Oud uses cookies and similar technologies on shepherdsoud.nl."
-};
+export async function generateMetadata() {
+  const locale = await getLocale();
+  const copy = legalPages(locale).cookies;
+  return { title: copy.metaTitle, description: copy.metaDescription };
+}
 
-export default function CookiesPage() {
-  return <LegalPage {...legalPages.cookies} />;
+export default async function CookiesPage() {
+  const locale = await getLocale();
+  return <LegalPage {...legalPages(locale).cookies} />;
 }

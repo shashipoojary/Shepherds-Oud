@@ -49,7 +49,7 @@ export default async function HomePage() {
       icon: Home,
       title: home.forCareProviders,
       text: home.providersCard,
-      href: isPrelaunch ? publicRoutes.waitlistFacility : "/voor-zorgaanbieders",
+      href: isPrelaunch ? publicRoutes.waitlistFacility : "/for-providers",
       cta: isPrelaunch ? ui.common.registerLocation : home.viewTerms
     },
     {
@@ -75,7 +75,7 @@ export default async function HomePage() {
           label: ui.common.careProviders,
           title: home.listLocation,
           text: home.providersPrelaunchCard,
-          href: "/voor-zorgaanbieders",
+          href: "/for-providers",
           cta: content.prelaunch.facilityCta,
           showPromise: true
         }
@@ -93,7 +93,7 @@ export default async function HomePage() {
           label: ui.common.careProviders,
           title: home.listForFree,
           text: home.providersLiveCard,
-          href: "/voor-zorgaanbieders",
+          href: "/for-providers",
           cta: content.live.facilityCta,
           showPromise: false
         }
@@ -306,7 +306,7 @@ export default async function HomePage() {
             </ul>
             <p className="mt-8 text-center text-sm text-ink/65">
               {home.faqLead}
-              <Link href="/veelgestelde-vragen" className="font-medium text-brand-amber hover:text-brand-amber-mid">
+              <Link href="/faq" className="font-medium text-brand-amber hover:text-brand-amber-mid">
                 {home.viewFaq}
               </Link>
               .
@@ -378,7 +378,7 @@ export default async function HomePage() {
             </ul>
             <ButtonRow className="mx-auto mt-12 max-w-lg" columns={2}>
               <Button asChild className="w-full">
-                <Link href="/voor-zorgaanbieders" className="inline-flex items-center justify-center gap-1.5">
+                <Link href="/for-providers" className="inline-flex items-center justify-center gap-1.5">
                   {ui.common.pricingTerms}
                   <ArrowRight className="h-3.5 w-3.5 shrink-0" />
                 </Link>

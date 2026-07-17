@@ -82,7 +82,7 @@ export const homeContentNl = {
   live: {
     title: "Start uw begeleide zorgreis",
     description: "Rond de intake af. Een Care Guide belt binnen 24 uur en begeleidt u verder.",
-    familyCta: "Start intake",
+    familyCta: "Intake starten",
     facilityCta: "Registreer uw locatie"
   },
   internationalsCta: {

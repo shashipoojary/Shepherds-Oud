@@ -16,8 +16,8 @@ function footerLinks(prelaunch: boolean, locale: Locale) {
         { label: nav.home, href: publicRoutes.home },
         { label: nav.waitlist, href: publicRoutes.waitlist },
         { label: nav.forFamilies, href: publicRoutes.waitlistFamily },
-        { label: nav.forProviders, href: "/voor-zorgaanbieders" },
-        { label: nav.faq, href: "/veelgestelde-vragen" },
+        { label: nav.forProviders, href: "/for-providers" },
+        { label: nav.faq, href: "/faq" },
         { label: nav.forInternationals, href: "/internationals" },
         { label: nav.contact, href: "/contact" }
       ]
@@ -25,10 +25,10 @@ function footerLinks(prelaunch: boolean, locale: Locale) {
         { label: nav.home, href: publicRoutes.home },
         { label: nav.howItWorks, href: "/how-it-works" },
         { label: nav.about, href: "/about" },
-        { label: nav.faq, href: "/veelgestelde-vragen" },
+        { label: nav.faq, href: "/faq" },
         { label: nav.contact, href: "/contact" },
         { label: nav.startIntake, href: publicRoutes.intake },
-        { label: nav.forProviders, href: "/voor-zorgaanbieders" },
+        { label: nav.forProviders, href: "/for-providers" },
         { label: nav.forInternationals, href: "/internationals" }
       ];
 }

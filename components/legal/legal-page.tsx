@@ -2,6 +2,7 @@ import Link from "next/link";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
 import { brand } from "@/lib/config/brand";
+import { getLocale } from "@/lib/i18n/get-locale";
 
 export type LegalSection = {
   title: string;
@@ -19,7 +20,18 @@ type LegalPageProps = {
   relatedLabel: string;
 };
 
-export function LegalPage({ label, title, updated, intro, sections, relatedHref, relatedLabel }: LegalPageProps) {
+export async function LegalPage({
+  label,
+  title,
+  updated,
+  intro,
+  sections,
+  relatedHref,
+  relatedLabel
+}: LegalPageProps) {
+  const locale = await getLocale();
+  const nl = locale === "nl";
+
   return (
     <>
       <SiteHeader />
@@ -27,7 +39,9 @@ export function LegalPage({ label, title, updated, intro, sections, relatedHref,
         <article className="mx-auto max-w-3xl sm:rounded-2xl sm:bg-white sm:p-10 sm:shadow-soft">
           <p className="section-label">{label}</p>
           <h1 className="mt-2 font-brand text-3xl font-bold text-ink sm:text-4xl">{title}</h1>
-          <p className="mt-3 text-sm text-ink/60">Last updated: {updated}</p>
+          <p className="mt-3 text-sm text-ink/60">
+            {nl ? "Laatst bijgewerkt:" : "Last updated:"} {updated}
+          </p>
           <p className="mt-6 text-body leading-relaxed text-ink/80">{intro}</p>
 
           <div className="mt-10 grid gap-8">
@@ -51,11 +65,11 @@ export function LegalPage({ label, title, updated, intro, sections, relatedHref,
           </div>
 
           <p className="mt-10 border-t border-stone-200 pt-6 text-sm text-ink/70">
-            Questions about this page? Contact us at{" "}
+            {nl ? "Vragen over deze pagina? Neem contact op via" : "Questions about this page? Contact us at"}{" "}
             <a href={`mailto:${brand.email}`} className="font-medium text-brand-amber hover:text-brand-amber-mid">
               {brand.email}
             </a>
-            . See also our{" "}
+            . {nl ? "Zie ook onze" : "See also our"}{" "}
             <Link href={relatedHref} className="font-medium text-brand-amber hover:text-brand-amber-mid">
               {relatedLabel}
             </Link>

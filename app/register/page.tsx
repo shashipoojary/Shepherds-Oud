@@ -64,7 +64,7 @@ export default async function RegisterPage() {
               <p className="mt-2 text-sm leading-6 text-neutral-600">{copy.providersBlurb}</p>
               <div className="mt-5 flex flex-wrap gap-3">
                 <Button asChild variant="outline">
-                  <Link href="/voor-zorgaanbieders">{ui.common.pricingTerms}</Link>
+                  <Link href="/for-providers">{ui.common.pricingTerms}</Link>
                 </Button>
                 <Button asChild variant="outline">
                   <Link href={publicRoutes.waitlistFacility}>
