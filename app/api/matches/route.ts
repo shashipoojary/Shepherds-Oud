@@ -23,6 +23,7 @@ import {
 } from "@/lib/domain/match-rematch";
 import { sendFamilyMatchCreatedEmail, sendProviderMatchCreatedEmail } from "@/lib/email/match-created-email";
 import { resolveFamilyEmailLocale, resolveProviderEmailLocale } from "@/lib/email/locale-from-intake";
+import { localizedOptionLabel, localizedOptionList } from "@/lib/i18n/labels-for-locale";
 import { getLocale } from "@/lib/i18n/get-locale";
 
 export const runtime = "nodejs";
@@ -181,12 +182,17 @@ export async function POST(request: Request) {
     }
 
     if (shouldNotify) {
-      const familyCare = intake.careTypes.join(", ") || "Care support";
       const familyLocale = resolveFamilyEmailLocale({
         preferredLocale: intake.preferredLocale,
         languages: intake.languages
       });
       const providerLocale = resolveProviderEmailLocale(provider.preferredLocale);
+      const familyCare = localizedOptionList(
+        providerLocale,
+        intake.careTypes,
+        providerLocale === "en" ? "Care support" : "Zorgondersteuning"
+      );
+      const familyUrgency = localizedOptionLabel(providerLocale, intake.urgency);
       await Promise.allSettled([
         sendFamilyMatchCreatedEmail({
           contactName: intake.contactName,
@@ -202,7 +208,7 @@ export async function POST(request: Request) {
               providerName: provider.name,
               familyArea: intake.preferredArea,
               familyCare,
-              familyUrgency: intake.urgency,
+              familyUrgency,
               reopened: reopening,
               locale: providerLocale
             })

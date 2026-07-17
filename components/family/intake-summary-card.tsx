@@ -196,7 +196,7 @@ export function IntakeSummaryCard({
               <h3 className="text-sm font-semibold text-ink">{ui.family.careGuideUpdates}</h3>
               {intake.carePathway ? (
                 <UpdateCallout title={ui.family.recommendedPathway} tone="neutral">
-                  <strong className="text-ink">{intake.carePathway}</strong>
+                  <strong className="text-ink">{optionLabel(locale, intake.carePathway)}</strong>
                 </UpdateCallout>
               ) : null}
               {intake.carePlanSummary ? (

@@ -1535,12 +1535,32 @@ function FamilyDetailPanel({
                 </label>
                 <label className="grid gap-1.5 text-sm font-medium">
                   Care plan summary (family-facing)
+                  <div
+                    className="rounded-lg border border-amber-200/80 bg-amber-50 px-3 py-2.5 text-sm leading-relaxed text-amber-950"
+                    role="note"
+                  >
+                    {family.preferredLocale === "en" ? (
+                      <>
+                        This family uses <strong>English</strong> in the app and emails. Write the care plan summary in
+                        English — free text is <strong>not</strong> auto-translated.
+                      </>
+                    ) : (
+                      <>
+                        This family uses <strong>Dutch</strong> in the app and emails. Write the care plan summary in{" "}
+                        <strong>Nederlands</strong> — free text is <strong>not</strong> auto-translated.
+                      </>
+                    )}
+                  </div>
                   <textarea
                     value={carePlanSummary}
                     onChange={(event) => setCarePlanSummary(event.target.value)}
                     disabled={isReadOnlyAssigned}
                     className={`${adminFieldClass} min-h-20`}
-                    placeholder="What the family should see next…"
+                    placeholder={
+                      family.preferredLocale === "en"
+                        ? "What the family should see next, in English…"
+                        : "Wat de familie nu moet weten, in het Nederlands…"
+                    }
                   />
                 </label>
                 <AdminPanelActions>
