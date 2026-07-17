@@ -15,7 +15,7 @@ export default async function AdminPage() {
 
   return (
     <>
-      <SiteHeader />
+      <SiteHeader variant="admin" />
       <AdminDashboardClient data={data} currentUserId={session.user.id} />
     </>
   );

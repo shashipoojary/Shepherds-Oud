@@ -543,7 +543,10 @@ export const productUiEn: ProductUi = {
     call: "Call",
     openMenu: "Open menu",
     mainMenu: "Main menu",
-    myFacility: "My facility"
+    myFacility: "My facility",
+    adminPanel: "Admin",
+    viewSite: "View site",
+    adminMenu: "Admin menu"
   },
   footer: {
     navAria: "Footer navigation",
