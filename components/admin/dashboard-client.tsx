@@ -11,7 +11,7 @@ import {
   X
 } from "lucide-react";
 import { AdminResetDataButton } from "@/components/admin/reset-data-button";
-import { WaitlistBulkEmailBar } from "@/components/admin/waitlist-bulk-email";
+import { ComposeAnnouncementBar } from "@/components/admin/compose-announcement";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -369,13 +369,11 @@ export function AdminDashboardClient({
 
       {message ? <div className="mt-4 rounded-lg bg-brand-green-pale/30 px-5 py-4 text-sm text-brand-green-dark">{message}</div> : null}
 
-      {tab === "waitlist" ? (
-        <div className="mt-6">
-          <WaitlistBulkEmailBar onNotify={setMessage} />
-        </div>
-      ) : null}
+      <div className="mt-6">
+        <ComposeAnnouncementBar onNotify={setMessage} />
+      </div>
 
-      <div className={cn("rounded-xl bg-white shadow-soft", tab === "waitlist" ? "mt-4" : "mt-6")}>
+      <div className="mt-4 rounded-xl bg-white shadow-soft">
         <div className="overflow-x-auto">
           {tab === "families" ? (
             data.families.length ? (
