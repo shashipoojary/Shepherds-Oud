@@ -190,10 +190,13 @@ function providerAvailableForMatching(providerId: string, matches: InquiryEntry[
 
 export function AdminDashboardClient({
   data: initialData,
-  currentUserId
+  currentUserId,
+  allowDataReset = false
 }: {
   data: AdminDashboardData;
   currentUserId: string;
+  /** When true, show the wipe button (ALLOW_ADMIN_DATA_RESET=true). */
+  allowDataReset?: boolean;
 }) {
   const [data, setData] = useState(initialData);
   const [tab, setTab] = useState<AdminTab>("families");
@@ -330,7 +333,7 @@ export function AdminDashboardClient({
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <RefreshButton onClick={() => void refreshDashboard()} loading={refreshing} />
-          <AdminResetDataButton />
+          {allowDataReset ? <AdminResetDataButton /> : null}
         </div>
       </header>
 
