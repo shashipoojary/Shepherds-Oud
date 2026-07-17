@@ -64,7 +64,7 @@ export async function syncSessionUser<T extends SessionUserLike>(user: T): Promi
       cached.role === (user.role ?? "FAMILY") &&
       (cached.linkedProviderId ?? null) === (user.linkedProviderId ?? null)
     ) {
-      return user;
+      return { ...user, role: cached.role };
     }
   }
 
