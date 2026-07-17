@@ -383,6 +383,30 @@ export function emailCopy(locale: Locale) {
       footerNote: en
         ? "You are receiving this because you joined the Shepherds Oud waitlist. Reply if you need help."
         : "U ontvangt deze e-mail omdat u zich heeft aangemeld voor de Shepherds Oud-wachtlijst. Antwoord als u hulp nodig heeft."
+    },
+    announcement: {
+      greetingFallback: en ? "there" : "daar",
+      facilityFallback: en ? "your facility" : "uw locatie",
+      eyebrow: en ? "Shepherds Oud update" : "Update van Shepherds Oud",
+      familyCta: en ? "Open your care dashboard" : "Open uw zorgdashboard",
+      providerCta: en ? "Open facility dashboard" : "Open locatiedashboard",
+      facilityLine: (facilityName: string) =>
+        en ? `This note is for ${facilityName}.` : `Dit bericht is voor ${facilityName}.`,
+      footerNote: (kind: "FAMILY" | "FACILITY" | "PROVIDER") => {
+        if (kind === "PROVIDER") {
+          return en
+            ? "You are receiving this as a care provider on Shepherds Oud. Reply if you need help."
+            : "U ontvangt deze e-mail als zorgaanbieder op Shepherds Oud. Antwoord als u hulp nodig heeft.";
+        }
+        if (kind === "FACILITY") {
+          return en
+            ? "You are receiving this because you joined the Shepherds Oud waitlist as a facility. Reply if you need help."
+            : "U ontvangt deze e-mail omdat u zich als locatie heeft aangemeld voor de Shepherds Oud-wachtlijst. Antwoord als u hulp nodig heeft.";
+        }
+        return en
+          ? "You are receiving this because you are connected with Shepherds Oud. Reply if you need help."
+          : "U ontvangt deze e-mail omdat u verbonden bent met Shepherds Oud. Antwoord als u hulp nodig heeft.";
+      }
     }
   };
 }

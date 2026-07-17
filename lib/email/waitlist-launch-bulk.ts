@@ -1,11 +1,12 @@
 import { prisma } from "@/lib/core/db";
 import { logError, logInfo } from "@/lib/core/logger";
+import { sendAnnouncementEmail } from "@/lib/email/announcement-email";
 import { processBulkEmailQueue } from "@/lib/email/bulk-email-queue";
-import { sendWaitlistAnnouncementEmail, type WaitlistAnnouncementAudience } from "@/lib/email/waitlist-announcement-email";
 import {
   sendWaitlistFacilityLaunchEmail,
   sendWaitlistFamilyLaunchEmail
 } from "@/lib/email/waitlist-launch-email";
+import type { WaitlistAnnouncementAudience } from "@/lib/email/waitlist-announcement-email";
 
 export type WaitlistLaunchRecipient = {
   id: string;
@@ -212,11 +213,11 @@ export async function runWaitlistAnnouncementBulkSend(input: {
     input.recipients.map((recipient) => ({
       item: recipient,
       send: async (item) => {
-        await sendWaitlistAnnouncementEmail({
+        await sendAnnouncementEmail({
           email: item.email,
           contactName: item.contactName,
           facilityName: item.facilityName,
-          type: item.type,
+          kind: item.type,
           subject: input.subject,
           message: input.message,
           locale: item.preferredLocale
