@@ -100,7 +100,7 @@ export default async function HomePage() {
         </section>
 
         <section className="bg-brand-cream px-4 py-12 sm:px-6">
-          <div className="mx-auto grid max-w-5xl gap-4 sm:grid-cols-3">
+          <div className="mx-auto grid max-w-5xl gap-6 sm:grid-cols-3 sm:gap-4">
             <AudienceCard
               icon={<Users className="h-5 w-5" />}
               title={home.forFamilies}
@@ -270,7 +270,7 @@ function AudienceCard({
   cta: string;
 }) {
   return (
-    <Card hover className="bg-white">
+    <Card hover className="bg-brand-cream/40 sm:bg-white">
       <span className="grid h-10 w-10 place-items-center rounded-full bg-brand-green-pale/50 text-brand-green-dark">{icon}</span>
       <h2 className="mt-4 font-semibold text-ink">{title}</h2>
       <p className="mt-2 text-body text-ink/75">{text}</p>
@@ -304,7 +304,7 @@ function ProviderStepCard({
 
 function StepCard({ marker, title, text }: { marker: string; title: string; text: string }) {
   return (
-    <Card className="bg-brand-beige-light/25 text-center">
+    <Card className="bg-transparent text-center sm:bg-brand-beige-light/25">
       <div className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-full bg-brand-amber font-bold text-white">{marker}</div>
       <h3 className="font-semibold text-ink">{title}</h3>
       <p className="mt-2 text-body text-ink/75">{text}</p>

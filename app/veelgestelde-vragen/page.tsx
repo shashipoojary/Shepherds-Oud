@@ -27,9 +27,12 @@ export default async function FaqPage() {
           <h1 className="mt-2 font-brand text-3xl font-bold text-ink sm:text-4xl">{copy.title}</h1>
           <p className="mt-3 text-body text-ink/75">{copy.intro}</p>
 
-          <div className="mt-10 space-y-4">
+          <div className="mt-10 divide-y divide-stone-200/80 border-y border-stone-200/80 sm:space-y-3 sm:divide-y-0 sm:border-0">
             {copy.items.map((item) => (
-              <details key={item.q} className="group rounded-2xl border border-stone-200 bg-white px-5 py-4 shadow-soft open:shadow-none">
+              <details
+                key={item.q}
+                className="group py-4 sm:rounded-2xl sm:border sm:border-stone-200 sm:bg-white sm:px-5 sm:py-4 sm:shadow-soft sm:open:shadow-none"
+              >
                 <summary className="cursor-pointer list-none font-semibold text-ink marker:content-none [&::-webkit-details-marker]:hidden">
                   {item.q}
                 </summary>
