@@ -77,18 +77,24 @@ export function CustomSelect({
       setOpen(false);
     }
 
-    function handleViewportChange() {
+    function closeOnPageScroll(event: Event) {
+      const target = event.target as Node | null;
+      if (menuRef.current?.contains(target)) return;
+      setOpen(false);
+    }
+
+    function handleResize() {
       updateMenuPosition();
     }
 
     document.addEventListener("mousedown", closeOnOutside);
-    window.addEventListener("resize", handleViewportChange);
-    window.addEventListener("scroll", handleViewportChange, true);
+    window.addEventListener("resize", handleResize);
+    window.addEventListener("scroll", closeOnPageScroll, true);
 
     return () => {
       document.removeEventListener("mousedown", closeOnOutside);
-      window.removeEventListener("resize", handleViewportChange);
-      window.removeEventListener("scroll", handleViewportChange, true);
+      window.removeEventListener("resize", handleResize);
+      window.removeEventListener("scroll", closeOnPageScroll, true);
     };
   }, [open]);
 

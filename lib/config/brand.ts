@@ -8,7 +8,7 @@ export const brand = {
   name: "Shepherds Oud",
   tagline: "Samen de juiste zorg vinden.",
   taglineEn: "Finding the right care together.",
-  email: "care@shepherdsoud.nl",
+  email: "dominique@shepherdsoud.com",
   metaDescription:
     "Begeleide zorgnavigatie wanneer thuis wonen niet meer gaat. Care Guide, passende zorgaanbieders en nazorg in regio Den Haag / Haaglanden — en daarna landelijk.",
   metaDescriptionEn:

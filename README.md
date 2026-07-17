@@ -225,7 +225,7 @@ Create a Brevo account and generate a transactional email API key:
 
 Also authenticate the sending domain in Brevo (Senders → Domains: Brevo code + DKIM + DMARC). Sender-email verification alone is not enough: without domain authentication Brevo rewrites From to `@<accountId>.brevosend.com`, which triggers Gmail rate limits.
 
-Set `ADVISOR_EMAIL` to the care guide or operations inbox that should receive intake alerts.
+Set `ADVISOR_EMAIL` to the care guide or operations inbox that should receive intake alerts (e.g. `dominique@shepherdsoud.com`).
 
 ## Local Development
 

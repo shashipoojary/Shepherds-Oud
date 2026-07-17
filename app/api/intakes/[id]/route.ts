@@ -114,7 +114,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
         urgency: "Within 1 month",
         ageRange: "80-89",
         matchCount: 0,
-        careGuide: { name: "Demo Care Guide", email: "guide@shepherdsoud.nl" },
+        careGuide: { name: "Demo Care Guide", email: "dominique@shepherdsoud.com" },
         carePathway: null,
         carePlanSummary: null,
         visitScheduledAt: null,
