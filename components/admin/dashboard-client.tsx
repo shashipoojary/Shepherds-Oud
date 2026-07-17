@@ -207,6 +207,8 @@ export function AdminDashboardClient({
   const dataRef = useRef(data);
   const intakeSavePendingRef = useRef(false);
   const focusRefetchTimerRef = useRef<number | null>(null);
+  /** Avoid full dashboard reloads every time the admin tab is re-focused. */
+  const lastFocusSyncAtRef = useRef(0);
   dataRef.current = data;
 
   const onMarkItemSeen = useCallback(() => {
@@ -280,9 +282,12 @@ export function AdminDashboardClient({
   }, [message]);
 
   useEffect(() => {
+    const FOCUS_SYNC_COOLDOWN_MS = 5 * 60 * 1000;
+
     function handleVisibilityChange() {
       if (document.visibilityState !== "visible") return;
       if (intakeSavePendingRef.current) return;
+      if (Date.now() - lastFocusSyncAtRef.current < FOCUS_SYNC_COOLDOWN_MS) return;
 
       if (focusRefetchTimerRef.current !== null) {
         window.clearTimeout(focusRefetchTimerRef.current);
@@ -291,6 +296,8 @@ export function AdminDashboardClient({
       focusRefetchTimerRef.current = window.setTimeout(() => {
         focusRefetchTimerRef.current = null;
         if (document.visibilityState !== "visible" || intakeSavePendingRef.current) return;
+        if (Date.now() - lastFocusSyncAtRef.current < FOCUS_SYNC_COOLDOWN_MS) return;
+        lastFocusSyncAtRef.current = Date.now();
         void syncDashboard();
       }, 500);
     }
@@ -307,6 +314,7 @@ export function AdminDashboardClient({
 
   async function syncDashboard() {
     const response = await fetch("/api/admin/dashboard");
+    lastFocusSyncAtRef.current = Date.now();
     if (!response.ok) return false;
     setData((await response.json()) as AdminDashboardData);
     return true;

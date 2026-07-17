@@ -1,7 +1,7 @@
 import { getServerSession } from "@/lib/auth/server";
 import { prisma } from "@/lib/core/db";
 import { jsonError, jsonOk, handleApiError } from "@/lib/core/api-helpers";
-import { countVisibleMatchesForIntake } from "@/lib/data/matches";
+import { countVisibleMatchesForIntakes } from "@/lib/data/matches";
 import { normalizeIntakeStatus } from "@/lib/domain/intake-workflow";
 
 export const runtime = "nodejs";
@@ -78,23 +78,26 @@ export async function GET() {
       }
     });
 
-    const withCounts = await Promise.all(
-      intakes.map(async (intake) => {
-        const status = normalizeIntakeStatus(intake.status);
+    const openIntakeIds = intakes
+      .filter((intake) => normalizeIntakeStatus(intake.status) !== "CLOSED")
+      .map((intake) => intake.id);
+    const matchCounts = await countVisibleMatchesForIntakes(openIntakeIds);
 
-        return {
-          ...intake,
-          status,
-          hospitalDischargeDate: intake.hospitalDischargeDate?.toISOString() ?? null,
-          visitScheduledAt: intake.visitScheduledAt?.toISOString() ?? null,
-          submittedAt: intake.createdAt.toISOString(),
-          careGuide: intake.careGuide
-            ? { name: intake.careGuide.name || "Your Care Guide", email: intake.careGuide.email }
-            : null,
-          matchCount: status === "CLOSED" ? 0 : await countVisibleMatchesForIntake(intake.id)
-        };
-      })
-    );
+    const withCounts = intakes.map((intake) => {
+      const status = normalizeIntakeStatus(intake.status);
+
+      return {
+        ...intake,
+        status,
+        hospitalDischargeDate: intake.hospitalDischargeDate?.toISOString() ?? null,
+        visitScheduledAt: intake.visitScheduledAt?.toISOString() ?? null,
+        submittedAt: intake.createdAt.toISOString(),
+        careGuide: intake.careGuide
+          ? { name: intake.careGuide.name || "Your Care Guide", email: intake.careGuide.email }
+          : null,
+        matchCount: status === "CLOSED" ? 0 : (matchCounts.get(intake.id) ?? 0)
+      };
+    });
 
     return jsonOk(withCounts);
   } catch (error) {

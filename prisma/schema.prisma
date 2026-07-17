@@ -137,6 +137,8 @@ model Intake {
   decisionMakers DecisionMaker[]
 
   @@index([careGuideId])
+  @@index([userId])
+  @@index([status])
 }
 
 model DecisionMaker {
@@ -194,6 +196,8 @@ model Provider {
 
   user    User?
   matches Match[]
+
+  @@index([email])
 }
 
 model Match {
@@ -212,6 +216,8 @@ model Match {
   provider   Provider @relation(fields: [providerId], references: [id])
 
   @@unique([intakeId, providerId])
+  @@index([providerId])
+  @@index([status])
 }
 
 model ActionLog {
@@ -222,6 +228,8 @@ model ActionLog {
   label      String
   payload    Json?
   createdAt  DateTime @default(now())
+
+  @@index([createdAt])
 }
 
 enum Role {
@@ -294,6 +302,9 @@ model WaitlistEntry {
   updatedAt             DateTime       @updatedAt
 
   providerInvites ProviderInvite[]
+
+  @@index([status])
+  @@index([email])
 }
 
 model ProviderInvite {
