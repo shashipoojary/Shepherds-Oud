@@ -12,6 +12,7 @@ import { syncIntakeCaseFromMatch } from "@/lib/domain/intake-case-sync";
 import { sendProviderInquiryEmail } from "@/lib/email/provider-inquiry-email";
 import { sendProviderStatusEmail } from "@/lib/email/provider-status-email";
 import { resolveProviderEmailLocale } from "@/lib/email/locale-from-intake";
+import { localizedOptionLabel, localizedOptionList } from "@/lib/i18n/labels-for-locale";
 import { familyRequestNote } from "@/lib/domain/match-status";
 import { handleApiError, jsonError, jsonOk, readJsonBody, runInBackground } from "@/lib/core/api-helpers";
 import { toSafeMatch } from "@/lib/serializers/match";
@@ -143,8 +144,12 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
             providerName: existing.provider.name,
             familyName: existing.intake.contactName,
             familyArea: existing.intake.preferredArea,
-            familyCare: existing.intake.careTypes.join(", ") || "Not specified",
-            familyUrgency: existing.intake.urgency,
+            familyCare: localizedOptionList(
+              providerLocale,
+              existing.intake.careTypes,
+              providerLocale === "en" ? "Not specified" : "Niet opgegeven"
+            ),
+            familyUrgency: localizedOptionLabel(providerLocale, existing.intake.urgency),
             requestType: nextStatus as "VISIT_REQUESTED" | "CALLBACK_REQUESTED",
             locale: providerLocale
           }),
