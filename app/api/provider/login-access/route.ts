@@ -1,23 +1,27 @@
 import { providerLoginErrorMessage } from "@/lib/auth/provider-login-errors";
 import { jsonError, jsonOk, handleApiError, readJsonBody } from "@/lib/core/api-helpers";
 import { resolveProviderLoginAccess } from "@/lib/providers/invite-access";
+import { getLocale } from "@/lib/i18n/get-locale";
+import { productUi } from "@/lib/i18n/ui";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {
+    const locale = await getLocale();
+    const ui = productUi(locale);
     const body = (await readJsonBody(request, 8_000)) as { email?: unknown; invite?: unknown };
     const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
     const inviteToken = typeof body.invite === "string" ? body.invite.trim() : "";
 
     if (!email || !email.includes("@")) {
-      return jsonError("Enter a valid facility email address.", 400);
+      return jsonError(ui.auth.invalidEmail, 400);
     }
 
     const access = await resolveProviderLoginAccess(email, inviteToken || null);
     if (!access.allowed) {
-      const message = providerLoginErrorMessage(access.code);
-      return jsonError(message || "Your facility account is not approved yet.", 403, { code: access.code });
+      const message = providerLoginErrorMessage(access.code, locale);
+      return jsonError(message || ui.auth.providerNotApproved, 403, { code: access.code });
     }
 
     return jsonOk({ ok: true });

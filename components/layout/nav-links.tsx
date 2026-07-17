@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import type { AppRole } from "@/lib/auth/server";
 import { buildNavItems } from "@/lib/auth/routes";
 import { usePrelaunch } from "@/components/layout/prelaunch-context";
+import { useLocale } from "@/components/i18n/locale-provider";
 import { LoadingLink } from "@/components/shared/loading-link";
 
 type RoleAwareNavProps = {
@@ -14,17 +15,20 @@ type RoleAwareNavProps = {
 
 export function RoleAwareNav({ variant = "desktop", onNavigate }: RoleAwareNavProps) {
   const prelaunch = usePrelaunch();
+  const { locale } = useLocale();
   const pathname = usePathname();
   const { data: session, isPending } = authClient.useSession();
   const sessionRole = session?.user.role as AppRole | undefined;
   const role = pathname.startsWith("/family") && session ? "FAMILY" : sessionRole;
-  const items = buildNavItems(role, Boolean(session), prelaunch);
-  const fallbackItems = buildNavItems(undefined, false, prelaunch);
+  const items = buildNavItems(role, Boolean(session), prelaunch, locale);
+  // While session loads, use the same signed-in flag as unknown→false is fine now that
+  // marketing links are always shown; avoid a second layout shift from role-only items.
+  const displayItems = isPending ? buildNavItems(undefined, false, prelaunch, locale) : items;
 
   if (variant === "mobile") {
     return (
       <div className="grid gap-1">
-        {(isPending ? fallbackItems : items).map((item) => (
+        {displayItems.map((item) => (
           <LoadingLink
             key={item.href}
             href={item.href}
@@ -40,7 +44,7 @@ export function RoleAwareNav({ variant = "desktop", onNavigate }: RoleAwareNavPr
 
   return (
     <>
-      {(isPending ? fallbackItems : items).map((item) => (
+      {displayItems.map((item) => (
         <LoadingLink
           key={item.href}
           href={item.href}

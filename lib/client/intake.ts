@@ -171,11 +171,17 @@ export async function getSessionFamilyIntakes(): Promise<{
   }
 }
 
-export function formatVisitSchedule(intake: Pick<FamilyIntake, "visitScheduledAt" | "visitType" | "visitProviderName" | "visitNotes">) {
+import { dateLocale } from "@/lib/i18n/ui";
+import type { Locale } from "@/lib/i18n/config";
+
+export function formatVisitSchedule(
+  intake: Pick<FamilyIntake, "visitScheduledAt" | "visitType" | "visitProviderName" | "visitNotes">,
+  locale: Locale = "nl"
+) {
   if (!intake.visitScheduledAt) return null;
   const date = new Date(intake.visitScheduledAt);
   if (Number.isNaN(date.getTime())) return null;
-  const when = date.toLocaleString("en-GB", {
+  const when = date.toLocaleString(dateLocale(locale), {
     weekday: "short",
     day: "numeric",
     month: "short",
@@ -183,8 +189,19 @@ export function formatVisitSchedule(intake: Pick<FamilyIntake, "visitScheduledAt
     hour: "2-digit",
     minute: "2-digit"
   });
-  const kind = intake.visitType === "CALLBACK" ? "Callback" : "Facility visit";
-  const withProvider = intake.visitProviderName ? ` with ${intake.visitProviderName}` : "";
+  const kind =
+    intake.visitType === "CALLBACK"
+      ? locale === "en"
+        ? "Callback"
+        : "Terugbelafspraak"
+      : locale === "en"
+        ? "Facility visit"
+        : "Locatiebezoek";
+  const withProvider = intake.visitProviderName
+    ? locale === "en"
+      ? ` with ${intake.visitProviderName}`
+      : ` met ${intake.visitProviderName}`
+    : "";
   return `${kind}${withProvider} · ${when}${intake.visitNotes ? ` — ${intake.visitNotes}` : ""}`;
 }
 

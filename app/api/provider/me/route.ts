@@ -5,7 +5,8 @@ import { providerSaveErrorMessage } from "@/lib/providers/errors";
 import { getProviderInquiries, getUserLinkedProvider, upsertProviderForUser } from "@/lib/providers/server";
 import { getProviderProfileMissingRequirements } from "@/lib/providers/completeness";
 import { toSafeProvider, toSafeProviderInquiry } from "@/lib/serializers/provider";
-import { providerProfileSchema } from "@/lib/validation/provider";
+import { providerProfileSchemaFor } from "@/lib/validation/provider";
+import { getLocale } from "@/lib/i18n/get-locale";
 
 export const runtime = "nodejs";
 
@@ -45,7 +46,8 @@ export async function PATCH(request: Request) {
     if (auth.error) return auth.error;
 
     const body = await readJsonBody(request);
-    const parsed = providerProfileSchema.safeParse(body);
+    const locale = await getLocale();
+    const parsed = providerProfileSchemaFor(locale).safeParse(body);
 
     if (!parsed.success) {
       const fieldErrors = parsed.error.flatten().fieldErrors;

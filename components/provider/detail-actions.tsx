@@ -9,6 +9,7 @@ import { getSessionFamilyIntakes } from "@/lib/client/intake";
 import { isProviderSaved, toggleSavedProvider } from "@/lib/client/favourites";
 import { requestMatchAction } from "@/lib/client/match-request";
 import { TOAST_DISMISS_MS } from "@/lib/client/toast-timing";
+import { useLocale } from "@/components/i18n/locale-provider";
 import { familyMatchNextStep, isFamilyActionableMatchStatus, matchStatusLabel } from "@/lib/domain/match-status";
 import { ActionFeedback } from "@/components/ui/action-feedback";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,8 @@ export function ProviderDetailActions({ providerId, providerName }: { providerId
 }
 
 function ProviderDetailActionsContent({ providerId, providerName }: { providerId: string; providerName: string }) {
+  const { locale, ui } = useLocale();
+  const d = ui.family.providerDetail;
   const searchParams = useSearchParams();
   const requestedIntakeId = searchParams.get("intakeId");
   const fromDashboard = searchParams.get("from") === "dashboard";
@@ -95,13 +98,13 @@ function ProviderDetailActionsContent({ providerId, providerName }: { providerId
   async function handleRequest(status: "VISIT_REQUESTED" | "CALLBACK_REQUESTED") {
     if (!intakeId) {
       setMessageTone("error");
-      setMessage("Complete the intake form first so we can link your request to this provider.");
+      setMessage(d.completeIntakeFirst);
       return;
     }
 
     if (!matchId) {
       setMessageTone("error");
-      setMessage("This provider has not been matched to your request yet. Your Care Guide will publish matches first.");
+      setMessage(d.notMatchedYet);
       return;
     }
 
@@ -119,7 +122,7 @@ function ProviderDetailActionsContent({ providerId, providerName }: { providerId
 
     setMatchStatus(status);
     setMessageTone("success");
-    setMessage(familyMatchNextStep(status, providerName));
+    setMessage(familyMatchNextStep(status, providerName, locale));
     setPending(null);
   }
 
@@ -128,11 +131,7 @@ function ProviderDetailActionsContent({ providerId, providerName }: { providerId
     const nowSaved = toggleSavedProvider(providerId, providerName);
     setSaved(nowSaved);
     setMessageTone("success");
-    setMessage(
-      nowSaved
-        ? `${providerName} saved on this device. Find them under Saved providers on your dashboard.`
-        : `${providerName} removed from your saved providers.`
-    );
+    setMessage(nowSaved ? d.savedOnDevice(providerName) : d.removedFromSaved(providerName));
     setPending(null);
   }
 
@@ -154,39 +153,27 @@ function ProviderDetailActionsContent({ providerId, providerName }: { providerId
   return (
     <>
       {!hasIntake ? (
-        <ActionFeedback
-          tone="info"
-          className="mt-4"
-          message="Complete your intake to request visits or callbacks from matched providers."
-        />
+        <ActionFeedback tone="info" className="mt-4" message={d.completeIntakeForRequests} />
       ) : needsCaseSelection ? (
-        <ActionFeedback
-          tone="info"
-          className="mt-4"
-          message="Choose a care request first, then open this provider from that request's matches."
-        />
+        <ActionFeedback tone="info" className="mt-4" message={d.chooseRequestFirst} />
       ) : caseNotFound ? (
-        <ActionFeedback
-          tone="error"
-          className="mt-4"
-          message="We could not find that care request on your account. Open this provider from one of your saved requests."
-        />
+        <ActionFeedback tone="error" className="mt-4" message={d.caseNotFoundOnAccount} />
       ) : !matchId ? (
-        <ActionFeedback
-          tone="info"
-          className="mt-4"
-          message="Contact requests open once your Care Guide matches this provider to your intake."
-        />
+        <ActionFeedback tone="info" className="mt-4" message={d.matchNotPublished} />
       ) : inProgress && matchStatus ? (
-        <ActionFeedback tone="success" className="mt-4" message={familyMatchNextStep(matchStatus, providerName)} />
+        <ActionFeedback tone="success" className="mt-4" message={familyMatchNextStep(matchStatus, providerName, locale)} />
       ) : declined ? (
         <ActionFeedback
           tone="info"
           className="mt-4"
-          message={`${familyMatchNextStep("DECLINED", providerName)} Choose another matched provider from your dashboard.`}
+          message={`${familyMatchNextStep("DECLINED", providerName, locale)} ${d.chooseAnotherProvider}`}
         />
       ) : matchStatus && (visitSent || callbackSent) ? (
-        <ActionFeedback tone="success" className="mt-4" message={`Status: ${matchStatusLabel(matchStatus)}. ${familyMatchNextStep(matchStatus, providerName)}`} />
+        <ActionFeedback
+          tone="success"
+          className="mt-4"
+          message={`${d.statusLabel(matchStatusLabel(matchStatus, locale))} ${familyMatchNextStep(matchStatus, providerName, locale)}`}
+        />
       ) : null}
 
       {message ? <ActionFeedback message={message} tone={messageTone} className="mt-4" /> : null}
@@ -194,32 +181,34 @@ function ProviderDetailActionsContent({ providerId, providerName }: { providerId
       {inProgress || declined ? (
         <div className="mt-5 flex flex-col gap-2">
           <Button asChild className="w-full">
-            <Link href={fromDashboard ? dashboardHref : resultsHref}>{fromDashboard ? "Back to your dashboard" : "Back to all matches"}</Link>
+            <Link href={fromDashboard ? dashboardHref : resultsHref}>
+              {fromDashboard ? d.backToDashboard : d.backToMatches}
+            </Link>
           </Button>
           {!fromDashboard ? (
             <Button asChild variant="outline" className="w-full">
-              <Link href={dashboardHref}>Your dashboard</Link>
+              <Link href={dashboardHref}>{d.yourDashboard}</Link>
             </Button>
           ) : null}
           {!declined ? (
-          <Button variant="ghost" className="w-full" disabled={pending === "favourite"} onClick={handleFavourite}>
-            {pending === "favourite" ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Saving...
-              </>
-            ) : saved ? (
-              <>
-                <Heart className="h-4 w-4 fill-brand-amber text-brand-amber" />
-                Saved to favourites
-              </>
-            ) : (
-              <>
-                <Heart className="h-4 w-4" />
-                Save to favourites
-              </>
-            )}
-          </Button>
+            <Button variant="ghost" className="w-full" disabled={pending === "favourite"} onClick={handleFavourite}>
+              {pending === "favourite" ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  {d.savingFavourite}
+                </>
+              ) : saved ? (
+                <>
+                  <Heart className="h-4 w-4 fill-brand-amber text-brand-amber" />
+                  {d.savedToFavourites}
+                </>
+              ) : (
+                <>
+                  <Heart className="h-4 w-4" />
+                  {d.saveToFavourites}
+                </>
+              )}
+            </Button>
           ) : null}
         </div>
       ) : (
@@ -232,15 +221,15 @@ function ProviderDetailActionsContent({ providerId, providerName }: { providerId
             {pending === "visit" ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Sending visit request...
+                {d.sendingVisitRequest}
               </>
             ) : visitSent ? (
               <>
                 <Check className="h-4 w-4" />
-                Visit requested
+                {ui.family.visitRequested}
               </>
             ) : (
-              "Request a visit"
+              ui.family.requestVisit
             )}
           </Button>
 
@@ -253,15 +242,15 @@ function ProviderDetailActionsContent({ providerId, providerName }: { providerId
             {pending === "callback" ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Sending callback request...
+                {d.sendingCallbackRequest}
               </>
             ) : callbackSent ? (
               <>
                 <Check className="h-4 w-4" />
-                Callback requested
+                {d.callbackRequested}
               </>
             ) : (
-              "Request a callback"
+              ui.family.requestCallback
             )}
           </Button>
 
@@ -269,28 +258,28 @@ function ProviderDetailActionsContent({ providerId, providerName }: { providerId
             {pending === "favourite" ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Saving...
+                {d.savingFavourite}
               </>
             ) : saved ? (
               <>
                 <Heart className="h-4 w-4 fill-brand-amber text-brand-amber" />
-                Saved to favourites
+                {d.savedToFavourites}
               </>
             ) : (
               <>
                 <Heart className="h-4 w-4" />
-                Save to favourites
+                {d.saveToFavourites}
               </>
             )}
           </Button>
 
           {!hasIntake ? (
             <Button asChild variant="ghost" className="w-full">
-              <Link href="/family/intake">Start intake</Link>
+              <Link href="/family/intake">{ui.family.startIntake}</Link>
             </Button>
           ) : needsCaseSelection || caseNotFound ? (
             <Button asChild variant="ghost" className="w-full">
-              <Link href="/family/dashboard">Choose care request</Link>
+              <Link href="/family/dashboard">{d.chooseCareRequest}</Link>
             </Button>
           ) : null}
         </div>

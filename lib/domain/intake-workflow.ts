@@ -1,4 +1,6 @@
 import { CARE_PATHWAYS } from "@/lib/domain/care-pathways";
+import type { Locale } from "@/lib/i18n/config";
+import { journeyCopy } from "@/lib/i18n/ui";
 
 export const INTAKE_STATUSES = [
   "NEW",
@@ -124,35 +126,45 @@ export function journeyStepIndex(status: string) {
   return JOURNEY_STEPS.findIndex((step) => step.status === normalized);
 }
 
-export function intakeStatusLabel(status: string) {
+export function intakeStatusLabel(status: string, locale: Locale = "nl") {
   const normalized = normalizeIntakeStatus(status);
-  return JOURNEY_STEPS.find((step) => step.status === normalized)?.label ?? "Request received";
+  const copy = journeyCopy(locale);
+  return copy[normalized]?.label ?? JOURNEY_STEPS.find((step) => step.status === normalized)?.label ?? (locale === "en" ? "Request received" : "Aanvraag ontvangen");
 }
 
-export function intakeStatusHint(status: string) {
+export function intakeStatusHint(status: string, locale: Locale = "nl") {
   const normalized = normalizeIntakeStatus(status);
-  return JOURNEY_STEPS.find((step) => step.status === normalized)?.hint ?? JOURNEY_STEPS[0].hint;
+  const copy = journeyCopy(locale);
+  return copy[normalized]?.hint ?? JOURNEY_STEPS.find((step) => step.status === normalized)?.hint ?? JOURNEY_STEPS[0].hint;
 }
 
 export function familyJourneyStepHint(
   status: string,
-  context?: { hasRecentDecline?: boolean; hasAlternativeMatches?: boolean }
+  context?: { hasRecentDecline?: boolean; hasAlternativeMatches?: boolean },
+  locale: Locale = "nl"
 ) {
   const normalized = normalizeIntakeStatus(status);
 
   if (context?.hasRecentDecline) {
     if (normalized === "MATCHED") {
+      if (locale === "en") {
+        return context.hasAlternativeMatches
+          ? "A provider could not take your last request, but other matched facilities remain on your shortlist. Review them or ask your Care Guide for guidance."
+          : "Your Care Guide is helping you explore next options after a provider could not help.";
+      }
       return context.hasAlternativeMatches
-        ? "A provider could not take your last request, but other matched facilities remain on your shortlist. Review them or ask your Care Guide for guidance."
-        : "Your Care Guide is helping you explore next options after a provider could not help.";
+        ? "Een aanbieder kon uw laatste verzoek niet aannemen, maar andere gematchte locaties staan nog op uw shortlist. Bekijk ze of vraag uw Care Guide om advies."
+        : "Uw Care Guide helpt u volgende opties te verkennen nadat een aanbieder niet kon helpen.";
     }
 
     if (normalized === "CARE_PLAN") {
-      return "Your Care Guide is reviewing your care plan and will suggest new provider options after a facility could not help with your last request.";
+      return locale === "en"
+        ? "Your Care Guide is reviewing your care plan and will suggest new provider options after a facility could not help with your last request."
+        : "Uw Care Guide bekijkt uw zorgplan opnieuw en stelt nieuwe aanbieders voor nadat een locatie niet kon helpen.";
     }
   }
 
-  return intakeStatusHint(status);
+  return intakeStatusHint(status, locale);
 }
 
 /** Admin-panel copy — describes the case stage for coordinators, not the family-facing timeline text. */
@@ -190,7 +202,7 @@ export function adminIntakeJourneyHint(status: string) {
 }
 
 export function adminIntakeStatusLabel(status: string) {
-  return intakeStatusLabel(status);
+  return intakeStatusLabel(status, "en");
 }
 
 export function adminIntakeActionMeta(status: IntakeStatus) {
@@ -299,13 +311,19 @@ export function canFamilyEditIntake(status: string) {
   return true;
 }
 
-export function familyIntakeEditBlockedMessage(status: string) {
+export function familyIntakeEditBlockedMessage(status: string, locale: Locale = "nl") {
   const normalized = normalizeIntakeStatus(status);
   if (normalized === "CLOSED") {
-    return "This request is closed and can no longer be updated online.";
+    return locale === "en"
+      ? "This request is closed and can no longer be updated online."
+      : "Deze aanvraag is afgesloten en kan niet meer online worden bijgewerkt.";
   }
   if (normalized === "PLACED" || normalized.startsWith("FOLLOW_UP")) {
-    return "Your care has been arranged. Contact your Care Guide if you need to change something.";
+    return locale === "en"
+      ? "Your care has been arranged. Contact your Care Guide if you need to change something."
+      : "Uw zorg is geregeld. Neem contact op met uw Care Guide als er iets moet wijzigen.";
   }
-  return "This request can no longer be updated online.";
+  return locale === "en"
+    ? "This request can no longer be updated online."
+    : "Deze aanvraag kan niet meer online worden bijgewerkt.";
 }

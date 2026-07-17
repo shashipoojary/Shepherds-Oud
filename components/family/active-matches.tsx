@@ -13,10 +13,13 @@ import {
 } from "@/lib/domain/match-status";
 import { normalizeIntakeStatus } from "@/lib/domain/intake-workflow";
 import { withIntakeId } from "@/lib/client/case-selection";
-import { Button } from "@/components/ui/button";
+import { useLocale } from "@/components/i18n/locale-provider";
+import { optionLabel } from "@/lib/i18n/ui";
 import type { ProviderMatch } from "@/lib/core/types";
+import { Button } from "@/components/ui/button";
 
 export function FamilyActiveMatches({ intakeId, intakeStatus }: { intakeId: string; intakeStatus: string }) {
+  const { locale, ui } = useLocale();
   const [matches, setMatches] = useState<ProviderMatch[]>([]);
   const [loading, setLoading] = useState(true);
   const caseClosed = normalizeIntakeStatus(intakeStatus) === "CLOSED";
@@ -66,15 +69,15 @@ export function FamilyActiveMatches({ intakeId, intakeStatus }: { intakeId: stri
         <div className="rounded-2xl bg-white p-5 shadow-soft ring-1 ring-stone-200/80">
           {declineContext.needsDeclineRecovery ? (
             <>
-              <p className="section-label">Provider updates</p>
-              <h2 className="mt-1 text-lg font-semibold text-ink">A provider could not help with your last request</h2>
+              <p className="section-label">{ui.family.providerUpdates}</p>
+              <h2 className="mt-1 text-lg font-semibold text-ink">{ui.family.declineRecoveryTitle}</h2>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-700">
-                {familyDeclineRecoveryMessage(declineContext.hasForward)}
+                {familyDeclineRecoveryMessage(declineContext.hasForward, locale)}
               </p>
               {declined.length ? (
                 <div className="mt-4 divide-y divide-stone-200">
                   {declined.map((match) => (
-                    <DeclinedProviderRow key={match.matchId || match.id} match={match} intakeId={intakeId} />
+                    <DeclinedProviderRow key={match.matchId || match.id} match={match} intakeId={intakeId} locale={locale} ui={ui} />
                   ))}
                 </div>
               ) : null}
@@ -82,33 +85,31 @@ export function FamilyActiveMatches({ intakeId, intakeStatus }: { intakeId: stri
                 {declineContext.hasForward ? (
                   <Button asChild size="sm">
                     <Link href={withIntakeId("/family/results", intakeId)}>
-                      Review other matches <ArrowRight className="h-4 w-4" />
+                      {ui.family.viewOtherProviders} <ArrowRight className="h-4 w-4" />
                     </Link>
                   </Button>
                 ) : null}
                 <Button asChild size="sm" variant={declineContext.hasForward ? "outline" : "default"}>
-                  <a href="#care-guide-plan">View care plan</a>
+                  <a href="#care-guide-plan">{ui.family.viewCarePlan}</a>
                 </Button>
               </div>
             </>
           ) : (
             <>
-              <p className="section-label">Provider response</p>
-              <h2 className="mt-1 text-lg font-semibold text-ink">Your Care Guide is coordinating next steps</h2>
-              <p className="mt-1 text-sm text-neutral-600">
-                These are updates from providers you selected. Your Care Guide will arrange the visit, callback, or next decision with you.
-              </p>
+              <p className="section-label">{ui.family.providerResponse}</p>
+              <h2 className="mt-1 text-lg font-semibold text-ink">{ui.family.coordinatorTitle}</h2>
+              <p className="mt-1 text-sm text-neutral-600">{ui.family.coordinatorDesc}</p>
               <div className="mt-4 grid gap-3">
                 {active.map((match) => (
-                  <MatchCard key={match.matchId || match.id} match={match} intakeId={intakeId} />
+                  <MatchCard key={match.matchId || match.id} match={match} intakeId={intakeId} locale={locale} ui={ui} />
                 ))}
               </div>
               {declined.length ? (
                 <div className="mt-5">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Previously declined</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">{ui.family.previouslyDeclined}</p>
                   <div className="mt-3 divide-y divide-stone-200">
                     {declined.map((match) => (
-                      <DeclinedProviderRow key={match.matchId || match.id} match={match} intakeId={intakeId} />
+                      <DeclinedProviderRow key={match.matchId || match.id} match={match} intakeId={intakeId} locale={locale} ui={ui} />
                     ))}
                   </div>
                 </div>
@@ -117,7 +118,7 @@ export function FamilyActiveMatches({ intakeId, intakeStatus }: { intakeId: stri
                 <div className="mt-4">
                   <Button asChild size="sm" variant="ghost">
                     <Link href={withIntakeId("/family/results", intakeId)}>
-                      View full shortlist <ArrowRight className="h-4 w-4" />
+                      {ui.family.viewFullShortlist} <ArrowRight className="h-4 w-4" />
                     </Link>
                   </Button>
                 </div>
@@ -129,18 +130,14 @@ export function FamilyActiveMatches({ intakeId, intakeStatus }: { intakeId: stri
 
       {!active.length && suggested.length ? (
         <div className="rounded-2xl bg-white p-5 shadow-soft">
-          <p className="section-label">Your shortlist</p>
-          <h2 className="mt-1 text-lg font-semibold text-ink">
-            {suggested.length} matched provider{suggested.length === 1 ? "" : "s"} ready to review
-          </h2>
+          <p className="section-label">{ui.family.shortlistLabel}</p>
+          <h2 className="mt-1 text-lg font-semibold text-ink">{ui.family.matchedProvidersReady(suggested.length)}</h2>
           <p className="mt-1 text-sm text-neutral-600">
-            {declineContext.needsDeclineRecovery
-              ? "Review these alternatives and request a visit or callback when you are ready."
-              : "Review options and request a visit or callback when you are ready."}
+            {declineContext.needsDeclineRecovery ? ui.family.shortlistDeclineHint : ui.family.shortlistHint}
           </p>
           <Button asChild className="mt-4">
             <Link href={withIntakeId("/family/results", intakeId)}>
-              View matches <ArrowRight className="h-4 w-4" />
+              {ui.family.viewMatches} <ArrowRight className="h-4 w-4" />
             </Link>
           </Button>
         </div>
@@ -149,30 +146,50 @@ export function FamilyActiveMatches({ intakeId, intakeStatus }: { intakeId: stri
   );
 }
 
-function DeclinedProviderRow({ match, intakeId }: { match: ProviderMatch; intakeId: string }) {
+function DeclinedProviderRow({
+  match,
+  intakeId,
+  locale,
+  ui
+}: {
+  match: ProviderMatch;
+  intakeId: string;
+  locale: ReturnType<typeof useLocale>["locale"];
+  ui: ReturnType<typeof useLocale>["ui"];
+}) {
   return (
     <div className="flex flex-col gap-3 py-4 first:pt-0 last:pb-0 sm:flex-row sm:items-start sm:justify-between">
       <div>
         <div className="flex flex-wrap items-center gap-2">
           <h3 className="font-semibold text-ink">{match.name}</h3>
           <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${matchStatusBadgeClass("DECLINED")}`}>
-            {matchStatusLabel("DECLINED")}
+            {matchStatusLabel("DECLINED", locale)}
           </span>
         </div>
         <p className="mt-1 text-sm text-neutral-600">
-          {match.type} · {match.area}
+          {match.type ? optionLabel(locale, match.type) : ui.family.careFacility} · {match.area}
         </p>
       </div>
       <Button asChild size="sm" variant="outline" className="shrink-0">
         <Link href={withIntakeId(`/providers/${match.id}?from=dashboard`, intakeId)}>
-          View profile <ArrowRight className="h-4 w-4" />
+          {ui.family.viewProfile} <ArrowRight className="h-4 w-4" />
         </Link>
       </Button>
     </div>
   );
 }
 
-function MatchCard({ match, intakeId }: { match: ProviderMatch; intakeId: string }) {
+function MatchCard({
+  match,
+  intakeId,
+  locale,
+  ui
+}: {
+  match: ProviderMatch;
+  intakeId: string;
+  locale: ReturnType<typeof useLocale>["locale"];
+  ui: ReturnType<typeof useLocale>["ui"];
+}) {
   return (
     <article className="rounded-xl bg-brand-cream/20 p-4 ring-1 ring-stone-200/80">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -181,20 +198,20 @@ function MatchCard({ match, intakeId }: { match: ProviderMatch; intakeId: string
             <h3 className="font-semibold text-ink">{match.name}</h3>
             {match.matchStatus ? (
               <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${matchStatusBadgeClass(match.matchStatus)}`}>
-                {matchStatusLabel(match.matchStatus)}
+                {matchStatusLabel(match.matchStatus, locale)}
               </span>
             ) : null}
           </div>
           <p className="mt-1 text-sm text-neutral-600">
-            {match.type} · {match.area}
+            {match.type ? optionLabel(locale, match.type) : ui.family.careFacility} · {match.area}
           </p>
           {match.matchStatus ? (
-            <p className="mt-2 text-sm leading-6 text-neutral-700">{familyMatchNextStep(match.matchStatus, match.name)}</p>
+            <p className="mt-2 text-sm leading-6 text-neutral-700">{familyMatchNextStep(match.matchStatus, match.name, locale)}</p>
           ) : null}
         </div>
         <Button asChild size="sm" className="shrink-0">
           <Link href={withIntakeId(`/providers/${match.id}?from=dashboard`, intakeId)}>
-            Review provider <ArrowRight className="h-4 w-4" />
+            {ui.family.viewProvider} <ArrowRight className="h-4 w-4" />
           </Link>
         </Button>
       </div>

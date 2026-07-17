@@ -17,10 +17,12 @@ import {
 } from "@/lib/domain/intake-workflow";
 import { sendIntakeStatusEmail } from "@/lib/email/intake-status-email";
 import { sendProviderStatusEmail } from "@/lib/email/provider-status-email";
+import { resolveFamilyEmailLocale, resolveProviderEmailLocale } from "@/lib/email/locale-from-intake";
+import { getLocale } from "@/lib/i18n/get-locale";
 import { handleApiError, jsonError, jsonOk, rateLimitResponse, readJsonBody, runInBackground } from "@/lib/core/api-helpers";
 import { getIsPrelaunch } from "@/lib/config/prelaunch";
 import { INTAKE_CONSENT_VERSION } from "@/lib/domain/intake-consent";
-import { intakeSchema } from "@/lib/validation/intake";
+import { intakeSchemaFor } from "@/lib/validation/intake";
 import { INTAKE_STALE_CONFLICT_MESSAGE, intakeUpdatedAtMatches } from "@/lib/domain/intake-stale-conflict";
 import { adminIntakeUpdateSchema } from "@/lib/validation/intake-admin";
 
@@ -32,7 +34,7 @@ function parseDischargeDate(value?: string) {
   return Number.isNaN(parsed.getTime()) ? undefined : parsed;
 }
 
-function intakeUpdateData(data: ReturnType<typeof intakeSchema.parse>) {
+function intakeUpdateData(data: ReturnType<ReturnType<typeof intakeSchemaFor>["parse"]>) {
   const { hospitalDischargeDate, decisionMakers, consentAccepted, ...rest } = data;
   return {
     ...rest,
@@ -255,6 +257,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         visitProviderName: true,
         visitNotes: true,
         caseOutcome: true,
+        languages: true,
+        preferredLocale: true,
         careGuide: { select: { name: true, email: true } }
       } as const;
       const shouldCloseMatches = nextStatus && nextStatus !== currentStatus && nextStatus === "CLOSED";
@@ -289,6 +293,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       );
 
       if (nextStatus && nextStatus !== currentStatus && normalizedStatus !== "VISIT_SCHEDULED") {
+        const familyLocale = resolveFamilyEmailLocale({
+          preferredLocale: intake.preferredLocale,
+          languages: intake.languages
+        });
         runInBackground(
           () =>
             sendIntakeStatusEmail({
@@ -299,13 +307,18 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
               carePathway: intake.carePathway,
               careGuide: intake.careGuide,
               visitProviderName: intake.visitProviderName,
-              visitScheduledAt: intake.visitScheduledAt
+              visitScheduledAt: intake.visitScheduledAt,
+              locale: familyLocale
             }),
           "intake_status_email"
         );
       }
 
       if (shouldNotifyVisitSchedule) {
+        const familyLocale = resolveFamilyEmailLocale({
+          preferredLocale: intake.preferredLocale,
+          languages: intake.languages
+        });
         runInBackground(async () => {
           await sendIntakeStatusEmail({
             contactName: intake.contactName,
@@ -315,7 +328,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
             carePathway: intake.carePathway,
             careGuide: intake.careGuide,
             visitProviderName: intake.visitProviderName,
-            visitScheduledAt: intake.visitScheduledAt
+            visitScheduledAt: intake.visitScheduledAt,
+            locale: familyLocale
           });
 
           const providerMatches = await prisma.match.findMany({
@@ -327,7 +341,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
               provider: {
                 select: {
                   name: true,
-                  email: true
+                  email: true,
+                  preferredLocale: true
                 }
               }
             }
@@ -350,7 +365,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
                   kind: "visit_scheduled",
                   visitScheduledAt: intake.visitScheduledAt,
                   visitType: intake.visitType,
-                  visitNotes: intake.visitNotes
+                  visitNotes: intake.visitNotes,
+                  locale: resolveProviderEmailLocale(match.provider.preferredLocale)
                 })
               )
           );
@@ -364,7 +380,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       return jsonError("Guided intake is not open yet. Please join the waitlist.", 403);
     }
 
-    const parsed = intakeSchema.safeParse(body);
+    const parsed = intakeSchemaFor(await getLocale()).safeParse(body);
     if (!parsed.success) {
       return jsonError("Invalid intake", 400, { issues: parsed.error.flatten() });
     }
@@ -396,6 +412,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       where: { id },
       data: {
         ...intakeUpdateData(parsed.data),
+        preferredLocale: await getLocale(),
         status: nextStatusAfterFamilyUpdate(existing.status)
       },
       select: { id: true, status: true, emergencyStopped: true }

@@ -1,5 +1,9 @@
+"use client";
+
 import Link from "next/link";
 import { CalendarDays, MapPin, UserRound } from "lucide-react";
+import { useLocale } from "@/components/i18n/locale-provider";
+import { optionLabel, dateLocale } from "@/lib/i18n/ui";
 import { splitFamilyIntakes, withIntakeId } from "@/lib/client/case-selection";
 import { intakeStatusLabel, normalizeIntakeStatus, canFamilyEditIntake } from "@/lib/domain/intake-workflow";
 import type { FamilyIntake } from "@/lib/client/intake";
@@ -14,9 +18,10 @@ type FamilyCasePickerProps = {
 
 export function FamilyCasePicker({
   intakes,
-  title = "My care requests",
-  description = "Choose a request to open its care journey."
+  title,
+  description
 }: FamilyCasePickerProps) {
+  const { locale, ui } = useLocale();
   const { active, history } = splitFamilyIntakes(intakes);
   const sortedIntakes = [...active, ...history].sort(
     (a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()
@@ -26,47 +31,55 @@ export function FamilyCasePicker({
     <section>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <p className="section-label">Family dashboard</p>
-          <h1 className="mt-2 text-2xl font-semibold text-ink">{title}</h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">{description}</p>
+          <p className="section-label">{ui.family.dashboardTitle}</p>
+          <h1 className="mt-2 text-2xl font-semibold text-ink">{title ?? ui.family.myRequests}</h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">{description ?? ui.family.pickRequest}</p>
         </div>
         <Button asChild className="w-full shrink-0 sm:w-auto">
-          <Link href="/family/intake">Start new request</Link>
+          <Link href="/family/intake">{ui.family.startNewRequest}</Link>
         </Button>
       </div>
 
       {sortedIntakes.length ? (
         <>
           <p className="mt-6 text-sm text-ink/50">
-            {sortedIntakes.length} request{sortedIntakes.length === 1 ? "" : "s"}
+            {ui.family.requestCount(sortedIntakes.length)}
             {active.length && history.length
-              ? ` · ${active.length} active, ${history.length} completed`
+              ? ` · ${ui.family.requestStatusActive(active.length, history.length)}`
               : active.length
-                ? " · in progress"
-                : " · completed"}
+                ? ` · ${ui.family.requestStatusInProgress}`
+                : ` · ${ui.family.requestStatusClosed}`}
           </p>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             {sortedIntakes.map((intake) => (
-              <CaseCard key={intake.id} intake={intake} />
+              <CaseCard key={intake.id} intake={intake} locale={locale} ui={ui} />
             ))}
           </div>
         </>
       ) : (
         <p className="mt-6 rounded-2xl bg-white px-5 py-8 text-center text-sm text-ink/55 shadow-soft">
-          No care requests yet. Start a new request to begin.
+          {ui.family.noRequestsYet}
         </p>
       )}
     </section>
   );
 }
 
-function CaseCard({ intake }: { intake: FamilyIntake }) {
+function CaseCard({
+  intake,
+  locale,
+  ui
+}: {
+  intake: FamilyIntake;
+  locale: ReturnType<typeof useLocale>["locale"];
+  ui: ReturnType<typeof useLocale>["ui"];
+}) {
   const status = normalizeIntakeStatus(intake.status);
   const submittedAt = new Date(intake.submittedAt);
   const createdLabel = Number.isNaN(submittedAt.getTime())
-    ? "Date unavailable"
-    : submittedAt.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-  const careType = intake.careTypes?.[0] || "Care request";
+    ? ui.family.dateUnknown
+    : submittedAt.toLocaleDateString(dateLocale(locale), { day: "numeric", month: "short", year: "numeric" });
+  const careType = intake.careTypes?.[0] ? optionLabel(locale, intake.careTypes[0]) : ui.family.careRequest;
   const statusVariant = status === "CLOSED" ? "closed" : status === "PLACED" ? "placed" : "matched";
   const canEdit = canFamilyEditIntake(intake.status);
   const hasMatches = (intake.matchCount ?? 0) > 0;
@@ -74,17 +87,21 @@ function CaseCard({ intake }: { intake: FamilyIntake }) {
   return (
     <article className="flex h-full flex-col rounded-2xl bg-white p-5 shadow-soft transition hover:shadow-md">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <Badge variant={statusVariant}>{intakeStatusLabel(status)}</Badge>
-        <span className="text-xs font-medium text-ink/45">{intake.matchCount ?? 0} matches</span>
+        <Badge variant={statusVariant}>{intakeStatusLabel(status, locale)}</Badge>
+        <span className="text-xs font-medium text-ink/45">
+          {intake.matchCount ?? 0} match{(intake.matchCount ?? 0) === 1 ? "" : "es"}
+        </span>
       </div>
 
-      <h3 className="mt-4 font-semibold text-ink">{intake.ageRange ? `Age ${intake.ageRange}` : "Care request"}</h3>
+      <h3 className="mt-4 font-semibold text-ink">
+        {intake.ageRange ? ui.family.ageLabel(optionLabel(locale, intake.ageRange)) : ui.family.careRequest}
+      </h3>
       <p className="mt-1 text-sm text-ink/60">{careType}</p>
 
       <dl className="mt-4 space-y-2 text-sm text-ink/65">
-        <CaseFact icon={MapPin} text={intake.preferredArea || "Location pending"} />
+        <CaseFact icon={MapPin} text={intake.preferredArea || ui.family.locationUnknown} />
         <CaseFact icon={CalendarDays} text={createdLabel} />
-        <CaseFact icon={UserRound} text={intake.careGuide?.name || "Care Guide pending"} />
+        <CaseFact icon={UserRound} text={intake.careGuide?.name || ui.family.guidePending} />
       </dl>
 
       <div className="mt-auto flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-stone-100 pt-4 text-sm">
@@ -92,16 +109,16 @@ function CaseCard({ intake }: { intake: FamilyIntake }) {
           href={withIntakeId("/family/dashboard", intake.id)}
           className="font-semibold text-brand-amber hover:text-brand-amber-mid"
         >
-          Open journey
+          {ui.family.openJourney}
         </Link>
         {hasMatches ? (
           <Link href={withIntakeId("/family/results", intake.id)} className="text-ink/60 hover:text-brand-amber">
-            View matches
+            {ui.family.viewMatches}
           </Link>
         ) : null}
         {canEdit ? (
           <Link href={withIntakeId("/family/intake?update=1", intake.id)} className="text-ink/60 hover:text-brand-amber">
-            Update
+            {ui.family.update}
           </Link>
         ) : null}
       </div>

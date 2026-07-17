@@ -1,6 +1,7 @@
 "use client";
 
 import { Check } from "lucide-react";
+import { useLocale } from "@/components/i18n/locale-provider";
 import { JOURNEY_STEPS, familyJourneyStepHint, journeyStepIndex, normalizeIntakeStatus } from "@/lib/domain/intake-workflow";
 import type { CareGuideInfo } from "@/lib/client/intake";
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
@@ -25,14 +26,15 @@ export function CareJourneyTimeline({
   defaultOpen?: boolean;
   declineContext?: { hasRecentDecline?: boolean; hasAlternativeMatches?: boolean };
 }) {
+  const { locale, ui, journey } = useLocale();
   const currentIndex = journeyStepIndex(status);
   const normalized = normalizeIntakeStatus(status);
   const visibleSteps = JOURNEY_STEPS;
   const isClosed = normalized === "CLOSED";
-  const currentHint = familyJourneyStepHint(status, declineContext);
+  const currentHint = familyJourneyStepHint(status, declineContext, locale);
   const stepBadge = isClosed
-    ? "Complete"
-    : `Step ${Math.min(Math.max(currentIndex, 0) + 1, visibleSteps.length)} of ${visibleSteps.length}`;
+    ? ui.family.complete
+    : ui.family.stepOf(Math.min(Math.max(currentIndex, 0) + 1, visibleSteps.length), visibleSteps.length);
 
   const timeline = (
     <ol className="relative max-w-3xl lg:max-w-none">
@@ -81,7 +83,7 @@ export function CareJourneyTimeline({
                       : "text-neutral-500"
                 )}
               >
-                {step.label}
+                {journey[step.status]?.label ?? step.label}
               </p>
 
               {isCurrent || showThankYou ? (
@@ -97,21 +99,21 @@ export function CareJourneyTimeline({
                   {showCarePlanLink && step.status === "CARE_PLAN" ? (
                     <p className="mt-3 text-sm leading-6 text-neutral-700">
                       <a href="#care-guide-plan" className="font-semibold text-brand-amber underline underline-offset-4 hover:text-brand-amber-mid">
-                        View care plan
+                        {ui.family.viewCarePlan}
                       </a>
                     </p>
                   ) : null}
                   {matchesHref && step.status === "MATCHED" ? (
                     <p className="mt-3 text-sm leading-6 text-neutral-700">
                       <a href={matchesHref} className="font-semibold text-brand-amber underline underline-offset-4 hover:text-brand-amber-mid">
-                        View matches
+                        {ui.family.viewMatches}
                       </a>
                     </p>
                   ) : null}
                   {visitDetailsHref && (step.status === "VISIT_SCHEDULED" || step.status === "PROVIDER_RESPONSE") ? (
                     <p className="mt-3 text-sm leading-6 text-neutral-700">
                       <a href={visitDetailsHref} className="font-semibold text-brand-amber underline underline-offset-4 hover:text-brand-amber-mid">
-                        View visit details
+                        {ui.family.viewVisit}
                       </a>
                     </p>
                   ) : null}
@@ -144,11 +146,11 @@ export function CareJourneyTimeline({
       <article className={cn("rounded-2xl border border-stone-200 bg-white shadow-soft", "p-4 sm:p-5")}>
         <div className="flex flex-wrap items-start justify-between gap-3 border-b border-stone-100 pb-5">
           <div>
-            <p className="section-label">Your guided care journey</p>
+            <p className="section-label">{ui.family.journeyTitle}</p>
             <p className="mt-1 max-w-2xl text-sm leading-6 text-neutral-600">
               {isClosed
-                ? "Thank you — this guided care journey is complete."
-                : "A real Care Guide supports you at each step — shared decisions, not a directory search."}
+                ? ui.family.journeyComplete
+                : ui.family.journeyIntro}
             </p>
           </div>
           <p className="rounded-full bg-brand-green-pale/40 px-3 py-1 text-xs font-semibold text-brand-green-dark">{stepBadge}</p>
@@ -160,11 +162,11 @@ export function CareJourneyTimeline({
 
   return (
     <CollapsibleSection
-      title="Your guided care journey"
+      title={ui.family.journeyTitle}
       description={
         isClosed
-          ? "Thank you — this case is closed. Expand to review the steps you completed."
-          : "A real Care Guide supports you at each step — shared decisions, not a directory search."
+          ? ui.family.journeyClosedDesc
+          : ui.family.journeyIntro
       }
       defaultOpen={defaultOpen}
       badge={

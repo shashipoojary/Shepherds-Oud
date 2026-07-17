@@ -1,26 +1,39 @@
+import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
 import { WaitlistForm } from "@/components/register/waitlist-form";
+import { brandRegionNote } from "@/lib/config/brand";
 import { getIsPrelaunch } from "@/lib/config/prelaunch";
+import { getLocale } from "@/lib/i18n/get-locale";
+import { productUi } from "@/lib/i18n/ui";
 
-export default function FamilyRegisterPage() {
+export async function generateMetadata() {
+  const locale = await getLocale();
+  const copy = productUi(locale).pages.registerFamily;
+  return { title: copy.metaTitle, description: copy.metaDescription };
+}
+
+export default async function FamilyRegisterPage() {
+  const locale = await getLocale();
+  const copy = productUi(locale).pages.registerFamily;
   const isPrelaunch = getIsPrelaunch();
+  const regionNote = brandRegionNote(locale);
+
   return (
     <>
       <SiteHeader />
       <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
         <section className="rounded-2xl bg-white p-6 shadow-soft sm:p-8">
-          <p className="text-xs font-semibold uppercase tracking-wide text-sage-700">Family waitlist</p>
-          <h1 className="mt-2 text-3xl font-semibold">Register for care support</h1>
+          <p className="text-xs font-semibold uppercase tracking-wide text-sage-700">{copy.label}</p>
+          <h1 className="mt-2 text-3xl font-semibold">{copy.title}</h1>
           <p className="mt-3 text-sm leading-7 text-neutral-600">
-            {isPrelaunch
-              ? "Tell us about your situation anywhere in the Netherlands. We will reach out when Shepherds Oud is ready to help."
-              : "Register your interest and we will reach out. When you are ready for full guided navigation, you can start a care intake separately."}
+            {isPrelaunch ? copy.introPrelaunch(regionNote) : copy.introWaitlist(regionNote)}
           </p>
           <div className="mt-8">
             <WaitlistForm type="FAMILY" />
           </div>
         </section>
       </main>
+      <SiteFooter />
     </>
   );
 }

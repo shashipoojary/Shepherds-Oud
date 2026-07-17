@@ -150,6 +150,7 @@ function providerDataFromWaitlistEntry(waitlistEntry: {
   bedsTotal: number | null;
   services: string[];
   registrationNumber?: string | null;
+  preferredLocale?: string | null;
 }, email: string, fallbackName?: string | null) {
   return {
     name: waitlistEntry.facilityName?.trim() || waitlistEntry.contactName || email,
@@ -166,6 +167,7 @@ function providerDataFromWaitlistEntry(waitlistEntry: {
     careLevels: [],
     languages: [],
     fundingTypes: [],
+    preferredLocale: waitlistEntry.preferredLocale === "en" ? "en" : "nl",
     kvkNumber: waitlistEntry.registrationNumber?.trim() || null,
     verificationStatus: "VERIFICATION_PENDING"
   };

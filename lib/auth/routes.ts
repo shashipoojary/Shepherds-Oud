@@ -1,5 +1,7 @@
 import type { AppRole } from "@/lib/auth/server";
 import { getIsPrelaunch, getPublicRoutes } from "@/lib/config/prelaunch";
+import type { Locale } from "@/lib/i18n/config";
+import { productUi } from "@/lib/i18n/ui";
 
 export const PROVIDER_LOGIN_PATH = "/provider/login";
 export const PROVIDER_DASHBOARD_PATH = "/provider";
@@ -38,27 +40,32 @@ export function postLoginHref(role: AppRole | undefined, requestedCallback?: str
 export type NavItem = { label: string; href: string };
 
 /** Base links shown to everyone — kept short and clear for care seekers. */
-export function buildNavItems(role?: AppRole, signedIn = false, prelaunch = getIsPrelaunch()): NavItem[] {
+export function buildNavItems(
+  role?: AppRole,
+  signedIn = false,
+  prelaunch = getIsPrelaunch(),
+  locale: Locale = "nl"
+): NavItem[] {
   const publicRoutes = getPublicRoutes(prelaunch);
-  const items: NavItem[] = [{ label: "Home", href: publicRoutes.home }];
+  const nav = productUi(locale).nav;
+  const items: NavItem[] = [{ label: nav.home, href: publicRoutes.home }];
 
   if (prelaunch) {
-    items.push({ label: "Join waitlist", href: publicRoutes.waitlist });
-    items.push({ label: "About", href: "/about" });
-    items.push({ label: "Contact", href: "/contact" });
+    items.push({ label: nav.waitlist, href: publicRoutes.waitlist });
+    items.push({ label: nav.about, href: "/about" });
+    items.push({ label: nav.faq, href: "/veelgestelde-vragen" });
+    items.push({ label: nav.contact, href: "/contact" });
   } else {
-    items.push({ label: "How it works", href: "/how-it-works" });
-    items.push({ label: "Start intake", href: publicRoutes.intake });
-    items.push({ label: "Join waitlist", href: publicRoutes.waitlist });
+    items.push({ label: nav.howItWorks, href: "/how-it-works" });
+    items.push({ label: nav.startIntake, href: publicRoutes.intake });
+    items.push({ label: nav.faq, href: "/veelgestelde-vragen" });
   }
 
-  if (!signedIn) {
-    items.push({ label: "For facilities", href: publicRoutes.waitlistFacility });
-    return items;
-  }
+  items.push({ label: nav.forProviders, href: "/voor-zorgaanbieders" });
+  items.push({ label: nav.forInternationals, href: "/internationals" });
 
-  if (role === "PROVIDER") {
-    items.push({ label: "My facility", href: PROVIDER_DASHBOARD_PATH });
+  if (signedIn && role === "PROVIDER") {
+    items.push({ label: nav.myFacility, href: PROVIDER_DASHBOARD_PATH });
   }
 
   return items;

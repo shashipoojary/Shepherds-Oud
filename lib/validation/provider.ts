@@ -1,4 +1,6 @@
 import { z } from "zod";
+import type { Locale } from "@/lib/i18n/config";
+import { productUi } from "@/lib/i18n/ui";
 
 const optionalText = z
   .union([z.string(), z.null()])
@@ -14,47 +16,50 @@ const optionalCount = z
   .optional()
   .transform((value) => (value == null ? undefined : value));
 
-export const providerProfileSchema = z.object({
-  name: z.string().trim().min(2, "Facility name must be at least 2 characters."),
-  type: z.string().min(1),
-  city: optionalText,
-  province: optionalText,
-  description: optionalText,
-  contactName: optionalText,
-  email: z
-    .union([z.string().email(), z.literal(""), z.null()])
-    .optional()
-    .transform((value) => (value && value.length ? value : undefined)),
-  phone: optionalText,
-  website: optionalText,
-  bedsTotal: optionalCount.pipe(
-    z.number().int("Total beds must be a whole number (0 or more).").min(0, "Total beds cannot be negative.").optional()
-  ),
-  bedsOpen: optionalCount.pipe(
-    z.number().int("Available beds must be a whole number (0 or more).").min(0, "Available beds cannot be negative.").optional()
-  ),
-  availabilityStatus: optionalText,
-  waitlistText: optionalText,
-  services: z.array(z.string()).default([]),
-  careLevels: z.array(z.string()).default([]),
-  languages: z.array(z.string()).default([]),
-  dementiaCapacity: optionalText,
-  fundingTypes: z.array(z.string()).default([]),
-  responseTimeHours: optionalCount.pipe(
-    z
-      .number()
-      .int("Response time must be a whole number of hours.")
-      .min(1, "Response time must be at least 1 hour.")
-      .max(168, "Response time cannot be more than 168 hours (1 week).")
-      .optional()
-  ),
-  visitAvailability: optionalText,
-  priceMin: optionalCount.pipe(
-    z.number().int().min(0, "Minimum price cannot be negative.").optional()
-  ),
-  priceMax: optionalCount.pipe(
-    z.number().int().min(0, "Maximum price cannot be negative.").optional()
-  )
-});
+export function providerProfileSchemaFor(locale: Locale = "nl") {
+  const v = productUi(locale).validation;
 
-export type ProviderProfileInput = z.infer<typeof providerProfileSchema>;
+  return z.object({
+    name: z.string().trim().min(2, v.facilityNameMin),
+    type: z.string().min(1, v.required),
+    city: optionalText,
+    province: optionalText,
+    description: optionalText,
+    contactName: optionalText,
+    email: z
+      .union([z.string().email(v.invalidEmail), z.literal(""), z.null()])
+      .optional()
+      .transform((value) => (value && value.length ? value : undefined)),
+    phone: optionalText,
+    website: optionalText,
+    bedsTotal: optionalCount.pipe(
+      z.number().int(v.bedsWhole).min(0, v.bedsNegative).optional()
+    ),
+    bedsOpen: optionalCount.pipe(
+      z.number().int(v.bedsOpenWhole).min(0, v.bedsOpenNegative).optional()
+    ),
+    availabilityStatus: optionalText,
+    waitlistText: optionalText,
+    services: z.array(z.string()).default([]),
+    careLevels: z.array(z.string()).default([]),
+    languages: z.array(z.string()).default([]),
+    dementiaCapacity: optionalText,
+    fundingTypes: z.array(z.string()).default([]),
+    responseTimeHours: optionalCount.pipe(
+      z
+        .number()
+        .int(v.responseTimeWhole)
+        .min(1, v.responseTimeMin)
+        .max(168, v.responseTimeMax)
+        .optional()
+    ),
+    visitAvailability: optionalText,
+    priceMin: optionalCount.pipe(z.number().int().min(0, v.priceMinNegative).optional()),
+    priceMax: optionalCount.pipe(z.number().int().min(0, v.priceMaxNegative).optional())
+  });
+}
+
+/** Default NL schema — prefer `providerProfileSchemaFor(locale)` at request boundaries. */
+export const providerProfileSchema = providerProfileSchemaFor("nl");
+
+export type ProviderProfileInput = z.infer<ReturnType<typeof providerProfileSchemaFor>>;

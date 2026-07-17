@@ -14,6 +14,7 @@ export type WaitlistLaunchRecipient = {
   type: "FAMILY" | "FACILITY";
   facilityName: string | null;
   displayName: string;
+  preferredLocale: "nl" | "en";
 };
 
 export type WaitlistLaunchPreview = {
@@ -29,13 +30,20 @@ export type WaitlistAnnouncementPreview = WaitlistLaunchPreview & {
   audience: WaitlistAnnouncementAudience;
 };
 
-function dedupeRecipients(entries: Array<{
-  id: string;
-  email: string;
-  contactName: string;
-  type: "FAMILY" | "FACILITY";
-  facilityName: string | null;
-}>) {
+function normalizePreferredLocale(value: string | null | undefined): "nl" | "en" {
+  return value === "en" ? "en" : "nl";
+}
+
+function dedupeRecipients(
+  entries: Array<{
+    id: string;
+    email: string;
+    contactName: string;
+    type: "FAMILY" | "FACILITY";
+    facilityName: string | null;
+    preferredLocale?: string | null;
+  }>
+) {
   const seen = new Set<string>();
   const recipients: WaitlistLaunchRecipient[] = [];
 
@@ -53,7 +61,8 @@ function dedupeRecipients(entries: Array<{
       contactName: entry.contactName,
       type: entry.type,
       facilityName: entry.facilityName,
-      displayName: entry.type === "FACILITY" ? entry.facilityName || entry.contactName : entry.contactName
+      displayName: entry.type === "FACILITY" ? entry.facilityName || entry.contactName : entry.contactName,
+      preferredLocale: normalizePreferredLocale(entry.preferredLocale)
     });
   }
 
@@ -69,7 +78,8 @@ export async function getWaitlistLaunchRecipients(): Promise<WaitlistLaunchRecip
       email: true,
       contactName: true,
       type: true,
-      facilityName: true
+      facilityName: true,
+      preferredLocale: true
     }
   });
 
@@ -92,7 +102,8 @@ export async function getWaitlistAnnouncementRecipients(
       email: true,
       contactName: true,
       type: true,
-      facilityName: true
+      facilityName: true,
+      preferredLocale: true
     }
   });
 
@@ -161,13 +172,15 @@ export async function runWaitlistLaunchBulkSend(recipients: WaitlistLaunchRecipi
         if (item.type === "FAMILY") {
           await sendWaitlistFamilyLaunchEmail({
             contactName: item.contactName,
-            email: item.email
+            email: item.email,
+            locale: item.preferredLocale
           });
         } else {
           await sendWaitlistFacilityLaunchEmail({
             contactName: item.contactName,
             email: item.email,
-            facilityName: item.facilityName
+            facilityName: item.facilityName,
+            locale: item.preferredLocale
           });
         }
 
@@ -205,7 +218,8 @@ export async function runWaitlistAnnouncementBulkSend(input: {
           facilityName: item.facilityName,
           type: item.type,
           subject: input.subject,
-          message: input.message
+          message: input.message,
+          locale: item.preferredLocale
         });
 
         if (input.markNewAsContacted) {

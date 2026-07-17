@@ -1,33 +1,44 @@
 import Link from "next/link";
 import { BrandLogo } from "@/components/shared/brand-logo";
-import { brand } from "@/lib/config/brand";
+import { brand, brandPhoneLabel, brandRegionNote, brandRegionPrimary } from "@/lib/config/brand";
 import { legalFooterLinks } from "@/lib/config/legal";
 import { getIsPrelaunch, getPublicRoutes } from "@/lib/config/prelaunch";
+import { getLocale } from "@/lib/i18n/get-locale";
+import { productUi } from "@/lib/i18n/ui";
+import type { Locale } from "@/lib/i18n/config";
 
-function footerLinks(prelaunch: boolean) {
+function footerLinks(prelaunch: boolean, locale: Locale) {
   const publicRoutes = getPublicRoutes(prelaunch);
+  const nav = productUi(locale).nav;
 
   return prelaunch
     ? [
-        { label: "Home", href: publicRoutes.home },
-        { label: "Join waitlist", href: publicRoutes.waitlist },
-        { label: "Register for care", href: publicRoutes.waitlistFamily },
-        { label: "Register a facility", href: publicRoutes.waitlistFacility }
+        { label: nav.home, href: publicRoutes.home },
+        { label: nav.waitlist, href: publicRoutes.waitlist },
+        { label: nav.forFamilies, href: publicRoutes.waitlistFamily },
+        { label: nav.forProviders, href: "/voor-zorgaanbieders" },
+        { label: nav.faq, href: "/veelgestelde-vragen" },
+        { label: nav.forInternationals, href: "/internationals" },
+        { label: nav.contact, href: "/contact" }
       ]
     : [
-        { label: "Home", href: publicRoutes.home },
-        { label: "How it works", href: "/how-it-works" },
-        { label: "About", href: "/about" },
-        { label: "Contact", href: "/contact" },
-        { label: "Start intake", href: publicRoutes.intake },
-        { label: "Join waitlist", href: publicRoutes.waitlist },
-        { label: "Register a facility", href: publicRoutes.waitlistFacility }
+        { label: nav.home, href: publicRoutes.home },
+        { label: nav.howItWorks, href: "/how-it-works" },
+        { label: nav.about, href: "/about" },
+        { label: nav.faq, href: "/veelgestelde-vragen" },
+        { label: nav.contact, href: "/contact" },
+        { label: nav.startIntake, href: publicRoutes.intake },
+        { label: nav.forProviders, href: "/voor-zorgaanbieders" },
+        { label: nav.forInternationals, href: "/internationals" }
       ];
 }
 
-export function Footer() {
+export async function Footer() {
   const isPrelaunch = getIsPrelaunch();
-  const links = footerLinks(isPrelaunch);
+  const locale = await getLocale();
+  const ui = productUi(locale);
+  const links = footerLinks(isPrelaunch, locale);
+  const phoneHref = brand.phone ? `tel:${brand.phone.replace(/\s+/g, "")}` : null;
 
   return (
     <footer className="bg-brand-green-dark text-white">
@@ -37,35 +48,42 @@ export function Footer() {
             <BrandLogo variant="footer" showTagline tone="light" href="/" />
             <p className="mt-4 max-w-sm text-sm leading-[1.7] text-white/80">
               {isPrelaunch
-                ? "Human-guided care navigation for people across the Netherlands. Register now — we will contact you at launch."
-                : "We help people across the Netherlands with a dedicated Care Guide, matched providers, and support when mobility is limited."}
+                ? ui.footer.prelaunchBlurb(brandRegionNote(locale))
+                : ui.footer.liveBlurb(brandRegionPrimary(locale))}
             </p>
             <a href={`mailto:${brand.email}`} className="mt-4 inline-block text-sm font-medium text-white/90 hover:text-brand-amber">
               {brand.email}
             </a>
+            {phoneHref ? (
+              <a href={phoneHref} className="mt-2 block text-sm font-medium text-white/90 hover:text-brand-amber">
+                {brandPhoneLabel(locale)}: {brand.phone}
+              </a>
+            ) : null}
           </div>
 
-          <nav className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-2" aria-label="Footer navigation">
+          <nav className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-2" aria-label={ui.footer.navAria}>
             {links.map((link) => (
-              <Link key={link.href} href={link.href} className="text-sm leading-relaxed text-white/80 hover:text-brand-amber">
+              <Link key={`${link.href}-${link.label}`} href={link.href} className="text-sm leading-relaxed text-white/80 hover:text-brand-amber">
                 {link.label}
               </Link>
             ))}
           </nav>
 
-          <nav className="grid gap-3" aria-label="Legal">
-            <p className="text-xs font-semibold uppercase tracking-wide text-white/50">Legal</p>
+          <nav className="grid gap-3" aria-label={ui.footer.legalAria}>
+            <p className="text-xs font-semibold uppercase tracking-wide text-white/50">{ui.footer.legal}</p>
             {legalFooterLinks.map((link) => (
               <Link key={link.href} href={link.href} className="text-sm leading-relaxed text-white/80 hover:text-brand-amber">
-                {link.label}
+                {ui.footer.legalLabel(link.href, link.label)}
               </Link>
             ))}
           </nav>
         </div>
 
         <div className="mt-8 flex flex-col gap-2 border-t border-white/15 pt-6 text-xs text-white/60 sm:flex-row sm:items-center sm:justify-between">
-          <p>© {new Date().getFullYear()} {brand.name}. Nationwide care navigation in the Netherlands.</p>
-          <p>{isPrelaunch ? "Pre-launch — guided intake opening soon" : "For families, individuals with mobility needs, and care providers."}</p>
+          <p>
+            © {new Date().getFullYear()} {brand.name}. {ui.footer.copyrightSuffix}
+          </p>
+          <p>{isPrelaunch ? ui.footer.prelaunchStatus : ui.footer.liveStatus}</p>
         </div>
       </div>
     </footer>

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
 import { brand } from "@/lib/config/brand";
+import { getLocale } from "@/lib/i18n/get-locale";
 
 export type InfoSection = {
   title: string;
@@ -15,9 +16,13 @@ type InfoPageProps = {
   intro: string;
   sections: InfoSection[];
   cta?: { label: string; href: string };
+  children?: React.ReactNode;
 };
 
-export function InfoPage({ label, title, intro, sections, cta }: InfoPageProps) {
+export async function InfoPage({ label, title, intro, sections, cta, children }: InfoPageProps) {
+  const locale = await getLocale();
+  const nl = locale === "nl";
+
   return (
     <>
       <SiteHeader />
@@ -26,6 +31,7 @@ export function InfoPage({ label, title, intro, sections, cta }: InfoPageProps) 
           <p className="section-label">{label}</p>
           <h1 className="mt-2 font-brand text-3xl font-bold text-ink sm:text-4xl">{title}</h1>
           <p className="mt-6 text-body leading-relaxed text-ink/80">{intro}</p>
+          {children}
 
           <div className="mt-10 grid gap-8">
             {sections.map((section) => (
@@ -56,7 +62,7 @@ export function InfoPage({ label, title, intro, sections, cta }: InfoPageProps) 
           ) : null}
 
           <p className="mt-10 border-t border-stone-200 pt-6 text-sm text-ink/70">
-            Questions? Email us at{" "}
+            {nl ? "Vragen? Mail ons via" : "Questions? Email us at"}{" "}
             <a href={`mailto:${brand.email}`} className="font-medium text-brand-amber hover:text-brand-amber-mid">
               {brand.email}
             </a>

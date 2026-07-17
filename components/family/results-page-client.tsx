@@ -19,9 +19,14 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { MatchScore } from "@/components/ui/match-score";
 import { ResultsSkeleton } from "@/components/ui/results-skeleton";
 import { ProviderFavouriteButton } from "@/components/ui/provider-favourite-button";
+import { useLocale } from "@/components/i18n/locale-provider";
+import { optionLabel, productUi } from "@/lib/i18n/ui";
+import type { Locale } from "@/lib/i18n/config";
 import type { ProviderMatch } from "@/lib/core/types";
 
-const filters = ["All options", "Available now", "Memory care", "Home care"] as const;
+const filterIds = ["all", "available", "memory", "home"] as const;
+
+type FilterId = (typeof filterIds)[number];
 
 type PendingAction = {
   matchId: string;
@@ -33,11 +38,11 @@ type RowFeedback = {
   tone: "success" | "error";
 };
 
-function emptyStateCopy(intake: FamilyIntake, loadError: boolean) {
+function emptyStateCopy(intake: FamilyIntake, loadError: boolean, ui: ReturnType<typeof productUi>) {
   if (loadError) {
     return {
-      title: "Could not load your shortlist",
-      description: "Please check your connection and refresh. Your care request is still saved on this device."
+      title: ui.family.resultsLoadError,
+      description: ui.family.loadErrorDesc
     };
   }
 
@@ -49,70 +54,69 @@ function emptyStateCopy(intake: FamilyIntake, loadError: boolean) {
     intake.status === "PROVIDER_RESPONSE"
   ) {
     return {
-      title: "Your shortlist is almost ready",
-      description:
-        "Your Care Guide has matched suitable providers. If nothing appears here within a day, contact your Care Guide with your reference number."
+      title: ui.family.resultsEmpty,
+      description: ui.family.matchedEmptyDesc
     };
   }
 
   if (intake.status === "CARE_PLAN") {
     return {
-      title: "Your care plan is ready",
-      description: "Your Care Guide is finalizing provider matches for your shortlist."
+      title: ui.family.carePlanReady,
+      description: ui.family.carePlanReadyDesc
     };
   }
 
   if (intake.status === "ASSESSMENT" || intake.status === "REVIEW") {
     return {
-      title: "Your Care Guide is completing your assessment",
-      description: "We will publish your care plan and suitable providers here once assessment is complete."
+      title: ui.family.assessmentInProgress,
+      description: ui.family.assessmentInProgressDesc
     };
   }
 
   if (intake.status === "CARE_GUIDE_ASSIGNED") {
     return {
-      title: "Your Care Guide is reviewing your case",
-      description: "A real person is reviewing your intake before assessment begins."
+      title: ui.family.guideReviewing,
+      description: ui.family.guideReviewingDesc
     };
   }
 
   return {
-    title: "We are preparing your care journey",
-    description: "Your Care Guide will review your request and begin your assessment shortly."
+    title: ui.family.preparingJourney,
+    description: ui.family.preparingJourneyDesc
   };
 }
 
-function parseMeta(meta: string[]) {
+function parseMeta(meta: string[], ui: ReturnType<typeof productUi>) {
   const price = meta.find((item) => item.toLowerCase().includes("eur") || item.toLowerCase().includes("price"));
   const beds = meta.find((item) => item.toLowerCase().includes("bed"));
   const waitEntry = meta.find((item) => item.toLowerCase().includes("estimated wait"));
   const wait = waitEntry ? waitEntry.replace(/^estimated wait:\s*/i, "").trim() : null;
-  return { price: price || "Price on request", beds: beds || null, wait };
+  return { price: price || ui.family.priceOnRequest, beds: beds || null, wait };
+}
+
+function familyDetailLines(provider: ProviderMatch, locale: Locale, ui: ReturnType<typeof productUi>) {
+  const care = [...(provider.careLevels ?? []), ...(provider.services ?? [])].filter(Boolean);
+  const uniqueCare = [...new Set(care)];
+  return {
+    whyMatched: provider.familyFacingReason?.trim() || null,
+    care: uniqueCare.length ? uniqueCare.map((item) => optionLabel(locale, item)).join(", ") : null,
+    languages: provider.languages?.length ? provider.languages.map((item) => optionLabel(locale, item)).join(", ") : null,
+    funding: provider.fundingTypes?.length ? provider.fundingTypes.map((item) => optionLabel(locale, item)).join(", ") : null,
+    roomTypes: provider.roomTypes?.length ? provider.roomTypes.join(", ") : null,
+    qualityInfo: provider.qualityInfo?.trim() || null,
+    accessibilityNotes: provider.accessibilityNotes?.trim() || null,
+    wait: provider.waitEstimate || null,
+    contactExpectation: provider.responseTimeHours
+      ? ui.family.respondsWithin(provider.responseTimeHours)
+      : null,
+    verificationBadge: provider.verificationBadge || null
+  };
 }
 
 function visibleTags(provider: ProviderMatch, limit = 5) {
   const tags = provider.tags.map((tag) => tag.label);
   if (tags.length <= limit) return { shown: tags, extra: 0 };
   return { shown: tags.slice(0, limit), extra: tags.length - limit };
-}
-
-function familyDetailLines(provider: ProviderMatch) {
-  const care = [...(provider.careLevels ?? []), ...(provider.services ?? [])].filter(Boolean);
-  const uniqueCare = [...new Set(care)];
-  return {
-    whyMatched: provider.familyFacingReason?.trim() || null,
-    care: uniqueCare.length ? uniqueCare.join(", ") : null,
-    languages: provider.languages?.length ? provider.languages.join(", ") : null,
-    funding: provider.fundingTypes?.length ? provider.fundingTypes.join(", ") : null,
-    roomTypes: provider.roomTypes?.length ? provider.roomTypes.join(", ") : null,
-    qualityInfo: provider.qualityInfo?.trim() || null,
-    accessibilityNotes: provider.accessibilityNotes?.trim() || null,
-    wait: provider.waitEstimate || null,
-    contactExpectation: provider.responseTimeHours
-      ? `Typically responds within ${provider.responseTimeHours} hours`
-      : null,
-    verificationBadge: provider.verificationBadge || null
-  };
 }
 
 function showStatusNote(status?: string) {
@@ -140,9 +144,20 @@ export function ResultsPageClient() {
 }
 
 function ResultsPageContent() {
+  const { locale, ui } = useLocale();
+  const filters = useMemo(
+    () =>
+      [
+        { id: "all" as const, label: ui.family.filterAll },
+        { id: "available" as const, label: ui.family.filterAvailable },
+        { id: "memory" as const, label: ui.family.filterMemory },
+        { id: "home" as const, label: ui.family.filterHome }
+      ] satisfies { id: FilterId; label: string }[],
+    [ui]
+  );
   const searchParams = useSearchParams();
   const requestedIntakeId = searchParams.get("intakeId");
-  const [activeFilter, setActiveFilter] = useState<(typeof filters)[number]>("All options");
+  const [activeFilter, setActiveFilter] = useState<FilterId>("all");
   const [globalMessage, setGlobalMessage] = useState("");
   const [globalTone, setGlobalTone] = useState<"success" | "error">("success");
   const [providers, setProviders] = useState<ProviderMatch[]>([]);
@@ -215,14 +230,14 @@ function ResultsPageContent() {
 
   const visibleProviders = useMemo(() => {
     const source = sortedProviders;
-    if (activeFilter === "All options") return source;
-    if (activeFilter === "Available now") {
+    if (activeFilter === "all") return source;
+    if (activeFilter === "available") {
       return source.filter((provider) => provider.availability.toLowerCase().includes("available"));
     }
-    if (activeFilter === "Memory care") {
+    if (activeFilter === "memory") {
       return source.filter((provider) => provider.tags.some((tag) => tag.label.toLowerCase().includes("dementia")));
     }
-    if (activeFilter === "Home care") {
+    if (activeFilter === "home") {
       return source.filter((provider) => provider.type.toLowerCase().includes("home care"));
     }
     return source;
@@ -238,7 +253,7 @@ function ResultsPageContent() {
 
     if (!intake?.id || !provider.matchId) {
       setGlobalTone("error");
-      setGlobalMessage("This match is not ready for requests yet. Please check back after your Care Guide completes your assessment.");
+      setGlobalMessage(ui.family.matchNotReady);
       return;
     }
 
@@ -267,14 +282,14 @@ function ResultsPageContent() {
 
     setProviders((current) =>
       current.map((item) =>
-        item.matchId === provider.matchId ? { ...item, matchStatus: status, action: matchStatusLabel(status) } : item
+        item.matchId === provider.matchId ? { ...item, matchStatus: status, action: matchStatusLabel(status, locale) } : item
       )
     );
 
     const successText =
       status === "VISIT_REQUESTED"
-        ? `Visit request sent for ${provider.name}.`
-        : `Callback request sent for ${provider.name}.`;
+        ? ui.family.visitSentFor(provider.name)
+        : ui.family.callbackSentFor(provider.name);
 
     setRowFeedback((current) => ({
       ...current,
@@ -294,13 +309,13 @@ function ResultsPageContent() {
       <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
         {selectionState.state === "not-found" ? (
           <div className="mb-5 rounded-xl border border-brand-amber/30 bg-brand-cream px-4 py-3 text-sm text-brand-amber-dark">
-            We could not find that care request on your account. Choose a request to view its matches.
+            {ui.family.caseNotFound}
           </div>
         ) : null}
         <FamilyCasePicker
           intakes={intakes}
-          title="Choose a care request"
-          description="Matches are prepared for each care request separately."
+          title={ui.family.resultsChoose}
+          description={ui.family.matchesPerRequest}
         />
       </main>
     );
@@ -311,11 +326,11 @@ function ResultsPageContent() {
       <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
         <section className="mx-auto max-w-xl rounded-2xl bg-white p-6 text-center shadow-soft sm:p-8">
           <EmptyState
-            title="Complete your intake first"
-            description="Tell us about your situation so your Care Guide can prepare provider matches."
+            title={ui.family.completeIntakeFirst}
+            description={ui.family.completeIntakeDesc}
           />
           <Button asChild className="mt-5">
-            <Link href="/family/login?callbackUrl=/family/intake">Start intake</Link>
+            <Link href="/family/login?callbackUrl=/family/intake">{ui.family.startIntake}</Link>
           </Button>
         </section>
       </main>
@@ -323,12 +338,12 @@ function ResultsPageContent() {
   }
 
   if (!providers.length) {
-    const copy = emptyStateCopy(intake, loadError);
+    const copy = emptyStateCopy(intake, loadError, ui);
 
     return (
       <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
         <Link href={withIntakeId("/family/dashboard", intake.id)} className="mb-4 inline-flex text-sm text-ink/60 hover:text-brand-amber">
-          ← Your dashboard
+          ← {ui.family.dashboardTitle}
         </Link>
         <IntakeSummaryCard intake={intake} defaultOpen={false} />
         <section className="mt-5 rounded-2xl bg-white shadow-soft">
@@ -337,7 +352,7 @@ function ResultsPageContent() {
         {loadError ? (
           <div className="mt-4">
             <Button variant="ghost" onClick={() => window.location.reload()}>
-              Refresh page
+              {ui.family.refresh}
             </Button>
           </div>
         ) : null}
@@ -345,9 +360,9 @@ function ResultsPageContent() {
     );
   }
 
-  const featuredMeta = parseMeta(recommended.meta);
+  const featuredMeta = parseMeta(recommended.meta, ui);
   const featuredTags = visibleTags(recommended);
-  const featuredDetails = familyDetailLines(recommended);
+  const featuredDetails = familyDetailLines(recommended, locale, ui);
   const featuredMatchId = recommended.matchId;
   const featuredVisitSent = recommended.matchStatus === "VISIT_REQUESTED";
   const featuredCallbackSent = recommended.matchStatus === "CALLBACK_REQUESTED";
@@ -358,12 +373,12 @@ function ResultsPageContent() {
   return (
     <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
       <Link href={withIntakeId("/family/dashboard", intake.id)} className="mb-4 inline-flex text-sm text-ink/60 hover:text-brand-amber">
-        ← Your dashboard
+        ← {ui.family.dashboardTitle}
       </Link>
 
       {historyCase ? (
         <div className="mb-5 rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm text-ink/70 shadow-soft">
-          This request is closed. Matches are shown for your records only.
+          {ui.family.historyCaseNote}
         </div>
       ) : null}
 
@@ -372,11 +387,11 @@ function ResultsPageContent() {
       <section className="mt-6 overflow-hidden rounded-2xl border border-stone-200/80 bg-white shadow-soft">
         <div className="border-b border-stone-100 bg-brand-green-dark px-5 py-4 sm:px-7">
           <p className="text-xs font-medium tracking-wide text-brand-green-pale">
-            {providers.length === 1 ? "Your matched provider" : "Where we would start"}
+            {providers.length === 1 ? ui.family.resultsHeading : ui.family.resultsStartHere}
           </p>
           <h1 className="mt-1 font-brand text-xl font-semibold text-white sm:text-2xl">{recommended.name}</h1>
           <p className="mt-1 text-sm text-white/75">
-            {recommended.type} · {recommended.area}
+            {optionLabel(locale, recommended.type)} · {recommended.area}
           </p>
         </div>
 
@@ -386,7 +401,7 @@ function ResultsPageContent() {
 
             {featuredDetails.whyMatched ? (
               <p className="mt-5 max-w-2xl rounded-lg bg-brand-cream px-4 py-3 text-[15px] leading-7 text-ink/80">
-                <span className="font-medium text-ink">Why this match: </span>
+                <span className="font-medium text-ink">{ui.family.whyMatch} </span>
                 {featuredDetails.whyMatched}
               </p>
             ) : null}
@@ -400,67 +415,67 @@ function ResultsPageContent() {
               {featuredMeta.beds ? <Fact icon={BedDouble} label={featuredMeta.beds} /> : null}
               <Fact icon={CircleDollarSign} label={featuredMeta.price} />
               {featuredDetails.wait || featuredMeta.wait ? (
-                <Fact icon={Clock} label={`Est. wait: ${featuredDetails.wait || featuredMeta.wait}`} />
+                <Fact icon={Clock} label={`${ui.family.estWait} ${featuredDetails.wait || featuredMeta.wait}`} />
               ) : null}
             </dl>
 
             <div className="mt-5 flex flex-wrap items-center gap-2">
-              <Badge variant={availabilityBadgeVariant(recommended.availability)}>{recommended.availability}</Badge>
+              <Badge variant={availabilityBadgeVariant(recommended.availability)}>{optionLabel(locale, recommended.availability)}</Badge>
               {featuredDetails.verificationBadge ? <Badge variant="placed">{featuredDetails.verificationBadge}</Badge> : null}
               {recommended.matchStatus && showStatusNote(recommended.matchStatus) ? (
-                <Badge variant="matched">{matchStatusLabel(recommended.matchStatus)}</Badge>
+                <Badge variant="matched">{matchStatusLabel(recommended.matchStatus, locale)}</Badge>
               ) : null}
             </div>
             {recommended.availabilityUpdatedAt && !recommended.availability.toLowerCase().includes("availability confirmed") ? (
-              <p className="mt-2 text-xs text-ink/50">Availability confirmed {recommended.availabilityUpdatedAt}</p>
+              <p className="mt-2 text-xs text-ink/50">{ui.family.availabilityConfirmed(recommended.availabilityUpdatedAt)}</p>
             ) : null}
 
             <div className="mt-4 space-y-2 text-sm text-ink/60">
               {featuredDetails.care ? (
                 <p>
-                  <span className="font-medium text-ink/75">Care and services: </span>
+                  <span className="font-medium text-ink/75">{ui.family.careServices} </span>
                   {featuredDetails.care}
                 </p>
               ) : recommended.tags.length ? (
                 <p>
-                  <span className="font-medium text-ink/75">Services and languages: </span>
-                  {featuredTags.shown.join(", ")}
-                  {featuredTags.extra ? ` +${featuredTags.extra} more` : ""}
+                  <span className="font-medium text-ink/75">{ui.family.servicesLanguages} </span>
+                  {featuredTags.shown.map((tag) => optionLabel(locale, tag)).join(", ")}
+                  {featuredTags.extra ? ` ${ui.family.moreCount(featuredTags.extra)}` : ""}
                 </p>
               ) : null}
               {featuredDetails.languages ? (
                 <p>
-                  <span className="font-medium text-ink/75">Languages: </span>
+                  <span className="font-medium text-ink/75">{ui.family.languages} </span>
                   {featuredDetails.languages}
                 </p>
               ) : null}
               {featuredDetails.funding ? (
                 <p>
-                  <span className="font-medium text-ink/75">Funding accepted: </span>
+                  <span className="font-medium text-ink/75">{ui.family.fundingAccepted} </span>
                   {featuredDetails.funding}
                 </p>
               ) : null}
               {featuredDetails.roomTypes ? (
                 <p>
-                  <span className="font-medium text-ink/75">Room types: </span>
+                  <span className="font-medium text-ink/75">{ui.family.roomTypes} </span>
                   {featuredDetails.roomTypes}
                 </p>
               ) : null}
               {featuredDetails.qualityInfo ? (
                 <p>
-                  <span className="font-medium text-ink/75">Quality: </span>
+                  <span className="font-medium text-ink/75">{ui.family.quality} </span>
                   {featuredDetails.qualityInfo}
                 </p>
               ) : null}
               {featuredDetails.accessibilityNotes ? (
                 <p>
-                  <span className="font-medium text-ink/75">Accessibility: </span>
+                  <span className="font-medium text-ink/75">{ui.family.accessibility} </span>
                   {featuredDetails.accessibilityNotes}
                 </p>
               ) : null}
               {featuredDetails.contactExpectation ? (
                 <p>
-                  <span className="font-medium text-ink/75">Contact expectation: </span>
+                  <span className="font-medium text-ink/75">{ui.family.contactExpectation} </span>
                   {featuredDetails.contactExpectation}
                 </p>
               ) : null}
@@ -468,23 +483,21 @@ function ResultsPageContent() {
 
             {recommended.matchStatus && showStatusNote(recommended.matchStatus) ? (
               <p className="mt-4 rounded-lg bg-brand-cream px-4 py-3 text-sm text-ink/70">
-                {familyMatchNextStep(recommended.matchStatus, recommended.name)}
+                {familyMatchNextStep(recommended.matchStatus, recommended.name, locale)}
               </p>
             ) : null}
           </div>
 
           <aside className="flex h-fit flex-col gap-3 rounded-xl border border-stone-200/80 bg-brand-cream/60 p-4">
-            <p className="text-sm font-medium text-ink">Next step</p>
+            <p className="text-sm font-medium text-ink">{ui.family.nextStep}</p>
             {historyCase ? (
-              <p className="text-sm leading-6 text-ink/65">This request is closed. Review each provider&apos;s final status below.</p>
+              <p className="text-sm leading-6 text-ink/65">{ui.family.historyNextStep}</p>
             ) : featuredDeclined ? (
-              <p className="text-sm leading-6 text-ink/65">{familyMatchNextStep(recommended.matchStatus!, recommended.name)}</p>
+              <p className="text-sm leading-6 text-ink/65">{familyMatchNextStep(recommended.matchStatus!, recommended.name, locale)}</p>
             ) : featuredAccepted ? (
-              <p className="text-sm leading-6 text-ink/65">{familyMatchNextStep(recommended.matchStatus!, recommended.name)}</p>
+              <p className="text-sm leading-6 text-ink/65">{familyMatchNextStep(recommended.matchStatus!, recommended.name, locale)}</p>
             ) : (
-              <p className="text-sm leading-6 text-ink/65">
-                Request a visit or callback and our team will help coordinate with the facility.
-              </p>
+              <p className="text-sm leading-6 text-ink/65">{ui.family.requestVisitOrCallback}</p>
             )}
 
             {featuredFeedback ? <ActionFeedback message={featuredFeedback.text} tone={featuredFeedback.tone} /> : null}
@@ -499,15 +512,15 @@ function ResultsPageContent() {
                   {isPending(pendingAction, featuredMatchId, "visit") ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      Sending...
+                      {ui.family.sending}
                     </>
                   ) : featuredVisitSent ? (
                     <>
                       <Check className="h-4 w-4" />
-                      Visit requested
+                      {ui.family.visitRequested}
                     </>
                   ) : (
-                    "Request a visit"
+                    ui.family.requestVisit
                   )}
                 </Button>
 
@@ -520,26 +533,26 @@ function ResultsPageContent() {
                   {isPending(pendingAction, featuredMatchId, "callback") ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      Sending...
+                      {ui.family.sending}
                     </>
                   ) : featuredCallbackSent ? (
                     <>
                       <Check className="h-4 w-4" />
-                      Callback requested
+                      {ui.family.callbackSent}
                     </>
                   ) : (
-                    "Request a callback"
+                    ui.family.requestCallback
                   )}
                 </Button>
               </>
             ) : !historyCase ? (
               <Button asChild className="w-full">
-                <Link href={withIntakeId("/family/dashboard", intake.id)}>Your dashboard</Link>
+                <Link href={withIntakeId("/family/dashboard", intake.id)}>{ui.family.dashboardTitle}</Link>
               </Button>
             ) : null}
 
             <Button asChild variant="ghost" className="w-full">
-              <Link href={withIntakeId(`/providers/${recommended.id}`, intake.id)}>Read full profile</Link>
+              <Link href={withIntakeId(`/providers/${recommended.id}`, intake.id)}>{ui.family.readProfile}</Link>
             </Button>
             <ProviderFavouriteButton providerId={recommended.id} providerName={recommended.name} className="w-full" variant="ghost" />
           </aside>
@@ -552,27 +565,27 @@ function ResultsPageContent() {
       <section className="mt-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h2 className="font-brand text-lg font-semibold text-ink">Other places worth a call</h2>
-            <p className="mt-1 text-sm text-ink/55">It helps to have one or two alternatives before you decide.</p>
+            <h2 className="font-brand text-lg font-semibold text-ink">{ui.family.resultsOther}</h2>
+            <p className="mt-1 text-sm text-ink/55">{ui.family.otherProvidersTip}</p>
           </div>
           <span className="text-sm text-ink/45">
-            {filteredCount} of {providers.length} shown
+            {ui.family.shownOf(filteredCount, providers.length)}
           </span>
         </div>
 
         <div className="mt-4 flex flex-wrap gap-2">
           {filters.map((filter) => (
             <button
-              key={filter}
+              key={filter.id}
               type="button"
-              onClick={() => setActiveFilter(filter)}
+              onClick={() => setActiveFilter(filter.id)}
               className={`rounded-full border px-3.5 py-1.5 text-sm transition ${
-                activeFilter === filter
+                activeFilter === filter.id
                   ? "border-brand-amber bg-brand-amber text-white"
                   : "border-stone-200 bg-white text-ink/65 hover:border-brand-amber/40 hover:text-brand-amber"
               }`}
             >
-              {filter}
+              {filter.label}
             </button>
           ))}
         </div>
@@ -590,9 +603,12 @@ function ResultsPageContent() {
                 readOnly={historyCase}
               />
             ))
-          ) : filteredCount <= 1 && activeFilter !== "All options" ? (
+          ) : filteredCount <= 1 && activeFilter !== "all" ? (
             <p className="rounded-xl border border-dashed border-stone-200 bg-white/60 px-5 py-8 text-center text-sm text-ink/50">
-              No other providers match &ldquo;{activeFilter}&rdquo;. Try &ldquo;All options&rdquo; to see your full shortlist.
+              {ui.family.noFilterMatch(
+                filters.find((f) => f.id === activeFilter)?.label ?? "",
+                ui.family.filterAll
+              )}
             </p>
           ) : null}
         </div>
@@ -600,7 +616,7 @@ function ResultsPageContent() {
       ) : null}
 
       <p className="mt-8 text-sm leading-6 text-ink/55">
-        Availability is subject to provider confirmation and eligibility assessment.
+        {ui.family.availabilityNote}
       </p>
     </main>
   );
@@ -630,8 +646,9 @@ function CompareRow({
   onAction: (provider: ProviderMatch, status: "VISIT_REQUESTED" | "CALLBACK_REQUESTED") => void;
   readOnly?: boolean;
 }) {
-  const meta = parseMeta(provider.meta);
-  const details = familyDetailLines(provider);
+  const { locale, ui } = useLocale();
+  const meta = parseMeta(provider.meta, ui);
+  const details = familyDetailLines(provider, locale, ui);
   const visitSent = provider.matchStatus === "VISIT_REQUESTED";
   const callbackSent = provider.matchStatus === "CALLBACK_REQUESTED";
   const accepted = matchIsInProgress(provider.matchStatus);
@@ -645,19 +662,19 @@ function CompareRow({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="font-semibold text-ink">{provider.name}</h3>
-            <Badge variant={availabilityBadgeVariant(provider.availability)}>{provider.availability}</Badge>
+            <Badge variant={availabilityBadgeVariant(provider.availability)}>{optionLabel(locale, provider.availability)}</Badge>
             {details.verificationBadge ? <Badge variant="placed">{details.verificationBadge}</Badge> : null}
           </div>
           {provider.availabilityUpdatedAt && !provider.availability.toLowerCase().includes("availability confirmed") ? (
-            <p className="mt-1 text-xs text-ink/45">Availability confirmed {provider.availabilityUpdatedAt}</p>
+            <p className="mt-1 text-xs text-ink/45">{ui.family.availabilityConfirmed(provider.availabilityUpdatedAt)}</p>
           ) : null}
           <p className="mt-1 text-sm text-ink/55">
-            {provider.type} · {provider.area}
+            {optionLabel(locale, provider.type)} · {provider.area}
           </p>
           <MatchScore score={provider.match} size="sm" variant="compact" className="mt-2 block" />
           {details.whyMatched ? (
             <p className="mt-2 text-sm text-ink/70">
-              <span className="font-medium text-ink/80">Why matched: </span>
+              <span className="font-medium text-ink/80">{ui.family.whyMatch} </span>
               {details.whyMatched}
             </p>
           ) : null}
@@ -665,10 +682,10 @@ function CompareRow({
             {[
               meta.beds,
               meta.price,
-              details.wait || meta.wait ? `Est. wait: ${details.wait || meta.wait}` : null,
-              details.languages ? `Languages: ${details.languages}` : null,
-              details.funding ? `Funding: ${details.funding}` : null,
-              details.roomTypes ? `Rooms: ${details.roomTypes}` : null
+              details.wait || meta.wait ? `${ui.family.estWait} ${details.wait || meta.wait}` : null,
+              details.languages ? `${ui.family.languages} ${details.languages}` : null,
+              details.funding ? `${ui.family.funding} ${details.funding}` : null,
+              details.roomTypes ? `${ui.family.rooms} ${details.roomTypes}` : null
             ]
               .filter(Boolean)
               .join(" · ")}
@@ -676,7 +693,7 @@ function CompareRow({
           {details.contactExpectation ? <p className="mt-1 text-xs text-ink/50">{details.contactExpectation}</p> : null}
           {provider.matchStatus && showStatusNote(provider.matchStatus) ? (
             <p className={`mt-2 text-sm leading-6 ${declined ? "text-neutral-600" : "text-brand-green-dark"}`}>
-              {familyMatchNextStep(provider.matchStatus, provider.name)}
+              {familyMatchNextStep(provider.matchStatus, provider.name, locale)}
             </p>
           ) : null}
           {feedback ? <ActionFeedback message={feedback.text} tone={feedback.tone} className="mt-3" /> : null}
@@ -685,7 +702,7 @@ function CompareRow({
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:shrink-0">
           <ProviderFavouriteButton providerId={provider.id} providerName={provider.name} className="w-full sm:min-w-[132px]" />
           <Button asChild size="sm" variant="outline" className="w-full sm:min-w-[132px]">
-              <Link href={withIntakeId(`/providers/${provider.id}`, intakeId)}>Profile</Link>
+              <Link href={withIntakeId(`/providers/${provider.id}`, intakeId)}>{ui.family.profile}</Link>
           </Button>
           {!readOnly && !accepted && !declined ? (
             <>
@@ -698,15 +715,15 @@ function CompareRow({
                 {isPending(pendingAction, matchId, "visit") ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Sending...
+                    {ui.family.sending}
                   </>
                 ) : visitSent ? (
                   <>
                     <Check className="h-4 w-4" />
-                    Visit sent
+                    {ui.family.visitSent}
                   </>
                 ) : (
-                  "Request visit"
+                  ui.family.requestVisit
                 )}
               </Button>
               <Button
@@ -719,15 +736,15 @@ function CompareRow({
                 {isPending(pendingAction, matchId, "callback") ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Sending...
+                    {ui.family.sending}
                   </>
                 ) : callbackSent ? (
                   <>
                     <Check className="h-4 w-4" />
-                    Callback sent
+                    {ui.family.callbackSent}
                   </>
                 ) : (
-                  "Request callback"
+                  ui.family.requestCallback
                 )}
               </Button>
             </>

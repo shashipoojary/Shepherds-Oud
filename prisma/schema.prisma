@@ -87,6 +87,8 @@ model Intake {
   budget                    String?
   fundingTypes              String[]     @default([])
   languages                 String[]
+  // UI locale when the family submitted (nl | en) — drives family emails
+  preferredLocale           String       @default("nl")
   additionalNeeds           String[]
   functionalNeeds           String[]     @default([])
   placementPreferences      String[]     @default([])
@@ -177,6 +179,8 @@ model Provider {
   website                String?
   availabilityStatus     String?
   adminNotes             String?
+  // UI locale for emails to this facility (nl | en); defaults to Dutch
+  preferredLocale        String   @default("nl")
   verificationStatus     String   @default("REGISTRATION_RECEIVED")
   legalOrganisationName  String?
   kvkNumber              String?
@@ -283,6 +287,8 @@ model WaitlistEntry {
   services              String[]       @default([])
   registrationNumber    String?
   registrationVerified  Boolean        @default(false)
+  // UI locale when they registered (nl | en)
+  preferredLocale       String         @default("nl")
   status                WaitlistStatus @default(NEW)
   createdAt             DateTime       @default(now())
   updatedAt             DateTime       @updatedAt

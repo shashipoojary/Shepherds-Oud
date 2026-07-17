@@ -1,4 +1,9 @@
+"use client";
+
+import { useLocale } from "@/components/i18n/locale-provider";
 import { cn } from "@/lib/core/utils";
+import { productUi } from "@/lib/i18n/ui";
+import type { Locale } from "@/lib/i18n/config";
 
 type MatchScoreProps = {
   score: number;
@@ -7,10 +12,11 @@ type MatchScoreProps = {
   className?: string;
 };
 
-export function fitLabel(score: number) {
-  if (score >= 90) return "Strong match for your situation";
-  if (score >= 75) return "Good option to explore";
-  return "Worth a conversation";
+export function fitLabel(score: number, locale: Locale) {
+  const m = productUi(locale).matchScore;
+  if (score >= 90) return m.strongMatch;
+  if (score >= 75) return m.goodOption;
+  return m.worthConversation;
 }
 
 export function adminMatchScoreBands() {
@@ -30,19 +36,24 @@ function barHeight(size: MatchScoreProps["size"]) {
 }
 
 export function MatchScore({ score, size = "md", variant = "bar", className }: MatchScoreProps) {
+  const { locale } = useLocale();
+  const m = productUi(locale).matchScore;
+  const label = fitLabel(score, locale);
+  const ariaLabel = m.percentFitAria(score);
+
   if (variant === "compact") {
     return (
-      <span className={cn("text-xs font-medium text-brand-green-dark", className)} aria-label={`${score} percent fit`}>
-        {fitLabel(score)}
+      <span className={cn("text-xs font-medium text-brand-green-dark", className)} aria-label={ariaLabel}>
+        {label}
       </span>
     );
   }
 
   return (
-    <div className={cn("min-w-0", className)} aria-label={`${score} percent fit`}>
+    <div className={cn("min-w-0", className)} aria-label={ariaLabel}>
       <div className="flex items-baseline justify-between gap-3">
-        <p className="text-sm font-medium text-brand-green-dark">{fitLabel(score)}</p>
-        <span className="shrink-0 text-xs text-ink/45">{score}% alignment</span>
+        <p className="text-sm font-medium text-brand-green-dark">{label}</p>
+        <span className="shrink-0 text-xs text-ink/45">{m.percentAlignment(score)}</span>
       </div>
       <div className={cn("mt-2 overflow-hidden rounded-full bg-stone-200/70", barHeight(size))}>
         <div

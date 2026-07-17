@@ -6,6 +6,8 @@ import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CustomSelect } from "@/components/ui/custom-select";
 import { careTypeOptions, dutchProvinces, facilityTypes } from "@/lib/config/content";
+import { useLocale } from "@/components/i18n/locale-provider";
+import { optionLabel } from "@/lib/i18n/ui";
 import { formatFieldErrorSummary, parseZodFieldErrors, waitlistFieldLabel } from "@/lib/client/api-field-errors";
 import { INTAKE_AGE_RANGE_OPTIONS } from "@/lib/domain/intake-field-utils";
 import { cn } from "@/lib/core/utils";
@@ -21,6 +23,8 @@ const fieldClass = (hasError: boolean) =>
   );
 
 export function WaitlistForm({ type }: WaitlistFormProps) {
+  const { locale, ui } = useLocale();
+  const w = ui.waitlist;
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -108,9 +112,13 @@ export function WaitlistForm({ type }: WaitlistFormProps) {
         const apiErrors = parseZodFieldErrors(data);
         if (Object.keys(apiErrors).length) {
           setFieldErrors(apiErrors);
-          setError(formatFieldErrorSummary(apiErrors, waitlistFieldLabel) || data.error || "Please fix the highlighted fields.");
+          setError(
+            formatFieldErrorSummary(apiErrors, (key) => waitlistFieldLabel(key, locale)) ||
+              data.error ||
+              w.fixFields
+          );
         } else {
-          setError(data.error || "We could not save your registration. Please try again.");
+          setError(data.error || w.saveFailed);
         }
         setLoading(false);
         return;
@@ -118,7 +126,7 @@ export function WaitlistForm({ type }: WaitlistFormProps) {
 
       router.push(type === "FAMILY" ? "/register/success?type=family" : "/register/success?type=facility");
     } catch {
-      setError("We could not save your registration. Please try again.");
+      setError(w.saveFailed);
       setLoading(false);
     }
   }
@@ -128,7 +136,7 @@ export function WaitlistForm({ type }: WaitlistFormProps) {
       {error ? <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p> : null}
 
       {type === "FACILITY" ? (
-        <Field label="Facility name" error={fieldErrors.facilityName}>
+        <Field label={w.facilityName} error={fieldErrors.facilityName}>
           <input
             className={fieldClass(Boolean(fieldErrors.facilityName))}
             value={form.facilityName}
@@ -142,7 +150,7 @@ export function WaitlistForm({ type }: WaitlistFormProps) {
       ) : null}
 
       <div className="grid gap-5 sm:grid-cols-2">
-        <Field label={type === "FACILITY" ? "Contact person" : "Your name"} error={fieldErrors.contactName}>
+        <Field label={type === "FACILITY" ? w.contactPerson : w.yourName} error={fieldErrors.contactName}>
           <input
             className={fieldClass(Boolean(fieldErrors.contactName))}
             value={form.contactName}
@@ -153,7 +161,7 @@ export function WaitlistForm({ type }: WaitlistFormProps) {
             required
           />
         </Field>
-        <Field label="Email address" error={fieldErrors.email}>
+        <Field label={w.email} error={fieldErrors.email}>
           <input
             type="email"
             className={fieldClass(Boolean(fieldErrors.email))}
@@ -168,7 +176,7 @@ export function WaitlistForm({ type }: WaitlistFormProps) {
       </div>
 
       <div className="grid gap-5 sm:grid-cols-2">
-        <Field label="Phone number" error={fieldErrors.phone}>
+        <Field label={w.phone} error={fieldErrors.phone}>
           <input
             className={fieldClass(Boolean(fieldErrors.phone))}
             value={form.phone}
@@ -179,7 +187,7 @@ export function WaitlistForm({ type }: WaitlistFormProps) {
             placeholder="+31 6 ..."
           />
         </Field>
-        <Field label="City" error={fieldErrors.city}>
+        <Field label={w.city} error={fieldErrors.city}>
           <input
             className={fieldClass(Boolean(fieldErrors.city))}
             value={form.city}
@@ -187,46 +195,55 @@ export function WaitlistForm({ type }: WaitlistFormProps) {
               clearFieldError("city");
               setForm({ ...form, city: e.target.value });
             }}
-            placeholder="e.g. Groningen"
+            placeholder={w.cityPlaceholder}
           />
         </Field>
       </div>
 
-      <Field label="Province" error={fieldErrors.province}>
+      <Field label={w.province} error={fieldErrors.province}>
         <CustomSelect value={form.province} onChange={(value) => setForm({ ...form, province: value })} options={dutchProvinces} />
       </Field>
 
       {type === "FAMILY" ? (
         <>
           <div className="grid gap-5 sm:grid-cols-2">
-            <Field label="Relationship to the person needing care" error={fieldErrors.relationship}>
+            <Field label={w.relationship} error={fieldErrors.relationship}>
               <input
                 className={fieldClass(Boolean(fieldErrors.relationship))}
                 value={form.relationship}
                 onChange={(e) => setForm({ ...form, relationship: e.target.value })}
-                placeholder="Self, child, spouse, etc."
+                placeholder={w.relationshipPlaceholder}
               />
             </Field>
-            <Field label="Age range" error={fieldErrors.ageRange}>
+            <Field label={w.ageRange} error={fieldErrors.ageRange}>
               <CustomSelect
                 value={form.ageRange}
                 onChange={(value) => setForm({ ...form, ageRange: value })}
                 options={[...INTAKE_AGE_RANGE_OPTIONS]}
-                placeholder="Select age range"
+                formatOption={(value) => optionLabel(locale, value)}
+                placeholder={w.agePlaceholder}
               />
             </Field>
           </div>
-          <ChipField label="Type of care needed" options={careTypeOptions} selected={form.careTypes} onToggle={(value) => toggleChip("careTypes", value)} />
+          <ChipField
+            label={w.careTypes}
+            options={careTypeOptions}
+            selected={form.careTypes}
+            onToggle={(value) => toggleChip("careTypes", value)}
+            formatOption={(value) => optionLabel(locale, value)}
+          />
         </>
       ) : (
         <>
-          <Field label="Facility type" error={fieldErrors.facilityType}>
-            <CustomSelect value={form.facilityType} onChange={(value) => setForm({ ...form, facilityType: value })} options={facilityTypes} />
+          <Field label={w.facilityType} error={fieldErrors.facilityType}>
+            <CustomSelect
+              value={form.facilityType}
+              onChange={(value) => setForm({ ...form, facilityType: value })}
+              options={facilityTypes}
+              formatOption={(value) => optionLabel(locale, value)}
+            />
           </Field>
-          <Field
-            label="KVK or government registration number"
-            error={fieldErrors.registrationNumber}
-          >
+          <Field label={w.registrationNumber} error={fieldErrors.registrationNumber}>
             <input
               className={fieldClass(Boolean(fieldErrors.registrationNumber))}
               value={form.registrationNumber}
@@ -234,14 +251,12 @@ export function WaitlistForm({ type }: WaitlistFormProps) {
                 clearFieldError("registrationNumber");
                 setForm({ ...form, registrationNumber: e.target.value });
               }}
-              placeholder="e.g. 12345678"
+              placeholder={w.registrationPlaceholder}
               required
             />
-            <span className="text-xs text-neutral-500">
-              Used to verify your organisation before onboarding. We check this manually.
-            </span>
+            <span className="text-xs text-neutral-500">{w.registrationHint}</span>
           </Field>
-          <Field label="Total beds or places (optional)" error={fieldErrors.bedsTotal}>
+          <Field label={w.bedsOptional} error={fieldErrors.bedsTotal}>
             <input
               type="number"
               min="0"
@@ -250,16 +265,22 @@ export function WaitlistForm({ type }: WaitlistFormProps) {
               onChange={(e) => setForm({ ...form, bedsTotal: e.target.value })}
             />
           </Field>
-          <ChipField label="Services offered" options={careTypeOptions} selected={form.services} onToggle={(value) => toggleChip("services", value)} />
+          <ChipField
+            label={w.services}
+            options={careTypeOptions}
+            selected={form.services}
+            onToggle={(value) => toggleChip("services", value)}
+            formatOption={(value) => optionLabel(locale, value)}
+          />
         </>
       )}
 
-      <Field label="Anything else we should know?" error={fieldErrors.message}>
+      <Field label={w.message} error={fieldErrors.message}>
         <textarea
           className={cn(fieldClass(Boolean(fieldErrors.message)), "min-h-28")}
           value={form.message}
           onChange={(e) => setForm({ ...form, message: e.target.value })}
-          placeholder="Tell us about your situation or facility."
+          placeholder={w.messagePlaceholder}
         />
       </Field>
 
@@ -267,10 +288,10 @@ export function WaitlistForm({ type }: WaitlistFormProps) {
         {loading ? (
           <>
             <Loader2 className="h-4 w-4 animate-spin" />
-            Submitting...
+            {w.submitting}
           </>
         ) : (
-          "Join the waitlist"
+          w.submit
         )}
       </Button>
     </form>
@@ -291,13 +312,16 @@ function ChipField({
   label,
   options,
   selected,
-  onToggle
+  onToggle,
+  formatOption
 }: {
   label: string;
   options: string[];
   selected: string[];
   onToggle: (value: string) => void;
+  formatOption?: (value: string) => string;
 }) {
+  const format = formatOption ?? ((value: string) => value);
   return (
     <div className="grid gap-2">
       <span className="text-sm font-medium text-neutral-800">{label}</span>
@@ -311,7 +335,7 @@ function ChipField({
               onClick={() => onToggle(option)}
               className={`rounded-full px-3 py-2 text-sm transition ${active ? "bg-sage-600 text-white" : "bg-stone-100 text-neutral-700 hover:bg-sage-100"}`}
             >
-              {option}
+              {format(option)}
             </button>
           );
         })}

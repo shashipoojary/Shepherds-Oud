@@ -2,6 +2,7 @@ import { prisma } from "@/lib/core/db";
 import { mapProviderRecord } from "@/lib/data/providers";
 import { familyVisibleMatchStatuses } from "@/lib/domain/match-status";
 import type { ProviderMatch } from "@/lib/core/types";
+import type { Locale } from "@/lib/i18n/config";
 
 function toFamilyMatch(
   match: {
@@ -11,10 +12,11 @@ function toFamilyMatch(
     familyFacingReason: string | null;
     provider: Parameters<typeof mapProviderRecord>[0];
   },
-  actionFallback: string
+  actionFallback: string,
+  locale: Locale
 ): ProviderMatch {
   return {
-    ...mapProviderRecord(match.provider),
+    ...mapProviderRecord(match.provider, 0, locale),
     match: match.score,
     matchId: match.id,
     matchStatus: match.status,
@@ -30,7 +32,7 @@ function toFamilyMatch(
   };
 }
 
-export async function getMatchesForIntake(intakeId: string): Promise<ProviderMatch[]> {
+export async function getMatchesForIntake(intakeId: string, locale: Locale = "nl"): Promise<ProviderMatch[]> {
   const matches = await prisma.match.findMany({
     where: {
       intakeId,
@@ -40,7 +42,7 @@ export async function getMatchesForIntake(intakeId: string): Promise<ProviderMat
     include: { provider: true }
   });
 
-  return matches.map((match) => toFamilyMatch(match, "Request visit"));
+  return matches.map((match) => toFamilyMatch(match, "Request visit", locale));
 }
 
 export async function countVisibleMatchesForIntake(intakeId: string) {
@@ -52,7 +54,7 @@ export async function countVisibleMatchesForIntake(intakeId: string) {
   });
 }
 
-export async function getFamilyMatchHistoryForIntake(intakeId: string): Promise<ProviderMatch[]> {
+export async function getFamilyMatchHistoryForIntake(intakeId: string, locale: Locale = "nl"): Promise<ProviderMatch[]> {
   const matches = await prisma.match.findMany({
     where: { intakeId },
     orderBy: [{ updatedAt: "desc" }, { score: "desc" }],
@@ -68,7 +70,8 @@ export async function getFamilyMatchHistoryForIntake(intakeId: string): Promise<
           ? "Declined"
           : match.status === "CLOSED"
             ? "Closed"
-            : "Suggested match"
+            : "Suggested match",
+      locale
     )
   );
 }

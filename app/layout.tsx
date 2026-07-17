@@ -1,8 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import { DM_Sans, Outfit } from "next/font/google";
+import { LocaleProvider } from "@/components/i18n/locale-provider";
 import { PrelaunchProvider } from "@/components/layout/prelaunch-context";
 import { brand } from "@/lib/config/brand";
 import { getIsPrelaunch } from "@/lib/config/prelaunch";
+import { getLocale } from "@/lib/i18n/get-locale";
 import "./globals.css";
 
 const brandFont = Outfit({
@@ -26,13 +28,16 @@ export const viewport: Viewport = {
   themeColor: "#404D3C"
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const isPrelaunch = getIsPrelaunch();
+  const locale = await getLocale();
 
   return (
-    <html lang="en" className={`${brandFont.variable} ${bodyFont.variable}`}>
+    <html lang={locale} className={`${brandFont.variable} ${bodyFont.variable}`}>
       <body>
-        <PrelaunchProvider value={isPrelaunch}>{children}</PrelaunchProvider>
+        <LocaleProvider initialLocale={locale}>
+          <PrelaunchProvider value={isPrelaunch}>{children}</PrelaunchProvider>
+        </LocaleProvider>
       </body>
     </html>
   );

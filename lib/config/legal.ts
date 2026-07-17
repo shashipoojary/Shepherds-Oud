@@ -4,7 +4,7 @@ import { brand } from "@/lib/config/brand";
 const legalUpdated = "15 July 2026";
 
 const privacyIntro =
-  `${brand.name} ("we", "us") provides human-guided care navigation for people with limited mobility and for care facilities in the Netherlands. This privacy policy explains what personal data we collect, why we use it, and the choices you have. We process personal data in line with the EU General Data Protection Regulation (GDPR) and Dutch privacy law.`;
+  `${brand.name} ("we", "us") provides human-guided care navigation for families when living at home is no longer possible, and for care facilities in the Netherlands (starting in the Den Haag / Haaglanden region). This privacy policy explains what personal data we collect, why we use it, and the choices you have. We process personal data in line with the EU General Data Protection Regulation (GDPR) and Dutch privacy law.`;
 
 const privacySections: LegalSection[] = [
   {
@@ -89,7 +89,7 @@ const termsSections: LegalSection[] = [
   {
     title: "Our service",
     paragraphs: [
-      `${brand.name} helps people navigate care decisions when mobility is limited — through human-guided support, care planning, and provider matching across the Netherlands. We are a navigation and coordination service — not a medical provider, emergency service, or care home operator.`,
+      `${brand.name} helps people navigate care decisions when living at home is no longer possible — through human-guided support, care planning, and provider matching in the Netherlands (Den Haag / Haaglanden first, then national expansion). We are a navigation and coordination service — not a medical provider, emergency service, or care home operator.`,
       "During pre-launch, the public site may be limited to waitlist registration. Full guided intake and provider tools open when we announce launch in your area."
     ]
   },
@@ -264,7 +264,7 @@ const dataDeletionSections: LegalSection[] = [
 ];
 
 const accessibilityIntro =
-  `${brand.name} is committed to making care navigation information usable for people with limited mobility, older adults, caregivers, and people who use assistive technologies. We work toward the spirit of the Web Content Accessibility Guidelines (WCAG) 2.2 Level AA.`;
+  `${brand.name} is committed to making care navigation information usable for older adults, people living with dementia or reduced mobility, caregivers, and people who use assistive technologies. We work toward the spirit of the Web Content Accessibility Guidelines (WCAG) 2.2 Level AA.`;
 
 const accessibilitySections: LegalSection[] = [
   {
@@ -289,7 +289,7 @@ const accessibilitySections: LegalSection[] = [
   {
     title: "Continuous improvement",
     paragraphs: [
-      "Accessibility is an ongoing effort. We review feedback, update components, and test critical journeys as we roll out personal matching in selected municipalities and later nationally."
+      "Accessibility is an ongoing effort. We review feedback, update components, and test critical journeys as we roll out personal matching in regio Den Haag / Haaglanden and later nationally."
     ]
   }
 ];
@@ -397,10 +397,10 @@ export const legalPages = {
 
 export const legalFooterLinks = [
   { label: "Privacy", href: "/privacy" },
-  { label: "Terms", href: "/terms" },
+  { label: "Voorwaarden", href: "/terms" },
   { label: "Cookies", href: "/cookies" },
-  { label: "Complaints", href: "/complaints" },
-  { label: "Data deletion", href: "/data-deletion" },
-  { label: "Accessibility", href: "/accessibility" },
-  { label: "Company details", href: "/company" }
+  { label: "Klachten", href: "/complaints" },
+  { label: "Gegevens wissen", href: "/data-deletion" },
+  { label: "Toegankelijkheid", href: "/accessibility" },
+  { label: "Bedrijfsgegevens", href: "/company" }
 ] as const;

@@ -1412,6 +1412,12 @@ function FamilyDetailPanel({
                     </div>
                   </div>
                   <div>
+                    <p className="text-xs font-medium text-neutral-500">UI language (emails)</p>
+                    <p className="mt-1.5 text-sm font-medium text-ink">
+                      {family.preferredLocale === "en" ? "English" : "Dutch"}
+                    </p>
+                  </div>
+                  <div>
                     <p className="text-xs font-medium text-neutral-500">Languages</p>
                     <div className="mt-1.5">
                       <TagList items={family.languages ?? []} />

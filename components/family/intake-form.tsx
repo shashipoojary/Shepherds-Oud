@@ -3,7 +3,11 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { intakeSteps, ubuntuTagline } from "@/lib/config/content";
+import { useLocale } from "@/components/i18n/locale-provider";
+import { fieldLabel, formatOptionalLabel, optionLabel, productUi } from "@/lib/i18n/ui";
+import type { Locale } from "@/lib/i18n/config";
+import { INTAKE_SAFETY_STEP_INDEX, intakeStepsFor, type IntakeField } from "@/lib/config/content";
+import { siteTagline } from "@/lib/config/marketing-en";
 import { usePrelaunch } from "@/components/layout/prelaunch-context";
 import { selectFamilyIntake, withIntakeId, isHistoryIntake } from "@/lib/client/case-selection";
 import {
@@ -27,15 +31,20 @@ import {
   splitSelectForForm
 } from "@/lib/domain/intake-field-utils";
 import { canFamilyEditIntake, familyIntakeEditBlockedMessage } from "@/lib/domain/intake-workflow";
-import { INTAKE_CONSENT_LABEL } from "@/lib/domain/intake-consent";
+import { intakeConsentLabel } from "@/lib/domain/intake-consent";
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
 import { CustomSelect } from "@/components/ui/custom-select";
 import { ProgressBar } from "@/components/ui/progress-bar";
-import { formatFieldErrorSummary, intakeFieldLabel, parseZodFieldErrors } from "@/lib/client/api-field-errors";
+import {
+  formatFieldErrorSummary,
+  intakeFieldEnglishLabel,
+  intakeFieldLabel,
+  parseZodFieldErrors
+} from "@/lib/client/api-field-errors";
 import { cn } from "@/lib/core/utils";
 
-type Field = (typeof intakeSteps)[number]["fields"][number];
+type Field = IntakeField;
 type FormState = Record<string, string | string[]>;
 
 type DecisionMakerDraft = {
@@ -104,7 +113,10 @@ function IntakeFormContent({
   fromWaitlist: boolean;
 }) {
   const router = useRouter();
+  const { locale, ui } = useLocale();
   const isPrelaunch = usePrelaunch();
+  const intakeSteps = useMemo(() => intakeStepsFor(locale), [locale]);
+  const tagline = siteTagline(locale);
 
   const [stepIndex, setStepIndex] = useState(0);
   const [form, setForm] = useState<FormState>({});
@@ -130,7 +142,7 @@ function IntakeFormContent({
     urgentMedicalHelp: String(form["is-urgent-medical-help-required"] || ""),
     immediateRiskFlags: asArray(form["immediate-risk-flags"])
   });
-  const isSafetyStep = step.title === "Safety check";
+  const isSafetyStep = stepIndex === INTAKE_SAFETY_STEP_INDEX;
 
   useEffect(() => {
     let active = true;
@@ -176,9 +188,9 @@ function IntakeFormContent({
         setForm({});
         setDecisionMakers([emptyDecisionMaker()]);
         if (selection.state === "needs-picker") {
-          setStatus("Choose the care request you want to update from your dashboard.");
+          setStatus(ui.intake.chooseUpdate);
         } else if (selection.state === "not-found") {
-          setStatus("We could not find that care request on your account. Choose a saved request from your dashboard.");
+          setStatus(ui.family.caseNotFound);
         }
       }
       setReady(true);
@@ -313,14 +325,14 @@ function IntakeFormContent({
 
   async function submit(options?: { emergencyStopped?: boolean }) {
     if (isUpdateMode && !existingIntake) {
-      setStatus("Choose the care request you want to update from your dashboard.");
+      setStatus(ui.intake.chooseUpdate);
       return;
     }
 
     const isEmergency = Boolean(options?.emergencyStopped);
     if (!isEmergency && !consentAccepted) {
       setStatusTone("error");
-      setStatus("Please confirm the consent statement before submitting.");
+      setStatus(ui.intake.consentRequired);
       return;
     }
 
@@ -336,7 +348,7 @@ function IntakeFormContent({
 
     if (!payload.contactName || !payload.email || !payload.preferredArea || !payload.relationship || !payload.phone) {
       setStatusTone("error");
-      setStatus("Please complete your contact details before continuing.");
+      setStatus(ui.intake.completeContact);
       setSubmitting(false);
       return;
     }
@@ -355,13 +367,13 @@ function IntakeFormContent({
         !payload.caregiverBurnoutRisk ||
         !payload.seniorAgreedToSearch
       ) {
-        setStatus("Please complete all required steps before submitting.");
+        setStatus(ui.intake.completeRequired);
         setSubmitting(false);
         return;
       }
     }
 
-    setStatus(isEmergency ? "Notifying your Care Guide..." : isUpdating ? "Updating your request..." : "Submitting intake...");
+    setStatus(isEmergency ? ui.intake.notifyingGuide : isUpdating ? ui.intake.updating : ui.intake.submitting);
 
     const response = await fetch(isUpdating ? `/api/intakes/${existingIntake!.id}` : "/api/intakes", {
       method: isUpdating ? "PATCH" : "POST",
@@ -375,14 +387,18 @@ function IntakeFormContent({
       if (Object.keys(apiErrors).length) {
         const mapped: Record<string, string> = {};
         for (const [apiKey, message] of Object.entries(apiErrors)) {
-          mapped[fieldKeyFor(intakeFieldLabel(apiKey))] = message;
+          mapped[fieldKeyFor(intakeFieldEnglishLabel(apiKey))] = message;
         }
         setFieldErrors(mapped);
         setStatusTone("error");
-        setStatus(formatFieldErrorSummary(apiErrors, intakeFieldLabel) || data.error || "Please fix the highlighted fields.");
+        setStatus(
+          formatFieldErrorSummary(apiErrors, (key) => intakeFieldLabel(key, locale)) ||
+            data.error ||
+            ui.intake.fixFields
+        );
       } else {
         setStatusTone("error");
-        setStatus(data.error || "Please complete the highlighted details and try again.");
+        setStatus(data.error || ui.intake.tryAgain);
       }
       setSubmitting(false);
       return;
@@ -395,14 +411,14 @@ function IntakeFormContent({
       setEmergencySubmitted(true);
       setSavedIntakeId(nextIntakeId ?? savedIntakeId);
       setStatusTone("success");
-      setStatus("Your Care Guide has been notified. Please call 112 if anyone is in immediate danger.");
+      setStatus(ui.intake.emergencyNotified);
       setSubmitting(false);
       return;
     }
 
     // Keep the completed last step visible while navigating — do not clear fields or jump to step 1.
     setStatusTone("success");
-    setStatus(isUpdating ? "Request updated. Opening your dashboard…" : "Intake submitted. Opening your dashboard…");
+    setStatus(isUpdating ? ui.intake.statusUpdated : ui.intake.statusSubmitted);
     router.replace(nextIntakeId ? withIntakeId("/family/dashboard", nextIntakeId) : "/family/dashboard");
   }
 
@@ -414,27 +430,23 @@ function IntakeFormContent({
     return (
       <section className="mx-auto max-w-3xl overflow-hidden rounded-card bg-white shadow-panel">
         <div className="border-b border-red-200 bg-red-50 px-8 py-7">
-          <h1 className="font-brand text-[1.35rem] font-semibold text-red-900">Call emergency services first</h1>
-          <p className="mt-2 text-sm leading-relaxed text-red-800">
-            Shepherds Oud cannot replace emergency help. If someone is unsafe right now, call <strong>112</strong> immediately.
-          </p>
+          <h1 className="font-brand text-[1.35rem] font-semibold text-red-900">{ui.intake.emergencyTitle}</h1>
+          <p className="mt-2 text-sm leading-relaxed text-red-800">{ui.intake.emergencyLead}</p>
         </div>
         <div className="space-y-4 px-8 py-7 text-sm leading-relaxed text-ink/80">
-          <p>
-            Your situation has been flagged for a Care Guide. They will follow up as soon as possible — but emergency services come first.
-          </p>
+          <p>{ui.intake.emergencyBody}</p>
           <ul className="list-disc space-y-1 pl-5">
-            <li>Call 112 for police, fire, or ambulance</li>
-            <li>Stay with the person if it is safe to do so</li>
-            <li>A Care Guide will review your flagged intake after emergency needs are addressed</li>
+            <li>{ui.intake.emergencyCall112}</li>
+            <li>{ui.intake.emergencyStay}</li>
+            <li>{ui.intake.emergencyFollowUp}</li>
           </ul>
           {savedIntakeId ? (
             <Button asChild size="sm">
-              <Link href={withIntakeId("/family/dashboard", savedIntakeId)}>Open your dashboard</Link>
+              <Link href={withIntakeId("/family/dashboard", savedIntakeId)}>{ui.intake.goToDashboard}</Link>
             </Button>
           ) : (
             <Button asChild size="sm" variant="outline">
-              <Link href="/">Return home</Link>
+              <Link href="/">{ui.intake.backHome}</Link>
             </Button>
           )}
         </div>
@@ -445,20 +457,16 @@ function IntakeFormContent({
   return (
     <section className="mx-auto grid max-w-7xl overflow-hidden rounded-card bg-white shadow-panel lg:grid-cols-[380px_minmax(0,1fr)]">
       <header className="bg-brand-green-dark px-8 py-7 text-white">
-        <h1 className="font-brand text-[1.3rem] font-semibold">Tell us about your situation</h1>
+        <h1 className="font-brand text-[1.3rem] font-semibold">{ui.intake.sidebarTitle}</h1>
         <p className="mt-1 text-[13px] leading-relaxed text-white/80">
-          {isUpdating
-            ? "Update your existing care request. Your Care Guide keeps supporting you through shared decisions."
-            : `About 5 minutes. A real Care Guide reviews your case personally — ${ubuntuTagline}`}
+          {isUpdating ? ui.intake.sidebarUpdateIntro : ui.intake.sidebarIntro(tagline)}
         </p>
         {!isUpdateMode && savedIntakeId ? (
           <div className="mt-5">
             <Button asChild size="sm" variant="outline" className="w-full border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white">
-              <Link href={withIntakeId("/family/dashboard", savedIntakeId)}>Go to your dashboard</Link>
+              <Link href={withIntakeId("/family/dashboard", savedIntakeId)}>{ui.intake.goToDashboard}</Link>
             </Button>
-            <p className="mt-2 text-[12px] leading-relaxed text-white/65">
-              You already have a care request saved. Open your dashboard to follow your journey, or continue below to start another.
-            </p>
+            <p className="mt-2 text-[12px] leading-relaxed text-white/65">{ui.intake.existingRequestHint}</p>
           </div>
         ) : null}
         <div className="mt-4">
@@ -467,7 +475,7 @@ function IntakeFormContent({
         <div className="mt-8 hidden space-y-4 text-sm text-white/75 lg:block">
           {intakeSteps.map((item, index) => (
             <div
-              key={item.title}
+              key={`${index}-${item.title}`}
               className={
                 index === stepIndex
                   ? "font-semibold text-brand-amber"
@@ -485,25 +493,25 @@ function IntakeFormContent({
       <div className="px-5 py-6 sm:px-8 lg:px-10 lg:py-9">
         {fromWaitlist && !isPrelaunch && !isUpdateMode ? (
           <div className="mb-5 rounded-lg border border-brand-green-pale/60 bg-brand-green-pale/20 px-4 py-3 text-sm text-brand-green-dark">
-            You are on our waitlist. Complete your guided intake next so a Care Guide can review your situation.
+            {ui.intake.waitlistBanner}
           </div>
         ) : null}
 
         {isUpdateMode && !existingIntake ? (
           <div className="mb-5 rounded-lg bg-brand-beige-light/40 px-4 py-3 text-sm text-brand-amber-dark">
-            Choose the care request you want to update.{" "}
+            {ui.intake.chooseUpdateBanner}{" "}
             <Link href="/family/dashboard" className="font-semibold underline underline-offset-2">
-              Open your requests
+              {ui.intake.openYourRequests}
             </Link>
           </div>
         ) : null}
 
         {intakeLocked && existingIntake ? (
           <div className="mb-5 rounded-lg border border-stone-200 bg-brand-cream px-4 py-4 text-sm leading-6 text-ink/75">
-            <p>{familyIntakeEditBlockedMessage(existingIntake.status)}</p>
+            <p>{familyIntakeEditBlockedMessage(existingIntake.status, locale)}</p>
             <div className="mt-4">
               <Button asChild size="sm">
-                <Link href={withIntakeId("/family/dashboard", existingIntake.id)}>Back to your dashboard</Link>
+                <Link href={withIntakeId("/family/dashboard", existingIntake.id)}>{ui.intake.backToDashboard}</Link>
               </Button>
             </div>
           </div>
@@ -512,7 +520,7 @@ function IntakeFormContent({
         {!intakeLocked ? (
           <>
             <p className="section-label mb-5">
-              Step {stepIndex + 1} of {intakeSteps.length} — {step.title}
+              {ui.intake.stepOf(stepIndex + 1, intakeSteps.length)} — {step.title}
             </p>
             <div className="grid gap-x-5 md:grid-cols-2">
               {step.fields.map((field) =>
@@ -529,21 +537,18 @@ function IntakeFormContent({
                     error={fieldErrors["decision-makers"]}
                   />
                 ) : (
-                  renderField(field, form, setValue, setOtherValue, toggleChip, fieldErrors)
+                  renderField(field, form, setValue, setOtherValue, toggleChip, locale, ui, fieldErrors)
                 )
               )}
             </div>
 
             {isSafetyStep && emergencyStop ? (
               <div className="mt-6 rounded-lg border border-red-200 bg-red-50 px-4 py-4 text-sm leading-relaxed text-red-900 md:col-span-2">
-                <p className="font-semibold">Stop — call 112 if anyone is in immediate danger</p>
-                <p className="mt-2">
-                  Based on your answers, this is not a normal care-matching intake. Emergency services come first. You can still notify a Care
-                  Guide so they can follow up after the immediate risk is addressed.
-                </p>
+                <p className="font-semibold">{ui.intake.safetyStopTitle}</p>
+                <p className="mt-2">{ui.intake.safetyStopBody}</p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <Button type="button" disabled={submitting} onClick={() => void submit({ emergencyStopped: true })}>
-                    {submitting ? "Sending..." : "Notify Care Guide (flagged intake)"}
+                    {submitting ? ui.family.sending : ui.intake.notifyGuideCta}
                   </Button>
                 </div>
               </div>
@@ -558,7 +563,7 @@ function IntakeFormContent({
                   className="mt-1 h-4 w-4 shrink-0 rounded border-[var(--card-border)] text-brand-amber focus:ring-brand-amber"
                   required
                 />
-                <span>{INTAKE_CONSENT_LABEL}</span>
+                <span>{intakeConsentLabel(locale)}</span>
               </label>
             ) : null}
 
@@ -591,12 +596,18 @@ function IntakeFormContent({
               <div className="flex gap-2">
                 {stepIndex > 0 && (
                   <Button type="button" variant="ghost" size="sm" onClick={() => setStepIndex((value) => value - 1)}>
-                    Back
+                    {ui.intake.back}
                   </Button>
                 )}
                 {isFinal ? (
                   <Button type="button" className="min-w-[140px]" disabled={submitting || !consentAccepted} onClick={() => void submit()}>
-                    {submitting ? (isUpdating ? "Updating..." : "Submitting...") : isUpdating ? "Update request" : "Submit"}
+                    {submitting
+                      ? isUpdating
+                        ? ui.intake.updating
+                        : ui.intake.submitting
+                      : isUpdating
+                        ? ui.intake.update
+                        : ui.intake.submit}
                   </Button>
                 ) : (
                   <Button
@@ -604,7 +615,7 @@ function IntakeFormContent({
                     disabled={!canContinue || (isSafetyStep && emergencyStop)}
                     onClick={() => setStepIndex((value) => value + 1)}
                   >
-                    Next step
+                    {ui.intake.continue}
                   </Button>
                 )}
               </div>
@@ -631,41 +642,43 @@ function DecisionMakersField({
   onRemove: (index: number) => void;
   error?: string;
 }) {
+  const { locale, ui } = useLocale();
   const baseInput =
     "w-full rounded-lg border-[1.5px] border-[var(--card-border)] bg-white px-3.5 py-2.5 text-body text-ink outline-none transition focus:border-brand-amber";
 
   return (
     <div className="mb-5 space-y-4 md:col-span-2">
       <div>
-        <p className="text-sm font-medium">Decision-makers</p>
-        <p className="mt-1 text-xs text-ink/60">Add everyone involved in care decisions. At least one is required.</p>
+        <p className="text-sm font-medium">{fieldLabel(locale, "Decision-makers")}</p>
+        <p className="mt-1 text-xs text-ink/60">{ui.intake.decisionMakerHint}</p>
       </div>
       {makers.map((maker, index) => (
         <div key={index} className="rounded-lg border border-[var(--card-border)] bg-brand-cream/40 p-4">
           <div className="mb-3 flex items-center justify-between gap-3">
-            <p className="text-sm font-semibold text-ink">Decision-maker {index + 1}</p>
+            <p className="text-sm font-semibold text-ink">{ui.intake.decisionMakerN(index + 1)}</p>
             {makers.length > 1 ? (
               <Button type="button" variant="ghost" size="sm" onClick={() => onRemove(index)}>
-                Remove
+                {ui.intake.remove}
               </Button>
             ) : null}
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             <label className="block text-sm font-medium">
-              <span className="mb-1.5 block">Name</span>
+              <span className="mb-1.5 block">{ui.intake.decisionMakerName}</span>
               <input
                 value={maker.name}
                 onChange={(event) => onChange(index, { name: event.target.value })}
                 className={baseInput}
-                placeholder="e.g. Maria van den Berg"
+                placeholder={ui.intake.nameExample}
               />
             </label>
             <div>
               <CustomSelect
                 className="w-full"
-                label="Relationship"
+                label={ui.intake.decisionMakerRelationship}
                 value={maker.relationship}
                 options={decisionMakerRelationshipOptions}
+                formatOption={(value) => optionLabel(locale, value)}
                 onChange={(value) =>
                   onChange(index, {
                     relationship: value,
@@ -675,25 +688,25 @@ function DecisionMakersField({
               />
               {maker.relationship === INTAKE_OTHER_OPTION ? (
                 <label className="mt-3 block text-sm font-medium">
-                  <span className="mb-1.5 block">Please describe the decision-maker role</span>
+                  <span className="mb-1.5 block">{ui.intake.describeRole}</span>
                   <input
                     value={maker.relationshipOther}
                     onChange={(event) => onChange(index, { relationshipOther: event.target.value })}
                     className={baseInput}
-                    placeholder="Please describe the decision-maker role"
+                    placeholder={ui.intake.describeRole}
                   />
                 </label>
               ) : null}
             </div>
           </div>
           <fieldset className="mt-4">
-            <legend className="mb-2 text-sm font-medium">Responsibilities</legend>
+            <legend className="mb-2 text-sm font-medium">{ui.intake.decisionMakerResponsibilities}</legend>
             <div className="flex flex-wrap gap-2">
               {DECISION_MAKER_RESPONSIBILITY_OPTIONS.map((option) => {
                 const selected = maker.responsibilities.includes(option);
                 return (
                   <Chip key={option} selected={selected} onClick={() => onToggleResponsibility(index, option)}>
-                    {option}
+                    {optionLabel(locale, option)}
                   </Chip>
                 );
               })}
@@ -702,7 +715,7 @@ function DecisionMakersField({
         </div>
       ))}
       <Button type="button" variant="outline" size="sm" onClick={onAdd}>
-        Add another decision-maker
+        {ui.intake.addDecisionMaker}
       </Button>
       {error ? <p className="text-xs text-red-700">{error}</p> : null}
     </div>
@@ -753,6 +766,8 @@ function renderField(
   setValue: (label: string, value: string) => void,
   setOtherValue: (label: string, value: string) => void,
   toggleChip: (label: string, option: string) => void,
+  locale: Locale,
+  ui: ReturnType<typeof productUi>,
   fieldErrors: Record<string, string> = {}
 ) {
   const baseInput =
@@ -778,8 +793,9 @@ function renderField(
   const key = fieldKeyFor(field.label);
   const fieldError = fieldErrors[key];
   const otherKey = otherFieldKey(field.label);
-  const otherPlaceholder = ("otherPlaceholder" in field && field.otherPlaceholder) || "Please specify";
+  const otherPlaceholder = ("otherPlaceholder" in field && field.otherPlaceholder) || ui.intake.specifyOther;
   const optional = "optional" in field && field.optional;
+  const displayLabel = formatOptionalLabel(locale, field.label, optional);
 
   if (field.type === "select") {
     const selected = String(form[key] || "");
@@ -787,9 +803,11 @@ function renderField(
       <div key={field.label} className="mb-5 md:col-span-2">
         <CustomSelect
           className="w-full"
-          label={optional ? `${field.label} (optional)` : field.label}
+          label={displayLabel}
           value={selected}
           options={field.options}
+          formatOption={(value) => optionLabel(locale, value)}
+          placeholder={ui.intake.selectPlaceholder}
           onChange={(value) => setValue(field.label, value)}
         />
         {fieldError ? <p className="mt-1 text-xs text-red-700">{fieldError}</p> : null}
@@ -813,13 +831,13 @@ function renderField(
     const allowsOther = "allowsOther" in field && field.allowsOther;
     return (
       <fieldset key={field.label} className="mb-5 md:col-span-2">
-        <legend className="mb-2 text-sm font-medium">{optional ? `${field.label} (optional)` : field.label}</legend>
+        <legend className="mb-2 text-sm font-medium">{displayLabel}</legend>
         <div className="flex flex-wrap gap-2">
           {field.options.map((option) => {
             const isSelected = selected.includes(option);
             return (
               <Chip key={option} selected={isSelected} onClick={() => toggleChip(field.label, option)}>
-                {option}
+                {optionLabel(locale, option)}
               </Chip>
             );
           })}
@@ -843,7 +861,7 @@ function renderField(
   if (field.type === "textarea") {
     return (
       <label key={field.label} className="mb-5 block text-sm font-medium md:col-span-2">
-        <span className="mb-1.5 block">{field.label}</span>
+        <span className="mb-1.5 block">{displayLabel}</span>
         <textarea
           value={String(form[key] || "")}
           onChange={(event) => setValue(field.label, event.target.value)}
@@ -858,7 +876,7 @@ function renderField(
   if (field.type === "date") {
     return (
       <label key={field.label} className="mb-5 block text-sm font-medium">
-        <span className="mb-1.5 block">{field.label}</span>
+        <span className="mb-1.5 block">{displayLabel}</span>
         <input
           value={String(form[key] || "")}
           onChange={(event) => setValue(field.label, event.target.value)}
@@ -872,13 +890,13 @@ function renderField(
 
   return (
     <label key={field.label} className="mb-5 block text-sm font-medium">
-      <span className="mb-1.5 block">{field.label}</span>
+      <span className="mb-1.5 block">{displayLabel}</span>
       <input
         value={String(form[key] || "")}
         onChange={(event) => setValue(field.label, event.target.value)}
         type={field.type}
         className={inputClass(key)}
-        placeholder={field.placeholder}
+        placeholder={"placeholder" in field ? field.placeholder : undefined}
       />
       {fieldError ? <p className="mt-1 text-xs text-red-700">{fieldError}</p> : null}
     </label>

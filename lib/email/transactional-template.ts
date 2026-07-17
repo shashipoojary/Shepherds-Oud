@@ -1,5 +1,6 @@
-import { brand } from "@/lib/config/brand";
+import { brand, brandEmailFooterLine, brandTagline } from "@/lib/config/brand";
 import { emailBrandMarkHtml } from "@/lib/email/brand-mark";
+import type { Locale } from "@/lib/i18n/config";
 
 const colors = {
   cream: "#f7f4f0",
@@ -20,6 +21,7 @@ export type TransactionalEmailOptions = {
   paragraphs: string[];
   footerNote: string;
   appUrl?: string;
+  locale?: Locale;
   cta?: {
     label: string;
     url: string;
@@ -42,9 +44,15 @@ export function renderTransactionalEmail({
   paragraphs,
   footerNote,
   appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.BETTER_AUTH_URL || "https://shepherds-oud.vercel.app",
+  locale = "nl",
   cta,
-  fallbackLinkLabel = "Or copy this link into your browser:"
+  fallbackLinkLabel
 }: TransactionalEmailOptions) {
+  const tagline = brandTagline(locale);
+  const footerLine = brandEmailFooterLine(locale);
+  const linkLabel =
+    fallbackLinkLabel ||
+    (locale === "en" ? "Or copy this link into your browser:" : "Of kopieer deze link in uw browser:");
   const safeCtaUrl = cta ? escapeHtml(cta.url) : "";
 
   const paragraphHtml = paragraphs
@@ -62,21 +70,21 @@ export function renderTransactionalEmail({
           </td>
         </tr>
       </table>
-      <p class="email-muted" style="margin:0 0 8px;font-size:13px;line-height:1.6;color:${colors.muted};">${escapeHtml(fallbackLinkLabel)}</p>
+      <p class="email-muted" style="margin:0 0 8px;font-size:13px;line-height:1.6;color:${colors.muted};">${escapeHtml(linkLabel)}</p>
       <p class="email-link" style="margin:0 0 24px;font-size:13px;line-height:1.6;word-break:break-all;color:${colors.greenDark};"><a href="${safeCtaUrl}" style="color:${colors.amberDark};text-decoration:underline;">${safeCtaUrl}</a></p>`
     : "";
 
   const brandMark = emailBrandMarkHtml(appUrl, 56);
 
   return `<!DOCTYPE html>
-<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<html lang="${locale}" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="x-apple-disable-message-reformatting" />
-    <meta name="color-scheme" content="light only" />
-    <meta name="supported-color-schemes" content="light only" />
+    <meta name="color-scheme" content="light" />
+    <meta name="supported-color-schemes" content="light" />
     <title>${escapeHtml(title)}</title>
     <!--[if mso]>
       <noscript>
@@ -88,7 +96,7 @@ export function renderTransactionalEmail({
       </noscript>
     <![endif]-->
     <style>
-      :root { color-scheme: light only; supported-color-schemes: light only; }
+      :root { color-scheme: light; supported-color-schemes: light; }
       body, table, td, p, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
       table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; border-collapse: collapse; }
       img { border: 0; outline: none; text-decoration: none; -ms-interpolation-mode: bicubic; }
@@ -122,30 +130,29 @@ export function renderTransactionalEmail({
       [data-ogsc] .email-header { background-color: ${colors.greenDark} !important; }
     </style>
   </head>
-  <body class="email-outer" style="margin:0;padding:0;width:100%;background-color:${colors.cream};font-family:Arial,Helvetica,sans-serif;">
+  <body class="email-outer" bgcolor="${colors.cream}" style="margin:0;padding:0;width:100%;background-color:${colors.cream};font-family:Arial,Helvetica,sans-serif;">
     <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;mso-hide:all;">${escapeHtml(preheader)}&#847;&zwnj;&nbsp;</div>
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="email-outer" style="width:100%;background-color:${colors.cream};">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="email-outer" bgcolor="${colors.cream}" style="width:100%;background-color:${colors.cream};">
       <tr>
-        <td align="center" class="email-shell" style="padding:32px 20px;">
-          <!-- Single card: no seam between header and body (fixes white border line in clients) -->
-          <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" class="email-card" style="width:100%;max-width:600px;background-color:${colors.white};border-radius:16px;overflow:hidden;">
+        <td align="center" class="email-shell" bgcolor="${colors.cream}" style="padding:32px 20px;background-color:${colors.cream};">
+          <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" class="email-card" bgcolor="${colors.white}" style="width:100%;max-width:600px;background-color:${colors.white};border-radius:16px;overflow:hidden;">
             <tr>
-              <td class="email-header" style="background-color:${colors.greenDark};padding:26px 32px;">
+              <td class="email-header" bgcolor="${colors.greenDark}" style="background-color:${colors.greenDark};padding:26px 32px;">
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                   <tr>
-                    <td width="64" valign="middle" style="width:64px;vertical-align:middle;line-height:0;font-size:0;">
+                    <td width="88" valign="middle" style="width:88px;vertical-align:middle;line-height:0;font-size:0;">
                       ${brandMark}
                     </td>
                     <td valign="middle" style="vertical-align:middle;padding-left:16px;">
                       <p style="margin:0;font-size:18px;line-height:1.2;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:${colors.white};">${escapeHtml(brand.name)}</p>
-                      <p style="margin:6px 0 0;font-size:13px;line-height:1.5;font-style:italic;color:${colors.amber};">${escapeHtml(brand.tagline)}</p>
+                      <p style="margin:6px 0 0;font-size:13px;line-height:1.5;font-style:italic;color:${colors.amber};">${escapeHtml(tagline)}</p>
                     </td>
                   </tr>
                 </table>
               </td>
             </tr>
             <tr>
-              <td class="email-body" style="background-color:${colors.white};padding:36px 32px;">
+              <td class="email-body" bgcolor="${colors.white}" style="background-color:${colors.white};padding:36px 32px;">
                 <p style="margin:0 0 10px;font-size:11px;line-height:1.4;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${colors.amber};">${escapeHtml(eyebrow)}</p>
                 <h1 class="email-title" style="margin:0 0 18px;font-size:28px;line-height:1.25;font-weight:700;color:${colors.greenDark};">${escapeHtml(title)}</h1>
                 ${paragraphHtml}
@@ -154,10 +161,10 @@ export function renderTransactionalEmail({
               </td>
             </tr>
           </table>
-          <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;">
+          <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" bgcolor="${colors.cream}" style="width:100%;max-width:600px;background-color:${colors.cream};">
             <tr>
-              <td class="email-footer" style="padding:18px 8px 0;text-align:center;font-size:12px;line-height:1.6;color:${colors.subtle};">
-                <p style="margin:0;">${escapeHtml(brand.name)} · ${escapeHtml(brand.emailFooterLine)}</p>
+              <td class="email-footer" bgcolor="${colors.cream}" style="padding:18px 8px 0;text-align:center;font-size:12px;line-height:1.6;color:${colors.subtle};background-color:${colors.cream};">
+                <p style="margin:0;">${escapeHtml(brand.name)} · ${escapeHtml(footerLine)}</p>
                 <p style="margin:8px 0 0;"><a href="mailto:${escapeHtml(brand.email)}" style="color:${colors.amberDark};text-decoration:none;">${escapeHtml(brand.email)}</a></p>
               </td>
             </tr>
