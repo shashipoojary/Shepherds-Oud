@@ -31,7 +31,6 @@ export const brand = {
   founderName: "Dominique",
   founderRole: "Oprichter & Care Guide",
   founderRoleEn: "Founder & Care Guide",
-  founderPhotoPath: "/brand/founder.jpg",
   regionPrimary: "Den Haag / Haaglanden",
   regionPrimaryEn: "The Hague / Haaglanden",
   regionNote: "Nu actief in regio Den Haag / Haaglanden — daarna landelijke uitbreiding.",

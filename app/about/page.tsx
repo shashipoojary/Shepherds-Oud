@@ -1,5 +1,4 @@
 import { InfoPage } from "@/components/marketing/info-page";
-import { FounderPortrait } from "@/components/marketing/founder-portrait";
 import { getLocale } from "@/lib/i18n/get-locale";
 import { productUi } from "@/lib/i18n/ui";
 
@@ -20,10 +19,6 @@ export default async function AboutPage() {
       intro={copy.intro}
       sections={copy.sections}
       cta={{ label: copy.cta, href: "/how-it-works" }}
-    >
-      <div className="mx-auto mt-10 max-w-xs">
-        <FounderPortrait />
-      </div>
-    </InfoPage>
+    />
   );
 }
