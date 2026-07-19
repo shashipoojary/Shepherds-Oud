@@ -2,7 +2,6 @@ import Link from "next/link";
 import { ArrowRight, CalendarDays, ClipboardList, Home, Inbox, Phone, UserCheck, Users } from "lucide-react";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
-import { FounderPortrait } from "@/components/marketing/founder-portrait";
 import { Button } from "@/components/ui/button";
 import { ButtonLabel } from "@/components/ui/button-label";
 import { ButtonRow } from "@/components/ui/button-row";
@@ -273,15 +272,12 @@ export default async function HomePage() {
             className="pointer-events-none absolute inset-y-0 right-0 w-1/2 bg-[radial-gradient(ellipse_at_right,_rgba(181,193,139,0.28),_transparent_70%)]"
             aria-hidden
           />
-          <div className="relative mx-auto grid max-w-4xl gap-10 md:grid-cols-[minmax(0,14rem)_1fr] md:items-center md:gap-14">
-            <FounderPortrait />
-            <div>
-              <p className="section-label">{content.careGuide.label}</p>
-              <h2 className="mt-2 font-brand text-2xl font-semibold text-ink sm:text-3xl">{content.careGuide.title}</h2>
-              <p className="mt-2 text-sm font-medium text-brand-amber">{brandFounderRole(locale)}</p>
-              <p className="mt-4 text-body text-ink/80">{content.careGuide.credentials}</p>
-              <p className="mt-3 text-body text-ink/75">{content.careGuide.bio}</p>
-            </div>
+          <div className="relative mx-auto max-w-2xl">
+            <p className="section-label">{content.careGuide.label}</p>
+            <h2 className="mt-2 font-brand text-2xl font-semibold text-ink sm:text-3xl">{content.careGuide.title}</h2>
+            <p className="mt-2 text-sm font-medium text-brand-amber">{brandFounderRole(locale)}</p>
+            <p className="mt-4 text-body text-ink/80">{content.careGuide.credentials}</p>
+            <p className="mt-3 text-body text-ink/75">{content.careGuide.bio}</p>
           </div>
         </section>
 
