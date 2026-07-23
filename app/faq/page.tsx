@@ -27,6 +27,20 @@ export default async function FaqPage() {
           <h1 className="mt-2 font-brand text-3xl font-bold text-ink sm:text-4xl">{copy.title}</h1>
           <p className="mt-3 text-body text-ink/75">{copy.intro}</p>
 
+          <section
+            id="funding"
+            className="mt-8 scroll-mt-24 rounded-xl border border-brand-amber/30 bg-brand-amber/10 px-4 py-4 sm:px-5"
+          >
+            <p className="text-sm font-semibold text-ink">{copy.fundingSectionTitle}</p>
+            <p className="mt-2 text-sm leading-relaxed text-ink/75">{copy.fundingToolLead}</p>
+            <Link
+              href="/tools/funding-estimate"
+              className="mt-3 inline-block text-sm font-medium text-brand-amber hover:text-brand-amber-mid"
+            >
+              {copy.fundingToolCta}
+            </Link>
+          </section>
+
           <div className="mt-10 space-y-3">
             {copy.items.map((item) => (
               <details
@@ -49,6 +63,10 @@ export default async function FaqPage() {
             {" · "}
             <Link href={isPrelaunch ? publicRoutes.waitlistFamily : publicRoutes.intake} className="text-brand-amber hover:text-brand-amber-mid">
               {isPrelaunch ? ui.common.registerInterest : ui.common.startIntake}
+            </Link>
+            {" · "}
+            <Link href="/tools/funding-estimate" className="text-brand-amber hover:text-brand-amber-mid">
+              {copy.fundingToolCta}
             </Link>
           </p>
         </article>

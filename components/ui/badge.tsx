@@ -14,7 +14,13 @@ const badgeVariants = cva("inline-flex items-center rounded px-2 py-0.5 text-xs 
       new: "bg-brand-amber text-white",
       placed: "bg-brand-green-dark text-white",
       closed: "bg-neutral-400 text-white",
-      unknown: "bg-stone-300 text-ink/80"
+      unknown: "bg-stone-300 text-ink/80",
+      /** Soft admin pills — match Active / Provider locked styling */
+      softSuccess: "rounded-full bg-brand-green-pale/70 px-2.5 py-1 text-[11px] font-semibold leading-none text-brand-green-dark",
+      softPending:
+        "rounded-full bg-brand-amber/15 px-2.5 py-1 text-[11px] font-semibold leading-none text-brand-amber-dark ring-1 ring-brand-amber/25",
+      softNeutral: "rounded-full bg-stone-200/80 px-2.5 py-1 text-[11px] font-semibold leading-none text-ink/70",
+      softMuted: "rounded-full bg-neutral-100 px-2.5 py-1 text-[11px] font-semibold leading-none text-neutral-600 ring-1 ring-stone-200/80"
     }
   },
   defaultVariants: {

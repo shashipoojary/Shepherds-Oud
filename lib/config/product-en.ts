@@ -1,5 +1,5 @@
 import type { productUiNl } from "@/lib/config/product-nl";
-import { brand, brandFounderRole, brandRegionNote, brandRegionPrimary } from "@/lib/config/brand";
+import { brand, brandFounderRole, brandRegionNote } from "@/lib/config/brand";
 
 type ProductUi = typeof productUiNl;
 
@@ -104,6 +104,11 @@ export const productUiEn: ProductUi = {
     careServices: "Care and services:",
     nextStep: "Next step",
     estWait: "Est. wait:",
+    waitAskCareGuide: "Ask your Care Guide for current wait times",
+    waitEstimateSourceLabel: "Provider-reported estimate",
+    otherMatchedOptionsTitle: "Other options your Care Guide matched",
+    otherMatchedOptionsTip:
+      "Your top option has limited or unknown wait timing — review these other matches from your Care Guide.",
     priceOnRequest: "Price on request",
     requestVisit: "Request a visit",
     requestCallback: "Request a callback",
@@ -153,6 +158,8 @@ export const productUiEn: ProductUi = {
     contactViaOr: "or visit the",
     contactViaPrefix: "Contact us at",
     contactPage: "contact page",
+    fundingEstimateCta: "Care funding estimate",
+    fundingEstimateHint: "Compare your budget band with typical listed facility prices.",
     intakeRequestLabel: "Your care request",
     intakeRequestTitle: (name) => `Your care request — ${name}`,
     careGuideUpdates: "Updates from your Care Guide",
@@ -257,6 +264,7 @@ export const productUiEn: ProductUi = {
       careAndServices: "Care and services",
       languagesHeading: "Languages",
       keyDetails: "Key details",
+      waitEstimateHeading: "Wait time",
       contactAndNextSteps: "Contact and next steps"
     }
   },
@@ -385,6 +393,17 @@ export const productUiEn: ProductUi = {
     notSetPlaceholder: "Not set",
     availabilityStatusLabel: "Availability status",
     totalBedsLabel: "Total beds or places",
+    waitEstimateSectionTitle: "Wait time estimate",
+    waitEstimateSectionDesc:
+      "Let families know roughly how long the wait typically is — update this regularly for accuracy.",
+    waitEstimateMinLabel: "Estimated wait min (days)",
+    waitEstimateMaxLabel: "Estimated wait max (days)",
+    waitEstimateHelper: "Optional. Shown to families only while fresh (updated within 30 days).",
+    waitEstimateStalePrompt: (days: number) =>
+      days <= 0
+        ? "Last updated today — still looks current."
+        : `Last updated ${days} day${days === 1 ? "" : "s"} ago — consider refreshing for accuracy.`,
+    waitEstimateStaleForFamilies: "Families currently see “Ask your Care Guide” because this estimate is older than 30 days.",
     optionalPlaceholder: "Optional",
     facilityDetailsDesc: "Core details families and Care Guides use to assess fit.",
     facilityNameLabel: "Facility name *",
@@ -527,7 +546,11 @@ export const productUiEn: ProductUi = {
     responseTimeMin: "Response time must be at least 1 hour.",
     responseTimeMax: "Response time cannot be more than 168 hours (1 week).",
     priceMinNegative: "Minimum price cannot be negative.",
-    priceMaxNegative: "Maximum price cannot be negative."
+    priceMaxNegative: "Maximum price cannot be negative.",
+    waitEstimateWhole: "Wait estimate must be a whole number of days (0 or more).",
+    waitEstimateNegative: "Wait estimate cannot be negative.",
+    waitEstimateBothRequired: "Enter both a minimum and maximum wait estimate in days, or leave both empty.",
+    waitEstimateMinMaxOrder: "Minimum wait days cannot be greater than maximum wait days."
   },
   nav: {
     home: "Home",
@@ -554,8 +577,8 @@ export const productUiEn: ProductUi = {
     legalAria: "Legal",
     prelaunchBlurb: (regionNote: string) =>
       `Guided care navigation when living at home is no longer possible. ${regionNote} Register now.`,
-    liveBlurb: (regionPrimary: string) =>
-      `Guided care navigation — not a directory. Care Guide, matching and follow-up in ${regionPrimary}.`,
+    liveBlurb: (_regionPrimary: string) =>
+      "Guided care navigation — not a directory. Care Guide, matching and follow-up across the Netherlands.",
     copyrightSuffix: "Care navigation in the Netherlands.",
     prelaunchStatus: "Pre-launch — guided intake opening soon",
     liveStatus: "For families and care providers.",
@@ -592,15 +615,15 @@ export const productUiEn: ProductUi = {
     about: {
       metaTitle: `About | ${brand.name}`,
       metaDescription:
-        "Guided care navigation when living at home is no longer possible — Care Guide, matching and follow-up in The Hague / Haaglanden region.",
+        "Shepherds Oud is the trusted care navigation platform that guides older adults and families through every stage of aging — through one Care Guide.",
       label: "About",
-      title: "Care navigation with a human guide",
-      intro: `${brand.name} helps families when living at home is no longer possible — with dementia, after hospital, or when home care is no longer enough. We are not a directory. Every journey starts with a Care Guide who listens, assesses, and coordinates with suitable providers.`,
+      title: "Care navigation through every stage of aging",
+      intro: `${brand.name} is the trusted care navigation platform that guides older adults and their families through every stage of aging — from independent living, to home care, to assisted living, to nursing care, through one advisor. We are not a directory. Every journey starts with a Care Guide who listens, assesses, and coordinates with suitable providers.`,
       sections: [
         {
           title: "Who we help",
           paragraphs: [
-            "Adult children and families looking for the next step: nursing home, care villa, or more intensive support at home. Even when the person is still mobile — dementia often requires different care than mobility alone.",
+            "Adult children and families looking for the next step across the aging journey: more support at home, assisted living, dementia care, or nursing care.",
             "Families often reach out when decisions feel urgent, confusing, or emotionally heavy. We stay with you from first intake through placement and follow-up at 7, 30, and 90 days."
           ]
         },
@@ -610,7 +633,7 @@ export const productUiEn: ProductUi = {
             "A guided journey — not a directory or endless search list",
             "Free for families; transparently paid by participating providers",
             "One dedicated Care Guide from intake through follow-up",
-            "Regional focus: The Hague / Haaglanden, then nationwide",
+            "Support across the Netherlands",
             "Help with Dutch terms: Wlz, Wmo, CIZ, PGB, eigen bijdrage, zorgkantoor"
           ],
           paragraphs: [] as string[]
@@ -618,7 +641,7 @@ export const productUiEn: ProductUi = {
         {
           title: `Your Care Guide: ${brand.founderName}`,
           paragraphs: [
-            `${brand.founderName} (${brandFounderRole("en")}) built Shepherds Oud because families in crisis get lost between directories and paperwork. Guidance from care professionals who know the Dutch system — from CIZ applications to choosing between home care, a care villa, or a nursing home.`,
+            `${brand.founderName} (${brandFounderRole("en")}) built Shepherds Oud because families in crisis get lost between directories and paperwork. Guidance from care professionals who know the Dutch system — from CIZ applications to choosing between home care, assisted living, or nursing care.`,
             brandRegionNote("en")
           ]
         }
@@ -628,42 +651,59 @@ export const productUiEn: ProductUi = {
     howItWorks: {
       metaTitle: `How it works | ${brand.name}`,
       metaDescription:
-        "Step by step: intake, Care Guide, matching, visits, placement and follow-up at 7, 30 and 90 days.",
+        "Seven steps: assessment, Care Guide, options, Care Roadmap, visits, move support, and follow-up at 7, 30 and 90 days.",
       label: "How it works",
-      title: "From first conversation to the right care",
-      intro: `${brand.name} is a guided journey — not a directory. You always know the next step and who is helping you. ${brandRegionNote("en")}`,
+      title: "How Shepherds Oud works",
+      intro: `${brand.name} is the trusted care navigation platform that guides older adults and their families through every stage of aging — through one Care Guide. You always know the next step and who is helping you.`,
       sections: [
         {
-          title: "1. Tell us your situation",
+          title: "1. Tell us about your loved one",
           paragraphs: [
-            "Complete the guided intake in about 10–15 minutes: who needs care, dementia or care needs, urgency, funding (Wlz / Wmo / PGB), language, and who helps decide.",
+            "Complete a guided assessment in about 10 minutes: medical needs, preferences, location, language, mobility, and budget.",
             "You can save progress and continue later when signed in."
           ]
         },
         {
-          title: "2. Meet your Care Guide",
+          title: "2. Understand needs",
           paragraphs: [
-            "A Care Guide calls within 24 hours, reviews your file, and helps clarify goals, budget, and practical requirements (distance, language, dementia capacity)."
+            "Your Care Guide identifies care level, risks, budget, Wmo eligibility considerations, and urgency — so decisions are grounded, not guessed."
           ]
         },
         {
-          title: "3. View your shortlist",
+          title: "3. Explore every option",
           paragraphs: [
-            "When the care plan is ready, you see matched providers — not an endless search list. Availability and wait times where known, plus the option to save favourites."
+            "Review care paths that fit your situation — including home care, assisted living, rehabilitation, dementia care, respite care, day activities, and nursing care."
           ]
         },
         {
-          title: "4. Visits, placement, and follow-up",
+          title: "4. Receive a Care Roadmap",
           paragraphs: [
-            "Your Care Guide coordinates visits or callback appointments. Status updates appear on your dashboard.",
-            "After placement we stay involved: check-ins at 7, 30, and 90 days — with the same Care Guide. If a provider declines, your file stays open."
+            "Get recommended options with estimated waiting times where known, costs and funding paths, and clear next steps from your Care Guide."
+          ]
+        },
+        {
+          title: "5. Visit providers",
+          paragraphs: [
+            "Request visits or callbacks from your dashboard. Your Care Guide helps you prepare questions and can join when needed."
+          ]
+        },
+        {
+          title: "6. Move with confidence",
+          paragraphs: [
+            "Support with documentation, a moving checklist, family coordination, and communication with the chosen provider."
+          ]
+        },
+        {
+          title: "7. Stay supported",
+          paragraphs: [
+            "Follow-up at 7, 30, and 90 days after placement — with the same Care Guide — so the arrangement keeps working."
           ]
         }
       ]
     },
     contact: {
       metaTitle: `Contact | ${brand.name}`,
-      metaDescription: `Contact ${brand.name} for guided care navigation in the ${brand.regionPrimaryEn} region.`,
+      metaDescription: `Contact ${brand.name} for guided care navigation across the Netherlands.`,
       label: "Contact",
       title: "We're here to help",
       intro:
@@ -673,7 +713,9 @@ export const productUiEn: ProductUi = {
       familiesLive: "Start the intake online, or call the Care Guide line if you'd rather talk first.",
       providersBlurb: "Free to list, pay on placement. Read the terms or register your location.",
       emailHint: "Response within one business day — or faster via the Care Guide line.",
-      englishPage: "English page"
+      englishPage: "English page",
+      fundingEstimateLead: "Want a rough sense of facility prices versus your budget?",
+      fundingEstimateCta: "Open the care funding estimate"
     },
     faq: {
       metaTitle: `FAQ | ${brand.name}`,
@@ -683,11 +725,15 @@ export const productUiEn: ProductUi = {
       title: "Frequently asked questions",
       intro:
         "About guided care navigation, costs, and Dutch terms such as Wlz, Wmo, CIZ, PGB, and eigen bijdrage.",
-      internationalsLead: "International in The Hague?",
+      internationalsLead: "International in the Netherlands?",
+      fundingSectionTitle: "Funding & costs",
+      fundingToolLead:
+        "Compare your budget band with typical monthly prices listed by providers — educational only, not CAK or Wmo guidance.",
+      fundingToolCta: "Open the care funding estimate",
       items: [
         {
           q: "What is Shepherds Oud?",
-          a: "A guided care navigation service — not a directory. You get one Care Guide who helps from intake through placement and follow-up (7, 30, and 90 days), when living at home is no longer possible."
+          a: "Shepherds Oud is the trusted care navigation platform that guides older adults and their families through every stage of aging — from independent living, to home care, to assisted living, to nursing care, through one advisor. You get one Care Guide from intake through placement and follow-up (7, 30, and 90 days)."
         },
         {
           q: "Is it free for families?",
@@ -719,6 +765,10 @@ export const productUiEn: ProductUi = {
           a: "The part you (or your family) contribute to Wlz or Wmo care. The amount depends on income, assets, and situation. We help interpret the letter; formal calculation is by CAK / municipality."
         },
         {
+          q: "Can I get a rough cost estimate?",
+          a: "Yes. Use the care funding estimate tool to compare your budget band with typical monthly prices listed by providers on Shepherds Oud. It is educational only — not official CAK, Wmo, or insurance guidance. Your Care Guide confirms exact costs for your situation."
+        },
+        {
           q: "What does the zorgkantoor do?",
           a: "The zorgkantoor (care office) contracts Wlz providers in a region and helps find suitable care within your indication."
         },
@@ -735,7 +785,7 @@ export const productUiEn: ProductUi = {
     providers: {
       metaTitle: `For care providers | ${brand.name}`,
       metaDescription:
-        "List for free on Shepherds Oud. Pay only on successful placement. Pre-matched family inquiries in The Hague / Haaglanden region.",
+        "List for free on Shepherds Oud. Pay only on successful placement. Pre-matched family inquiries across the Netherlands.",
       label: "Care providers",
       title: "Free to list. Pay on placement.",
       intro: `${brand.name} is not a subscription directory. You are visible without a monthly listing fee. We only earn when there is a successful placement — transparent for families and providers.`,
@@ -743,7 +793,7 @@ export const productUiEn: ProductUi = {
       whatYouGet: [
         "Pre-matched families (care type, language, dementia capacity, availability)",
         "Dashboard to accept, decline, or follow up on leads",
-        `Focus region ${brandRegionPrimary("en")}, then nationwide expansion`,
+        "Coverage across the Netherlands",
         "No endless cold leads from an open directory"
       ],
       compensationTitle: "Compensation",
@@ -793,22 +843,22 @@ export const productUiEn: ProductUi = {
     home: {
       metaTitle: brand.name,
       metaDescription:
-        "Guided care navigation when living at home is no longer possible — Care Guide, matching and follow-up in The Hague / Haaglanden region.",
+        "Shepherds Oud is the trusted care navigation platform that guides older adults and families through every stage of aging — through one Care Guide.",
       heroSubline:
-        "When living at home is no longer possible — with dementia, after hospital, or when home care is no longer enough.",
+        "One dedicated Care Guide. Personal advice. Verified providers. Support from the first conversation to well after placement.",
       registerInterest: "Register interest",
       preferEmail: "Prefer email? ",
       forFamilies: "For families",
       forCareProviders: "For care providers",
       familiesPrelaunch:
         "Register your interest. At launch a Care Guide will personally review your situation.",
-      familiesLive: "Start the intake. A Care Guide calls within 24 hours and supports you through follow-up.",
+      familiesLive: "Start your Care Journey. A Care Guide calls within 24 hours and supports you through follow-up.",
       providersCard: "List for free. Pay only on placement. Receive pre-matched family inquiries.",
       viewTerms: "View terms",
       howItWorksLabel: "How it works",
-      howItWorksTitle: "A guided journey — not a directory",
+      howItWorksTitle: "How Shepherds Oud works",
       howItWorksDesc:
-        "From first conversation to placement and follow-up — with one dedicated contact. No endless search lists like Filica or ZorgkaartNederland.",
+        "Seven clear steps — from a short assessment to placement and follow-up — with one dedicated Care Guide.",
       trustLabel: "Trust",
       faqLead: "Questions about Wlz, Wmo, CIZ, PGB or eigen bijdrage? ",
       viewFaq: "View the FAQ",
@@ -819,13 +869,70 @@ export const productUiEn: ProductUi = {
       providersPrelaunchCard: "Register for free. Pay only on placement.",
       getStartedLabel: "Get started",
       readyToBegin: "Ready to begin?",
-      familiesLiveCard: "Complete the intake — a Care Guide calls within 24 hours.",
+      familiesLiveCard: "Start your Care Journey — a Care Guide calls within 24 hours.",
       listForFree: "List for free",
       providersLiveCard: "Pay only on successful placement. Read the terms.",
       providersSectionLabel: "Providers",
       providersSectionTitle: "For care providers",
       providersSectionDesc: "Reach families that truly fit — list for free, pay on placement.",
       registerYourLocation: "Register your location"
+    },
+    fundingEstimate: {
+      metaTitle: `Care funding estimate | ${brand.name}`,
+      metaDescription:
+        "Rough monthly facility price estimate based on listed provider prices — not official CAK or Wmo guidance.",
+      label: "Tools",
+      title: "Care funding estimate",
+      intro:
+        "Compare your budget band with typical monthly prices listed by care providers on Shepherds Oud. Educational only — not a formal cost calculation.",
+      careTypesLabel: "Care type(s)",
+      fundingTypesLabel: "Funding path(s) already known",
+      budgetLabel: "Monthly budget band",
+      budgetPlaceholder: "Select a budget band",
+      submit: "Show estimate",
+      submitting: "Calculating…",
+      needCareType: "Select at least one care type to see an estimate.",
+      errorGeneric: "Something went wrong. Please try again.",
+      resultTypicalTitle: "Typical facility monthly range",
+      resultTypicalEmpty: "Insufficient data yet for this care type — listed providers have not published monthly prices.",
+      resultTypicalBasedOn: (count: number) =>
+        count === 1
+          ? "Based on 1 listed provider with published monthly prices."
+          : `Based on ${count} listed providers with published monthly prices.`,
+      resultCoversTitle: "What usually covers what",
+      covers: [
+        {
+          title: "Wlz",
+          text: "Long-term Care Act — for people who need permanent intensive care (for example nursing home or 24-hour care at home). Indication is assessed by CIZ; formal contribution rules are set nationally."
+        },
+        {
+          title: "Wmo",
+          text: "Social Support Act — municipal support to stay at home longer (help at home, day activities, adaptations). Arranged via your municipality."
+        },
+        {
+          title: "Zvw",
+          text: "Health Insurance Act — covers many medical and nursing services through your basic health insurance, within policy rules."
+        },
+        {
+          title: "PGB",
+          text: "Personal budget — you receive budget to purchase care yourself instead of care in kind via a contracted provider."
+        },
+        {
+          title: "Private funding",
+          text: "Self-pay or private top-ups when public schemes do not cover the chosen arrangement, or while applications are in progress."
+        }
+      ],
+      resultCompareTitle: "Your budget vs typical range",
+      compareBelow: "Your stated budget band is below the typical listed range for this care type.",
+      compareWithin: "Your stated budget band overlaps the typical listed range for this care type.",
+      compareAbove: "Your stated budget band is above the typical listed range for this care type.",
+      compareUnknown: "Select a budget band (and ensure price data exists) to compare with the typical range.",
+      compareNoPrices: "We cannot compare your budget until providers have published prices for this care type.",
+      disclaimer:
+        "This is a rough estimate based on listed provider prices, not official CAK, Wmo, or insurance guidance. Your Care Guide can confirm exact costs and funding options for your situation.",
+      primaryCta: "Speak with a Care Guide",
+      secondaryCta: "Read funding FAQ",
+      prefilledHint: "We prefilled fields from your latest intake. You can change them before estimating."
     }
   }
 };

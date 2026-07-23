@@ -11,11 +11,13 @@ import {
   matchStatusLabel
 } from "@/lib/domain/match-status";
 import { normalizeIntakeStatus } from "@/lib/domain/intake-workflow";
+import { FamilyWaitEstimate } from "@/components/family/wait-estimate-line";
 import { withIntakeId } from "@/lib/client/case-selection";
 import { useLocale } from "@/components/i18n/locale-provider";
 import { optionLabel } from "@/lib/i18n/ui";
 import type { ProviderMatch } from "@/lib/core/types";
 import { Button } from "@/components/ui/button";
+import { shouldSurfaceOtherMatchedOptions } from "@/lib/domain/wait-estimate";
 
 type FamilyActiveMatchesProps = {
   intakeId: string;
@@ -54,12 +56,16 @@ export function FamilyActiveMatches({
   const active = matches.filter((match) => isFamilyActionableMatchStatus(match.matchStatus));
   const declined = matches.filter((match) => match.matchStatus === "DECLINED");
   const suggested = matches.filter((match) => match.matchStatus === "SUGGESTED");
-  const singleMatch = matches.filter((match) => match.matchStatus !== "DECLINED").length === 1;
-  const showProviderPanel = declineContext.needsDeclineRecovery || active.length > 0;
+  const forwardMatches = matches.filter((match) => match.matchStatus !== "DECLINED");
+  const topMatch = forwardMatches[0] ?? null;
+  const showOtherMatchedOptions =
+    Boolean(topMatch) && forwardMatches.length > 1 && shouldSurfaceOtherMatchedOptions(topMatch);
+  const singleMatch = forwardMatches.length === 1;
+  const showProviderBlock = declineContext.needsDeclineRecovery || active.length > 0;
 
   return (
     <section id="provider-updates" className="scroll-mt-24 space-y-4">
-      {showProviderPanel ? (
+      {showProviderBlock ? (
         <div className="rounded-2xl bg-white p-5 shadow-soft ring-1 ring-stone-200/80">
           {declineContext.needsDeclineRecovery ? (
             <>
@@ -98,6 +104,17 @@ export function FamilyActiveMatches({
                   <MatchCard key={match.matchId || match.id} match={match} intakeId={intakeId} locale={locale} ui={ui} />
                 ))}
               </div>
+              {showOtherMatchedOptions ? (
+                <div className="mt-4 rounded-xl bg-brand-cream/40 px-4 py-3">
+                  <p className="text-sm font-medium text-ink">{ui.family.otherMatchedOptionsTitle}</p>
+                  <p className="mt-1 text-sm text-neutral-600">{ui.family.otherMatchedOptionsTip}</p>
+                  <Button asChild size="sm" className="mt-3">
+                    <Link href={withIntakeId("/family/results", intakeId)}>
+                      {ui.family.viewFullShortlist} <ArrowRight className="h-4 w-4" />
+                    </Link>
+                  </Button>
+                </div>
+              ) : null}
               {declined.length ? (
                 <div className="mt-5">
                   <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">{ui.family.previouslyDeclined}</p>
@@ -129,6 +146,17 @@ export function FamilyActiveMatches({
           <p className="mt-1 text-sm text-neutral-600">
             {declineContext.needsDeclineRecovery ? ui.family.shortlistDeclineHint : ui.family.shortlistHint}
           </p>
+          {suggested.slice(0, 3).map((match) => (
+            <div key={match.matchId || match.id} className="mt-3">
+              <MatchCard match={match} intakeId={intakeId} locale={locale} ui={ui} />
+            </div>
+          ))}
+          {showOtherMatchedOptions ? (
+            <div className="mt-4 rounded-xl bg-brand-cream/40 px-4 py-3">
+              <p className="text-sm font-medium text-ink">{ui.family.otherMatchedOptionsTitle}</p>
+              <p className="mt-1 text-sm text-neutral-600">{ui.family.otherMatchedOptionsTip}</p>
+            </div>
+          ) : null}
           <Button asChild className="mt-4">
             <Link href={withIntakeId("/family/results", intakeId)}>
               {ui.family.viewMatches} <ArrowRight className="h-4 w-4" />
@@ -199,6 +227,16 @@ function MatchCard({
           <p className="mt-1 text-sm text-neutral-600">
             {match.type ? optionLabel(locale, match.type) : ui.family.careFacility} · {match.area}
           </p>
+          {match.waitEstimate ? (
+            <FamilyWaitEstimate
+              className="mt-2"
+              estimate={match.waitEstimate}
+              isFresh={Boolean(match.waitEstimateIsFresh)}
+              estWaitLabel={ui.family.estWait}
+              sourceLabel={ui.family.waitEstimateSourceLabel}
+              compact
+            />
+          ) : null}
           {match.matchStatus ? (
             <p className="mt-2 text-sm leading-6 text-neutral-700">{familyMatchNextStep(match.matchStatus, match.name, locale)}</p>
           ) : null}

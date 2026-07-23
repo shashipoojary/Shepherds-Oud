@@ -3,13 +3,14 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { BedDouble, Check, CircleDollarSign, Clock, Loader2, MapPin } from "lucide-react";
+import { BedDouble, Check, CircleDollarSign, Loader2, MapPin } from "lucide-react";
 import { isHistoryIntake, selectFamilyIntake, withIntakeId } from "@/lib/client/case-selection";
 import { TOAST_DISMISS_MS } from "@/lib/client/toast-timing";
 import { getSessionFamilyIntakes, type FamilyIntake } from "@/lib/client/intake";
 import { requestMatchAction } from "@/lib/client/match-request";
 import { familyMatchNextStep, matchStatusLabel, isFamilyActionableMatchStatus } from "@/lib/domain/match-status";
 import { FamilyCasePicker } from "@/components/family/case-picker";
+import { FamilyWaitEstimate } from "@/components/family/wait-estimate-line";
 import { IntakeSummaryCard } from "@/components/family/intake-summary-card";
 import { ActionFeedback } from "@/components/ui/action-feedback";
 import { availabilityBadgeVariant, Badge } from "@/components/ui/badge";
@@ -23,6 +24,7 @@ import { useLocale } from "@/components/i18n/locale-provider";
 import { optionLabel, productUi } from "@/lib/i18n/ui";
 import type { Locale } from "@/lib/i18n/config";
 import type { ProviderMatch } from "@/lib/core/types";
+import { shouldSurfaceOtherMatchedOptions } from "@/lib/domain/wait-estimate";
 
 const filterIds = ["all", "available", "memory", "home"] as const;
 
@@ -369,6 +371,13 @@ function ResultsPageContent() {
   const featuredAccepted = matchIsInProgress(recommended.matchStatus);
   const featuredDeclined = matchIsDeclined(recommended.matchStatus);
   const featuredFeedback = featuredMatchId ? rowFeedback[featuredMatchId] : undefined;
+  const surfaceOtherMatchedOptions = shouldSurfaceOtherMatchedOptions(recommended);
+  const otherOptionsTitle = surfaceOtherMatchedOptions
+    ? ui.family.otherMatchedOptionsTitle
+    : ui.family.resultsOther;
+  const otherOptionsTip = surfaceOtherMatchedOptions
+    ? ui.family.otherMatchedOptionsTip
+    : ui.family.otherProvidersTip;
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
@@ -414,10 +423,18 @@ function ResultsPageContent() {
               <Fact icon={MapPin} label={recommended.area} />
               {featuredMeta.beds ? <Fact icon={BedDouble} label={featuredMeta.beds} /> : null}
               <Fact icon={CircleDollarSign} label={featuredMeta.price} />
-              {featuredDetails.wait || featuredMeta.wait ? (
-                <Fact icon={Clock} label={`${ui.family.estWait} ${featuredDetails.wait || featuredMeta.wait}`} />
-              ) : null}
             </dl>
+            {featuredDetails.wait || featuredMeta.wait ? (
+              <div className="mt-3">
+                <FamilyWaitEstimate
+                  estimate={featuredDetails.wait || featuredMeta.wait}
+                  isFresh={Boolean(recommended.waitEstimateIsFresh)}
+                  estWaitLabel={ui.family.estWait}
+                  sourceLabel={ui.family.waitEstimateSourceLabel}
+                  showIcon
+                />
+              </div>
+            ) : null}
 
             <div className="mt-5 flex flex-wrap items-center gap-2">
               <Badge variant={availabilityBadgeVariant(recommended.availability)}>{optionLabel(locale, recommended.availability)}</Badge>
@@ -565,8 +582,8 @@ function ResultsPageContent() {
       <section className="mt-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h2 className="font-brand text-lg font-semibold text-ink">{ui.family.resultsOther}</h2>
-            <p className="mt-1 text-sm text-ink/55">{ui.family.otherProvidersTip}</p>
+            <h2 className="font-brand text-lg font-semibold text-ink">{otherOptionsTitle}</h2>
+            <p className="mt-1 text-sm text-ink/55">{otherOptionsTip}</p>
           </div>
           <span className="text-sm text-ink/45">
             {ui.family.shownOf(filteredCount, providers.length)}
@@ -682,7 +699,6 @@ function CompareRow({
             {[
               meta.beds,
               meta.price,
-              details.wait || meta.wait ? `${ui.family.estWait} ${details.wait || meta.wait}` : null,
               details.languages ? `${ui.family.languages} ${details.languages}` : null,
               details.funding ? `${ui.family.funding} ${details.funding}` : null,
               details.roomTypes ? `${ui.family.rooms} ${details.roomTypes}` : null
@@ -690,6 +706,16 @@ function CompareRow({
               .filter(Boolean)
               .join(" · ")}
           </p>
+          {details.wait || meta.wait ? (
+            <FamilyWaitEstimate
+              className="mt-2 text-sm text-ink/60"
+              estimate={details.wait || meta.wait}
+              isFresh={Boolean(provider.waitEstimateIsFresh)}
+              estWaitLabel={ui.family.estWait}
+              sourceLabel={ui.family.waitEstimateSourceLabel}
+              compact
+            />
+          ) : null}
           {details.contactExpectation ? <p className="mt-1 text-xs text-ink/50">{details.contactExpectation}</p> : null}
           {provider.matchStatus && showStatusNote(provider.matchStatus) ? (
             <p className={`mt-2 text-sm leading-6 ${declined ? "text-neutral-600" : "text-brand-green-dark"}`}>

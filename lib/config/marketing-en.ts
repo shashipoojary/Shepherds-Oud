@@ -1,64 +1,107 @@
 import { brand } from "@/lib/config/brand";
 import { getIsPrelaunch } from "@/lib/config/prelaunch";
 import type { Locale } from "@/lib/i18n/config";
-import { homeContentNl, homeHeroCopy as homeHeroCopyNl, siteTaglineNl } from "@/lib/config/marketing-nl";
+import {
+  homeContentNl,
+  homeHeroCopy as homeHeroCopyNl,
+  positioningStatementNl,
+  siteTaglineNl
+} from "@/lib/config/marketing-nl";
 
-export const siteTaglineEn =
-  "No one should have to search for care alone when living at home is no longer possible.";
+/** Core positioning — used across marketing surfaces. */
+export const positioningStatementEn =
+  "Shepherds Oud is the trusted care navigation platform that guides older adults and their families through every stage of aging — from independent living, to home care, to assisted living, to nursing care, through one advisor.";
+
+export const siteTaglineEn = "Finding care shouldn't feel overwhelming.";
 
 export function homeHeroCopyEn(prelaunch = getIsPrelaunch()) {
   return {
-    badge: prelaunch ? "Early registrations open" : `Active in ${brand.regionPrimaryEn}`,
-    headline: "A guided journey — not a directory",
+    badge: prelaunch ? "Early registrations open" : `Serving families across the Netherlands`,
+    headline: "Navigate Aging with Confidence.",
     supportLine:
-      "Free for families. Shepherds Oud is paid by participating care providers. Your choices are never limited to only paying providers.",
+      "One dedicated Care Guide. Personal advice. Verified providers. Support from the first conversation to well after placement.",
     intro: prelaunch
-      ? `${brand.regionNoteEn} Register now; we will contact you when matching starts in your area.`
-      : `${brand.regionNoteEn} One dedicated Care Guide supports you from intake through placement and follow-up.`
+      ? "Register now; we will contact you when guided matching opens in your area."
+      : "Start online, or speak with a Care Guide if you'd rather talk first."
   };
 }
 
 export const homeContentEn = {
+  primaryCta: "Start your Care Journey",
+  primaryCtaShort: "Care Journey",
+  secondaryCta: "Speak with a Care Guide",
+  secondaryCtaShort: "Care Guide",
   responsePromise: "A Care Guide calls you within 24 hours.",
   freeSupportLine:
     "Free for families. Shepherds Oud is compensated by participating care providers. Transparent about how we are paid — so you know your options do not depend on who pays.",
+  problem: {
+    label: "The challenge",
+    title: "The Netherlands is changing.",
+    bullets: [
+      "More seniors than ever",
+      "Longer waiting lists",
+      "Fewer caregivers",
+      "Families expected to coordinate everything",
+      "Hundreds of providers to compare",
+      "Complex Wmo rules",
+      "Housing shortages"
+    ],
+    closing: "Families are overwhelmed. Shepherds Oud simplifies every step."
+  },
   followUp: {
     label: "Follow-up",
     title: "We stay until it works",
     description:
-      "After placement we check in at 7, 30, and 90 days. Almost nobody in this market does that — not directories, not facility brokers. We do, with the same Care Guide."
+      "After placement we check in at 7, 30, and 90 days. Almost nobody in this market does that — not directories, not facility brokers. We do, with the same Care Guide.",
+    daysLabel: "days"
   },
   ourRole: {
     title: "Our role",
-    description:
-      "Shepherds Oud helps with navigation, matching, and coordination in the Dutch care system (Wlz, Wmo, CIZ, PGB, eigen bijdrage, zorgkantoor). We do not give medical advice, guarantee admission, or replace a doctor, municipality, or emergency services (112).",
+    description: positioningStatementEn,
     points: [
-      "Navigation, matching, and coordination",
+      "Navigation, matching, and coordination through one Care Guide",
       "No medical advice",
       "No guarantee of admission",
       "Does not replace a doctor, municipality, zorgkantoor, or emergency services",
       "No final eligibility decisions (CIZ / municipality)"
     ]
   },
+  /** Seven-step journey — functional wording matches what the product can do today. */
   familySteps: [
     {
-      title: "Tell us your situation",
-      text: "Intake covering home situation, dementia or care needs, urgency, funding (Wlz / Wmo / PGB), language, and who helps decide."
+      title: "Tell us about your loved one",
+      text: "A guided assessment (about 10 minutes) covering medical needs, preferences, location, language, mobility, and budget."
     },
     {
-      title: "Meet your Care Guide",
-      text: "One named guide reviews your case, prepares a care plan, and supports every next step — you do not do this alone."
+      title: "Understand needs",
+      text: "Your Care Guide identifies care level, risks, budget, Wmo eligibility considerations, and urgency — so decisions are grounded, not guessed."
     },
     {
-      title: "Visits, placement, and follow-up",
-      text: "Matching with suitable providers, scheduled visits or callbacks, placement, and check-ins at 7, 30, and 90 days."
+      title: "Explore every option",
+      text: "Review care paths that fit your situation — including home care, assisted living, rehabilitation, dementia care, respite care, day activities, and nursing care."
+    },
+    {
+      title: "Receive a Care Roadmap",
+      text: "Recommended options with estimated waiting times where known, costs and funding paths, and clear next steps from your Care Guide."
+    },
+    {
+      title: "Visit providers",
+      text: "Request visits or callbacks from your dashboard. Your Care Guide helps you prepare questions and can join when needed."
+    },
+    {
+      title: "Move with confidence",
+      text: "Support with documentation, a moving checklist, family coordination, and communication with the chosen provider."
+    },
+    {
+      title: "Stay supported",
+      text: "Follow-up at 7, 30, and 90 days after placement — with the same Care Guide — so the arrangement keeps working."
     }
   ],
   careGuide: {
     label: "Your Care Guide",
     title: `Guidance from ${brand.founderName}`,
     credentials:
-      "Guided by care professionals who know the Dutch system — from CIZ applications to eigen bijdrage and choosing between home care, a care villa, or a nursing home.",
+      "Guided by care professionals who know the Dutch system — from CIZ applications to eigen bijdrage and choosing between home care, assisted living, or nursing care.",
     bio: `${brand.founderName} built Shepherds Oud because families in crisis get lost between directories and paperwork. One human line from first conversation to follow-up — not an anonymous search engine.`
   },
   providerSteps: [
@@ -77,18 +120,18 @@ export const homeContentEn = {
   ],
   prelaunch: {
     title: "Register your interest",
-    description: `${brand.regionNoteEn} Families and providers can register now.`,
+    description: "Families and providers across the Netherlands can register now.",
     familyCta: "Register interest",
     facilityCta: "Register your location"
   },
   live: {
-    title: "Start your guided care journey",
+    title: "Start your Care Journey",
     description: "Complete the intake. A Care Guide calls within 24 hours and supports you further.",
-    familyCta: "Start intake",
+    familyCta: "Start your Care Journey",
     facilityCta: "Register your location"
   },
   internationalsCta: {
-    title: "International in The Hague?",
+    title: "International in the Netherlands?",
     text: "English-language navigation of the Dutch care system (CIZ, Wlz, Wmo, eigen bijdrage) — built for embassy, court, and corporate families.",
     href: "/internationals",
     cta: "Read in English"
@@ -97,6 +140,10 @@ export const homeContentEn = {
 
 export function siteTagline(locale: Locale) {
   return locale === "en" ? siteTaglineEn : siteTaglineNl;
+}
+
+export function positioningStatement(locale: Locale) {
+  return locale === "en" ? positioningStatementEn : positioningStatementNl;
 }
 
 export function homeHeroCopyFor(locale: Locale, prelaunch = getIsPrelaunch()) {

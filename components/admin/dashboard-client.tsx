@@ -3210,12 +3210,17 @@ function WaitlistTable({
     verified: boolean,
     notify: (message: string) => void = setMessage
   ) {
+    if (!verified) {
+      notify("Registration verification cannot be undone once confirmed.");
+      return;
+    }
+
     setPendingId(id);
     try {
       const response = await fetch(`/api/waitlist/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ registrationVerified: verified })
+        body: JSON.stringify({ registrationVerified: true })
       });
 
       if (!response.ok) {
@@ -3230,7 +3235,7 @@ function WaitlistTable({
         item.id === id
           ? {
               ...item,
-              registrationVerified: Boolean(result.registrationVerified ?? verified),
+              registrationVerified: Boolean(result.registrationVerified ?? true),
               canSendProviderInvite: Boolean(result.canSendProviderInvite),
               providerInviteAttemptsUsed:
                 result.providerInviteAttemptsUsed ?? item.providerInviteAttemptsUsed,
@@ -3246,11 +3251,7 @@ function WaitlistTable({
 
       setEntries((current) => current.map(patch));
       setSelected((current) => (current ? patch(current) : current));
-      notify(
-        verified
-          ? "Registration marked as verified. You can invite this provider."
-          : "Registration verification cleared."
-      );
+      notify("Registration marked as verified. You can invite this provider.");
     } catch (error) {
       notify(error instanceof Error ? error.message : "Could not update registration verification.");
     } finally {
@@ -3573,15 +3574,18 @@ function WaitlistDetailPanel({
                     type="checkbox"
                     className="mt-1"
                     checked={Boolean(entry.registrationVerified)}
-                    disabled={isPending}
-                    onChange={(event) =>
-                      void onToggleRegistrationVerified(entry.id, event.target.checked, setPanelMessage)
-                    }
+                    disabled={isPending || Boolean(entry.registrationVerified)}
+                    onChange={(event) => {
+                      if (!event.target.checked) return;
+                      void onToggleRegistrationVerified(entry.id, true, setPanelMessage);
+                    }}
                   />
                   <span>
                     <span className="font-medium text-ink">Registration verified externally</span>
                     <span className="mt-1 block text-xs text-neutral-500">
-                      Confirm the KVK or government ID outside this app before inviting the facility.
+                      {entry.registrationVerified
+                        ? "Confirmed. This cannot be undone — invite when ready."
+                        : "Confirm the KVK or government ID outside this app before inviting the facility."}
                     </span>
                   </span>
                 </label>

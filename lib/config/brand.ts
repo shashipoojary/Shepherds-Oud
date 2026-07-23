@@ -6,13 +6,13 @@ import type { Locale } from "@/lib/i18n/config";
  */
 export const brand = {
   name: "Shepherds Oud",
-  tagline: "Samen de juiste zorg vinden.",
-  taglineEn: "Finding the right care together.",
+  tagline: "Navigeer met vertrouwen door ouder worden.",
+  taglineEn: "Navigate aging with confidence.",
   email: "dominique@shepherdsoud.com",
   metaDescription:
-    "Begeleide zorgnavigatie wanneer thuis wonen niet meer gaat. Care Guide, passende zorgaanbieders en nazorg in regio Den Haag / Haaglanden — en daarna landelijk.",
+    "Shepherds Oud is het vertrouwde zorgnavigatieplatform dat ouderen en hun families begeleidt door elke fase van ouder worden — via één Care Guide.",
   metaDescriptionEn:
-    "Guided care navigation when living at home is no longer possible. Care Guide, matched providers, and follow-up in The Hague / Haaglanden — then nationwide.",
+    "Shepherds Oud is the trusted care navigation platform that guides older adults and their families through every stage of aging — through one Care Guide.",
   emailFooterLine: "Begeleide zorgnavigatie in Nederland",
   emailFooterLineEn: "Guided care navigation in the Netherlands",
   logoFullPath: "/brand/logo.png",
@@ -31,10 +31,10 @@ export const brand = {
   founderName: "Dominique",
   founderRole: "Oprichter & Care Guide",
   founderRoleEn: "Founder & Care Guide",
-  regionPrimary: "Den Haag / Haaglanden",
-  regionPrimaryEn: "The Hague / Haaglanden",
-  regionNote: "Nu actief in regio Den Haag / Haaglanden — daarna landelijke uitbreiding.",
-  regionNoteEn: "Now active in The Hague / Haaglanden — expanding nationwide next."
+  regionPrimary: "Nederland",
+  regionPrimaryEn: "Netherlands",
+  regionNote: "Actief in heel Nederland — begeleide zorgnavigatie voor families landelijk.",
+  regionNoteEn: "Active across the Netherlands — guided care navigation for families nationwide."
 };
 
 /** Display KvK on legal/company pages — never invent a number. */

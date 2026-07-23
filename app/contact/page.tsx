@@ -63,6 +63,10 @@ export default async function ContactPage() {
                     <Link href={publicRoutes.waitlistFamily}>{ui.common.registerInterest}</Link>
                   </Button>
                 )}
+                <p className="mt-2 text-sm leading-relaxed text-ink/70">{copy.fundingEstimateLead}</p>
+                <Button asChild size="sm" variant="outline">
+                  <Link href="/tools/funding-estimate">{copy.fundingEstimateCta}</Link>
+                </Button>
               </div>
             </section>
 
@@ -100,6 +104,10 @@ export default async function ContactPage() {
             {" · "}
             <Link href="/faq" className="text-brand-amber hover:text-brand-amber-mid">
               {ui.nav.faq}
+            </Link>
+            {" · "}
+            <Link href="/tools/funding-estimate" className="text-brand-amber hover:text-brand-amber-mid">
+              {copy.fundingEstimateCta}
             </Link>
             {" · "}
             <Link href="/internationals" className="text-brand-amber hover:text-brand-amber-mid">

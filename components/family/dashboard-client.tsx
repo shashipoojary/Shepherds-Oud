@@ -175,13 +175,22 @@ function FamilyDashboardContent() {
               <Button asChild variant="outline" className="w-full">
                 <Link href="/family/intake">{ui.family.startNewRequest}</Link>
               </Button>
+              <Button asChild variant="outline" className="w-full">
+                <Link href="/tools/funding-estimate">{ui.family.fundingEstimateCta}</Link>
+              </Button>
             </>
           ) : (
-            <Button asChild className="w-full">
-              <Link href="/family/intake">{ui.family.startIntake}</Link>
-            </Button>
+            <>
+              <Button asChild className="w-full">
+                <Link href="/family/intake">{ui.family.startIntake}</Link>
+              </Button>
+              <Button asChild variant="outline" className="w-full">
+                <Link href="/tools/funding-estimate">{ui.family.fundingEstimateCta}</Link>
+              </Button>
+            </>
           )}
         </ButtonRow>
+        <p className="mt-2 text-sm text-neutral-600">{ui.family.fundingEstimateHint}</p>
       </header>
 
       <section className="mt-6 space-y-6">

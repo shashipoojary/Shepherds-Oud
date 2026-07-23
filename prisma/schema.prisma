@@ -173,6 +173,11 @@ model Provider {
   bedsTotal              Int?
   bedsOpen               Int?
   waitlistText           String?
+  /// Estimated wait range in days (optional). Null = no estimate published.
+  waitEstimateMinDays    Int?
+  waitEstimateMaxDays    Int?
+  /// When the wait estimate was last set or changed by the provider.
+  waitEstimateUpdatedAt  DateTime?
   contactName            String?
   email                  String?
   phone                  String?

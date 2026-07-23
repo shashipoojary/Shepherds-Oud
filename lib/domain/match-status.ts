@@ -364,47 +364,6 @@ export function providerAcceptButtonLabel(status: string, locale: Locale = "nl")
   }
 }
 
-export function providerInquiryActionMessage(
-  status: string,
-  familyName: string,
-  priorStatus?: string,
-  locale: Locale = "nl"
-) {
-  const en = locale === "en";
-  switch (status) {
-    case "ACCEPTED":
-      if (priorStatus === "VISIT_REQUESTED") {
-        return en
-          ? `You accepted the visit request from ${familyName}. Their Care Guide will help align timing with you.`
-          : `U heeft het bezoekverzoek van ${familyName} geaccepteerd. Hun Care Guide helpt de timing met u af te stemmen.`;
-      }
-      if (priorStatus === "CALLBACK_REQUESTED") {
-        return en
-          ? `You accepted the callback request from ${familyName}. Their Care Guide will follow up to coordinate.`
-          : `U heeft het terugbelverzoek van ${familyName} geaccepteerd. Hun Care Guide volgt op om te coördineren.`;
-      }
-      return en
-        ? `You accepted the inquiry from ${familyName}. Their Care Guide will coordinate next steps with you.`
-        : `U heeft de aanvraag van ${familyName} geaccepteerd. Hun Care Guide coördineert de volgende stappen met u.`;
-    case "DECLINED":
-      if (priorStatus === "VISIT_REQUESTED") {
-        return en
-          ? `You declined the visit request from ${familyName}.`
-          : `U heeft het bezoekverzoek van ${familyName} afgewezen.`;
-      }
-      if (priorStatus === "CALLBACK_REQUESTED") {
-        return en
-          ? `You declined the callback request from ${familyName}.`
-          : `U heeft het terugbelverzoek van ${familyName} afgewezen.`;
-      }
-      return en
-        ? `You declined the inquiry from ${familyName}.`
-        : `U heeft de aanvraag van ${familyName} afgewezen.`;
-    default:
-      return en ? "Inquiry updated." : "Aanvraag bijgewerkt.";
-  }
-}
-
 export function adminInquiryHint(status: string) {
   const updatedHints: Record<string, string> = {
     SUGGESTED: "Step 1 done - family can see this provider. Wait for them to request a visit or callback.",

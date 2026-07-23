@@ -1,6 +1,7 @@
 import type { Locale } from "@/lib/i18n/config";
 import { siteTagline } from "@/lib/config/marketing-en";
 import {
+  BUDGET_BAND_OPTIONS,
   CARE_TYPE_OPTIONS,
   DECISION_MAKER_RESPONSIBILITY_OPTIONS,
   FUNCTIONAL_NEEDS_OPTIONS,
@@ -217,13 +218,7 @@ function buildIntakeSteps(locale: Locale): IntakeStep[] {
         {
           type: "select",
           label: "Monthly budget range",
-          options: [
-            "Under EUR 1,500",
-            "EUR 1,500 - EUR 2,500",
-            "EUR 2,500 - EUR 4,000",
-            "EUR 4,000 - EUR 6,000",
-            "Above EUR 6,000"
-          ],
+          options: [...BUDGET_BAND_OPTIONS],
           optional: true
         },
         { type: "chips", label: "Placement preferences", options: [...PLACEMENT_PREFERENCE_OPTIONS], optional: true },
