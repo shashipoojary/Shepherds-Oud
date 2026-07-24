@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { ArrowRight, CalendarDays, ClipboardList, Home, Inbox, Phone, UserCheck, Users } from "lucide-react";
+import { ArrowRight, CalendarDays, ClipboardList, Home, Inbox, UserCheck, Users } from "lucide-react";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
 import { Button } from "@/components/ui/button";
 import { ButtonLabel } from "@/components/ui/button-label";
 import { ButtonRow } from "@/components/ui/button-row";
-import { brand, brandFounderRole, brandPhoneLabel, brandRegionPrimary } from "@/lib/config/brand";
+import { brand, brandFounderRole, brandRegionPrimary } from "@/lib/config/brand";
 import { getLocale } from "@/lib/i18n/get-locale";
 import { homeContentFor, homeHeroCopyFor, siteTagline } from "@/lib/config/marketing-en";
 import { getIsPrelaunch, getPublicRoutes } from "@/lib/config/prelaunch";
@@ -27,8 +27,9 @@ export default async function HomePage() {
   const hero = homeHeroCopyFor(locale, isPrelaunch);
   const tagline = siteTagline(locale);
   const primaryHref = publicRoutes.familyPrimary;
-  const primaryLabel = isPrelaunch ? ui.common.registerInterest : ui.common.startIntake;
-  const phoneHref = brand.phone ? `tel:${brand.phone.replace(/\s+/g, "")}` : null;
+  const primaryLabel = content.primaryCta;
+  const secondaryHref = "/contact";
+  const secondaryLabel = content.secondaryCta;
 
   const providerSteps = [
     { icon: UserCheck, ...content.providerSteps[0] },
@@ -102,7 +103,7 @@ export default async function HomePage() {
     <>
       <SiteHeader />
       <main>
-        {/* Hero — one composition: brand, headline, support, CTAs */}
+        {/* Hero — brand, headline, subhead, CTAs only */}
         <section className="relative overflow-hidden bg-gradient-to-br from-brand-cream via-[#f3f0ea] to-brand-service-pale">
           <div
             className="pointer-events-none absolute -right-24 top-0 h-[28rem] w-[28rem] rounded-full bg-[radial-gradient(circle,_rgba(181,193,139,0.45)_0%,_transparent_68%)]"
@@ -112,60 +113,55 @@ export default async function HomePage() {
             className="pointer-events-none absolute -left-16 bottom-0 h-64 w-64 rounded-full bg-[radial-gradient(circle,_rgba(192,122,74,0.12)_0%,_transparent_70%)]"
             aria-hidden
           />
-          <div className="relative mx-auto max-w-5xl px-4 pb-16 pt-14 sm:px-6 sm:pb-20 sm:pt-20 lg:pb-24">
+          <div className="relative mx-auto flex min-h-[70vh] max-w-5xl flex-col justify-center px-4 py-16 sm:px-6 sm:py-20 lg:min-h-[78vh] lg:py-24">
             <div className="mx-auto max-w-3xl text-center lg:mx-0 lg:max-w-2xl lg:text-left">
               <p className="home-reveal font-brand text-3xl font-semibold tracking-tight text-brand-green-dark sm:text-4xl">
                 {brand.name}
               </p>
-              <p className="home-reveal home-reveal-delay-1 section-label mt-5">{hero.badge}</p>
-              <h1 className="home-reveal home-reveal-delay-1 mt-3 font-brand text-hero font-bold text-ink">{hero.headline}</h1>
+              <h1 className="home-reveal home-reveal-delay-1 mt-6 font-brand text-hero font-bold text-ink">
+                {hero.headline}
+              </h1>
               <p className="home-reveal home-reveal-delay-2 mx-auto mt-5 max-w-xl text-lg leading-relaxed text-ink/80 lg:mx-0">
-                {home.heroSubline}
+                {hero.supportLine}
               </p>
-              <ButtonRow
-                className="home-reveal home-reveal-delay-2 mx-auto mt-8 max-w-lg lg:mx-0"
-                columns={phoneHref ? 2 : isPrelaunch ? 1 : 2}
-              >
+              <ButtonRow className="home-reveal home-reveal-delay-2 mx-auto mt-9 max-w-xl lg:mx-0" columns={2}>
                 <Button asChild className="w-full" size="lg">
                   <Link href={primaryHref} className="inline-flex items-center justify-center gap-1.5">
-                    <ButtonLabel short="Intake">{primaryLabel}</ButtonLabel>
+                    <ButtonLabel short={content.primaryCtaShort}>{primaryLabel}</ButtonLabel>
                     <ArrowRight className="h-3.5 w-3.5 shrink-0" />
                   </Link>
                 </Button>
-                {phoneHref ? (
-                  <Button asChild variant="outline" className="w-full" size="lg">
-                    <a href={phoneHref} className="inline-flex items-center justify-center gap-1.5">
-                      <Phone className="h-3.5 w-3.5 shrink-0" />
-                      {brandPhoneLabel(locale)}
-                    </a>
-                  </Button>
-                ) : !isPrelaunch ? (
-                  <Button asChild variant="outline" className="w-full" size="lg">
-                    <Link href={publicRoutes.waitlist}>{ui.common.waitlist}</Link>
-                  </Button>
-                ) : null}
+                <Button asChild variant="outline" className="w-full" size="lg">
+                  <Link href={secondaryHref} className="inline-flex items-center justify-center gap-1.5 text-center">
+                    <ButtonLabel short={content.secondaryCtaShort}>{secondaryLabel}</ButtonLabel>
+                  </Link>
+                </Button>
               </ButtonRow>
-              <div className="home-reveal home-reveal-delay-3 mx-auto mt-6 max-w-xl space-y-2 text-sm text-ink/70 lg:mx-0">
-                <p className="font-medium text-brand-green-dark">{hero.supportLine}</p>
-                <p>{hero.intro}</p>
-                {phoneHref ? (
-                  <p>
-                    {brandPhoneLabel(locale)}:{" "}
-                    <a href={phoneHref} className="font-semibold text-brand-amber hover:text-brand-amber-mid">
-                      {brand.phone}
-                    </a>
-                  </p>
-                ) : (
-                  <p>
-                    {home.preferEmail}
-                    <a href={`mailto:${brand.email}`} className="font-semibold text-brand-amber hover:text-brand-amber-mid">
-                      {brand.email}
-                    </a>
-                  </p>
-                )}
-                <p className="font-medium text-ink/80">{content.responsePromise}</p>
-              </div>
+              <p className="home-reveal home-reveal-delay-3 mx-auto mt-6 text-sm font-medium text-ink/70 lg:mx-0">
+                {content.responsePromise}
+              </p>
             </div>
+          </div>
+        </section>
+
+        {/* The Problem */}
+        <section className="bg-brand-cream px-4 py-14 sm:px-6 sm:py-16">
+          <div className="mx-auto max-w-4xl">
+            <header className="max-w-2xl">
+              <p className="section-label">{content.problem.label}</p>
+              <h2 className="mt-3 font-brand text-2xl font-semibold text-ink sm:text-3xl">{content.problem.title}</h2>
+            </header>
+            <ul className="mt-10 grid gap-x-10 gap-y-4 sm:grid-cols-2">
+              {content.problem.bullets.map((bullet) => (
+                <li key={bullet} className="flex gap-3 text-body text-ink/80">
+                  <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-amber" aria-hidden />
+                  <span>{bullet}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-10 max-w-2xl border-t border-stone-200/90 pt-8 text-lg font-medium leading-relaxed text-ink">
+              {content.problem.closing}
+            </p>
           </div>
         </section>
 
@@ -176,7 +172,6 @@ export default async function HomePage() {
             <h2 className="mt-3 font-brand text-2xl font-semibold sm:text-3xl">{content.followUp.title}</h2>
             <p className="mx-auto mt-4 max-w-2xl text-body text-white/85">{content.followUp.description}</p>
             <div className="relative mx-auto mt-10 max-w-md sm:max-w-lg">
-              {/* Single connector through circle midpoints; circles cover the line */}
               <div
                 className="pointer-events-none absolute left-[16.666%] right-[16.666%] top-7 z-0 h-px bg-brand-green-pale/40 sm:top-8"
                 aria-hidden
@@ -196,7 +191,7 @@ export default async function HomePage() {
                       {item.day}
                     </span>
                     <span className="text-[11px] uppercase tracking-[0.12em] text-white/55">
-                      {locale === "en" ? "days" : "dagen"}
+                      {content.followUp.daysLabel}
                     </span>
                   </div>
                 ))}
@@ -246,7 +241,7 @@ export default async function HomePage() {
               <p className="mt-3 text-body text-ink/80">{home.howItWorksDesc}</p>
             </header>
 
-            <ol className="mt-10 grid gap-8 sm:mt-12 sm:gap-10 lg:grid-cols-3 lg:gap-8">
+            <ol className="mt-10 grid gap-8 sm:mt-12 sm:gap-10 md:grid-cols-2 lg:grid-cols-3 lg:gap-8">
               {content.familySteps.map((step, index) => (
                 <li key={step.title} className="relative min-w-0">
                   <p
@@ -257,9 +252,6 @@ export default async function HomePage() {
                   </p>
                   <h3 className="mt-3 font-brand text-xl font-semibold text-ink sm:mt-4">{step.title}</h3>
                   <p className="mt-2 text-body leading-relaxed text-ink/75">{step.text}</p>
-                  {index < content.familySteps.length - 1 ? (
-                    <div className="mt-8 h-px bg-stone-200/90 lg:hidden" aria-hidden />
-                  ) : null}
                 </li>
               ))}
             </ol>

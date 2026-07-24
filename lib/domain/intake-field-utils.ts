@@ -63,6 +63,14 @@ export const FUNDING_TYPE_OPTIONS = [
   "No funding information yet"
 ] as const;
 
+export const BUDGET_BAND_OPTIONS = [
+  "Under EUR 1,500",
+  "EUR 1,500 - EUR 2,500",
+  "EUR 2,500 - EUR 4,000",
+  "EUR 4,000 - EUR 6,000",
+  "Above EUR 6,000"
+] as const;
+
 export const FUNCTIONAL_NEEDS_OPTIONS = [
   "Mobility",
   "Transfers",

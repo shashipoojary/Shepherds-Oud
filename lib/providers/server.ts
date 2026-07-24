@@ -22,8 +22,47 @@ export async function getUserLinkedProvider(userId: string) {
   return user?.linkedProvider ?? null;
 }
 
-function buildProviderData(input: ProviderProfileInput, user: { name: string | null }, userEmail: string) {
+function buildProviderData(
+  input: ProviderProfileInput,
+  user: { name: string | null },
+  userEmail: string,
+  existing?: {
+    waitEstimateMinDays: number | null;
+    waitEstimateMaxDays: number | null;
+    waitEstimateUpdatedAt: Date | null;
+  } | null
+) {
   const area = [input.city, input.province].filter(Boolean).join(", ") || "Netherlands";
+
+  const waitEstimateFields = (() => {
+    if (input.waitEstimateMinDays === undefined && input.waitEstimateMaxDays === undefined) {
+      return {};
+    }
+
+    if (input.waitEstimateMinDays == null && input.waitEstimateMaxDays == null) {
+      return {
+        waitEstimateMinDays: null,
+        waitEstimateMaxDays: null,
+        waitEstimateUpdatedAt: null
+      };
+    }
+
+    if (input.waitEstimateMinDays != null && input.waitEstimateMaxDays != null) {
+      const unchanged =
+        existing != null &&
+        existing.waitEstimateMinDays === input.waitEstimateMinDays &&
+        existing.waitEstimateMaxDays === input.waitEstimateMaxDays &&
+        existing.waitEstimateUpdatedAt != null;
+
+      return {
+        waitEstimateMinDays: input.waitEstimateMinDays,
+        waitEstimateMaxDays: input.waitEstimateMaxDays,
+        waitEstimateUpdatedAt: unchanged ? existing.waitEstimateUpdatedAt : new Date()
+      };
+    }
+
+    return {};
+  })();
 
   return {
     name: input.name,
@@ -48,20 +87,25 @@ function buildProviderData(input: ProviderProfileInput, user: { name: string | n
     ...(input.responseTimeHours != null ? { responseTimeHours: input.responseTimeHours } : {}),
     visitAvailability: input.visitAvailability || null,
     ...(input.priceMin != null ? { priceMin: input.priceMin } : {}),
-    ...(input.priceMax != null ? { priceMax: input.priceMax } : {})
+    ...(input.priceMax != null ? { priceMax: input.priceMax } : {}),
+    ...waitEstimateFields
   };
 }
 
 export async function upsertProviderForUser(userId: string, userEmail: string, input: ProviderProfileInput) {
-  const user = await prisma.user.findUnique({ where: { id: userId } });
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: { linkedProvider: true }
+  });
 
   if (!user) {
     throw new Error("User not found.");
   }
 
-  const data = buildProviderData(input, user, userEmail);
+  const existing = user.linkedProvider;
+  const data = buildProviderData(input, user, userEmail, existing);
 
-  if (user.linkedProviderId) {
+  if (user.linkedProviderId && existing) {
     return prisma.provider.update({
       where: { id: user.linkedProviderId },
       data

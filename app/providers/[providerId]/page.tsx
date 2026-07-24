@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SiteHeader } from "@/components/layout/site-header";
+import { FamilyWaitEstimate } from "@/components/family/wait-estimate-line";
 import { ProviderDetailActions } from "@/components/provider/detail-actions";
 import { availabilityBadgeVariant, Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -31,6 +32,7 @@ export default async function ProviderDetailPage({
   const backHref = fromDashboard ? `/family/dashboard${intakeQuery}#provider-updates` : `/family/results${intakeQuery}`;
   const backLabel = fromDashboard ? detail.backToDashboard : detail.backToMatches;
   const careLabels = [...new Set([...(provider.careLevels ?? []), ...(provider.services ?? [])])];
+  const detailEntries = Object.entries(provider.details).filter(([label]) => label !== "Estimated wait");
 
   return (
     <>
@@ -59,6 +61,21 @@ export default async function ProviderDetailPage({
             <div>
               <p className="leading-[1.7] text-ink/80">{provider.description}</p>
 
+              {provider.waitEstimate ? (
+                <section className="mt-8">
+                  <h2 className="section-label">{detail.waitEstimateHeading}</h2>
+                  <div className="mt-3">
+                    <FamilyWaitEstimate
+                      estimate={provider.waitEstimate}
+                      isFresh={Boolean(provider.waitEstimateIsFresh)}
+                      estWaitLabel={ui.family.estWait}
+                      sourceLabel={ui.family.waitEstimateSourceLabel}
+                      showIcon
+                    />
+                  </div>
+                </section>
+              ) : null}
+
               <section className="mt-8">
                 <h2 className="section-label">{detail.careAndServices}</h2>
                 <div className="mt-3 flex flex-wrap gap-2">
@@ -86,7 +103,7 @@ export default async function ProviderDetailPage({
               <section className="mt-8">
                 <h2 className="section-label">{detail.keyDetails}</h2>
                 <div className="mt-3 grid gap-4 sm:grid-cols-2">
-                  {Object.entries(provider.details).map(([label, value]) => (
+                  {detailEntries.map(([label, value]) => (
                     <div key={label} className="text-body text-ink/75">
                       <strong className="block text-ink">{label}</strong>
                       {value}

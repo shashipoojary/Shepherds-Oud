@@ -45,6 +45,14 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       }
     }
 
+    // Once marked verified, admins cannot clear it (invite gate must stay one-way).
+    if (registrationVerified === false && existing.registrationVerified) {
+      return NextResponse.json(
+        { error: "Registration verification cannot be undone once confirmed." },
+        { status: 409 }
+      );
+    }
+
     const entry = await prisma.waitlistEntry.update({
       where: { id },
       data: {

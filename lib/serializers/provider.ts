@@ -17,6 +17,9 @@ export type SafeProvider = {
   bedsOpen: number | null;
   availabilityStatus: string | null;
   waitlistText: string | null;
+  waitEstimateMinDays: number | null;
+  waitEstimateMaxDays: number | null;
+  waitEstimateUpdatedAt: string | null;
   services: string[];
   languages: string[];
   careLevels: string[];
@@ -110,6 +113,11 @@ export function toSafeProvider(provider: Provider | null): SafeProvider | null {
     bedsOpen: provider.bedsOpen,
     availabilityStatus: provider.availabilityStatus,
     waitlistText: provider.waitlistText,
+    waitEstimateMinDays: provider.waitEstimateMinDays,
+    waitEstimateMaxDays: provider.waitEstimateMaxDays,
+    waitEstimateUpdatedAt: provider.waitEstimateUpdatedAt
+      ? provider.waitEstimateUpdatedAt.toISOString()
+      : null,
     services: provider.services,
     languages: provider.languages,
     careLevels: provider.careLevels,

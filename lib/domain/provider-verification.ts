@@ -50,20 +50,19 @@ export function providerVerificationLabel(status: string | null | undefined) {
 
 export function providerVerificationBadgeVariant(
   status: string | null | undefined
-): "matched" | "placed" | "new" | "waitlist" | "closed" | "unknown" {
+): "softSuccess" | "softPending" | "softNeutral" | "softMuted" {
   switch (normalizeProviderVerificationStatus(status)) {
     case "LISTING_LIVE":
-      return "placed";
     case "VERIFIED":
     case "ONBOARDING_COMPLETE":
-      return "matched";
+      return "softSuccess";
     case "VERIFICATION_PENDING":
-      return "new";
+      return "softPending";
     case "TEMPORARILY_UNAVAILABLE":
-      return "waitlist";
+      return "softMuted";
     case "REGISTRATION_RECEIVED":
     default:
-      return "unknown";
+      return "softNeutral";
   }
 }
 

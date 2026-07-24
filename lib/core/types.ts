@@ -30,5 +30,7 @@ export type ProviderMatch = {
   qualityInfo?: string | null;
   accessibilityNotes?: string | null;
   waitEstimate?: string | null;
+  /** True when waitEstimate is a fresh provider-reported day range (not Care Guide fallback). */
+  waitEstimateIsFresh?: boolean;
   responseTimeHours?: number | null;
 };

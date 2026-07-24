@@ -35,7 +35,7 @@ function privacyContent(locale: Locale): LegalPageContent {
       metaTitle: `Privacybeleid | ${brand.name}`,
       metaDescription: `Hoe ${brand.name} persoonsgegevens verzamelt, gebruikt en beschermt onder de AVG.`,
       updated: legalUpdated(locale),
-      intro: `${brand.name} ("wij", "ons") biedt menselijke zorgnavigatie voor families wanneer thuis wonen niet meer mogelijk is, en voor zorgaanbieders in Nederland (beginnend in regio Den Haag / Haaglanden). Dit privacybeleid legt uit welke persoonsgegevens we verzamelen, waarom we die gebruiken en welke keuzes u heeft. We verwerken persoonsgegevens in overeenstemming met de Algemene Verordening Gegevensbescherming (AVG) en de Nederlandse privacywetgeving.`,
+      intro: `${brand.name} ("wij", "ons") biedt menselijke zorgnavigatie voor families wanneer thuis wonen niet meer mogelijk is, en voor zorgaanbieders in heel Nederland. Dit privacybeleid legt uit welke persoonsgegevens we verzamelen, waarom we die gebruiken en welke keuzes u heeft. We verwerken persoonsgegevens in overeenstemming met de Algemene Verordening Gegevensbescherming (AVG) en de Nederlandse privacywetgeving.`,
       sections: [
         {
           title: "Wie wij zijn",
@@ -122,7 +122,7 @@ function privacyContent(locale: Locale): LegalPageContent {
     metaTitle: `Privacy policy | ${brand.name}`,
     metaDescription: `How ${brand.name} collects, uses, and protects personal data under GDPR.`,
     updated: legalUpdated(locale),
-    intro: `${brand.name} ("we", "us") provides human-guided care navigation for families when living at home is no longer possible, and for care facilities in the Netherlands (starting in the Den Haag / Haaglanden region). This privacy policy explains what personal data we collect, why we use it, and the choices you have. We process personal data in line with the EU General Data Protection Regulation (GDPR) and Dutch privacy law.`,
+    intro: `${brand.name} ("we", "us") provides human-guided care navigation for families when living at home is no longer possible, and for care facilities across the Netherlands. This privacy policy explains what personal data we collect, why we use it, and the choices you have. We process personal data in line with the EU General Data Protection Regulation (GDPR) and Dutch privacy law.`,
     sections: [
       {
         title: "Who we are",
@@ -216,7 +216,7 @@ function termsContent(locale: Locale): LegalPageContent {
         {
           title: "Onze dienst",
           paragraphs: [
-            `${brand.name} helpt mensen bij zorgkeuzes wanneer thuis wonen niet meer mogelijk is — via menselijke begeleiding, zorgplanning en matching met aanbieders in Nederland (eerst Den Haag / Haaglanden, daarna landelijke uitbreiding). Wij zijn een navigatie- en coördinatiedienst — geen medische zorgverlener, spoeddienst of exploitant van een zorginstelling.`,
+            `${brand.name} helpt mensen bij zorgkeuzes wanneer thuis wonen niet meer mogelijk is — via menselijke begeleiding, zorgplanning en matching met aanbieders in heel Nederland. Wij zijn een navigatie- en coördinatiedienst — geen medische zorgverlener, spoeddienst of exploitant van een zorginstelling.`,
             "Tijdens de pre-lancering kan de publieke site beperkt zijn tot wachtlijstregistratie. Volledige begeleide intake en aanbiederstools openen wanneer we de lancering in uw regio aankondigen."
           ]
         },
@@ -299,7 +299,7 @@ function termsContent(locale: Locale): LegalPageContent {
       {
         title: "Our service",
         paragraphs: [
-          `${brand.name} helps people navigate care decisions when living at home is no longer possible — through human-guided support, care planning, and provider matching in the Netherlands (Den Haag / Haaglanden first, then national expansion). We are a navigation and coordination service — not a medical provider, emergency service, or care home operator.`,
+          `${brand.name} helps people navigate care decisions when living at home is no longer possible — through human-guided support, care planning, and provider matching across the Netherlands. We are a navigation and coordination service — not a medical provider, emergency service, or care home operator.`,
           "During pre-launch, the public site may be limited to waitlist registration. Full guided intake and provider tools open when we announce launch in your area."
         ]
       },
@@ -669,7 +669,7 @@ function accessibilityContent(locale: Locale): LegalPageContent {
         {
           title: "Voortdurende verbetering",
           paragraphs: [
-            "Toegankelijkheid is een doorlopend traject. We bekijken feedback, werken componenten bij en testen kritieke journeys terwijl we persoonlijke matching uitrollen in regio Den Haag / Haaglanden en later landelijk."
+            "Toegankelijkheid is een doorlopend traject. We bekijken feedback, werken componenten bij en testen kritieke journeys terwijl we persoonlijke matching landelijk uitrollen."
           ]
         }
       ],
@@ -708,7 +708,7 @@ function accessibilityContent(locale: Locale): LegalPageContent {
       {
         title: "Continuous improvement",
         paragraphs: [
-          "Accessibility is an ongoing effort. We review feedback, update components, and test critical journeys as we roll out personal matching in regio Den Haag / Haaglanden and later nationally."
+          "Accessibility is an ongoing effort. We review feedback, update components, and test critical journeys as we roll out personal matching nationwide across the Netherlands."
         ]
       }
     ],

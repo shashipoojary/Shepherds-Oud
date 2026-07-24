@@ -20,7 +20,6 @@ import {
   isProviderActionNeeded,
   matchStatusBadgeClass,
   providerAcceptButtonLabel,
-  providerInquiryActionMessage,
   providerInquiryBanner,
   providerInquiryStatusLabel,
   providerInquiryTabLabel,
@@ -49,6 +48,7 @@ import { brand } from "@/lib/config/brand";
 import { cn } from "@/lib/core/utils";
 import { formatReference, matchesListSearch, matchesReferenceQuery } from "@/lib/domain/reference";
 import { PROVIDER_AVAILABILITY_OPTIONS } from "@/lib/domain/provider-availability";
+import { isWaitEstimateStale, waitEstimateAgeDays } from "@/lib/domain/wait-estimate";
 
 type ProviderRecord = {
   id: string;
@@ -66,6 +66,9 @@ type ProviderRecord = {
   bedsOpen: number | null;
   availabilityStatus: string | null;
   waitlistText: string | null;
+  waitEstimateMinDays: number | null;
+  waitEstimateMaxDays: number | null;
+  waitEstimateUpdatedAt: string | null;
   services: string[];
   languages: string[];
   careLevels: string[];
@@ -113,6 +116,8 @@ type FormState = {
   bedsTotal: string;
   bedsOpen: string;
   availabilityStatus: string;
+  waitEstimateMinDays: string;
+  waitEstimateMaxDays: string;
   services: string[];
   languages: string[];
   careLevels: string[];
@@ -143,6 +148,8 @@ const emptyForm: FormState = {
   bedsTotal: "",
   bedsOpen: "",
   availabilityStatus: "Not set",
+  waitEstimateMinDays: "",
+  waitEstimateMaxDays: "",
   services: [],
   languages: [],
   careLevels: [],
@@ -170,6 +177,8 @@ function toForm(provider: ProviderRecord | null): FormState {
     bedsTotal: provider.bedsTotal?.toString() || "",
     bedsOpen: provider.bedsOpen?.toString() || "",
     availabilityStatus: provider.availabilityStatus || "Not set",
+    waitEstimateMinDays: provider.waitEstimateMinDays?.toString() || "",
+    waitEstimateMaxDays: provider.waitEstimateMaxDays?.toString() || "",
     services: provider.services ?? [],
     languages: provider.languages ?? [],
     careLevels: provider.careLevels ?? [],
@@ -287,8 +296,11 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [inquiryFeedback, setInquiryFeedback] = useState<Record<string, string>>({});
   const [providerId, setProviderId] = useState<string | null>(initialData?.provider?.id ?? null);
+  const [waitEstimateUpdatedAt, setWaitEstimateUpdatedAt] = useState<string | null>(
+    initialData?.provider?.waitEstimateUpdatedAt ?? null
+  );
   const [refreshing, setRefreshing] = useState(false);
-  const [confirmDecline, setConfirmDecline] = useState<{ id: string; familyName: string } | null>(null);
+  const [confirmDecline, setConfirmDecline] = useState<{ id: string } | null>(null);
   const [declineReason, setDeclineReason] = useState(declineReasonOptions[0]);
   const [profilePanelOpen, setProfilePanelOpen] = useState(false);
   const [inquiryTab, setInquiryTab] = useState<ProviderInquiryTab>("new");
@@ -327,6 +339,7 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
         setProfileComplete(data.profileComplete);
         setProfileMissingRequirements(data.profileMissingRequirements);
         setProviderId(data.provider?.id ?? null);
+        setWaitEstimateUpdatedAt(data.provider?.waitEstimateUpdatedAt ?? null);
         setSelectedInquiry((current) => {
           if (!current) return null;
           const fresh = data.inquiries.find((item) => item.id === current.id) ?? null;
@@ -363,6 +376,7 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
           setProfileComplete(data.profileComplete);
           setProfileMissingRequirements(data.profileMissingRequirements);
           setProviderId(data.provider?.id ?? null);
+          setWaitEstimateUpdatedAt(data.provider?.waitEstimateUpdatedAt ?? null);
         } else {
           setMessageTone("error");
           setMessage(await readApiError(response, locale));
@@ -471,6 +485,33 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
       return;
     }
 
+    const waitMinRaw = form.waitEstimateMinDays.trim();
+    const waitMaxRaw = form.waitEstimateMaxDays.trim();
+    const waitEstimateMinDays = waitMinRaw ? parseRequiredIntField(form.waitEstimateMinDays) : null;
+    const waitEstimateMaxDays = waitMaxRaw ? parseRequiredIntField(form.waitEstimateMaxDays) : null;
+
+    if (waitEstimateMinDays === "invalid" || waitEstimateMaxDays === "invalid") {
+      notify(ui.validation.waitEstimateWhole, "error");
+      setSaving(false);
+      return;
+    }
+
+    if ((waitEstimateMinDays == null) !== (waitEstimateMaxDays == null)) {
+      notify(ui.validation.waitEstimateBothRequired, "error");
+      setSaving(false);
+      return;
+    }
+
+    if (
+      waitEstimateMinDays != null &&
+      waitEstimateMaxDays != null &&
+      waitEstimateMinDays > waitEstimateMaxDays
+    ) {
+      notify(ui.validation.waitEstimateMinMaxOrder, "error");
+      setSaving(false);
+      return;
+    }
+
     try {
       const response = await fetch("/api/provider/me", {
         method: "PATCH",
@@ -496,7 +537,9 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
           ...(responseTimeHours !== undefined ? { responseTimeHours } : {}),
           visitAvailability: form.visitAvailability?.trim() || undefined,
           ...(parseOptionalInt(form.priceMin) !== undefined ? { priceMin: parseOptionalInt(form.priceMin) } : {}),
-          ...(parseOptionalInt(form.priceMax) !== undefined ? { priceMax: parseOptionalInt(form.priceMax) } : {})
+          ...(parseOptionalInt(form.priceMax) !== undefined ? { priceMax: parseOptionalInt(form.priceMax) } : {}),
+          waitEstimateMinDays,
+          waitEstimateMaxDays
         })
       });
 
@@ -513,6 +556,7 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
       }
       setForm(toForm(provider));
       setProviderId(provider.id);
+      setWaitEstimateUpdatedAt(provider.waitEstimateUpdatedAt ?? null);
       setProfileComplete(data.profileComplete);
       setProfileMissingRequirements(data.profileMissingRequirements);
       setInquiries(data.inquiries ?? []);
@@ -538,7 +582,7 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
     }
   }
 
-  async function updateInquiry(id: string, status: string, familyName: string, priorStatus: string, reason?: string) {
+  async function updateInquiry(id: string, status: string, reason?: string) {
     const actionKey = `${id}:${status}`;
     setPendingInquiryId(id);
     setPendingAction(actionKey);
@@ -569,8 +613,7 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
       setSelectedInquiry((current) => (current?.id === id ? { ...current, ...updated } : current));
       markProviderInquirySeen(id, updated.updatedAt);
       bumpInquirySeen();
-      const feedback = providerInquiryActionMessage(updated.status, familyName, priorStatus, locale);
-      setInquiryFeedback((current) => ({ ...current, [id]: feedback }));
+      // Success is already shown via status banner + "What next" — skip a second toast.
     } catch {
       setInquiryFeedback((current) => ({
         ...current,
@@ -854,8 +897,8 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
         pendingAction={pendingAction}
         inquiryFeedback={inquiryFeedback}
         onClose={() => setSelectedInquiry(null)}
-        onAccept={(inquiry) => void updateInquiry(inquiry.id, "ACCEPTED", inquiry.intake.contactName, inquiry.status)}
-        onDecline={(inquiry) => setConfirmDecline({ id: inquiry.id, familyName: inquiry.intake.contactName })}
+        onAccept={(inquiry) => void updateInquiry(inquiry.id, "ACCEPTED")}
+        onDecline={(inquiry) => setConfirmDecline({ id: inquiry.id })}
       />
 
       <section className="mt-5 rounded-xl border border-stone-200 bg-white px-4 py-4 shadow-soft sm:px-5 sm:py-5">
@@ -878,6 +921,7 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
         toggleList={toggleList}
         saving={saving}
         providerId={providerId}
+        waitEstimateUpdatedAt={waitEstimateUpdatedAt}
         profileComplete={profileComplete}
         profileMissingRequirements={profileMissingRequirements}
         onSave={(panelNotify) =>
@@ -904,13 +948,7 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
         }}
         onConfirm={() => {
           if (!confirmDecline) return;
-          void updateInquiry(
-            confirmDecline.id,
-            "DECLINED",
-            confirmDecline.familyName,
-            inquiries.find((item) => item.id === confirmDecline.id)?.status ?? "SUGGESTED",
-            declineReason
-          );
+          void updateInquiry(confirmDecline.id, "DECLINED", declineReason);
           setConfirmDecline(null);
           setDeclineReason(declineReasonOptions[0]);
         }}
@@ -1075,6 +1113,7 @@ function ProviderProfilePanel({
   toggleList,
   saving,
   providerId,
+  waitEstimateUpdatedAt,
   profileComplete,
   profileMissingRequirements,
   onSave
@@ -1086,6 +1125,7 @@ function ProviderProfilePanel({
   toggleList: (key: "services" | "languages" | "careLevels" | "fundingTypes", value: string) => void;
   saving: boolean;
   providerId: string | null;
+  waitEstimateUpdatedAt: string | null;
   profileComplete: boolean;
   profileMissingRequirements: string[];
   onSave: (notify: (message: string, tone?: "success" | "error") => void) => void;
@@ -1093,6 +1133,13 @@ function ProviderProfilePanel({
   const { locale, ui } = useLocale();
   const p = ui.provider;
   const { message: panelMessage, setMessage: setPanelMessage, clearMessage: clearPanelMessage } = usePanelMessage();
+
+  const waitAgeDays = waitEstimateAgeDays(waitEstimateUpdatedAt);
+  const waitIsStale = Boolean(
+    form.waitEstimateMinDays.trim() &&
+      form.waitEstimateMaxDays.trim() &&
+      isWaitEstimateStale(waitEstimateUpdatedAt)
+  );
 
   useEffect(() => {
     if (!open) clearPanelMessage();
@@ -1150,6 +1197,40 @@ function ProviderProfilePanel({
               <input type="number" min="0" value={form.bedsTotal} onChange={(e) => updateForm("bedsTotal", e.target.value)} className={inputClass} placeholder={p.optionalPlaceholder} />
             </Field>
           </div>
+        </PanelSection>
+
+        <PanelSection title={p.waitEstimateSectionTitle} description={p.waitEstimateSectionDesc}>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label={p.waitEstimateMinLabel}>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value={form.waitEstimateMinDays}
+                onChange={(event) => updateForm("waitEstimateMinDays", event.target.value)}
+                className={inputClass}
+                placeholder={p.optionalPlaceholder}
+              />
+            </Field>
+            <Field label={p.waitEstimateMaxLabel}>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value={form.waitEstimateMaxDays}
+                onChange={(event) => updateForm("waitEstimateMaxDays", event.target.value)}
+                className={inputClass}
+                placeholder={p.optionalPlaceholder}
+              />
+            </Field>
+          </div>
+          <p className="mt-3 text-sm leading-6 text-ink/65">{p.waitEstimateHelper}</p>
+          {waitEstimateUpdatedAt && waitAgeDays != null ? (
+            <p className={cn("mt-2 text-sm leading-6", waitIsStale ? "text-brand-amber-dark" : "text-ink/65")}>
+              {p.waitEstimateStalePrompt(waitAgeDays)}
+              {waitIsStale ? ` ${p.waitEstimateStaleForFamilies}` : null}
+            </p>
+          ) : null}
         </PanelSection>
 
         <PanelSection step={2} title={ui.provider.facilityDetails} description={p.facilityDetailsDesc}>

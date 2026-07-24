@@ -6,6 +6,8 @@ Production GitHub repository: https://github.com/dminoue15/shepherds-Oud-Care
 
 The product is built as one Next.js application with separate experiences for the public site, family journey, provider dashboard, and admin panel.
 
+**End-to-end user flows (family, provider, admin, prelaunch vs live):** see [`END-TO-END-FLOWS.md`](./END-TO-END-FLOWS.md).
+
 ## Product Overview
 
 Shepherds Oud supports four main users:

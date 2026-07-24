@@ -3,7 +3,7 @@
  * Stored option values and intake form keys stay English; use label helpers for display.
  */
 
-import { brand, brandFounderRole, brandRegionNote, brandRegionPrimary } from "@/lib/config/brand";
+import { brand, brandFounderRole, brandRegionNote } from "@/lib/config/brand";
 
 export function optionLabelNl(value: string): string {
   return OPTION_LABELS_NL[value] ?? value;
@@ -355,6 +355,11 @@ export const productUiNl = {
     careServices: "Zorg en diensten:",
     nextStep: "Volgende stap",
     estWait: "Geschatte wachttijd:",
+    waitAskCareGuide: "Vraag uw Care Guide naar actuele wachttijden",
+    waitEstimateSourceLabel: "Schatting van de aanbieder",
+    otherMatchedOptionsTitle: "Andere opties die uw Care Guide heeft gematcht",
+    otherMatchedOptionsTip:
+      "Uw topoptie heeft beperkte of onbekende wachttijd — bekijk deze andere matches van uw Care Guide.",
     priceOnRequest: "Prijs op aanvraag",
     requestVisit: "Bezoek aanvragen",
     requestCallback: "Terugbelverzoek",
@@ -404,6 +409,8 @@ export const productUiNl = {
     contactViaOr: "of bezoek de",
     contactViaPrefix: "Neem contact op via",
     contactPage: "contactpagina",
+    fundingEstimateCta: "Zorgkosten-indicatie",
+    fundingEstimateHint: "Vergelijk uw budgetband met typische vermelde faciliteitsprijzen.",
     intakeRequestLabel: "Uw zorgaanvraag",
     intakeRequestTitle: (name: string) => `Uw zorgaanvraag — ${name}`,
     careGuideUpdates: "Updates van uw Care Guide",
@@ -509,6 +516,7 @@ export const productUiNl = {
       careAndServices: "Zorg en diensten",
       languagesHeading: "Talen",
       keyDetails: "Belangrijkste gegevens",
+      waitEstimateHeading: "Wachttijd",
       contactAndNextSteps: "Contact en vervolgstappen"
     }
   },
@@ -638,6 +646,18 @@ export const productUiNl = {
     notSetPlaceholder: "Niet ingesteld",
     availabilityStatusLabel: "Beschikbaarheidsstatus",
     totalBedsLabel: "Totaal aantal bedden of plaatsen",
+    waitEstimateSectionTitle: "Wachttijdschatting",
+    waitEstimateSectionDesc:
+      "Laat families weten hoe lang de wacht doorgaans is — werk dit regelmatig bij voor nauwkeurigheid.",
+    waitEstimateMinLabel: "Geschatte wachttijd min (dagen)",
+    waitEstimateMaxLabel: "Geschatte wachttijd max (dagen)",
+    waitEstimateHelper: "Optioneel. Alleen zichtbaar voor families zolang de schatting actueel is (binnen 30 dagen).",
+    waitEstimateStalePrompt: (days: number) =>
+      days <= 0
+        ? "Vandaag bijgewerkt — nog actueel."
+        : `${days} dag${days === 1 ? "" : "en"} geleden bijgewerkt — overweeg te vernieuwen voor nauwkeurigheid.`,
+    waitEstimateStaleForFamilies:
+      "Families zien nu “Vraag uw Care Guide” omdat deze schatting ouder is dan 30 dagen.",
     optionalPlaceholder: "Optioneel",
     facilityDetailsDesc: "Kerngegevens die families en Care Guides gebruiken om fit te beoordelen.",
     facilityNameLabel: "Naam locatie *",
@@ -781,7 +801,11 @@ export const productUiNl = {
     responseTimeMin: "Reactietijd moet minstens 1 uur zijn.",
     responseTimeMax: "Reactietijd mag maximaal 168 uur (1 week) zijn.",
     priceMinNegative: "Minimumprijs mag niet negatief zijn.",
-    priceMaxNegative: "Maximumprijs mag niet negatief zijn."
+    priceMaxNegative: "Maximumprijs mag niet negatief zijn.",
+    waitEstimateWhole: "Wachttijdschatting moet een geheel aantal dagen zijn (0 of meer).",
+    waitEstimateNegative: "Wachttijdschatting mag niet negatief zijn.",
+    waitEstimateBothRequired: "Vul zowel een minimum als een maximum wachttijd in dagen in, of laat beide leeg.",
+    waitEstimateMinMaxOrder: "Minimum wachtdagen mag niet groter zijn dan maximum wachtdagen."
   },
   nav: {
     home: "Home",
@@ -809,7 +833,7 @@ export const productUiNl = {
     prelaunchBlurb: (regionNote: string) =>
       `Begeleide zorgnavigatie wanneer thuis wonen niet meer gaat. ${regionNote} Meld u nu aan.`,
     liveBlurb: (regionPrimary: string) =>
-      `Begeleide zorgnavigatie — geen directory. Care Guide, matching en nazorg in ${regionPrimary}.`,
+      `Begeleide zorgnavigatie — geen directory. Care Guide, matching en nazorg in heel ${regionPrimary}.`,
     copyrightSuffix: "Zorgnavigatie in Nederland.",
     prelaunchStatus: "Pre-launch — begeleide intake opent binnenkort",
     liveStatus: "Voor families en zorgaanbieders.",
@@ -846,15 +870,15 @@ export const productUiNl = {
     about: {
       metaTitle: `Over ons | ${brand.name}`,
       metaDescription:
-        "Begeleide zorgnavigatie wanneer thuis wonen niet meer gaat — Care Guide, matching en nazorg in regio Den Haag / Haaglanden.",
+        "Shepherds Oud is het vertrouwde zorgnavigatieplatform dat ouderen en families begeleidt door elke fase van ouder worden — via één Care Guide.",
       label: "Over ons",
-      title: "Zorgnavigatie met een menselijke gids",
-      intro: `${brand.name} helpt families wanneer thuis wonen niet meer gaat — bij dementie, na ziekenhuis, of wanneer thuiszorg niet meer volstaat. Wij zijn geen directory. Elke reis begint met een Care Guide die luistert, beoordeelt en coördineert met passende aanbieders.`,
+      title: "Zorgnavigatie door elke fase van ouder worden",
+      intro: `${brand.name} is het vertrouwde zorgnavigatieplatform dat ouderen en hun families begeleidt door elke fase van ouder worden — van zelfstandig wonen, naar thuiszorg, naar begeleid wonen, naar verpleegzorg, via één adviseur. Wij zijn geen directory. Elke reis begint met een Care Guide die luistert, beoordeelt en coördineert met passende aanbieders.`,
       sections: [
         {
           title: "Voor wie",
           paragraphs: [
-            "Voor volwassen kinderen en families die een volgende stap zoeken: verpleeghuis, zorgvilla, of meer intensieve ondersteuning thuis. Ook wanneer de persoon nog mobiel is — dementie vraagt vaak andere zorg dan alleen loopvermogen.",
+            "Voor volwassen kinderen en families die een volgende stap zoeken op de zorgreis: meer ondersteuning thuis, begeleid wonen, dementiezorg of verpleegzorg.",
             "Families melden zich vaak als besluiten urgent, verwarrend of emotioneel zwaar voelen. Wij blijven meelopen van eerste intake tot plaatsing en nazorg op 7, 30 en 90 dagen."
           ]
         },
@@ -864,7 +888,7 @@ export const productUiNl = {
             "Een begeleide reis — geen gids of eindeloze zoeklijst",
             "Gratis voor families; transparant betaald door deelnemende aanbieders",
             "Eén vaste Care Guide van intake tot nazorg",
-            "Regio-focus: Den Haag / Haaglanden, daarna landelijk",
+            "Ondersteuning in heel Nederland",
             "Hulp bij Nederlandse begrippen: Wlz, Wmo, CIZ, PGB, eigen bijdrage, zorgkantoor"
           ],
           paragraphs: [] as string[]
@@ -872,7 +896,7 @@ export const productUiNl = {
         {
           title: `Uw Care Guide: ${brand.founderName}`,
           paragraphs: [
-            `${brand.founderName} (${brandFounderRole("nl")}) bouwde Shepherds Oud omdat families in crisis verdwalen tussen directories en papieren. Begeleiding door zorgprofessionals die het Nederlandse stelsel kennen — van CIZ-aanvraag tot keuze tussen thuiszorg, zorgvilla of verpleeghuis.`,
+            `${brand.founderName} (${brandFounderRole("nl")}) bouwde Shepherds Oud omdat families in crisis verdwalen tussen directories en papieren. Begeleiding door zorgprofessionals die het Nederlandse stelsel kennen — van CIZ-aanvraag tot keuze tussen thuiszorg, begeleid wonen of verpleegzorg.`,
             brandRegionNote("nl")
           ]
         }
@@ -882,42 +906,59 @@ export const productUiNl = {
     howItWorks: {
       metaTitle: `Hoe het werkt | ${brand.name}`,
       metaDescription:
-        "Stap voor stap: intake, Care Guide, matching, bezoeken, plaatsing en nazorg op 7, 30 en 90 dagen.",
+        "Zeven stappen: intake, Care Guide, opties, Care Roadmap, bezoeken, verhuissteun en nazorg op 7, 30 en 90 dagen.",
       label: "Hoe het werkt",
-      title: "Van eerste gesprek tot de juiste zorg",
-      intro: `${brand.name} is een begeleide reis — geen directory. U weet altijd wat de volgende stap is en wie u helpt. ${brandRegionNote("nl")}`,
+      title: "Hoe Shepherds Oud werkt",
+      intro: `${brand.name} is het vertrouwde zorgnavigatieplatform dat ouderen en hun families begeleidt door elke fase van ouder worden — via één Care Guide. U weet altijd wat de volgende stap is en wie u helpt.`,
       sections: [
         {
-          title: "1. Vertel uw situatie",
+          title: "1. Vertel over uw naaste",
           paragraphs: [
-            "Rond de begeleide intake af in ongeveer 10–15 minuten: wie zorg nodig heeft, dementie of zorgbehoefte, urgentie, budget (Wlz / Wmo / PGB), taal en wie meebeslist.",
+            "Rond een begeleide intake af in ongeveer 10 minuten: medische behoeften, voorkeuren, locatie, taal, mobiliteit en budget.",
             "U kunt tussentijds opslaan en later verdergaan wanneer u bent ingelogd."
           ]
         },
         {
-          title: "2. Ontmoet uw Care Guide",
+          title: "2. Behoeften begrijpen",
           paragraphs: [
-            "Een Care Guide belt binnen 24 uur, beoordeelt uw dossier en helpt doelen, budget en praktische randvoorwaarden (afstand, taal, dementiecapaciteit) scherp te krijgen."
+            "Uw Care Guide bepaalt zorgniveau, risico's, budget, Wmo-overwegingen en urgentie — zodat besluiten stevig staan, niet op giswerk."
           ]
         },
         {
-          title: "3. Bekijk uw shortlist",
+          title: "3. Verken alle opties",
           paragraphs: [
-            "Wanneer het zorgplan klaar is, ziet u gematchte aanbieders — geen eindeloze zoeklijst. Beschikbaarheid en wachttijd waar bekend, plus de mogelijkheid om favorieten te bewaren."
+            "Bekijk zorgpaden die bij uw situatie passen — waaronder thuiszorg, begeleid wonen, revalidatie, dementiezorg, respijtzorg, dagbesteding en verpleegzorg."
           ]
         },
         {
-          title: "4. Bezoeken, plaatsing en nazorg",
+          title: "4. Ontvang een Care Roadmap",
           paragraphs: [
-            "Uw Care Guide coördineert bezoeken of terugbelafspraken. Statusupdates verschijnen op uw dashboard.",
-            "Na plaatsing blijven we betrokken: check-ins op 7, 30 en 90 dagen — met dezelfde Care Guide. Als een aanbieder afwijst, blijft uw dossier open."
+            "Krijg aanbevolen opties met geschatte wachttijden waar bekend, kosten en financieringsroutes, en duidelijke vervolgstappen van uw Care Guide."
+          ]
+        },
+        {
+          title: "5. Bezoek aanbieders",
+          paragraphs: [
+            "Vraag bezoeken of terugbelafspraken aan via uw dashboard. Uw Care Guide helpt met vragen en kan meegaan wanneer nodig."
+          ]
+        },
+        {
+          title: "6. Verhuis met vertrouwen",
+          paragraphs: [
+            "Hulp bij documentatie, een verhuischecklist, afstemming in de familie en communicatie met de gekozen aanbieder."
+          ]
+        },
+        {
+          title: "7. Blijf ondersteund",
+          paragraphs: [
+            "Nazorg op 7, 30 en 90 dagen na plaatsing — met dezelfde Care Guide — zodat de regeling blijft werken."
           ]
         }
       ]
     },
     contact: {
       metaTitle: `Contact | ${brand.name}`,
-      metaDescription: `Neem contact op met ${brand.name} voor begeleide zorgnavigatie in regio ${brand.regionPrimary}.`,
+      metaDescription: `Neem contact op met ${brand.name} voor begeleide zorgnavigatie in heel Nederland.`,
       label: "Contact",
       title: "Wij helpen graag",
       intro:
@@ -927,7 +968,9 @@ export const productUiNl = {
       familiesLive: "Start de intake online, of bel de Care Guide-lijn als u eerst wilt praten.",
       providersBlurb: "Gratis vermelden, betalen bij plaatsing. Lees de voorwaarden of registreer uw locatie.",
       emailHint: "Reactie binnen één werkdag — of sneller via de Care Guide-lijn.",
-      englishPage: "Engelse pagina"
+      englishPage: "Engelse pagina",
+      fundingEstimateLead: "Wilt u een ruwe indruk van faciliteitsprijzen versus uw budget?",
+      fundingEstimateCta: "Open de zorgkosten-indicatie"
     },
     faq: {
       metaTitle: `Veelgestelde vragen | ${brand.name}`,
@@ -937,11 +980,15 @@ export const productUiNl = {
       title: "Veelgestelde vragen",
       intro:
         "Over begeleide zorgnavigatie, kosten, en Nederlandse begrippen zoals Wlz, Wmo, CIZ, PGB en eigen bijdrage.",
-      internationalsLead: "International in The Hague?",
+      internationalsLead: "International in the Netherlands?",
+      fundingSectionTitle: "Financiering & kosten",
+      fundingToolLead:
+        "Vergelijk uw budgetband met typische maandprijzen die aanbieders vermelden — alleen ter oriëntatie, geen CAK- of Wmo-berekening.",
+      fundingToolCta: "Open de zorgkosten-indicatie",
       items: [
         {
           q: "Wat is Shepherds Oud?",
-          a: "Een begeleide zorgnavigatie — geen directory. U krijgt één Care Guide die helpt van intake tot plaatsing en nazorg (7, 30 en 90 dagen), wanneer thuis wonen niet meer gaat."
+          a: "Shepherds Oud is het vertrouwde zorgnavigatieplatform dat ouderen en hun families begeleidt door elke fase van ouder worden — van zelfstandig wonen, naar thuiszorg, naar begeleid wonen, naar verpleegzorg, via één adviseur. U krijgt één Care Guide van intake tot plaatsing en nazorg (7, 30 en 90 dagen)."
         },
         {
           q: "Is het gratis voor families?",
@@ -973,6 +1020,10 @@ export const productUiNl = {
           a: "Het deel dat u (of uw gezin) zelf bijdraagt aan Wlz- of Wmo-zorg. De hoogte hangt af van inkomen, vermogen en situatie. Wij helpen de brief te duiden; formele berekening ligt bij CAK / gemeente."
         },
         {
+          q: "Kan ik een ruwe kostenindicatie krijgen?",
+          a: "Ja. Gebruik de zorgkosten-indicatie om uw budgetband te vergelijken met typische maandprijzen die aanbieders op Shepherds Oud vermelden. Alleen ter oriëntatie — geen officiële CAK-, Wmo- of verzekeringsberekening. Uw Care Guide bevestigt exacte kosten voor uw situatie."
+        },
+        {
           q: "Wat doet het zorgkantoor?",
           a: "Het zorgkantoor contracteert Wlz-aanbieders in een regio en helpt bij het vinden van passende zorg binnen uw indicatie."
         },
@@ -986,7 +1037,7 @@ export const productUiNl = {
     providers: {
       metaTitle: `Voor zorgaanbieders | ${brand.name}`,
       metaDescription:
-        "Gratis vermelden bij Shepherds Oud. Betaal alleen bij succesvolle plaatsing. Vooraf gematchte familievraagstukken in regio Den Haag / Haaglanden.",
+        "Gratis vermelden bij Shepherds Oud. Betaal alleen bij succesvolle plaatsing. Vooraf gematchte familievraagstukken in heel Nederland.",
       label: "Zorgaanbieders",
       title: "Gratis vermelden. Betalen bij plaatsing.",
       intro: `${brand.name} is geen abonnementsgids. U bent zichtbaar zonder maandelijkse listing fee. Wij verdienen alleen mee als er een succesvolle plaatsing volgt — transparant voor families én aanbieders.`,
@@ -994,7 +1045,7 @@ export const productUiNl = {
       whatYouGet: [
         "Vooraf gematchte families (zorgtype, taal, dementiecapaciteit, beschikbaarheid)",
         "Dashboard om leads te accepteren, af te wijzen of op te volgen",
-        `Focusregio ${brandRegionPrimary("nl")}, daarna landelijke uitbreiding`,
+        "Dekking in heel Nederland",
         "Geen eindeloze koude leads uit een open directory"
       ],
       compensationTitle: "Vergoeding",
@@ -1045,23 +1096,23 @@ export const productUiNl = {
     home: {
       metaTitle: brand.name,
       metaDescription:
-        "Begeleide zorgnavigatie wanneer thuis wonen niet meer gaat — Care Guide, matching en nazorg in regio Den Haag / Haaglanden.",
+        "Shepherds Oud is het vertrouwde zorgnavigatieplatform dat ouderen en families begeleidt door elke fase van ouder worden — via één Care Guide.",
       heroSubline:
-        "Als thuis wonen niet meer gaat — bij dementie, na ziekenhuis, of wanneer thuiszorg niet meer volstaat.",
+        "Eén vaste Care Guide. Persoonlijk advies. Geverifieerde aanbieders. Ondersteuning van het eerste gesprek tot ver na plaatsing.",
       registerInterest: "Meld interesse",
       preferEmail: "Liever mailen? ",
       forFamilies: "Voor families",
       forCareProviders: "Voor zorgaanbieders",
       familiesPrelaunch:
         "Registreer uw interesse. Bij lancering beoordeelt een Care Guide uw situatie persoonlijk.",
-      familiesLive: "Start de intake. Een Care Guide belt binnen 24 uur en begeleidt u tot nazorg.",
+      familiesLive: "Start uw zorgreis. Een Care Guide belt binnen 24 uur en begeleidt u tot nazorg.",
       providersCard:
         "Gratis vermelden. Betalen alleen bij plaatsing. Ontvang vooraf gematchte familievraagstukken.",
       viewTerms: "Bekijk voorwaarden",
       howItWorksLabel: "Hoe het werkt",
-      howItWorksTitle: "Een begeleide reis — geen gids",
+      howItWorksTitle: "Hoe Shepherds Oud werkt",
       howItWorksDesc:
-        "Van eerste gesprek tot plaatsing en nazorg — met één vast aanspreekpunt. Geen eindeloze zoeklijst zoals Filica of ZorgkaartNederland.",
+        "Zeven duidelijke stappen — van een korte intake tot plaatsing en nazorg — met één vaste Care Guide.",
       trustLabel: "Vertrouwen",
       faqLead: "Vragen over Wlz, Wmo, CIZ, PGB of eigen bijdrage? ",
       viewFaq: "Bekijk de FAQ",
@@ -1072,13 +1123,71 @@ export const productUiNl = {
       providersPrelaunchCard: "Gratis registreren. Betalen alleen bij plaatsing.",
       getStartedLabel: "Aan de slag",
       readyToBegin: "Klaar om te beginnen?",
-      familiesLiveCard: "Rond de intake af — een Care Guide belt binnen 24 uur.",
+      familiesLiveCard: "Start uw zorgreis — een Care Guide belt binnen 24 uur.",
       listForFree: "Gratis vermelden",
       providersLiveCard: "Betaal alleen bij succesvolle plaatsing. Lees de voorwaarden.",
       providersSectionLabel: "Aanbieders",
       providersSectionTitle: "Voor zorgaanbieders",
       providersSectionDesc: "Bereik families die écht passen — gratis vermelden, betalen bij plaatsing.",
       registerYourLocation: "Registreer uw locatie"
+    },
+    fundingEstimate: {
+      metaTitle: `Zorgkosten-indicatie | ${brand.name}`,
+      metaDescription:
+        "Ruwe maandelijkse prijsindicatie op basis van vermelde aanbiedersprijzen — geen officiële CAK- of Wmo-berekening.",
+      label: "Tools",
+      title: "Zorgkosten-indicatie",
+      intro:
+        "Vergelijk uw budgetband met typische maandprijzen die zorgaanbieders op Shepherds Oud vermelden. Alleen ter oriëntatie — geen formele kostencalculatie.",
+      careTypesLabel: "Zorgtype(n)",
+      fundingTypesLabel: "Bekende financieringsroute(s)",
+      budgetLabel: "Maandelijkse budgetband",
+      budgetPlaceholder: "Kies een budgetband",
+      submit: "Toon indicatie",
+      submitting: "Bezig…",
+      needCareType: "Selecteer minstens één zorgtype om een indicatie te zien.",
+      errorGeneric: "Er ging iets mis. Probeer het opnieuw.",
+      resultTypicalTitle: "Typisch maandelijks prijskader",
+      resultTypicalEmpty:
+        "Nog onvoldoende gegevens voor dit zorgtype — vermelde aanbieders hebben nog geen maandprijzen gepubliceerd.",
+      resultTypicalBasedOn: (count: number) =>
+        count === 1
+          ? "Gebaseerd op 1 vermelde aanbieder met gepubliceerde maandprijzen."
+          : `Gebaseerd op ${count} vermelde aanbieders met gepubliceerde maandprijzen.`,
+      resultCoversTitle: "Wat dekt meestal wat",
+      covers: [
+        {
+          title: "Wlz",
+          text: "Wet langdurige zorg — voor mensen die blijvend intensieve zorg nodig hebben (bijvoorbeeld verpleeghuis of 24-uurszorg thuis). Indicatie via CIZ; formele bijdrage-regels zijn landelijk vastgelegd."
+        },
+        {
+          title: "Wmo",
+          text: "Wet maatschappelijke ondersteuning — gemeentelijke steun om langer thuis te blijven (hulp thuis, dagbesteding, aanpassingen). Via uw gemeente."
+        },
+        {
+          title: "Zvw",
+          text: "Zorgverzekeringswet — dekt veel medische en verpleegkundige zorg via uw basisverzekering, binnen de polisregels."
+        },
+        {
+          title: "PGB",
+          text: "Persoonsgebonden budget — u ontvangt budget om zelf zorg in te kopen in plaats van zorg in natura via een gecontracteerde aanbieder."
+        },
+        {
+          title: "Particuliere financiering",
+          text: "Zelf betalen of private aanvulling wanneer publieke regelingen de gekozen oplossing niet dekken, of terwijl aanvragen lopen."
+        }
+      ],
+      resultCompareTitle: "Uw budget vs typisch kader",
+      compareBelow: "Uw opgegeven budgetband ligt onder het typische vermelde prijskader voor dit zorgtype.",
+      compareWithin: "Uw opgegeven budgetband overlapt het typische vermelde prijskader voor dit zorgtype.",
+      compareAbove: "Uw opgegeven budgetband ligt boven het typische vermelde prijskader voor dit zorgtype.",
+      compareUnknown: "Kies een budgetband (en zorg dat er prijsgegevens zijn) om te vergelijken.",
+      compareNoPrices: "We kunnen uw budget pas vergelijken wanneer aanbieders prijzen voor dit zorgtype hebben gepubliceerd.",
+      disclaimer:
+        "Dit is een ruwe indicatie op basis van vermelde aanbiedersprijzen, geen officiële CAK-, Wmo- of verzekeringsberekening. Uw Care Guide kan exacte kosten en financieringsopties voor uw situatie bevestigen.",
+      primaryCta: "Spreek een Care Guide",
+      secondaryCta: "Lees FAQ over financiering",
+      prefilledHint: "We hebben velden vooraf ingevuld vanuit uw laatste intake. U kunt ze nog aanpassen."
     }
   }
 };

@@ -7,9 +7,9 @@ import { brand, brandPhoneLabel, brandRegionNote } from "@/lib/config/brand";
 import { getIsPrelaunch, getPublicRoutes } from "@/lib/config/prelaunch";
 
 export const metadata: Metadata = {
-  title: `For internationals in The Hague | ${brand.name}`,
+  title: `For internationals in the Netherlands | ${brand.name}`,
   description:
-    "English-language navigation of the Dutch care system for international families in The Hague — CIZ, Wlz, Wmo, PGB, and eigen bijdrage explained with a dedicated Care Guide.",
+    "English-language navigation of the Dutch care system for international families across the Netherlands — CIZ, Wlz, Wmo, PGB, and eigen bijdrage explained with a dedicated Care Guide.",
   alternates: { canonical: "/internationals" }
 };
 
@@ -26,9 +26,9 @@ export default function InternationalsPage() {
       <main className="bg-brand-cream">
         <section className="bg-gradient-to-b from-white to-brand-cream px-4 py-14 sm:px-6 sm:py-16">
           <div className="mx-auto max-w-3xl">
-            <p className="section-label">The Hague · English</p>
+            <p className="section-label">Netherlands · English</p>
             <h1 className="mt-3 font-brand text-hero font-bold text-ink">
-              Dutch care navigation for internationals in The Hague
+              Dutch care navigation for internationals across the Netherlands
             </h1>
             <p className="mt-4 text-lg text-ink/80">
               Embassy, court, and corporate families face CIZ forms, Wlz and Wmo rules, and eigen bijdrage letters in a
@@ -97,7 +97,7 @@ export default function InternationalsPage() {
                 <li>Guided journey — not a directory</li>
                 <li>Free for families; paid by participating providers (disclosed openly)</li>
                 <li>One Care Guide from intake through follow-up</li>
-                <li>Focus on {brand.regionPrimary}, then national expansion</li>
+                <li>Coverage across the Netherlands</li>
               </ul>
             </div>
             <p className="text-sm text-ink/60">

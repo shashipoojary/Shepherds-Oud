@@ -3,9 +3,9 @@ import { displayVisitAvailability } from "@/lib/config/content";
 import {
   availabilityConfirmedLabel,
   familyAvailabilityLabel,
-  formatAvailabilityLastUpdated,
-  providerWaitEstimate
+  formatAvailabilityLastUpdated
 } from "@/lib/domain/provider-availability";
+import { resolveFamilyWaitEstimate } from "@/lib/domain/wait-estimate";
 import {
   isProviderPubliclyListable,
   providerVerificationFamilyBadge
@@ -34,6 +34,9 @@ type ProviderRecord = {
   bedsOpen: number | null;
   waitlistText: string | null;
   availabilityStatus: string | null;
+  waitEstimateMinDays?: number | null;
+  waitEstimateMaxDays?: number | null;
+  waitEstimateUpdatedAt?: Date | null;
   verificationStatus?: string | null;
   roomTypes?: string[];
   qualityInfo?: string | null;
@@ -42,15 +45,18 @@ type ProviderRecord = {
 };
 
 export function mapProviderRecord(provider: ProviderRecord, score = 0, locale: Locale = "nl"): ProviderMatch {
+  const ui = productUi(locale);
   const openBeds = provider.bedsOpen ?? 0;
   const availability = familyAvailabilityLabel(provider);
-  const waitEstimate = providerWaitEstimate(provider);
+  const structuredWait = resolveFamilyWaitEstimate(provider, locale);
+  // Prefer structured day estimates; never invent numbers. Fallback is Care Guide copy.
+  const waitEstimate = structuredWait ?? ui.family.waitAskCareGuide;
+  const waitEstimateIsFresh = Boolean(structuredWait);
   const priceLabel = formatProviderPriceLabel(locale, provider.priceMin, provider.priceMax);
   const availabilityUpdatedAt = provider.updatedAt ? formatAvailabilityLastUpdated(provider.updatedAt) ?? undefined : undefined;
   const confirmedAvailability = availabilityConfirmedLabel(provider.updatedAt);
   const verificationBadge = providerVerificationFamilyBadge(provider.verificationStatus);
   const roomTypes = provider.roomTypes ?? [];
-  const ui = productUi(locale);
   const contact = ["Contact details will be shared after your Care Guide reviews your request."];
   if (provider.responseTimeHours) {
     contact.push(`Expect a response within about ${provider.responseTimeHours} hours once contact is arranged.`);
@@ -78,7 +84,7 @@ export function mapProviderRecord(provider: ProviderRecord, score = 0, locale: L
     meta: [
       priceLabel,
       provider.bedsOpen != null && provider.bedsOpen > 0 ? `${provider.bedsOpen} beds open` : "",
-      waitEstimate ? `Estimated wait: ${waitEstimate}` : "",
+      waitEstimate ? `${ui.family.estWait} ${waitEstimate}` : "",
       provider.responseTimeHours ? `Responds within ${provider.responseTimeHours}h` : ""
     ].filter(Boolean),
     description: provider.description,
@@ -109,6 +115,7 @@ export function mapProviderRecord(provider: ProviderRecord, score = 0, locale: L
     qualityInfo: provider.qualityInfo ?? null,
     accessibilityNotes: provider.accessibilityNotes ?? null,
     waitEstimate,
+    waitEstimateIsFresh,
     responseTimeHours: provider.responseTimeHours
   };
 }
