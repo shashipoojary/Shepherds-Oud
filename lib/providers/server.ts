@@ -75,6 +75,7 @@ function buildProviderData(
     email: input.email || userEmail,
     phone: input.phone || null,
     website: input.website || null,
+    ...(input.roomTypes !== undefined ? { roomTypes: input.roomTypes } : {}),
     ...(input.bedsTotal != null ? { bedsTotal: input.bedsTotal } : {}),
     ...(input.bedsOpen != null ? { bedsOpen: input.bedsOpen } : {}),
     availabilityStatus: input.availabilityStatus || null,

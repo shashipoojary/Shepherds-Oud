@@ -45,12 +45,20 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       }
     }
 
-    // Once marked verified, admins cannot clear it (invite gate must stay one-way).
+    // Verification can be cleared only while the entry is still NEW and no invite has been sent.
+    // After mark-contacted or invite, clearing is blocked so the invite gate stays one-way.
     if (registrationVerified === false && existing.registrationVerified) {
-      return NextResponse.json(
-        { error: "Registration verification cannot be undone once confirmed." },
-        { status: 409 }
-      );
+      const hasInviteActivity = existing.providerInvites.some((invite) => invite.status !== "REVOKED");
+      const locked = existing.status !== "NEW" || hasInviteActivity;
+      if (locked) {
+        return NextResponse.json(
+          {
+            error:
+              "Registration verification cannot be undone after the facility is contacted or invited."
+          },
+          { status: 409 }
+        );
+      }
     }
 
     const entry = await prisma.waitlistEntry.update({
