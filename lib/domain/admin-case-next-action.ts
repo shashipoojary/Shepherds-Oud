@@ -27,6 +27,7 @@ type IntakeForNextAction = {
 type MatchForNextAction = {
   statusRaw?: string | null;
   status?: string | null;
+  schedulingStatus?: string | null;
 };
 
 const placementAndHistoryStatuses = new Set<IntakeStatus>([
@@ -104,12 +105,24 @@ export function getAdminCaseNextAction(intake: IntakeForNextAction, matches: Mat
     });
   }
 
+  if (matches.some((match) => match.schedulingStatus === "EXPIRED")) {
+    return {
+      key: "SCHEDULING_EXPIRED",
+      label: "Scheduling expired",
+      description: "A visit/callback proposal expired without confirmation.",
+      instruction: "Open section 5, confirm a new slot, suggest the family re-pick, or use manual lock.",
+      target: "Section 5 - Schedule visit or callback",
+      tab: "families",
+      severity: "action"
+    };
+  }
+
   if (matchStatuses.includes("VISIT_REQUESTED") || matchStatuses.includes("CALLBACK_REQUESTED")) {
     return {
       key: "PROVIDER_RESPONSE_NEEDED",
       label: "Provider response needed",
-      description: "The family requested contact. Provider should accept or decline before coordination.",
-      instruction: "Go to the Inquiries tab and monitor the provider response before scheduling.",
+      description: "The family requested contact with a proposed time. Provider should confirm, suggest an alternate, or decline.",
+      instruction: "Go to the Inquiries tab and monitor the provider response, or confirm the proposed slot in section 5.",
       target: "Inquiries tab",
       tab: "inquiries",
       severity: "action"

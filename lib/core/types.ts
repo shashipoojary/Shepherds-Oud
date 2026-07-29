@@ -33,4 +33,9 @@ export type ProviderMatch = {
   /** True when waitEstimate is a fresh provider-reported day range (not Care Guide fallback). */
   waitEstimateIsFresh?: boolean;
   responseTimeHours?: number | null;
+  proposedStartsAt?: string | null;
+  proposedEndsAt?: string | null;
+  alternateStartsAt?: string | null;
+  alternateEndsAt?: string | null;
+  schedulingStatus?: string | null;
 };

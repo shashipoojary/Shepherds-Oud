@@ -53,6 +53,9 @@ export async function getAdminDashboardData() {
         caregiverBurnoutRisk: true,
         immediateRiskFlags: true,
         emergencyStopped: true,
+        referralSource: true,
+        referringHospitalId: true,
+        referringHospital: { select: { id: true, name: true } },
         emotionalSupportNeeds: true,
         supportTypes: true,
         notes: true,
@@ -139,6 +142,15 @@ export async function getAdminDashboardData() {
         notes: true,
         familyFacingReason: true,
         declineReason: true,
+        schedulingStatus: true,
+        schedulingMode: true,
+        proposedStartsAt: true,
+        proposedEndsAt: true,
+        alternateStartsAt: true,
+        alternateEndsAt: true,
+        confirmedStartsAt: true,
+        confirmedEndsAt: true,
+        schedulingExpiresAt: true,
         createdAt: true,
         updatedAt: true,
         intake: {
@@ -257,6 +269,8 @@ export async function getAdminDashboardData() {
       caregiverBurnoutRisk: intake.caregiverBurnoutRisk,
       immediateRiskFlags: intake.immediateRiskFlags,
       emergencyStopped: intake.emergencyStopped,
+      referralSource: intake.referralSource,
+      referringHospitalName: intake.referringHospital?.name || null,
       emotionalSupportNeeds: intake.emotionalSupportNeeds,
       supportTypes: intake.supportTypes,
       notes: intake.notes,
@@ -355,7 +369,16 @@ export async function getAdminDashboardData() {
         status: match.status.replaceAll("_", " "),
         notes: match.notes,
         familyFacingReason: match.familyFacingReason,
-        declineReason: match.declineReason
+        declineReason: match.declineReason,
+        schedulingStatus: match.schedulingStatus,
+        schedulingMode: match.schedulingMode,
+        proposedStartsAt: match.proposedStartsAt?.toISOString() || null,
+        proposedEndsAt: match.proposedEndsAt?.toISOString() || null,
+        alternateStartsAt: match.alternateStartsAt?.toISOString() || null,
+        alternateEndsAt: match.alternateEndsAt?.toISOString() || null,
+        confirmedStartsAt: match.confirmedStartsAt?.toISOString() || null,
+        confirmedEndsAt: match.confirmedEndsAt?.toISOString() || null,
+        schedulingExpiresAt: match.schedulingExpiresAt?.toISOString() || null
       }))
       .sort((a, b) => {
         const priority = compareMatchPriority(a.statusRaw, b.statusRaw);

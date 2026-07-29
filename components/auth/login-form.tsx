@@ -9,12 +9,25 @@ import type { Locale } from "@/lib/i18n/config";
 import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth/client";
 import { TOAST_DISMISS_MS } from "@/lib/client/toast-timing";
-import { PROVIDER_DASHBOARD_PATH } from "@/lib/auth/routes";
+import { PROVIDER_DASHBOARD_PATH, HOSPITAL_DASHBOARD_PATH, HOSPITAL_LOGIN_PATH } from "@/lib/auth/routes";
 import { providerLoginErrorMessage } from "@/lib/auth/provider-login-errors";
+import { hospitalLoginErrorMessage } from "@/lib/auth/hospital-login-errors";
 
-function errorMessage(code: string | null, isProvider: boolean, locale: Locale, ui: ReturnType<typeof productUi>) {
+function errorMessage(
+  code: string | null,
+  isProvider: boolean,
+  isHospital: boolean,
+  locale: Locale,
+  ui: ReturnType<typeof productUi>
+) {
   if (code === "unauthorized") {
-    return isProvider ? ui.auth.providerAccountNeeded : ui.auth.adminOnly;
+    return isProvider
+      ? ui.auth.providerAccountNeeded
+      : isHospital
+        ? locale === "en"
+          ? "You need a hospital account for this page. Use an invite link from Shepherds Oud."
+          : "U heeft een ziekenhuisaccount nodig voor deze pagina. Gebruik een uitnodigingslink van Shepherds Oud."
+        : ui.auth.adminOnly;
   }
 
   if (code === "oauth-config") {
@@ -29,6 +42,11 @@ function errorMessage(code: string | null, isProvider: boolean, locale: Locale, 
     return ui.auth.invalidLink;
   }
 
+  const hospitalMessage = hospitalLoginErrorMessage(code, locale);
+  if (hospitalMessage) {
+    return hospitalMessage;
+  }
+
   const providerMessage = providerLoginErrorMessage(code, locale);
   if (providerMessage) {
     return providerMessage;
@@ -38,7 +56,7 @@ function errorMessage(code: string | null, isProvider: boolean, locale: Locale, 
 }
 
 type AuthLoginFormProps = {
-  intent?: "family" | "provider" | "admin";
+  intent?: "family" | "provider" | "admin" | "hospital";
 };
 
 export function AuthLoginForm({ intent }: AuthLoginFormProps) {
@@ -52,23 +70,26 @@ export function AuthLoginForm({ intent }: AuthLoginFormProps) {
   const requestedDestination =
     intent === "provider"
       ? PROVIDER_DASHBOARD_PATH
-      : intent === "family"
-        ? familyDestination
-        : intent === "admin"
-          ? adminDestination
-          : callbackParam;
+      : intent === "hospital"
+        ? HOSPITAL_DASHBOARD_PATH
+        : intent === "family"
+          ? familyDestination
+          : intent === "admin"
+            ? adminDestination
+            : callbackParam;
   const isProvider = intent === "provider" || requestedDestination?.startsWith(PROVIDER_DASHBOARD_PATH);
+  const isHospital = intent === "hospital" || requestedDestination?.startsWith(HOSPITAL_DASHBOARD_PATH);
   const isFamily = intent === "family" || requestedDestination?.startsWith("/family");
   const callbackUrlParams = new URLSearchParams();
   if (requestedDestination) {
     callbackUrlParams.set("callbackUrl", requestedDestination);
   }
-  if (isProvider && inviteParam) {
+  if ((isProvider || isHospital) && inviteParam) {
     callbackUrlParams.set("invite", inviteParam);
   }
   const callbackUrl = callbackUrlParams.size ? `/login/continue?${callbackUrlParams.toString()}` : "/login/continue";
   const error = searchParams.get("error");
-  const message = errorMessage(error, Boolean(isProvider), locale, ui);
+  const message = errorMessage(error, Boolean(isProvider), Boolean(isHospital), locale, ui);
   const [loadingGoogle, setLoadingGoogle] = useState(false);
   const [loadingEmail, setLoadingEmail] = useState(false);
   const [email, setEmail] = useState("");
@@ -78,7 +99,7 @@ export function AuthLoginForm({ intent }: AuthLoginFormProps) {
   if (requestedDestination) {
     googleLoginParams.set("callbackUrl", requestedDestination);
   }
-  if (isProvider && inviteParam) {
+  if ((isProvider || isHospital) && inviteParam) {
     googleLoginParams.set("invite", inviteParam);
   }
   const googleLoginHref = `/login/google${googleLoginParams.size ? `?${googleLoginParams.toString()}` : ""}`;
@@ -121,14 +142,40 @@ export function AuthLoginForm({ intent }: AuthLoginFormProps) {
         }
       }
 
+      if (isHospital) {
+        const accessResponse = await fetch("/api/hospital/login-access", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: trimmed, invite: inviteParam || undefined })
+        });
+
+        if (!accessResponse.ok) {
+          const data = (await accessResponse.json().catch(() => null)) as { error?: string } | null;
+          setEmailFeedbackTone("error");
+          setEmailFeedback(
+            data?.error ||
+              (locale === "en"
+                ? "Your hospital account is not approved yet."
+                : "Uw ziekenhuisaccount is nog niet goedgekeurd.")
+          );
+          return;
+        }
+      }
+
+      const magicErrorPath = isFamily
+        ? "/family/login?error=magic-link"
+        : isHospital
+          ? inviteParam
+            ? `${HOSPITAL_LOGIN_PATH}?invite=${encodeURIComponent(inviteParam)}&error=magic-link`
+            : `${HOSPITAL_LOGIN_PATH}?error=magic-link`
+          : inviteParam
+            ? `/provider/login?invite=${encodeURIComponent(inviteParam)}&error=magic-link`
+            : "/provider/login?error=magic-link";
+
       const { error: signInError } = await authClient.signIn.magicLink({
         email: trimmed,
         callbackURL: callbackUrl,
-        errorCallbackURL: isFamily
-          ? "/family/login?error=magic-link"
-          : inviteParam
-            ? `/provider/login?invite=${encodeURIComponent(inviteParam)}&error=magic-link`
-            : "/provider/login?error=magic-link"
+        errorCallbackURL: magicErrorPath
       });
 
       if (signInError) {
@@ -149,15 +196,19 @@ export function AuthLoginForm({ intent }: AuthLoginFormProps) {
     }
   }
 
-  if (isProvider || isFamily) {
+  if (isProvider || isFamily || isHospital) {
     return (
       <div className="grid gap-4">
         {message ? (
           <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{message}</p>
         ) : null}
-        {isProvider && inviteParam ? (
+        {(isProvider || isHospital) && inviteParam ? (
           <p className="rounded-xl border border-brand-green-pale bg-brand-green-pale/20 px-4 py-3 text-sm leading-6 text-brand-green-dark">
-            {ui.auth.providerInviteHint}
+            {isHospital
+              ? locale === "en"
+                ? "Use the invited hospital email to finish onboarding."
+                : "Gebruik het uitgenodigde ziekenhuis-e-mailadres om onboarding af te ronden."
+              : ui.auth.providerInviteHint}
           </p>
         ) : null}
 
@@ -168,7 +219,7 @@ export function AuthLoginForm({ intent }: AuthLoginFormProps) {
             autoComplete="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            placeholder={isFamily ? "you@example.com" : "you@facility.nl"}
+            placeholder={isFamily ? "you@example.com" : isHospital ? "you@hospital.nl" : "you@facility.nl"}
             className="rounded-lg border border-stone-200 px-3 py-2.5 text-sm font-normal outline-brand-amber"
           />
         </label>

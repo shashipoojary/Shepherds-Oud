@@ -58,7 +58,36 @@ export function FamilyDashboardSkeleton() {
           ))}
         </div>
       </section>
+      <ShortlistSkeleton className="mt-6" />
       <p className="sr-only">Loading family dashboard</p>
     </main>
+  );
+}
+
+/** Placeholder for the family shortlist card while matches are fetching. */
+export function ShortlistSkeleton({ className }: { className?: string }) {
+  return (
+    <section
+      className={`rounded-2xl bg-white p-5 shadow-soft sm:p-6 ${className ?? ""}`}
+      aria-busy="true"
+      aria-label="Loading shortlist"
+    >
+      <div className="h-3 w-24 animate-pulse rounded bg-sage-200/70" />
+      <div className="mt-2 h-6 w-56 max-w-full animate-pulse rounded bg-sage-300/70" />
+      <div className="mt-2 h-4 w-full max-w-md animate-pulse rounded bg-sage-100" />
+      <ul className="mt-4 divide-y divide-stone-100">
+        {Array.from({ length: 2 }).map((_, index) => (
+          <li key={index} className="py-4 first:pt-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="h-5 w-40 animate-pulse rounded bg-sage-200/80" />
+              <div className="h-5 w-20 animate-pulse rounded-full bg-sage-100" />
+            </div>
+            <div className="mt-2 h-4 w-48 animate-pulse rounded bg-sage-100" />
+            <div className="mt-2 h-4 w-full max-w-lg animate-pulse rounded bg-sage-100/80" />
+          </li>
+        ))}
+      </ul>
+      <div className="mt-5 h-10 w-36 animate-pulse rounded-lg bg-sage-200/60" />
+    </section>
   );
 }

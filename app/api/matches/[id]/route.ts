@@ -5,6 +5,7 @@ import {
   CASE_ASSIGNED_TO_OTHER_GUIDE_MESSAGE
 } from "@/lib/auth/case-access";
 import { getServerSession, getUserRole } from "@/lib/auth/server";
+import { providerHasActiveCalendar } from "@/lib/calendar/provider-calendar";
 import { getUserLinkedProvider } from "@/lib/providers/server";
 import { isProviderProfileComplete } from "@/lib/providers/completeness";
 import { updateMatchSchema } from "@/lib/validation/match";
@@ -23,12 +24,20 @@ import {
   type MatchActor,
   type MatchStatus
 } from "@/lib/domain/match-transitions";
+import { handleMatchSchedulePost } from "@/lib/scheduling/handle-match-schedule";
 
 const guestFamilyStatuses = ["VISIT_REQUESTED", "CALLBACK_REQUESTED"] as const;
 const providerStatuses = ["ACCEPTED", "DECLINED"] as const;
 const providerActionableStatuses = ["VISIT_REQUESTED", "CALLBACK_REQUESTED"] as const;
 
 export const runtime = "nodejs";
+
+/** Visit/callback scheduling (propose, confirm, alternate, cancel). Mounted here because
+ * the nested `/schedule` route was not reliably picked up by the local Next.js watcher. */
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  return handleMatchSchedulePost(request, id);
+}
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -66,10 +75,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const { status, notes, intakeId } = parsed.data;
     const currentStatus = existing.status as MatchStatus;
     const nextStatus = status as MatchStatus;
-    const isFamilyAction = guestFamilyStatuses.includes(status as (typeof guestFamilyStatuses)[number]);
+    const isFamilyVisitOrCallback = guestFamilyStatuses.includes(status as (typeof guestFamilyStatuses)[number]);
     let actor: MatchActor;
 
-    if (isFamilyAction) {
+    if (isFamilyVisitOrCallback) {
       if (!intakeId) {
         return jsonError("Intake reference is required for this request.", 400);
       }
@@ -81,6 +90,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       }
       if (!canAccessIntake(session, existing.intake)) {
         return jsonError("Forbidden", 403);
+      }
+      if (await providerHasActiveCalendar(existing.providerId)) {
+        return jsonError("Pick an available time slot to request a visit or callback.", 400);
       }
       actor = "family";
     } else if (!session) {
@@ -108,6 +120,14 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
           return jsonError(CASE_ASSIGNED_TO_OTHER_GUIDE_MESSAGE, 403);
         }
         actor = "admin";
+      } else if (status === "CLOSED" && intakeId) {
+        if (existing.intakeId !== intakeId) {
+          return jsonError("This match does not belong to your care request.", 403);
+        }
+        if (!canAccessIntake(session, existing.intake)) {
+          return jsonError("Forbidden", 403);
+        }
+        actor = "family";
       } else {
         return jsonError("Forbidden", 403);
       }
@@ -117,7 +137,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       return jsonError(`Cannot change inquiry status from ${currentStatus} to ${nextStatus}.`, 400);
     }
 
-    const autoNote = isFamilyAction
+    const autoNote = isFamilyVisitOrCallback
       ? familyRequestNote(status as "VISIT_REQUESTED" | "CALLBACK_REQUESTED")
       : matchStatusChangeNote(actor, nextStatus, parsed.data.declineReason);
 
@@ -125,6 +145,12 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       where: { id },
       data: {
         status: nextStatus,
+        ...(isFamilyVisitOrCallback
+          ? {
+              schedulingMode: "MANUAL" as const,
+              schedulingStatus: "AWAITING_PROVIDER" as const
+            }
+          : {}),
         ...(notes !== undefined
           ? { notes }
           : autoNote
@@ -136,7 +162,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
     const providerEmail = existing.provider.email;
     const providerLocale = resolveProviderEmailLocale(existing.provider.preferredLocale);
-    if (isFamilyAction && providerEmail) {
+    if (isFamilyVisitOrCallback && providerEmail) {
       runInBackground(
         () =>
           sendProviderInquiryEmail({
@@ -157,7 +183,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       );
     }
 
-    if ((actor === "provider" && (nextStatus === "ACCEPTED" || nextStatus === "DECLINED")) || (actor === "admin" && nextStatus === "PLACED")) {
+    if (
+      (actor === "provider" && (nextStatus === "ACCEPTED" || nextStatus === "DECLINED")) ||
+      (actor === "admin" && nextStatus === "PLACED") ||
+      (actor === "family" && nextStatus === "CLOSED")
+    ) {
       await syncIntakeCaseFromMatch(existing.intakeId, nextStatus);
     }
 

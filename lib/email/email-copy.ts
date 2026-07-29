@@ -160,8 +160,12 @@ export function emailCopy(locale: Locale) {
           : "Uw bezoek of terugbelafspraak is gepland",
         planned: (guideName: string, provider?: string | null) =>
           en
-            ? `${guideName} has scheduled the next step${provider ? ` with ${provider}` : ""}.`
-            : `${guideName} heeft de volgende stap gepland${provider ? ` met ${provider}` : ""}.`,
+            ? provider
+              ? `Your appointment with ${provider} is confirmed. ${guideName} is available if you have questions.`
+              : `${guideName} has scheduled the next step.`
+            : provider
+              ? `Uw afspraak met ${provider} is bevestigd. ${guideName} denkt mee als u vragen heeft.`
+              : `${guideName} heeft de volgende stap gepland.`,
         when: (when: string) => (en ? `Schedule: ${when}.` : `Planning: ${when}.`),
         hint: en
           ? "Open your dashboard for details and any notes from your Care Guide."

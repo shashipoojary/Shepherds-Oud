@@ -12,7 +12,7 @@ export type MatchActor = "family" | "provider" | "admin";
 
 const transitions: Record<MatchActor, Record<MatchStatus, MatchStatus[]>> = {
   family: {
-    SUGGESTED: ["VISIT_REQUESTED", "CALLBACK_REQUESTED"],
+    SUGGESTED: ["VISIT_REQUESTED", "CALLBACK_REQUESTED", "CLOSED"],
     CONTACTED: [],
     VISIT_REQUESTED: [],
     CALLBACK_REQUESTED: [],
@@ -70,6 +70,11 @@ export function matchStatusChangeNote(actor: MatchActor, status: MatchStatus, de
     if (status === "CONTACTED") return `Care Guide coordinated on ${when}.`;
     if (status === "PLACED") return `Placement recorded on ${when}.`;
     if (status === "CLOSED") return `Inquiry closed on ${when}.`;
+    return null;
+  }
+
+  if (actor === "family") {
+    if (status === "CLOSED") return `Family passed on this match on ${when}.`;
     return null;
   }
 

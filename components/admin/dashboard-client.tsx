@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { AdminResetDataButton } from "@/components/admin/reset-data-button";
 import { ComposeAnnouncementBar } from "@/components/admin/compose-announcement";
+import { HospitalInvitePanel } from "@/components/admin/hospital-invite-panel";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -43,7 +44,8 @@ import {
 } from "@/lib/client/admin-inquiry-seen";
 import { initAdminItemsSeenFromData, isAdminItemUnread, markAdminItemSeen } from "@/lib/client/admin-item-seen";
 import { CARE_PATHWAYS } from "@/lib/domain/care-pathways";
-import { CASE_OUTCOME_OPTIONS } from "@/lib/domain/case-outcomes";
+import { CASE_OUTCOME_OPTIONS, caseOutcomeEndsCase } from "@/lib/domain/case-outcomes";
+import { CustomSelect } from "@/components/ui/custom-select";
 import { getAdminCaseNextAction } from "@/lib/domain/admin-case-next-action";
 import {
   adminIntakeActionMeta,
@@ -348,7 +350,9 @@ export function AdminDashboardClient({
           <h1 className="text-[1.3rem] font-semibold">Admin dashboard</h1>
           <p className="text-sm text-neutral-500">Shepherds Oud — Netherlands-wide operations</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
+          <HospitalInvitePanel onNotify={setMessage} />
+          <ComposeAnnouncementBar onNotify={setMessage} />
           <RefreshButton onClick={() => void refreshDashboard()} loading={refreshing} />
           {allowDataReset ? <AdminResetDataButton /> : null}
         </div>
@@ -385,10 +389,6 @@ export function AdminDashboardClient({
       </div>
 
       {message ? <div className="mt-4 rounded-lg bg-brand-green-pale/30 px-5 py-4 text-sm text-brand-green-dark">{message}</div> : null}
-
-      <div className="mt-6">
-        <ComposeAnnouncementBar onNotify={setMessage} />
-      </div>
 
       <div className="mt-4 rounded-xl bg-white shadow-soft">
         <div className="overflow-x-auto">
@@ -661,23 +661,44 @@ function FamiliesTable({
               isAdminItemUnread("family", family.id, family.createdAtIso, family.updatedAtIso);
             return (
               <tr key={family.id} className="cursor-pointer hover:bg-cream" onClick={() => openFamily(family)}>
-                <td className="px-4 py-3 text-sm">
-                  <div className="flex items-center gap-2">
+                <td className="min-w-0 max-w-[14rem] px-4 py-3 text-sm">
+                  <div className="flex min-w-0 items-start gap-2">
                     {isUnread ? <UnreadDot /> : null}
-                    <strong>{family.name}</strong>
-                    {family.emergencyStopped ? (
-                      <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-red-800">
-                        Emergency
+                    <div className="min-w-0">
+                      <strong className="block truncate">{family.name}</strong>
+                      {(family.emergencyStopped || family.referralSource === "HOSPITAL") && (
+                        <div className="mt-1 flex min-w-0 flex-wrap gap-1">
+                          {family.emergencyStopped ? (
+                            <span className="shrink-0 rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-red-800">
+                              Emergency
+                            </span>
+                          ) : null}
+                          {family.referralSource === "HOSPITAL" ? (
+                            <span
+                              className="max-w-[11rem] truncate rounded-full bg-brand-amber/15 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-brand-amber-dark"
+                              title={
+                                family.referringHospitalName
+                                  ? `Hospital referral · ${family.referringHospitalName}`
+                                  : "Hospital referral"
+                              }
+                            >
+                              Hospital
+                              {family.referringHospitalName
+                                ? ` · ${family.referringHospitalName}`
+                                : ""}
+                            </span>
+                          ) : null}
+                        </div>
+                      )}
+                      <span className="mt-0.5 block text-xs text-neutral-500">
+                        {family.ageRange ? `Age ${family.ageRange}` : null}
+                        <span className="md:hidden">
+                          {family.ageRange ? " · " : ""}
+                          {family.location}
+                        </span>
                       </span>
-                    ) : null}
+                    </div>
                   </div>
-                  <span className="mt-0.5 block text-xs text-neutral-500">
-                    {family.ageRange ? `Age ${family.ageRange}` : null}
-                    <span className="md:hidden">
-                      {family.ageRange ? " · " : ""}
-                      {family.location}
-                    </span>
-                  </span>
                 </td>
                 <td className="hidden max-w-[12rem] px-4 py-3 text-sm text-neutral-600 sm:table-cell">
                   {summarizeAdminList(family.careTypes?.length ? family.careTypes : family.care, 2)}
@@ -936,7 +957,9 @@ function FamilyDetailPanel({
             ...(caseOutcome ? { caseOutcome } : {})
           }),
           family.name,
-          `You closed the case for ${family.name}.`,
+          caseOutcome
+            ? `You closed the case for ${family.name} with outcome “${caseOutcome}”.`
+            : `You closed the case for ${family.name}.`,
           notifyPanel
         );
       } else {
@@ -954,14 +977,23 @@ function FamilyDetailPanel({
 
   async function saveCaseOutcome() {
     if (!family || isReadOnlyAssigned) return;
+
+    const nextOutcome = caseOutcome || null;
+    const shouldClose = !isClosedCase && caseOutcomeEndsCase(nextOutcome);
+
+    if (shouldClose) {
+      setConfirmCloseCase(true);
+      return;
+    }
+
     setSavingCaseOutcome(true);
     try {
       await onPatchIntake(
         family.id,
-        intakePatchBody({ caseOutcome: caseOutcome || null }),
+        intakePatchBody({ caseOutcome: nextOutcome }),
         family.name,
-        caseOutcome
-          ? `You set the case outcome for ${family.name}.`
+        nextOutcome
+          ? `You updated the case outcome for ${family.name}.`
           : `You cleared the case outcome for ${family.name}.`,
         notifyPanel
       );
@@ -1252,6 +1284,16 @@ function FamilyDetailPanel({
               <p className="mt-1 leading-6 text-red-900">
                 The family was shown 112 instructions and blocked from the normal care-matching journey. Follow up after confirming
                 emergency needs are handled.
+              </p>
+            </div>
+          ) : null}
+
+          {family.referralSource === "HOSPITAL" ? (
+            <div className="rounded-lg bg-brand-amber/10 px-4 py-3 text-sm text-ink">
+              <p className="font-semibold">Hospital referral</p>
+              <p className="mt-1 leading-6 text-ink/70">
+                Submitted by {family.referringHospitalName || "a hospital"}. The family can sign in with the
+                referral email to track the case. Use the same Care Guide workflow as family self-serve intakes.
               </p>
             </div>
           ) : null}
@@ -1756,13 +1798,129 @@ function FamilyDetailPanel({
             <PanelSection
               step={5}
               title="Schedule visit or callback"
-              description="Shown on the family dashboard."
+              description="Shared scheduling board — prefer confirming a proposed slot over inventing a datetime."
               completed={visitStepLocked}
               locked={visitStepLocked || isReadOnlyAssigned}
               collapsible={visitStepLocked}
               defaultOpen={!visitStepLocked && !isReadOnlyAssigned}
             >
-              <div className="space-y-3">
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm font-semibold text-ink">Live proposals</p>
+                  <div className="mt-2">
+                    {matches.filter(
+                      (match) =>
+                        match.proposedStartsAt ||
+                        match.confirmedStartsAt ||
+                        match.schedulingStatus === "EXPIRED" ||
+                        match.schedulingStatus === "AWAITING_PROVIDER" ||
+                        match.schedulingStatus === "AWAITING_FAMILY"
+                    ).length ? (
+                      <div className="divide-y divide-stone-100 rounded-lg bg-brand-cream/50">
+                        {matches
+                          .filter(
+                            (match) =>
+                              match.proposedStartsAt ||
+                              match.confirmedStartsAt ||
+                              match.schedulingStatus === "EXPIRED"
+                          )
+                          .map((match) => (
+                            <div
+                              key={match.id}
+                              className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 text-sm"
+                            >
+                              <div className="min-w-0">
+                                <p className="font-medium text-ink">{match.provider}</p>
+                                <p className="break-words text-xs text-neutral-500">
+                                  {match.schedulingStatus || "—"}
+                                  {match.proposedStartsAt
+                                    ? ` · Proposed ${new Date(match.proposedStartsAt).toLocaleString("en-GB", {
+                                        day: "numeric",
+                                        month: "short",
+                                        year: "numeric",
+                                        hour: "2-digit",
+                                        minute: "2-digit"
+                                      })}`
+                                    : ""}
+                                  {match.confirmedStartsAt
+                                    ? ` · Confirmed ${new Date(match.confirmedStartsAt).toLocaleString("en-GB", {
+                                        day: "numeric",
+                                        month: "short",
+                                        year: "numeric",
+                                        hour: "2-digit",
+                                        minute: "2-digit"
+                                      })}`
+                                    : ""}
+                                </p>
+                              </div>
+                              <div className="flex flex-wrap gap-2">
+                                {match.proposedStartsAt && match.schedulingStatus !== "CONFIRMED" ? (
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    disabled={!visitSchedulingAllowed}
+                                    onClick={() =>
+                                      void fetch(`/api/matches/${match.id}`, {
+                                        method: "POST",
+                                        headers: { "Content-Type": "application/json" },
+                                        body: JSON.stringify({ action: "confirm" })
+                                      }).then(async (response) => {
+                                        if (!response.ok) {
+                                          const payload = (await response.json().catch(() => null)) as {
+                                            error?: string;
+                                          } | null;
+                                          notifyPanel(payload?.error || "Could not confirm slot.");
+                                          return;
+                                        }
+                                        notifyPanel("Visit/callback confirmed from proposed slot.");
+                                        await onSync();
+                                      })
+                                    }
+                                  >
+                                    Confirm slot
+                                  </Button>
+                                ) : null}
+                                {match.schedulingStatus === "CONFIRMED" || match.proposedStartsAt ? (
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    disabled={!visitSchedulingAllowed}
+                                    onClick={() =>
+                                      void fetch(`/api/matches/${match.id}`, {
+                                        method: "POST",
+                                        headers: { "Content-Type": "application/json" },
+                                        body: JSON.stringify({
+                                          action: "cancel",
+                                          reason: "Care Guide cancelled"
+                                        })
+                                      }).then(async (response) => {
+                                        if (!response.ok) {
+                                          notifyPanel("Could not cancel schedule.");
+                                          return;
+                                        }
+                                        notifyPanel("Schedule cancelled.");
+                                        await onSync();
+                                      })
+                                    }
+                                  >
+                                    Cancel
+                                  </Button>
+                                ) : null}
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-neutral-500">
+                        No family/provider slot proposals yet. When the provider has no calendar, use manual
+                        lock below.
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Manual override</p>
                 <label className="grid gap-1.5 text-sm font-medium">
                   Date & time
                   <input
@@ -1825,13 +1983,55 @@ function FamilyDetailPanel({
                   <Button
                     type="button"
                     size="sm"
+                    variant="outline"
+                    disabled={savingVisit || !visitScheduledAt || !visitType || !visitSchedulingAllowed}
+                    onClick={() => {
+                      const target = matches.find(
+                        (match) =>
+                          match.provider === visitProviderName ||
+                          match.statusRaw === "VISIT_REQUESTED" ||
+                          match.statusRaw === "CALLBACK_REQUESTED" ||
+                          match.statusRaw === "ACCEPTED"
+                      );
+                      if (!target || !visitScheduledAt || !visitType) {
+                        notifyPanel("Select type and a match provider for manual lock.");
+                        return;
+                      }
+                      const starts = new Date(visitScheduledAt);
+                      const ends = new Date(starts.getTime() + (visitType === "CALLBACK" ? 30 : 60) * 60_000);
+                      void fetch(`/api/matches/${target.id}`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          action: "manual_lock",
+                          startsAt: starts.toISOString(),
+                          endsAt: ends.toISOString(),
+                          kind: visitType,
+                          notes: visitNotes || undefined
+                        })
+                      }).then(async (response) => {
+                        if (!response.ok) {
+                          const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+                          notifyPanel(payload?.error || "Manual lock failed.");
+                          return;
+                        }
+                        notifyPanel("Manual schedule locked (visible to family and provider).");
+                        await onSync();
+                      });
+                    }}
+                  >
+                    Manual lock (no calendar)
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
                     disabled={savingVisit || !visitScheduledAt || !visitSchedulingAllowed}
                     onClick={() => void saveVisitSchedule()}
                   >
                     {savingVisit
                       ? "Saving..."
                       : ["MATCHED", "VISIT_SCHEDULED"].includes(normalizedStatus)
-                        ? "Save & mark scheduled"
+                        ? "Save intake visit fields"
                         : "Update visit details"}
                   </Button>
                 </AdminPanelActions>
@@ -1884,50 +2084,63 @@ function FamilyDetailPanel({
             </PanelSection>
 
             {!isReadOnlyAssigned ? (
-              <PanelSection title="Case outcome" description="Why the case is ending or pausing." collapsible defaultOpen={canCloseCase}>
+              <PanelSection
+                title="Case outcome"
+                description="Select why the case is ending or pausing. Applying an outcome closes the family journey and stops provider matching."
+                collapsible
+                defaultOpen={canCloseCase || isClosedCase}
+              >
                 <div className="space-y-3">
-                  <label className="grid gap-1.5 text-sm font-medium">
-                    Outcome
-                    <select
-                      value={caseOutcome}
-                      onChange={(event) => setCaseOutcome(event.target.value)}
-                      className={adminFieldClass}
+                  <CustomSelect
+                    label="Outcome"
+                    value={caseOutcome}
+                    placeholder="Select outcome"
+                    options={CASE_OUTCOME_OPTIONS}
+                    onChange={setCaseOutcome}
+                  />
+                  {caseOutcome ? (
+                    <button
+                      type="button"
+                      className="text-xs font-medium text-neutral-500 underline-offset-2 hover:text-ink hover:underline"
+                      onClick={() => setCaseOutcome("")}
                     >
-                      <option value="">Select outcome</option>
-                      {CASE_OUTCOME_OPTIONS.map((option) => (
-                        <option key={option} value={option}>
-                          {option}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                      Clear selection
+                    </button>
+                  ) : null}
+                  {!isClosedCase ? (
+                    <p className="text-xs leading-5 text-neutral-500">
+                      {caseOutcome
+                        ? `“${caseOutcome}” will close this case for the family.`
+                        : "Choose an outcome, then apply it to close or pause this case."}
+                    </p>
+                  ) : (
+                    <p className="text-xs leading-5 text-neutral-500">
+                      This case is closed. You can still update or clear the recorded outcome.
+                    </p>
+                  )}
                   <AdminPanelActions>
                     <Button
                       type="button"
                       size="sm"
-                      variant="outline"
-                      disabled={savingCaseOutcome || caseOutcome === (family.caseOutcome || "")}
+                      variant={isClosedCase ? "outline" : "primary"}
+                      disabled={
+                        savingCaseOutcome ||
+                        isCaseActionPending ||
+                        caseOutcome === (family.caseOutcome || "") ||
+                        (!isClosedCase && !caseOutcome)
+                      }
                       onClick={() => void saveCaseOutcome()}
                     >
-                      {savingCaseOutcome ? "Saving..." : "Save outcome"}
+                      {savingCaseOutcome || (isCaseActionPending && pendingAction === "CLOSED")
+                        ? "Saving..."
+                        : isClosedCase
+                          ? caseOutcome
+                            ? "Update outcome"
+                            : "Clear outcome"
+                          : "Apply outcome & close case"}
                     </Button>
                   </AdminPanelActions>
                 </div>
-              </PanelSection>
-            ) : null}
-
-            {canCloseCase && !isReadOnlyAssigned ? (
-              <PanelSection title="Close family case" description="Ends the whole family journey.">
-                <AdminPanelActions>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={isCaseActionPending}
-                    onClick={() => setConfirmCloseCase(true)}
-                  >
-                    Close family case
-                  </Button>
-                </AdminPanelActions>
               </PanelSection>
             ) : null}
           </div>
@@ -1960,15 +2173,22 @@ function FamilyDetailPanel({
         open={confirmCloseCase}
         tone="danger"
         pending={isCaseActionPending && pendingAction === "CLOSED"}
-        title="Close this family case?"
+        title="Apply outcome and close this case?"
         description={
           caseOutcome
-            ? `This closes the entire family journey with outcome “${caseOutcome}”. The family dashboard shows the case as archived and provider matching stops.`
-            : "This closes the entire family journey — their dashboard shows the case as archived and provider matching stops. Consider selecting a case outcome before confirming."
+            ? `This records “${caseOutcome}” and closes the entire family journey. The family dashboard shows the case as archived and provider matching stops.`
+            : "Select a case outcome before closing."
         }
-        confirmLabel="Close family case"
+        confirmLabel="Apply & close"
         onCancel={() => setConfirmCloseCase(false)}
-        onConfirm={() => void handleCaseAction("CLOSED")}
+        onConfirm={() => {
+          if (!caseOutcome) {
+            notifyPanel("Select a case outcome before closing.");
+            setConfirmCloseCase(false);
+            return;
+          }
+          void handleCaseAction("CLOSED");
+        }}
       />
     </SlidePanel>
   );
@@ -3220,12 +3440,16 @@ function WaitlistTable({
     notify: (message: string) => void = setMessage
   ) {
     const entry = entries.find((item) => item.id === id) ?? (selected?.id === id ? selected : null);
-    if (entry && !verified && isRegistrationVerificationLocked(entry)) {
+    if (!entry) {
+      notify("Could not update registration verification.");
+      return;
+    }
+    if (!verified && isRegistrationVerificationLocked(entry)) {
       notify("Registration verification cannot be undone after the facility is contacted or invited.");
       return;
     }
 
-    const previousVerified = Boolean(entry?.registrationVerified);
+    const previousVerified = Boolean(entry.registrationVerified);
 
     const optimisticPatch = (item: WaitlistEntry): WaitlistEntry =>
       item.id === id ? { ...item, registrationVerified: verified } : item;
@@ -3253,16 +3477,19 @@ function WaitlistTable({
           ? {
               ...item,
               registrationVerified: Boolean(result.registrationVerified ?? verified),
-              canSendProviderInvite: Boolean(result.canSendProviderInvite),
+              canSendProviderInvite: Boolean(result.canSendProviderInvite ?? item.canSendProviderInvite),
               providerInviteAttemptsUsed:
                 result.providerInviteAttemptsUsed ?? item.providerInviteAttemptsUsed,
               providerInviteAttemptsRemaining:
                 result.providerInviteAttemptsRemaining ?? item.providerInviteAttemptsRemaining,
               hasActivePendingProviderInvite:
                 result.hasActivePendingProviderInvite ?? item.hasActivePendingProviderInvite,
-              providerInviteLockReason: result.providerInviteLockReason ?? null,
-              updatedAtIso,
-              updatedAt: new Date(updatedAtIso).toLocaleDateString("en-GB")
+              providerInviteLockReason:
+                result.providerInviteLockReason !== undefined
+                  ? result.providerInviteLockReason
+                  : item.providerInviteLockReason,
+              updatedAt: new Date(updatedAtIso).toLocaleDateString("en-GB"),
+              updatedAtIso
             }
           : item;
 
@@ -3604,7 +3831,7 @@ function WaitlistDetailPanel({
                       {entry.registrationVerified && verificationLocked
                         ? "Confirmed. This cannot be undone after contacting or inviting the facility."
                         : entry.registrationVerified
-                          ? "Confirmed. You can untick this until you mark contacted or send an invite."
+                          ? "Saved. You can untick until you mark contacted or send an invite."
                           : "Confirm the KVK or government ID outside this app before inviting the facility."}
                     </span>
                   </span>

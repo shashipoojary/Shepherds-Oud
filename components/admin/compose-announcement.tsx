@@ -153,19 +153,17 @@ export function ComposeAnnouncementBar({ onNotify }: ComposeAnnouncementBarProps
 
   return (
     <>
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand-green-pale/60 bg-white px-4 py-4 shadow-soft sm:px-5">
-        <div>
-          <p className="text-sm font-semibold text-brand-green-dark">Compose announcement</p>
-          <p className="mt-1 text-sm text-ink/70">
-            Festive greetings, news, or platform updates to waitlist, families, or providers — sent in small batches via the
-            email queue.
-          </p>
-        </div>
-        <Button type="button" size="sm" onClick={() => setOpen(true)}>
-          <Megaphone className="h-4 w-4" />
-          Compose announcement
-        </Button>
-      </div>
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        className="bg-white"
+        onClick={() => setOpen(true)}
+        aria-label="Compose announcement"
+      >
+        <Megaphone className="h-4 w-4 shrink-0" />
+        Announce
+      </Button>
 
       <SlidePanel
         open={open}

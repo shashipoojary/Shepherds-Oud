@@ -6,6 +6,7 @@ import { securityHeaders } from "@/lib/core/security-headers";
 import { DEFAULT_LOCALE, LOCALE_COOKIE, LOCALE_COOKIE_MAX_AGE, isLocale } from "@/lib/i18n/config";
 
 const publicProviderPaths = new Set(["/provider/login"]);
+const publicHospitalPaths = new Set(["/hospital/login"]);
 
 function isProtectedProviderPath(pathname: string) {
   if (publicProviderPaths.has(pathname)) {
@@ -13,6 +14,14 @@ function isProtectedProviderPath(pathname: string) {
   }
 
   return pathname === "/provider" || pathname.startsWith("/provider/");
+}
+
+function isProtectedHospitalPath(pathname: string) {
+  if (publicHospitalPaths.has(pathname)) {
+    return false;
+  }
+
+  return pathname === "/hospital" || pathname.startsWith("/hospital/");
 }
 
 function isProtectedAdminPath(pathname: string) {
@@ -63,9 +72,10 @@ export function proxy(request: NextRequest) {
   }
 
   const needsProviderAuth = isProtectedProviderPath(pathname);
+  const needsHospitalAuth = isProtectedHospitalPath(pathname);
   const needsAdminAuth = isProtectedAdminPath(pathname);
 
-  if (!needsProviderAuth && !needsAdminAuth) {
+  if (!needsProviderAuth && !needsHospitalAuth && !needsAdminAuth) {
     return withLocaleCookie(
       request,
       applySecurityHeaders(
@@ -80,7 +90,12 @@ export function proxy(request: NextRequest) {
   const sessionCookie = getSessionCookie(request);
 
   if (!sessionCookie) {
-    const loginUrl = new URL(needsProviderAuth ? "/provider/login" : "/login", request.url);
+    const loginPath = needsProviderAuth
+      ? "/provider/login"
+      : needsHospitalAuth
+        ? "/hospital/login"
+        : "/login";
+    const loginUrl = new URL(loginPath, request.url);
     loginUrl.searchParams.set("callbackUrl", pathname);
     return withLocaleCookie(request, applySecurityHeaders(request, NextResponse.redirect(loginUrl)));
   }

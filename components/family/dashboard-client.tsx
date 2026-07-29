@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { useSearchParams } from "next/navigation";
@@ -12,16 +12,23 @@ import type { ProviderMatch } from "@/lib/core/types";
 import { useLocale } from "@/components/i18n/locale-provider";
 import { brand } from "@/lib/config/brand";
 import { CareJourneyTimeline } from "@/components/family/care-journey-timeline";
+import { CareGuidePlanCard } from "@/components/family/care-guide-plan-card";
 import { FamilyActiveMatches } from "@/components/family/active-matches";
 import { FamilyCasePicker } from "@/components/family/case-picker";
 import { FamilyCaseSwitcher } from "@/components/family/case-switcher";
 import { FamilySavedProviders } from "@/components/family/saved-providers";
 import { IntakeSummaryCard } from "@/components/family/intake-summary-card";
 import { Button } from "@/components/ui/button";
-import { ButtonRow } from "@/components/ui/button-row";
 import { EmptyState } from "@/components/ui/empty-state";
 import { RefreshButton } from "@/components/ui/refresh-button";
 import { FamilyDashboardSkeleton } from "@/components/ui/results-skeleton";
+import { cn } from "@/lib/core/utils";
+
+async function fetchMatchesForIntake(intakeId: string): Promise<ProviderMatch[]> {
+  const response = await fetch(`/api/matches?intakeId=${encodeURIComponent(intakeId)}`);
+  if (!response.ok) return [];
+  return (await response.json()) as ProviderMatch[];
+}
 
 export function FamilyDashboardClient() {
   return (
@@ -40,61 +47,78 @@ function FamilyDashboardContent() {
   const [refreshing, setRefreshing] = useState(false);
   const [matches, setMatches] = useState<ProviderMatch[]>([]);
   const [matchesLoading, setMatchesLoading] = useState(false);
+  /** Intake id whose matches are currently in `matches`. */
+  const [matchesForIntakeId, setMatchesForIntakeId] = useState<string | null>(null);
+  const initialLoadDone = useRef(false);
+  const loadGeneration = useRef(0);
 
-  const refreshStatus = useCallback(async () => {
-    const sessionIntakes = await getSessionFamilyIntakes();
+  const loadIntakesAndMatches = useCallback(
+    async (options?: { soft?: boolean }) => {
+      const soft = options?.soft === true;
+      const generation = ++loadGeneration.current;
 
-    if (sessionIntakes.status === "ok") {
+      if (!soft) {
+        if (!initialLoadDone.current) setLoading(true);
+        else setRefreshing(true);
+      }
+
+      const sessionIntakes = await getSessionFamilyIntakes();
+      if (generation !== loadGeneration.current) return;
+
+      if (sessionIntakes.status !== "ok") {
+        setIntakes([]);
+        setMatches([]);
+        setMatchesForIntakeId(null);
+        setMatchesLoading(false);
+        setLoading(false);
+        setRefreshing(false);
+        initialLoadDone.current = true;
+        return;
+      }
+
+      const selection = selectFamilyIntake(sessionIntakes.intakes, requestedIntakeId);
+
+      // Mark shortlist loading before swapping intakes so the UI never paints a blank gap.
+      if (selection.state === "selected") {
+        setMatchesLoading(true);
+      } else {
+        setMatches([]);
+        setMatchesForIntakeId(null);
+        setMatchesLoading(false);
+      }
+
       setIntakes(sessionIntakes.intakes);
+
+      if (selection.state === "selected") {
+        const intakeId = selection.intake.id;
+        try {
+          const nextMatches = await fetchMatchesForIntake(intakeId);
+          if (generation !== loadGeneration.current) return;
+          setMatches(nextMatches);
+          setMatchesForIntakeId(intakeId);
+        } catch {
+          if (generation !== loadGeneration.current) return;
+          setMatches([]);
+          setMatchesForIntakeId(intakeId);
+        } finally {
+          if (generation === loadGeneration.current) setMatchesLoading(false);
+        }
+      }
+
+      if (generation !== loadGeneration.current) return;
       setLoading(false);
       setRefreshing(false);
-      return;
-    }
-
-    setIntakes([]);
-    setLoading(false);
-    setRefreshing(false);
-  }, []);
+      initialLoadDone.current = true;
+    },
+    [requestedIntakeId]
+  );
 
   useEffect(() => {
-    void refreshStatus();
-  }, [refreshStatus]);
+    void loadIntakesAndMatches();
+  }, [loadIntakesAndMatches]);
 
   const selection = selectFamilyIntake(intakes, requestedIntakeId);
   const intake = selection.state === "selected" ? selection.intake : null;
-
-  useEffect(() => {
-    if (!intake?.id) {
-      setMatches([]);
-      setMatchesLoading(false);
-      return;
-    }
-
-    const intakeId = intake.id;
-    let cancelled = false;
-
-    async function loadMatches() {
-      setMatchesLoading(true);
-      try {
-        const response = await fetch(`/api/matches?intakeId=${encodeURIComponent(intakeId)}`);
-        if (cancelled) return;
-        if (response.ok) {
-          setMatches((await response.json()) as ProviderMatch[]);
-        } else {
-          setMatches([]);
-        }
-      } catch {
-        if (!cancelled) setMatches([]);
-      } finally {
-        if (!cancelled) setMatchesLoading(false);
-      }
-    }
-
-    void loadMatches();
-    return () => {
-      cancelled = true;
-    };
-  }, [intake?.id, intake?.status, refreshing]);
 
   const declineContext = useMemo(
     () =>
@@ -104,11 +128,7 @@ function FamilyDashboardContent() {
     [intake, matches]
   );
 
-  async function handleRefresh() {
-    setRefreshing(true);
-    await refreshStatus();
-  }
-
+  // First paint waits for intakes + shortlist together.
   if (loading) {
     return <FamilyDashboardSkeleton />;
   }
@@ -118,6 +138,10 @@ function FamilyDashboardContent() {
   const caseClosed = normalizedStatus === "CLOSED";
   const canEditIntake = intake ? canFamilyEditIntake(intake.status) : false;
   const collapsedByDefault = caseClosed;
+  const showShortlistSkeleton =
+    !caseClosed &&
+    Boolean(intake?.id) &&
+    (matchesLoading || matchesForIntakeId !== intake.id);
 
   if (selection.state === "needs-picker" || selection.state === "not-found") {
     return (
@@ -160,11 +184,20 @@ function FamilyDashboardContent() {
           </div>
           {intake ? (
             <div className="flex shrink-0 items-center gap-2">
-              <RefreshButton onClick={() => void handleRefresh()} loading={refreshing} />
+              <RefreshButton onClick={() => void loadIntakesAndMatches()} loading={refreshing} />
             </div>
           ) : null}
         </div>
-        <ButtonRow className="mt-5 max-w-lg">
+        <div
+          className={cn(
+            "mt-5 grid gap-2 sm:gap-3",
+            intake
+              ? canEditIntake
+                ? "grid-cols-1 sm:grid-cols-3"
+                : "grid-cols-1 sm:grid-cols-2"
+              : "grid-cols-1 sm:grid-cols-2"
+          )}
+        >
           {intake ? (
             <>
               {canEditIntake ? (
@@ -189,7 +222,7 @@ function FamilyDashboardContent() {
               </Button>
             </>
           )}
-        </ButtonRow>
+        </div>
         <p className="mt-2 text-sm text-neutral-600">{ui.family.fundingEstimateHint}</p>
       </header>
 
@@ -209,13 +242,15 @@ function FamilyDashboardContent() {
                   : undefined
               }
             />
+            <CareGuidePlanCard intake={intake} />
             <IntakeSummaryCard intake={intake} showCareGuide={false} defaultOpen={false} />
             <FamilyActiveMatches
               key={intake.id}
               intakeId={intake.id}
               intakeStatus={intake.status}
               matches={matches}
-              loading={matchesLoading}
+              loading={showShortlistSkeleton}
+              onMatchesChanged={() => void loadIntakesAndMatches({ soft: true })}
             />
             <FamilySavedProviders intakeId={intake.id} matches={matches} />
             <section className="rounded-2xl bg-white p-5 shadow-soft sm:p-6">

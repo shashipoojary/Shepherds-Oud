@@ -14,3 +14,8 @@ export type CaseOutcome = (typeof CASE_OUTCOME_OPTIONS)[number];
 export function isCaseOutcome(value: string): value is CaseOutcome {
   return (CASE_OUTCOME_OPTIONS as readonly string[]).includes(value);
 }
+
+/** Every recorded outcome ends or pauses the family journey (status → CLOSED). */
+export function caseOutcomeEndsCase(outcome: string | null | undefined): boolean {
+  return Boolean(outcome && isCaseOutcome(outcome));
+}

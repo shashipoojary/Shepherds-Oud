@@ -86,6 +86,7 @@ export async function resolveRoleForUser(user: {
   email?: string | null;
   role?: string | null;
   linkedProviderId?: string | null;
+  linkedHospitalId?: string | null;
 }): Promise<AppRole> {
   if (isAdminEmail(user.email)) {
     return "ADMIN";
@@ -101,6 +102,10 @@ export async function resolveRoleForUser(user: {
     return "PROVIDER";
   }
 
+  if (user.linkedHospitalId) {
+    return "HOSPITAL";
+  }
+
   if (!user.id) {
     return "FAMILY";
   }
@@ -109,6 +114,7 @@ export async function resolveRoleForUser(user: {
     where: { id: user.id },
     select: {
       linkedProviderId: true,
+      linkedHospitalId: true,
       email: true,
       role: true
     }
@@ -116,6 +122,10 @@ export async function resolveRoleForUser(user: {
 
   if (existing?.linkedProviderId) {
     return "PROVIDER";
+  }
+
+  if (existing?.linkedHospitalId) {
+    return "HOSPITAL";
   }
 
   const email = normalizeEmail(user.email || existing?.email || "");
@@ -133,6 +143,18 @@ export async function resolveRoleForUser(user: {
 
   if (acceptedInvite) {
     return "PROVIDER";
+  }
+
+  const acceptedHospitalInvite = await prisma.hospitalInvite.findFirst({
+    where: {
+      email,
+      status: "ACCEPTED"
+    },
+    select: { id: true }
+  });
+
+  if (acceptedHospitalInvite) {
+    return "HOSPITAL";
   }
 
   const provider = await prisma.provider.findFirst({

@@ -7,7 +7,6 @@ import { useLocale } from "@/components/i18n/locale-provider";
 import { dateLocale, fieldLabel, optionLabel } from "@/lib/i18n/ui";
 import { withIntakeId } from "@/lib/client/case-selection";
 import {
-  formatVisitSchedule,
   intakeDecisionMakers,
   intakeStatusHint,
   intakeStatusLabel,
@@ -68,22 +67,6 @@ function NestedGroup({ title, children, defaultOpen = false }: { title: string; 
   );
 }
 
-function UpdateCallout({ title, children, tone = "neutral" }: { title: string; children: React.ReactNode; tone?: "neutral" | "guide" | "visit" }) {
-  const toneClass =
-    tone === "guide"
-      ? "bg-brand-green-pale/15 ring-1 ring-brand-green-pale/70"
-      : tone === "visit"
-        ? "bg-brand-amber/10 ring-1 ring-brand-amber/30"
-        : "bg-stone-50/80 ring-1 ring-stone-200/70";
-
-  return (
-    <div className={`rounded-xl px-4 py-3.5 ${toneClass}`}>
-      <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">{title}</p>
-      <div className="mt-1.5 text-sm leading-6 text-neutral-700">{children}</div>
-    </div>
-  );
-}
-
 function collapsedPreview(locale: Locale, intake: FamilyIntake, moreLabel: (n: number) => string) {
   const parts = [
     intake.preferredArea,
@@ -114,7 +97,6 @@ export function IntakeSummaryCard({
   const hint = intakeStatusHint(intake.status, locale);
   const isClosed = normalizeIntakeStatus(intake.status) === "CLOSED";
   const hasMatches = !isClosed && typeof intake.matchCount === "number" && intake.matchCount > 0;
-  const visitSummary = formatVisitSchedule(intake, locale);
   const reference = intake.id.slice(0, 8).toUpperCase();
   const decisionMakers = intakeDecisionMakers(intake);
   const hasDecisionSupport = decisionMakers.length > 0 || Boolean(intake.seniorAgreedToSearch || intake.decisionParticipants);
@@ -139,7 +121,6 @@ export function IntakeSummaryCard({
       intake.immediateRiskFlags?.length
   );
   const hasSupportNeeds = Boolean(intake.emotionalSupportNeeds?.length || intake.supportTypes?.length);
-  const hasUpdates = !isClosed && Boolean(intake.carePathway || intake.carePlanSummary || visitSummary);
 
   if (compact) {
     return (
@@ -190,27 +171,6 @@ export function IntakeSummaryCard({
       >
         <div className="space-y-4">
           <p className="text-sm leading-6 text-neutral-600">{hint}</p>
-
-          {hasUpdates ? (
-            <section id="care-guide-plan" className="scroll-mt-24 space-y-2.5">
-              <h3 className="text-sm font-semibold text-ink">{ui.family.careGuideUpdates}</h3>
-              {intake.carePathway ? (
-                <UpdateCallout title={ui.family.recommendedPathway} tone="neutral">
-                  <strong className="text-ink">{optionLabel(locale, intake.carePathway)}</strong>
-                </UpdateCallout>
-              ) : null}
-              {intake.carePlanSummary ? (
-                <UpdateCallout title={ui.family.carePlanSummary} tone="guide">
-                  {intake.carePlanSummary}
-                </UpdateCallout>
-              ) : null}
-              {visitSummary ? (
-                <UpdateCallout title={ui.family.visitScheduled} tone="visit">
-                  {visitSummary}
-                </UpdateCallout>
-              ) : null}
-            </section>
-          ) : null}
 
           <div className="divide-y divide-stone-100">
             <NestedGroup title={ui.family.contactLocation} defaultOpen>

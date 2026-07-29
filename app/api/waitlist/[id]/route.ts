@@ -45,8 +45,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       }
     }
 
-    // Verification can be cleared only while the entry is still NEW and no invite has been sent.
-    // After mark-contacted or invite, clearing is blocked so the invite gate stays one-way.
+    // Can clear verification only while still NEW and no invite activity.
+    // After mark-contacted or invite, keep the gate one-way.
     if (registrationVerified === false && existing.registrationVerified) {
       const hasInviteActivity = existing.providerInvites.some((invite) => invite.status !== "REVOKED");
       const locked = existing.status !== "NEW" || hasInviteActivity;

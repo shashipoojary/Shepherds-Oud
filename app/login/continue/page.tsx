@@ -4,10 +4,22 @@ import { auth } from "@/lib/auth/config";
 import { getServerSession } from "@/lib/auth/server";
 import { isAdminEmail, resolveRoleForUser } from "@/lib/auth/roles";
 import { parseLoginContinueContext } from "@/lib/auth/login-context";
-import { postLoginHref, PROVIDER_DASHBOARD_PATH } from "@/lib/auth/routes";
+import {
+  HOSPITAL_DASHBOARD_PATH,
+  HOSPITAL_LOGIN_PATH,
+  postLoginHref,
+  PROVIDER_DASHBOARD_PATH
+} from "@/lib/auth/routes";
 import { prisma } from "@/lib/core/db";
 import { acceptProviderInviteForUser } from "@/lib/providers/invite";
+import { acceptHospitalInviteForUser, resolveHospitalLoginAccess } from "@/lib/hospitals/invite";
+import { claimFamilyIntakesByEmail } from "@/lib/hospitals/claim-family-intakes";
 import { PROVIDER_LOGIN_ERROR, type ProviderLoginErrorCode } from "@/lib/auth/provider-login-errors";
+import {
+  HOSPITAL_LOGIN_ERROR,
+  hospitalLoginErrorFromAccessCode,
+  type HospitalLoginErrorCode
+} from "@/lib/auth/hospital-login-errors";
 import { resolveProviderLoginAccess } from "@/lib/providers/invite-access";
 
 async function rejectProviderLogin(reason: ProviderLoginErrorCode, inviteToken?: string | null) {
@@ -17,6 +29,15 @@ async function rejectProviderLogin(reason: ProviderLoginErrorCode, inviteToken?:
     params.set("invite", inviteToken);
   }
   redirect(`/provider/login?${params.toString()}`);
+}
+
+async function rejectHospitalLogin(reason: HospitalLoginErrorCode, inviteToken?: string | null) {
+  await auth.api.signOut({ headers: await headers() });
+  const params = new URLSearchParams({ error: reason });
+  if (inviteToken) {
+    params.set("invite", inviteToken);
+  }
+  redirect(`${HOSPITAL_LOGIN_PATH}?${params.toString()}`);
 }
 
 async function rejectAdminLogin() {
@@ -38,11 +59,13 @@ export default async function LoginContinuePage({
     redirect("/login");
   }
 
-  const { destination, invite: providerInvite } = parseLoginContinueContext(callbackUrl, invite);
+  const { destination, invite: inviteToken } = parseLoginContinueContext(callbackUrl, invite);
   let role = await resolveRoleForUser({
     id: session.user.id,
     email: session.user.email,
-    role: session.user.role
+    role: session.user.role,
+    linkedProviderId: session.user.linkedProviderId,
+    linkedHospitalId: session.user.linkedHospitalId
   });
 
   if (session.user.role !== role) {
@@ -53,15 +76,16 @@ export default async function LoginContinuePage({
   }
 
   const isProviderLogin = destination?.startsWith(PROVIDER_DASHBOARD_PATH);
+  const isHospitalLogin = destination?.startsWith(HOSPITAL_DASHBOARD_PATH);
   const isAdminLogin = destination?.startsWith("/admin");
 
   if (isAdminLogin && role !== "ADMIN") {
     await rejectAdminLogin();
   }
 
-  if (isProviderLogin && providerInvite && !isAdminEmail(session.user.email)) {
+  if (isProviderLogin && inviteToken && !isAdminEmail(session.user.email)) {
     const accepted = await acceptProviderInviteForUser({
-      token: providerInvite,
+      token: inviteToken,
       userId: session.user.id,
       email: session.user.email
     });
@@ -69,16 +93,42 @@ export default async function LoginContinuePage({
     if (accepted.ok) {
       role = "PROVIDER";
     } else if (accepted.reason === "email_mismatch") {
-      await rejectProviderLogin(PROVIDER_LOGIN_ERROR.INVITE_EMAIL, providerInvite);
+      await rejectProviderLogin(PROVIDER_LOGIN_ERROR.INVITE_EMAIL, inviteToken);
+    }
+  }
+
+  if (isHospitalLogin && inviteToken && !isAdminEmail(session.user.email)) {
+    const accepted = await acceptHospitalInviteForUser({
+      token: inviteToken,
+      userId: session.user.id,
+      email: session.user.email
+    });
+
+    if (accepted.ok) {
+      role = "HOSPITAL";
+    } else if (accepted.reason === "email_mismatch") {
+      await rejectHospitalLogin(HOSPITAL_LOGIN_ERROR.INVITE_EMAIL, inviteToken);
     }
   }
 
   if (isProviderLogin && role !== "PROVIDER" && !isAdminEmail(session.user.email)) {
-    const access = await resolveProviderLoginAccess(session.user.email, providerInvite);
+    const access = await resolveProviderLoginAccess(session.user.email, inviteToken);
     if (!access.allowed) {
-      await rejectProviderLogin(access.code, providerInvite);
+      await rejectProviderLogin(access.code, inviteToken);
     }
-    await rejectProviderLogin(PROVIDER_LOGIN_ERROR.PENDING, providerInvite);
+    await rejectProviderLogin(PROVIDER_LOGIN_ERROR.PENDING, inviteToken);
+  }
+
+  if (isHospitalLogin && role !== "HOSPITAL" && !isAdminEmail(session.user.email)) {
+    const access = await resolveHospitalLoginAccess(session.user.email, inviteToken);
+    if (!access.allowed) {
+      await rejectHospitalLogin(hospitalLoginErrorFromAccessCode(access.code), inviteToken);
+    }
+    await rejectHospitalLogin(HOSPITAL_LOGIN_ERROR.PENDING, inviteToken);
+  }
+
+  if (role === "FAMILY") {
+    await claimFamilyIntakesByEmail(session.user.id, session.user.email);
   }
 
   redirect(postLoginHref(role, destination ?? callbackUrl));

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowUpRight, Copy, Mail, Phone, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -10,9 +10,11 @@ import { DashboardSkeleton } from "@/components/ui/dashboard-skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ListSearch } from "@/components/ui/list-search";
 import { RefreshButton } from "@/components/ui/refresh-button";
-import { StatGrid } from "@/components/ui/stat-grid";
 import { UnreadDot } from "@/components/ui/unread-dot";
 import { PanelSection, DetailList, panelNoticeTone, SlidePanel, StatusPill, usePanelMessage } from "@/components/ui/slide-panel";
+import { ProviderCalendarSettings } from "@/components/provider/calendar-settings";
+import { VisitSlotPicker } from "@/components/scheduling/visit-slot-picker";
+import { postMatchSchedule } from "@/lib/client/match-request";
 import { careTypeOptions, declineReasonOptions, careLevelOptions, dementiaCapacityOptions, dutchProvinces, facilityTypes, fundingTypeOptions, visitAvailabilityOptions } from "@/lib/config/content";
 import {
   compareMatchPriority,
@@ -33,7 +35,6 @@ import { recordAction } from "@/lib/client/actions";
 import {
   initProviderInquirySeenFromData,
   isProviderInquiryUnread,
-  markAllProviderInquiriesSeen,
   markProviderInquirySeen
 } from "@/lib/client/provider-inquiry-seen";
 import {
@@ -97,6 +98,15 @@ type Inquiry = {
   declineReason: string | null;
   createdAt: string;
   updatedAt: string;
+  proposedStartsAt?: string | null;
+  proposedEndsAt?: string | null;
+  alternateStartsAt?: string | null;
+  alternateEndsAt?: string | null;
+  confirmedStartsAt?: string | null;
+  confirmedEndsAt?: string | null;
+  schedulingStatus?: string | null;
+  schedulingMode?: string | null;
+  schedulingExpiresAt?: string | null;
   intake: {
     contactName: string;
     preferredArea: string;
@@ -333,8 +343,6 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
   const [inquirySearch, setInquirySearch] = useState("");
 
   const providerInquiryTabs: ProviderInquiryTab[] = ["new", "ongoing", "closed", "all"];
-  const inquiriesRef = useRef(inquiries);
-  inquiriesRef.current = inquiries;
 
   const bumpInquirySeen = useCallback(() => {
     setInquirySeenVersion((current) => current + 1);
@@ -345,7 +353,7 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
   }, []);
 
   function openInquiry(inquiry: Inquiry) {
-    markProviderInquirySeen(inquiry.id, inquiry.updatedAt);
+    markProviderInquirySeen(inquiry.id, inquiry.updatedAt, inquiry.createdAt);
     bumpInquirySeen();
     setSelectedInquiry(inquiry);
   }
@@ -367,7 +375,7 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
           if (!current) return null;
           const fresh = data.inquiries.find((item) => item.id === current.id) ?? null;
           if (fresh) {
-            markProviderInquirySeen(fresh.id, fresh.updatedAt);
+            markProviderInquirySeen(fresh.id, fresh.updatedAt, fresh.createdAt);
             bumpInquirySeen();
           }
           return fresh;
@@ -416,7 +424,9 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
   }, [initialData, locale]);
 
   useEffect(() => {
-    initProviderInquirySeenFromData(inquiries.map((item) => ({ id: item.id, updatedAt: item.updatedAt })));
+    initProviderInquirySeenFromData(
+      inquiries.map((item) => ({ id: item.id, updatedAt: item.updatedAt, createdAt: item.createdAt }))
+    );
     initProviderInquiryTabSeenFromData(inquiries);
   }, [inquiries]);
 
@@ -425,20 +435,19 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
       if (!current) return null;
       const fresh = inquiries.find((item) => item.id === current.id) ?? null;
       if (fresh) {
-        markProviderInquirySeen(fresh.id, fresh.updatedAt);
+        markProviderInquirySeen(fresh.id, fresh.updatedAt, fresh.createdAt);
         bumpInquirySeen();
       }
       return fresh;
     });
   }, [inquiries, bumpInquirySeen]);
 
+  // Tab badge watermark: acknowledge whatever is on the active tab (including after refresh).
+  // Card pulse stays until the inquiry is opened — do not mark items seen here.
   useEffect(() => {
     if (!profileComplete) return;
-    const tabInquiries = filterProviderInquiriesByTab(inquiriesRef.current, inquiryTab);
-    markAllProviderInquiriesSeen(tabInquiries.map((item) => ({ id: item.id, updatedAt: item.updatedAt })));
-    bumpInquirySeen();
-    setInquiryTabSeenAt(markProviderInquiryTabSeen(inquiryTab, inquiriesRef.current));
-  }, [inquiryTab, profileComplete, bumpInquirySeen]);
+    setInquiryTabSeenAt(markProviderInquiryTabSeen(inquiryTab, inquiries));
+  }, [inquiryTab, profileComplete, inquiries]);
 
   useEffect(() => {
     if (!message) return;
@@ -618,11 +627,22 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
     });
 
     try {
-      const response = await fetch(`/api/matches/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status, ...(reason ? { declineReason: reason } : {}) })
-      });
+      const current = inquiries.find((item) => item.id === id) || selectedInquiry;
+      let response: Response;
+
+      if (status === "ACCEPTED" && current?.proposedStartsAt) {
+        response = await fetch(`/api/matches/${id}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "confirm" })
+        });
+      } else {
+        response = await fetch(`/api/matches/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status, ...(reason ? { declineReason: reason } : {}) })
+        });
+      }
 
       if (!response.ok) {
         const errorMessage = await readApiError(response, locale);
@@ -636,9 +656,9 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
       const updated = (await response.json()) as Inquiry;
       setInquiries((current) => current.map((item) => (item.id === id ? { ...item, ...updated } : item)));
       setSelectedInquiry((current) => (current?.id === id ? { ...current, ...updated } : current));
-      markProviderInquirySeen(id, updated.updatedAt);
+      markProviderInquirySeen(id, updated.updatedAt, updated.createdAt);
       bumpInquirySeen();
-      // Success is already shown via status banner + "What next" — skip a second toast.
+      void refreshDashboard();
     } catch {
       setInquiryFeedback((current) => ({
         ...current,
@@ -708,7 +728,6 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
         <div className="min-w-0 flex-1">
           <p className="section-label">{ui.provider.dashboardTitle}</p>
           <h1 className="mt-1 text-h2 font-semibold text-ink">{ui.provider.inquiries}</h1>
-          <p className="mt-1 hidden max-w-2xl text-sm text-ink/65 sm:block">{ui.provider.inquiriesIntro}</p>
         </div>
         <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
           <Button
@@ -744,82 +763,95 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
         </div>
       ) : null}
 
-      <StatGrid
-        className="mb-3"
-        stats={[
-          [
-            profileComplete ? String(inquiryInsights.actionNeeded) : ui.provider.locked,
-            ui.provider.actionNeeded
-          ],
-          [profileComplete ? String(inquiryInsights.ongoing) : "—", ui.provider.insightsOngoing],
-          [profileComplete ? String(inquiryInsights.closed) : "—", ui.provider.insightsClosed],
-          [
-            profileComplete
-              ? inquiryInsights.acceptanceRatePercent != null
-                ? ui.provider.insightsAcceptanceApprox(inquiryInsights.acceptanceRatePercent)
-                : "—"
-              : ui.provider.missingCount(profileMissingRequirements.length),
-            profileComplete ? ui.provider.insightsAcceptanceRate : ui.provider.profileStatus
-          ]
-        ]}
-      />
-
-      <section className="mb-3 rounded-xl border border-stone-200 bg-white px-3 py-3 shadow-soft sm:px-4">
-        <div className="mb-2 flex items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold text-ink">{ui.provider.occupancyTitle}</h2>
-          <Button
-            type="button"
-            size="xs"
-            variant="outline"
-            className="shrink-0 bg-white"
-            onClick={() => setProfilePanelOpen(true)}
-          >
-            {ui.provider.occupancyEditCapacity}
-          </Button>
+      <section className="mb-3 overflow-hidden rounded-xl border border-stone-200 bg-white shadow-soft">
+        <div className="grid grid-cols-2 sm:grid-cols-4">
+          {(
+            [
+              [
+                profileComplete ? String(inquiryInsights.actionNeeded) : ui.provider.locked,
+                ui.provider.actionNeeded
+              ],
+              [profileComplete ? String(inquiryInsights.ongoing) : "—", ui.provider.insightsOngoing],
+              [profileComplete ? String(inquiryInsights.closed) : "—", ui.provider.insightsClosed],
+              [
+                profileComplete
+                  ? inquiryInsights.acceptanceRatePercent != null
+                    ? ui.provider.insightsAcceptanceApprox(inquiryInsights.acceptanceRatePercent)
+                    : "—"
+                  : ui.provider.missingCount(profileMissingRequirements.length),
+                profileComplete ? ui.provider.insightsAcceptanceRate : ui.provider.profileStatus
+              ]
+            ] as Array<[string, string]>
+          ).map(([value, label], index) => (
+            <div
+              key={label}
+              className={cn(
+                "min-w-0 px-3 py-3 text-center sm:px-4 sm:py-3.5",
+                index % 2 === 1 && "border-l border-stone-100",
+                index >= 2 && "border-t border-stone-100 sm:border-t-0",
+                index > 0 && "sm:border-l sm:border-stone-100"
+              )}
+            >
+              <p className="text-xl font-semibold tabular-nums leading-none text-brand-amber sm:text-2xl">{value}</p>
+              <p className="mt-1.5 text-[10px] font-medium uppercase tracking-wide text-ink/45">{label}</p>
+            </div>
+          ))}
         </div>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <div className="min-w-0 rounded-lg bg-brand-cream/60 px-3 py-2">
-            <p className="text-[10px] font-medium uppercase tracking-wide text-ink/50">{ui.provider.occupancyPercentLabel}</p>
-            <p className="mt-0.5 truncate text-lg font-semibold tabular-nums text-ink sm:text-xl">
-              {occupancyPct != null ? `${occupancyPct}%` : "—"}
-            </p>
-            <p className="mt-0.5 truncate text-xs text-ink/55">
-              {occupiedCount != null && bedsTotalParsed != null
-                ? ui.provider.occupancyOccupiedCount(occupiedCount, bedsTotalParsed)
-                : bedsOpenParsed == null || bedsTotalParsed == null
-                  ? ui.provider.occupancyNoBeds
-                  : ui.provider.occupancyBedsMismatch}
-            </p>
-          </div>
-          <div className="min-w-0 rounded-lg bg-brand-cream/60 px-3 py-2">
-            <p className="text-[10px] font-medium uppercase tracking-wide text-ink/50">{ui.provider.occupancyBedsLabel}</p>
-            <p className="mt-0.5 truncate text-lg font-semibold tabular-nums text-ink sm:text-xl">
-              {bedsOpenParsed != null ? bedsOpenParsed : "—"}
-            </p>
-            <p className="mt-0.5 truncate text-xs text-ink/55">
-              {bedsOpenParsed != null && bedsTotalParsed != null && bedsOpenParsed <= bedsTotalParsed
-                ? ui.provider.occupancyBedsOfTotal(bedsOpenParsed, bedsTotalParsed)
-                : bedsOpenParsed != null && bedsTotalParsed != null
-                  ? ui.provider.occupancyBedsMismatch
-                  : "—"}
-            </p>
-          </div>
-          <div className="min-w-0 rounded-lg bg-brand-cream/60 px-3 py-2">
-            <p className="text-[10px] font-medium uppercase tracking-wide text-ink/50">{ui.provider.occupancyAvailability}</p>
-            <p className="mt-0.5 truncate text-sm font-semibold text-ink sm:text-base">
-              {optionLabel(locale, form.availabilityStatus)}
-            </p>
-          </div>
-          <div className="min-w-0 rounded-lg bg-brand-cream/60 px-3 py-2">
-            <p className="text-[10px] font-medium uppercase tracking-wide text-ink/50">{ui.provider.occupancyWaitEstimate}</p>
-            <p className="mt-0.5 truncate text-sm font-semibold text-ink sm:text-base">
-              {waitDisplay ?? ui.provider.occupancyWaitUnset}
-            </p>
-            {waitHasEstimate ? (
-              <p className={cn("mt-0.5 truncate text-xs", waitStale ? "text-brand-amber-dark" : "text-ink/55")}>
-                {waitStale ? ui.provider.occupancyWaitStale : ui.provider.occupancyWaitFresh}
-              </p>
-            ) : null}
+
+        <div className="border-t border-stone-100 bg-brand-cream/35 px-3 py-3 sm:px-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+            <div className="grid min-w-0 flex-1 grid-cols-1 gap-3 min-[480px]:grid-cols-3">
+              <div className="min-w-0">
+                <p className="text-[10px] font-medium uppercase tracking-wide text-ink/45">
+                  {ui.provider.occupancyBedsLabel}
+                </p>
+                <p className="mt-0.5 text-base font-semibold tabular-nums text-ink sm:text-lg">
+                  {bedsOpenParsed != null ? bedsOpenParsed : "—"}
+                </p>
+                {occupancyPct != null && occupiedCount != null && bedsTotalParsed != null ? (
+                  <p className="mt-0.5 text-xs leading-snug text-ink/55">
+                    {occupancyPct}% {ui.provider.occupancyPercentLabel.toLowerCase()}
+                    {" · "}
+                    {ui.provider.occupancyOccupiedCount(occupiedCount, bedsTotalParsed)}
+                  </p>
+                ) : bedsOpenParsed != null && bedsTotalParsed != null && bedsOpenParsed <= bedsTotalParsed ? (
+                  <p className="mt-0.5 text-xs text-ink/55">
+                    {ui.provider.occupancyBedsOfTotal(bedsOpenParsed, bedsTotalParsed)}
+                  </p>
+                ) : null}
+              </div>
+
+              <div className="min-w-0">
+                <p className="text-[10px] font-medium uppercase tracking-wide text-ink/45">
+                  {ui.provider.occupancyAvailability}
+                </p>
+                <p className="mt-0.5 text-sm font-semibold leading-snug text-ink sm:text-base">
+                  {optionLabel(locale, form.availabilityStatus)}
+                </p>
+              </div>
+
+              <div className="min-w-0">
+                <p className="text-[10px] font-medium uppercase tracking-wide text-ink/45">
+                  {ui.provider.occupancyWaitEstimate}
+                </p>
+                <p className="mt-0.5 text-sm font-semibold leading-snug text-ink sm:text-base">
+                  {waitDisplay ?? "—"}
+                </p>
+                {waitHasEstimate && waitStale ? (
+                  <p className="mt-0.5 text-xs text-brand-amber-dark">{ui.provider.occupancyWaitStale}</p>
+                ) : null}
+              </div>
+            </div>
+
+            <Button
+              type="button"
+              size="xs"
+              variant="outline"
+              className="w-full shrink-0 bg-white sm:mt-0.5 sm:w-auto"
+              onClick={() => setProfilePanelOpen(true)}
+            >
+              {ui.provider.occupancyEditCapacity}
+            </Button>
           </div>
         </div>
       </section>
@@ -863,18 +895,18 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
       ) : null}
 
       {!profileComplete ? (
-        <section className="mb-5 rounded-xl border border-brand-amber/25 bg-brand-amber/10 px-4 py-4 sm:px-5">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div>
+        <section className="mb-4 rounded-xl border border-brand-amber/25 bg-brand-amber/10 px-4 py-3.5 sm:px-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
               <h2 className="font-semibold text-ink">{ui.provider.completeProfile}</h2>
-              <p className="mt-1 max-w-2xl text-sm leading-6 text-ink/70">{ui.provider.profileLockHint}</p>
-              <ul className="mt-3 flex flex-wrap gap-2">
-                {profileMissingRequirements.map((item) => (
-                  <li key={item} className="rounded-full bg-white/80 px-3 py-1.5 text-xs font-medium text-ink/75">
-                    {item}
-                  </li>
-                ))}
-              </ul>
+              {profileMissingRequirements.length ? (
+                <p className="mt-1.5 text-sm text-ink/65">
+                  {profileMissingRequirements.slice(0, 3).join(" · ")}
+                  {profileMissingRequirements.length > 3
+                    ? ` · +${profileMissingRequirements.length - 3}`
+                    : ""}
+                </p>
+              ) : null}
             </div>
             <Button type="button" size="sm" className="w-full shrink-0 sm:w-auto" onClick={() => setProfilePanelOpen(true)}>
               {ui.provider.openProfile}
@@ -913,13 +945,10 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
 
       <section className="overflow-hidden rounded-xl bg-white shadow-soft">
         <div className="border-b border-stone-100 px-4 py-3 sm:px-5">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="text-base font-semibold text-ink sm:text-lg">{ui.provider.inquiryQueue}</h2>
-              <p className="mt-0.5 hidden text-sm text-ink/60 sm:block">{ui.provider.inquiryQueueIntro}</p>
-            </div>
-            {inquiries.length ? (
-              <span className="shrink-0 rounded-full bg-brand-cream px-3 py-1 text-xs font-semibold text-ink/55">
+          <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <h2 className="text-base font-semibold text-ink sm:text-lg">{ui.provider.inquiryQueue}</h2>
+            {profileComplete && inquiries.length ? (
+              <span className="inline-flex max-w-full shrink-0 rounded-full bg-brand-cream px-3 py-1 text-xs font-semibold text-ink/55">
                 {ui.provider.inquiryCountInTab(
                   filteredInquiries.length,
                   providerInquiryTabLabel(inquiryTab, locale).toLowerCase()
@@ -940,14 +969,8 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
         ) : null}
 
         {!profileComplete ? (
-          <div className="flex flex-col items-center justify-center gap-4 p-8">
-            <EmptyState
-              title={ui.provider.completeProfile}
-              description={ui.provider.emptyProfileDescription}
-            />
-            <Button type="button" size="sm" onClick={() => setProfilePanelOpen(true)}>
-              {ui.provider.openProfile}
-            </Button>
+          <div className="px-4 py-8 text-center sm:px-5">
+            <p className="text-sm text-ink/60">{ui.provider.emptyProfileDescription}</p>
           </div>
         ) : !inquiries.length ? (
           <EmptyState
@@ -962,15 +985,15 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
         ) : (
           <>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[760px] border-collapse text-left">
+              <table className="w-full min-w-[640px] border-collapse text-left">
                 <thead className="bg-cream text-xs uppercase tracking-wide text-neutral-500">
                   <tr>
-                    <th className="px-4 py-3">{ui.provider.colFamily}</th>
-                    <th className="hidden px-4 py-3 sm:table-cell">{ui.provider.colCareNeeded}</th>
-                    <th className="hidden px-4 py-3 md:table-cell">{ui.provider.colLocation}</th>
-                    <th className="hidden px-4 py-3 lg:table-cell">{ui.provider.colUpdated}</th>
-                    <th className="px-4 py-3">{ui.provider.colStatus}</th>
-                    <th className="px-4 py-3">{ui.provider.colActions}</th>
+                    <th className="px-3 py-2.5 sm:px-4">{ui.provider.colFamily}</th>
+                    <th className="hidden px-3 py-2.5 sm:table-cell sm:px-4">{ui.provider.colCareNeeded}</th>
+                    <th className="hidden px-3 py-2.5 md:table-cell md:px-4">{ui.provider.colLocation}</th>
+                    <th className="hidden px-3 py-2.5 lg:table-cell lg:px-4">{ui.provider.colUpdated}</th>
+                    <th className="px-3 py-2.5 sm:px-4">{ui.provider.colStatus}</th>
+                    <th className="px-3 py-2.5 sm:px-4">{ui.provider.colActions}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-stone-200">
@@ -978,44 +1001,69 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
                     const isUnread =
                       selectedInquiry?.id !== inquiry.id &&
                       inquirySeenVersion >= 0 &&
-                      isProviderInquiryUnread(inquiry.id, inquiry.updatedAt);
+                      isProviderInquiryUnread(inquiry.id, inquiry.updatedAt, inquiry.createdAt);
                     const isPending = pendingInquiryId === inquiry.id;
+                    const careLabels = inquiry.intake.careTypes.map((item) => optionLabel(locale, item));
+                    const careSummary =
+                      careLabels.length === 0
+                        ? "—"
+                        : careLabels.length <= 2
+                          ? careLabels.join(", ")
+                          : `${careLabels.slice(0, 2).join(", ")} +${careLabels.length - 2}`;
 
                     return (
                       <tr
                         key={inquiry.id}
-                        className={cn("cursor-pointer hover:bg-cream", isUnread ? "bg-brand-green-pale/[0.08]" : undefined)}
+                        className={cn(
+                          "cursor-pointer transition-colors hover:bg-cream",
+                          isUnread ? "border-l-[3px] border-l-brand-amber bg-brand-amber/[0.07]" : "border-l-[3px] border-l-transparent"
+                        )}
                         onClick={() => openInquiry(inquiry)}
                       >
-                        <td className="px-4 py-3 text-sm">
-                          <div className="flex flex-wrap items-center gap-2">
+                        <td className="max-w-[12rem] px-3 py-2.5 align-middle text-sm sm:max-w-[14rem] sm:px-4">
+                          <div className="flex min-w-0 items-center gap-1.5">
                             {isUnread ? <UnreadDot /> : null}
-                            <strong className="text-ink">{inquiry.intake.contactName}</strong>
+                            <strong className="truncate text-ink">{inquiry.intake.contactName}</strong>
                           </div>
-                          <span className="mt-1 block text-xs text-neutral-500">
-                            {inquiry.score}% match · {optionLabel(locale, inquiry.intake.urgency)}
+                          <span className="mt-0.5 block truncate text-xs text-neutral-500">
+                            {inquiry.score}% · {optionLabel(locale, inquiry.intake.urgency)}
                           </span>
-                          <span className="mt-1 block font-mono text-[11px] text-neutral-400">
+                          <span className="mt-0.5 block truncate font-mono text-[10px] text-neutral-400">
                             {ui.provider.refLabel} {formatReference(inquiry.intakeId)}
                           </span>
-                          <span className="mt-1 block text-xs text-neutral-500 sm:hidden">{inquiry.intake.preferredArea}</span>
+                          <span className="mt-0.5 block truncate text-xs text-neutral-500 sm:hidden">
+                            {inquiry.intake.preferredArea}
+                          </span>
                         </td>
-                        <td className="hidden px-4 py-3 text-sm text-neutral-600 sm:table-cell">
-                          {inquiry.intake.careTypes.map((item) => optionLabel(locale, item)).join(", ") || "—"}
+                        <td className="hidden max-w-[14rem] px-3 py-2.5 align-middle text-sm text-neutral-600 sm:table-cell sm:px-4">
+                          <span className="line-clamp-1" title={careLabels.join(", ") || undefined}>
+                            {careSummary}
+                          </span>
                         </td>
-                        <td className="hidden px-4 py-3 text-sm text-neutral-600 md:table-cell">{inquiry.intake.preferredArea}</td>
-                        <td className="hidden px-4 py-3 text-sm text-neutral-600 lg:table-cell">
+                        <td className="hidden max-w-[8rem] truncate px-3 py-2.5 align-middle text-sm text-neutral-600 md:table-cell md:px-4">
+                          {inquiry.intake.preferredArea}
+                        </td>
+                        <td className="hidden whitespace-nowrap px-3 py-2.5 align-middle text-sm text-neutral-600 lg:table-cell lg:px-4">
                           {new Date(inquiry.updatedAt).toLocaleString(dateLocale(locale), {
-                            dateStyle: "medium",
-                            timeStyle: "short"
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit"
                           })}
                         </td>
-                        <td className="px-4 py-3">
-                          <span className={cn("inline-flex rounded-full px-3 py-1 text-xs font-semibold leading-snug", matchStatusBadgeClass(inquiry.status))}>
+                        <td className="px-3 py-2.5 align-middle sm:px-4">
+                          <span
+                            className={cn(
+                              "inline-flex max-w-[7.5rem] truncate rounded-md px-2 py-0.5 text-[11px] font-semibold leading-none sm:max-w-none",
+                              matchStatusBadgeClass(inquiry.status)
+                            )}
+                            title={providerInquiryStatusLabel(inquiry.status, locale)}
+                          >
                             {providerInquiryStatusLabel(inquiry.status, locale)}
                           </span>
                         </td>
-                        <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}>
+                        <td className="px-3 py-2.5 align-middle sm:px-4" onClick={(event) => event.stopPropagation()}>
                           <Button
                             type="button"
                             size="xs"
@@ -1046,6 +1094,11 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
         onClose={() => setSelectedInquiry(null)}
         onAccept={(inquiry) => void updateInquiry(inquiry.id, "ACCEPTED")}
         onDecline={(inquiry) => setConfirmDecline({ id: inquiry.id })}
+        onMatchPatched={(updated) => {
+          setInquiries((current) => current.map((item) => (item.id === updated.id ? { ...item, ...updated } : item)));
+          setSelectedInquiry((current) => (current?.id === updated.id ? { ...current, ...updated } : current));
+        }}
+        onScheduleRefresh={() => void refreshDashboard()}
       />
 
       <section className="mt-5 rounded-xl border border-stone-200 bg-white px-4 py-4 shadow-soft sm:px-5 sm:py-5">
@@ -1119,7 +1172,9 @@ function ProviderInquiryDetailPanel({
   inquiryFeedback,
   onClose,
   onAccept,
-  onDecline
+  onDecline,
+  onMatchPatched,
+  onScheduleRefresh
 }: {
   inquiry: Inquiry | null;
   pendingInquiryId: string | null;
@@ -1128,11 +1183,17 @@ function ProviderInquiryDetailPanel({
   onClose: () => void;
   onAccept: (inquiry: Inquiry) => void;
   onDecline: (inquiry: Inquiry) => void;
+  onMatchPatched: (inquiry: Inquiry) => void;
+  onScheduleRefresh: () => void;
 }) {
   const { locale, ui } = useLocale();
   const [copiedField, setCopiedField] = useState<"phone" | "email" | null>(null);
   const isPending = inquiry ? pendingInquiryId === inquiry.id : false;
   const needsResponse = inquiry ? isProviderActionNeeded(inquiry.status) : false;
+  const hasProposedSlot = Boolean(inquiry?.proposedStartsAt);
+  const awaitingFamilyAlternate =
+    inquiry?.schedulingStatus === "AWAITING_FAMILY" && Boolean(inquiry?.alternateStartsAt);
+  const canConfirmProposed = needsResponse && hasProposedSlot && !awaitingFamilyAlternate;
   const banner = inquiry ? providerInquiryBanner(inquiry.status, locale) : null;
   const nextStep = inquiry ? providerNextStep(inquiry, locale) : null;
   const activityNotes = inquiry ? providerMatchNotes(inquiry.notes) : null;
@@ -1142,6 +1203,7 @@ function ProviderInquiryDetailPanel({
   const p = ui.provider;
   const phone = inquiry?.intake.phone?.trim() || "";
   const email = inquiry?.intake.email?.trim() || "";
+  const en = locale === "en";
 
   useEffect(() => {
     if (!copiedField) return;
@@ -1200,6 +1262,18 @@ function ProviderInquiryDetailPanel({
           value: new Date(inquiry.updatedAt).toLocaleString(dateLocale(locale), { dateStyle: "medium", timeStyle: "short" })
         },
         ...(visitSummary && !showVisitInBanner ? [{ label: p.detailVisitOrPhone, value: visitSummary }] : []),
+        // Proposed time is shown in the scheduling section when action is needed.
+        ...(inquiry.proposedStartsAt && !needsResponse
+          ? [
+              {
+                label: "Family proposed time",
+                value: new Date(inquiry.proposedStartsAt).toLocaleString(dateLocale(locale), {
+                  dateStyle: "full",
+                  timeStyle: "short"
+                })
+              }
+            ]
+          : []),
         ...(activityNotes ? [{ label: p.detailActivity, value: <span className="whitespace-pre-line">{activityNotes}</span> }] : [])
       ]
     : [];
@@ -1217,11 +1291,31 @@ function ProviderInquiryDetailPanel({
       }
       footer={
         inquiry && needsResponse ? (
-          <div className="flex w-full flex-wrap gap-2">
-            <Button type="button" disabled={isPending} onClick={() => onAccept(inquiry)}>
-              {pendingAction === `${inquiry.id}:ACCEPTED` ? p.accepting : providerAcceptButtonLabel(inquiry.status, locale)}
-            </Button>
-            <Button type="button" variant="outline" className="bg-white" disabled={isPending} onClick={() => onDecline(inquiry)}>
+          <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap">
+            {awaitingFamilyAlternate ? (
+              <p className="w-full text-sm leading-6 text-ink/65">
+                {en
+                  ? "Waiting for the family to accept your alternate time. You can still decline this inquiry."
+                  : "Wachten tot de familie uw alternatieve tijdstip accepteert. U kunt dit verzoek nog afwijzen."}
+              </p>
+            ) : (
+              <Button type="button" className="w-full sm:w-auto" disabled={isPending} onClick={() => onAccept(inquiry)}>
+                {pendingAction === `${inquiry.id}:ACCEPTED`
+                  ? p.accepting
+                  : canConfirmProposed
+                    ? en
+                      ? "Confirm this time"
+                      : "Dit tijdstip bevestigen"
+                    : providerAcceptButtonLabel(inquiry.status, locale)}
+              </Button>
+            )}
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full bg-white sm:w-auto"
+              disabled={isPending}
+              onClick={() => onDecline(inquiry)}
+            >
               {pendingAction === `${inquiry.id}:DECLINED` ? p.declining : ui.provider.decline}
             </Button>
           </div>
@@ -1319,6 +1413,37 @@ function ProviderInquiryDetailPanel({
           <PanelSection title={ui.provider.familyDetails}>
             <DetailList items={details} columns={2} />
           </PanelSection>
+
+          {needsResponse && inquiry.proposedStartsAt ? (
+            <PanelSection
+              title={
+                awaitingFamilyAlternate
+                  ? en
+                    ? "Alternate time sent"
+                    : "Alternatief verzonden"
+                  : en
+                    ? "Proposed visit time"
+                    : "Voorgesteld bezoektijdstip"
+              }
+              description={
+                awaitingFamilyAlternate
+                  ? en
+                    ? "The family can accept this time from their dashboard."
+                    : "De familie kan dit tijdstip accepteren in hun dashboard."
+                  : en
+                    ? "Confirm below, or suggest one alternate."
+                    : "Bevestig hieronder, of stel één alternatief voor."
+              }
+            >
+              <ProviderScheduleActions
+                inquiry={inquiry}
+                locale={locale}
+                disabled={isPending}
+                onMatchPatched={onMatchPatched}
+                onRefresh={onScheduleRefresh}
+              />
+            </PanelSection>
+          ) : null}
 
           {cardFeedback ? (
             <p
@@ -1549,6 +1674,9 @@ function ProviderProfilePanel({
           </div>
         </PanelSection>
 
+        <ProviderCalendarSettings onNotify={setPanelMessage} />
+
+
         {!profileComplete && profileMissingRequirements.length ? (
           <div className="rounded-xl border border-brand-amber/25 bg-brand-amber/10 px-4 py-3">
             <p className="text-sm font-semibold text-ink">{p.stillNeededForInquiries}</p>
@@ -1563,6 +1691,138 @@ function ProviderProfilePanel({
         ) : null}
       </form>
     </SlidePanel>
+  );
+}
+
+function ProviderScheduleActions({
+  inquiry,
+  locale,
+  disabled,
+  onMatchPatched,
+  onRefresh
+}: {
+  inquiry: Inquiry;
+  locale: "en" | "nl";
+  disabled?: boolean;
+  onMatchPatched: (inquiry: Inquiry) => void;
+  onRefresh: () => void;
+}) {
+  const en = locale === "en";
+  const [showAlternate, setShowAlternate] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const awaitingFamily =
+    inquiry.schedulingStatus === "AWAITING_FAMILY" && Boolean(inquiry.alternateStartsAt);
+
+  async function suggestAlternate(slot: { start: string; end: string }) {
+    setBusy(true);
+    setMessage("");
+    const result = await postMatchSchedule(inquiry.id, {
+      action: "alternate",
+      startsAt: slot.start,
+      endsAt: slot.end
+    });
+    setBusy(false);
+    if (!result.ok) {
+      setMessage(result.error);
+      return;
+    }
+    if (result.match) {
+      onMatchPatched({ ...inquiry, ...(result.match as Partial<Inquiry>) });
+    }
+    setShowAlternate(false);
+    onRefresh();
+  }
+
+  const formatCompact = (iso: string) =>
+    new Date(iso).toLocaleString(en ? "en-GB" : "nl-NL", {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+
+  return (
+    <div className="grid min-w-0 gap-3">
+      {inquiry.proposedStartsAt ? (
+        <div className="min-w-0 rounded-lg bg-brand-cream/70 px-3 py-2.5">
+          <p className="text-xs font-medium uppercase tracking-wide text-ink/55">
+            {en ? "Family asked for" : "Familie vroeg om"}
+          </p>
+          <p className="mt-1 break-words text-sm font-semibold leading-6 text-ink">
+            {formatCompact(inquiry.proposedStartsAt)}
+          </p>
+        </div>
+      ) : null}
+
+      {awaitingFamily && inquiry.alternateStartsAt ? (
+        <div className="min-w-0 rounded-lg bg-brand-amber/10 px-3 py-2.5">
+          <p className="text-xs font-medium uppercase tracking-wide text-ink/55">
+            {en ? "Your alternate offer" : "Uw alternatief"}
+          </p>
+          <p className="mt-1 break-words text-sm font-semibold leading-6 text-ink">
+            {formatCompact(inquiry.alternateStartsAt)}
+          </p>
+          <p className="mt-1 text-xs leading-5 text-ink/60">
+            {en
+              ? "Waiting for the family to accept or the Care Guide to help."
+              : "Wachten op acceptatie door de familie of hulp van de Care Guide."}
+          </p>
+        </div>
+      ) : null}
+
+      {!showAlternate ? (
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="w-full bg-white"
+          disabled={disabled || busy}
+          onClick={() => setShowAlternate(true)}
+        >
+          {awaitingFamily
+            ? en
+              ? "Change alternate time"
+              : "Alternatief wijzigen"
+            : en
+              ? "Suggest another time"
+              : "Ander tijdstip voorstellen"}
+        </Button>
+      ) : (
+        <div className="grid min-w-0 gap-3">
+          <div className="flex min-w-0 items-start justify-between gap-2">
+            <p className="min-w-0 flex-1 text-sm font-medium leading-5 text-ink">
+              {en ? "Offer an alternate time" : "Stel een alternatief voor"}
+            </p>
+            <Button
+              type="button"
+              size="xs"
+              variant="ghost"
+              className="shrink-0"
+              disabled={disabled || busy}
+              onClick={() => {
+                setShowAlternate(false);
+                setMessage("");
+              }}
+            >
+              {en ? "Cancel" : "Annuleren"}
+            </Button>
+          </div>
+          <VisitSlotPicker
+            matchId={inquiry.id}
+            kind={inquiry.status === "CALLBACK_REQUESTED" ? "CALLBACK" : "VISIT"}
+            locale={locale}
+            disabled={disabled || busy}
+            excludeStartIso={inquiry.proposedStartsAt}
+            helperText={en ? "Pick a different open slot for the family" : "Kies een ander vrij tijdstip voor de familie"}
+            submitLabel={en ? "Send this alternate time" : "Dit alternatief versturen"}
+            onSelect={(slot) => void suggestAlternate(slot)}
+          />
+        </div>
+      )}
+      {message ? <p className="break-words text-sm text-red-700">{message}</p> : null}
+    </div>
   );
 }
 

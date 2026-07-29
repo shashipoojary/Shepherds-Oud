@@ -1,23 +1,26 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import {
+  compareMatchPriority,
   computeFamilyDeclineContext,
   familyDeclineRecoveryMessage,
   familyMatchNextStep,
-  isFamilyActionableMatchStatus,
+  isFamilyForwardMatchStatus,
   matchStatusBadgeClass,
   matchStatusLabel
 } from "@/lib/domain/match-status";
 import { normalizeIntakeStatus } from "@/lib/domain/intake-workflow";
 import { FamilyWaitEstimate } from "@/components/family/wait-estimate-line";
 import { withIntakeId } from "@/lib/client/case-selection";
+import { postMatchSchedule } from "@/lib/client/match-request";
 import { useLocale } from "@/components/i18n/locale-provider";
 import { optionLabel } from "@/lib/i18n/ui";
 import type { ProviderMatch } from "@/lib/core/types";
 import { Button } from "@/components/ui/button";
-import { shouldSurfaceOtherMatchedOptions } from "@/lib/domain/wait-estimate";
+import { ShortlistSkeleton } from "@/components/ui/results-skeleton";
 
 type FamilyActiveMatchesProps = {
   intakeId: string;
@@ -25,228 +28,233 @@ type FamilyActiveMatchesProps = {
   /** Reuse matches already loaded by the parent dashboard (avoids a second API call). */
   matches: ProviderMatch[];
   loading?: boolean;
+  onMatchesChanged?: () => void;
 };
+
+function matchHasPendingAlternate(match: ProviderMatch) {
+  const status = match.matchStatus || "SUGGESTED";
+  if (status === "CLOSED" || status === "DECLINED") return false;
+  return match.schedulingStatus === "AWAITING_FAMILY" && Boolean(match.alternateStartsAt && match.matchId);
+}
 
 export function FamilyActiveMatches({
   intakeId,
   intakeStatus,
   matches,
-  loading = false
+  loading = false,
+  onMatchesChanged
 }: FamilyActiveMatchesProps) {
   const { locale, ui } = useLocale();
   const caseClosed = normalizeIntakeStatus(intakeStatus) === "CLOSED";
+
+  const sortedMatches = useMemo(() => {
+    return [...matches].sort((a, b) =>
+      compareMatchPriority(a.matchStatus || "SUGGESTED", b.matchStatus || "SUGGESTED")
+    );
+  }, [matches]);
 
   if (caseClosed) {
     return null;
   }
 
   if (loading) {
-    return (
-      <div className="mt-5">
-        <div className="h-32 animate-pulse rounded-2xl bg-stone-100" />
-      </div>
-    );
+    return <ShortlistSkeleton />;
   }
 
-  if (!matches.length) {
+  if (!sortedMatches.length) {
     return null;
   }
 
   const declineContext = computeFamilyDeclineContext(matches, intakeStatus);
-  const active = matches.filter((match) => isFamilyActionableMatchStatus(match.matchStatus));
-  const declined = matches.filter((match) => match.matchStatus === "DECLINED");
-  const suggested = matches.filter((match) => match.matchStatus === "SUGGESTED");
-  const forwardMatches = matches.filter((match) => match.matchStatus !== "DECLINED");
-  const topMatch = forwardMatches[0] ?? null;
-  const showOtherMatchedOptions =
-    Boolean(topMatch) && forwardMatches.length > 1 && shouldSurfaceOtherMatchedOptions(topMatch);
-  const singleMatch = forwardMatches.length === 1;
-  const showProviderBlock = declineContext.needsDeclineRecovery || active.length > 0;
+  const forwardCount = matches.filter((match) => isFamilyForwardMatchStatus(match.matchStatus)).length;
+  const pendingAlternate = sortedMatches.some(matchHasPendingAlternate);
+  const resultsHref = withIntakeId("/family/results", intakeId);
+  const primaryCta =
+    forwardCount === 1 ? ui.family.viewProvider : forwardCount > 1 ? ui.family.viewFullShortlist : ui.family.viewMatches;
 
   return (
-    <section id="provider-updates" className="scroll-mt-24 space-y-4">
-      {showProviderBlock ? (
-        <div className="rounded-2xl bg-white p-5 shadow-soft ring-1 ring-stone-200/80">
-          {declineContext.needsDeclineRecovery ? (
-            <>
-              <p className="section-label">{ui.family.providerUpdates}</p>
-              <h2 className="mt-1 text-lg font-semibold text-ink">{ui.family.declineRecoveryTitle}</h2>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-700">
-                {familyDeclineRecoveryMessage(declineContext.hasForward, locale)}
-              </p>
-              {declined.length ? (
-                <div className="mt-4 divide-y divide-stone-200">
-                  {declined.map((match) => (
-                    <DeclinedProviderRow key={match.matchId || match.id} match={match} intakeId={intakeId} locale={locale} ui={ui} />
-                  ))}
-                </div>
-              ) : null}
-              <div className="mt-4 flex flex-wrap gap-2">
-                {declineContext.hasForward ? (
-                  <Button asChild size="sm">
-                    <Link href={withIntakeId("/family/results", intakeId)}>
-                      {ui.family.viewOtherProviders} <ArrowRight className="h-4 w-4" />
-                    </Link>
-                  </Button>
-                ) : null}
-                <Button asChild size="sm" variant={declineContext.hasForward ? "outline" : "default"}>
-                  <a href="#care-guide-plan">{ui.family.viewCarePlan}</a>
-                </Button>
-              </div>
-            </>
-          ) : (
-            <>
-              <p className="section-label">{ui.family.providerResponse}</p>
-              <h2 className="mt-1 text-lg font-semibold text-ink">{ui.family.coordinatorTitle}</h2>
-              <p className="mt-1 text-sm text-neutral-600">{ui.family.coordinatorDesc}</p>
-              <div className="mt-4 grid gap-3">
-                {active.map((match) => (
-                  <MatchCard key={match.matchId || match.id} match={match} intakeId={intakeId} locale={locale} ui={ui} />
-                ))}
-              </div>
-              {showOtherMatchedOptions ? (
-                <div className="mt-4 rounded-xl bg-brand-cream/40 px-4 py-3">
-                  <p className="text-sm font-medium text-ink">{ui.family.otherMatchedOptionsTitle}</p>
-                  <p className="mt-1 text-sm text-neutral-600">{ui.family.otherMatchedOptionsTip}</p>
-                  <Button asChild size="sm" className="mt-3">
-                    <Link href={withIntakeId("/family/results", intakeId)}>
-                      {ui.family.viewFullShortlist} <ArrowRight className="h-4 w-4" />
-                    </Link>
-                  </Button>
-                </div>
-              ) : null}
-              {declined.length ? (
-                <div className="mt-5">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">{ui.family.previouslyDeclined}</p>
-                  <div className="mt-3 divide-y divide-stone-200">
-                    {declined.map((match) => (
-                      <DeclinedProviderRow key={match.matchId || match.id} match={match} intakeId={intakeId} locale={locale} ui={ui} />
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-              {!singleMatch ? (
-                <div className="mt-4">
-                  <Button asChild size="sm" variant="ghost">
-                    <Link href={withIntakeId("/family/results", intakeId)}>
-                      {ui.family.viewFullShortlist} <ArrowRight className="h-4 w-4" />
-                    </Link>
-                  </Button>
-                </div>
-              ) : null}
-            </>
-          )}
-        </div>
-      ) : null}
+    <section id="provider-updates" className="scroll-mt-24 rounded-2xl bg-white p-5 shadow-soft sm:p-6">
+      <p className="section-label">{ui.family.shortlistLabel}</p>
+      <h2 className="mt-1 text-lg font-semibold text-ink">
+        {forwardCount
+          ? ui.family.matchedProvidersReady(forwardCount)
+          : declineContext.needsDeclineRecovery
+            ? ui.family.declineRecoveryTitle
+            : ui.family.shortlistLabel}
+      </h2>
+      <p className="mt-1 text-sm text-neutral-600">
+        {pendingAlternate
+          ? locale === "en"
+            ? "A provider suggested a new time — accept it below, or open the full profile when you're ready."
+            : "Een aanbieder stelde een nieuw tijdstip voor — accepteer het hieronder, of open het profiel wanneer u er klaar voor bent."
+          : declineContext.needsDeclineRecovery
+            ? familyDeclineRecoveryMessage(declineContext.hasForward, locale)
+            : ui.family.shortlistHint}
+      </p>
 
-      {!active.length && suggested.length ? (
-        <div className="rounded-2xl bg-white p-5 shadow-soft">
-          <p className="section-label">{ui.family.shortlistLabel}</p>
-          <h2 className="mt-1 text-lg font-semibold text-ink">{ui.family.matchedProvidersReady(suggested.length)}</h2>
-          <p className="mt-1 text-sm text-neutral-600">
-            {declineContext.needsDeclineRecovery ? ui.family.shortlistDeclineHint : ui.family.shortlistHint}
-          </p>
-          {suggested.slice(0, 3).map((match) => (
-            <div key={match.matchId || match.id} className="mt-3">
-              <MatchCard match={match} intakeId={intakeId} locale={locale} ui={ui} />
-            </div>
-          ))}
-          {showOtherMatchedOptions ? (
-            <div className="mt-4 rounded-xl bg-brand-cream/40 px-4 py-3">
-              <p className="text-sm font-medium text-ink">{ui.family.otherMatchedOptionsTitle}</p>
-              <p className="mt-1 text-sm text-neutral-600">{ui.family.otherMatchedOptionsTip}</p>
-            </div>
-          ) : null}
-          <Button asChild className="mt-4">
-            <Link href={withIntakeId("/family/results", intakeId)}>
-              {ui.family.viewMatches} <ArrowRight className="h-4 w-4" />
+      <ul className="mt-4 divide-y divide-stone-100">
+        {sortedMatches.map((match) => (
+          <ShortlistRow
+            key={match.matchId || match.id}
+            match={match}
+            intakeId={intakeId}
+            locale={locale}
+            ui={ui}
+            onMatchesChanged={onMatchesChanged}
+          />
+        ))}
+      </ul>
+
+      {forwardCount ? (
+        <div className="mt-5">
+          {pendingAlternate ? (
+            <Link
+              href={resultsHref}
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-amber hover:text-brand-amber-mid"
+            >
+              {primaryCta}
+              <ArrowRight className="h-4 w-4" aria-hidden />
             </Link>
-          </Button>
+          ) : (
+            <Button asChild className="w-full sm:w-auto">
+              <Link href={resultsHref}>
+                {primaryCta} <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+          )}
         </div>
       ) : null}
     </section>
   );
 }
 
-function DeclinedProviderRow({
+function ShortlistRow({
   match,
   intakeId,
   locale,
-  ui
+  ui,
+  onMatchesChanged
 }: {
   match: ProviderMatch;
   intakeId: string;
   locale: ReturnType<typeof useLocale>["locale"];
   ui: ReturnType<typeof useLocale>["ui"];
+  onMatchesChanged?: () => void;
 }) {
+  const en = locale === "en";
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [accepted, setAccepted] = useState(false);
+  const status = match.matchStatus || "SUGGESTED";
+  const isPassed = status === "CLOSED";
+  const isDeclined = status === "DECLINED";
+  const isInactive = isPassed || isDeclined;
+  const hasAlternate = matchHasPendingAlternate(match) && !accepted;
+  const profileHref = withIntakeId(`/providers/${match.id}?from=dashboard`, intakeId);
+  const badgeLabel = isPassed ? ui.family.notInterested : matchStatusLabel(status, locale);
+
+  async function acceptAlternate() {
+    if (!match.matchId) return;
+    setBusy(true);
+    setError("");
+    const result = await postMatchSchedule(match.matchId, { action: "accept_alternate" });
+    setBusy(false);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    setAccepted(true);
+    onMatchesChanged?.();
+  }
+
   return (
-    <div className="flex flex-col gap-3 py-4 first:pt-0 last:pb-0 sm:flex-row sm:items-start sm:justify-between">
-      <div>
+    <li className={`py-4 first:pt-1 ${isInactive ? "opacity-80" : ""}`}>
+      <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
-          <h3 className="font-semibold text-ink">{match.name}</h3>
-          <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${matchStatusBadgeClass("DECLINED")}`}>
-            {matchStatusLabel("DECLINED", locale)}
+          {isInactive ? (
+            <p className="font-semibold text-ink">{match.name}</p>
+          ) : (
+            <Link href={profileHref} className="font-semibold text-ink hover:text-brand-amber">
+              {match.name}
+            </Link>
+          )}
+          <span className={`rounded-md px-2 py-0.5 text-[11px] font-semibold ${matchStatusBadgeClass(status)}`}>
+            {badgeLabel}
           </span>
         </div>
         <p className="mt-1 text-sm text-neutral-600">
           {match.type ? optionLabel(locale, match.type) : ui.family.careFacility} · {match.area}
         </p>
-      </div>
-      <Button asChild size="sm" variant="outline" className="shrink-0">
-        <Link href={withIntakeId(`/providers/${match.id}?from=dashboard`, intakeId)}>
-          {ui.family.viewProfile} <ArrowRight className="h-4 w-4" />
-        </Link>
-      </Button>
-    </div>
-  );
-}
 
-function MatchCard({
-  match,
-  intakeId,
-  locale,
-  ui
-}: {
-  match: ProviderMatch;
-  intakeId: string;
-  locale: ReturnType<typeof useLocale>["locale"];
-  ui: ReturnType<typeof useLocale>["ui"];
-}) {
-  return (
-    <article className="rounded-xl bg-brand-cream/20 p-4 ring-1 ring-stone-200/80">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="font-semibold text-ink">{match.name}</h3>
-            {match.matchStatus ? (
-              <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${matchStatusBadgeClass(match.matchStatus)}`}>
-                {matchStatusLabel(match.matchStatus, locale)}
-              </span>
-            ) : null}
-          </div>
-          <p className="mt-1 text-sm text-neutral-600">
-            {match.type ? optionLabel(locale, match.type) : ui.family.careFacility} · {match.area}
+        {!isInactive && match.waitEstimate ? (
+          <FamilyWaitEstimate
+            className="mt-2"
+            estimate={match.waitEstimate}
+            isFresh={Boolean(match.waitEstimateIsFresh)}
+            estWaitLabel={ui.family.estWait}
+            sourceLabel={ui.family.waitEstimateSourceLabel}
+            compact
+          />
+        ) : null}
+
+        {match.proposedStartsAt && !isInactive ? (
+          <p className="mt-2 text-sm leading-6 text-neutral-700">
+            <span className="font-medium">{en ? "Your request: " : "Uw verzoek: "}</span>
+            {new Date(match.proposedStartsAt).toLocaleString(en ? "en-GB" : "nl-NL", {
+              weekday: "short",
+              day: "numeric",
+              month: "short",
+              hour: "2-digit",
+              minute: "2-digit"
+            })}
           </p>
-          {match.waitEstimate ? (
-            <FamilyWaitEstimate
-              className="mt-2"
-              estimate={match.waitEstimate}
-              isFresh={Boolean(match.waitEstimateIsFresh)}
-              estWaitLabel={ui.family.estWait}
-              sourceLabel={ui.family.waitEstimateSourceLabel}
-              compact
-            />
-          ) : null}
-          {match.matchStatus ? (
-            <p className="mt-2 text-sm leading-6 text-neutral-700">{familyMatchNextStep(match.matchStatus, match.name, locale)}</p>
-          ) : null}
-        </div>
-        <Button asChild size="sm" className="shrink-0">
-          <Link href={withIntakeId(`/providers/${match.id}?from=dashboard`, intakeId)}>
-            {ui.family.viewProvider} <ArrowRight className="h-4 w-4" />
-          </Link>
-        </Button>
+        ) : status !== "SUGGESTED" ? (
+          <p className="mt-2 text-sm leading-6 text-neutral-600">{familyMatchNextStep(status, match.name, locale)}</p>
+        ) : null}
+
+        {hasAlternate ? (
+          <div className="mt-3 rounded-lg border border-brand-amber/20 bg-brand-amber/5 px-3 py-3">
+            <p className="text-sm text-ink/80">
+              <span className="font-semibold text-ink">
+                {en ? "New time suggested: " : "Nieuw tijdstip voorgesteld: "}
+              </span>
+              {new Date(match.alternateStartsAt!).toLocaleString(en ? "en-GB" : "nl-NL", {
+                weekday: "short",
+                day: "numeric",
+                month: "short",
+                hour: "2-digit",
+                minute: "2-digit"
+              })}
+            </p>
+            <div className="mt-2.5 flex flex-wrap items-center gap-3">
+              <Button type="button" size="sm" disabled={busy} onClick={() => void acceptAlternate()}>
+                {busy
+                  ? en
+                    ? "Accepting…"
+                    : "Bezig…"
+                  : en
+                    ? "Accept this time"
+                    : "Dit tijdstip accepteren"}
+              </Button>
+              <Link
+                href={profileHref}
+                className="text-sm font-medium text-ink/55 underline-offset-2 hover:text-brand-amber hover:underline"
+              >
+                {en ? "View profile" : "Bekijk profiel"}
+              </Link>
+            </div>
+            {error ? <p className="mt-2 break-words text-sm text-red-700">{error}</p> : null}
+          </div>
+        ) : null}
+
+        {accepted ? (
+          <p className="mt-3 text-sm font-medium text-brand-green-dark">
+            {en
+              ? "Alternate time accepted. Your Care Guide will follow up."
+              : "Alternatief geaccepteerd. Uw Care Guide volgt dit op."}
+          </p>
+        ) : null}
       </div>
-    </article>
+    </li>
   );
 }

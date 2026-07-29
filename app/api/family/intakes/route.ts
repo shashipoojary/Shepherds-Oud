@@ -3,6 +3,7 @@ import { prisma } from "@/lib/core/db";
 import { jsonError, jsonOk, handleApiError } from "@/lib/core/api-helpers";
 import { countVisibleMatchesForIntakes } from "@/lib/data/matches";
 import { normalizeIntakeStatus } from "@/lib/domain/intake-workflow";
+import { claimFamilyIntakesByEmail } from "@/lib/hospitals/claim-family-intakes";
 
 export const runtime = "nodejs";
 
@@ -12,6 +13,8 @@ export async function GET() {
     if (!session) {
       return jsonError("Unauthorized", 401);
     }
+
+    await claimFamilyIntakesByEmail(session.user.id, session.user.email);
 
     const intakes = await prisma.intake.findMany({
       where: { userId: session.user.id },

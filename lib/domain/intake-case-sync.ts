@@ -28,7 +28,10 @@ export async function syncIntakeCaseFromMatch(intakeId: string, matchStatus: Mat
     });
   }
 
-  if (matchStatus === "DECLINED" && ["MATCHED", "VISIT_SCHEDULED", "PROVIDER_RESPONSE"].includes(caseStatus)) {
+  if (
+    (matchStatus === "DECLINED" || matchStatus === "CLOSED") &&
+    ["MATCHED", "VISIT_SCHEDULED", "PROVIDER_RESPONSE"].includes(caseStatus)
+  ) {
     const forwardMatches = await prisma.match.count({
       where: {
         intakeId,

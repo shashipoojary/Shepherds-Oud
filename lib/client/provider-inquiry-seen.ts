@@ -13,6 +13,7 @@ function readMap(): SeenMap {
 }
 
 function writeMap(map: SeenMap) {
+  if (typeof window === "undefined") return;
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
   } catch {
@@ -20,43 +21,78 @@ function writeMap(map: SeenMap) {
   }
 }
 
+function activityTimeMs(updatedAtIso: string, createdAtIso?: string) {
+  const updated = new Date(updatedAtIso).getTime();
+  const created = createdAtIso ? new Date(createdAtIso).getTime() : Number.NaN;
+  if (Number.isFinite(created) && Number.isFinite(updated)) return Math.max(created, updated);
+  if (Number.isFinite(updated)) return updated;
+  if (Number.isFinite(created)) return created;
+  return 0;
+}
+
+export function providerInquiryActivityIso(updatedAtIso: string, createdAtIso?: string) {
+  return new Date(activityTimeMs(updatedAtIso, createdAtIso)).toISOString();
+}
+
 export function getProviderInquirySeenAt(inquiryId: string) {
   return readMap()[inquiryId] ?? null;
 }
 
-export function markProviderInquirySeen(inquiryId: string, updatedAtIso: string) {
+export function markProviderInquirySeen(
+  inquiryId: string,
+  updatedAtIso: string,
+  createdAtIso?: string
+) {
   const map = readMap();
-  map[inquiryId] = updatedAtIso;
-  writeMap(map);
+  const activity = providerInquiryActivityIso(updatedAtIso, createdAtIso);
+  const previous = map[inquiryId];
+  if (!previous || activityTimeMs(activity) >= activityTimeMs(previous)) {
+    map[inquiryId] = activity;
+    writeMap(map);
+  }
 }
 
 /** First visit: treat current inquiries as already seen so only future updates badge. */
-export function initProviderInquirySeenFromData(items: Array<{ id: string; updatedAt: string }>) {
+export function initProviderInquirySeenFromData(
+  items: Array<{ id: string; updatedAt: string; createdAt?: string }>
+) {
   if (typeof window === "undefined") return;
   if (window.localStorage.getItem(STORAGE_KEY)) return;
 
   const map: SeenMap = {};
   for (const item of items) {
-    map[item.id] = item.updatedAt;
+    map[item.id] = providerInquiryActivityIso(item.updatedAt, item.createdAt);
   }
   writeMap(map);
 }
 
-export function isProviderInquiryUnread(inquiryId: string, updatedAtIso: string) {
+export function isProviderInquiryUnread(
+  inquiryId: string,
+  updatedAtIso: string,
+  createdAtIso?: string
+) {
   const seenAt = getProviderInquirySeenAt(inquiryId);
   if (!seenAt) return true;
-  return new Date(updatedAtIso).getTime() > new Date(seenAt).getTime();
+  return activityTimeMs(updatedAtIso, createdAtIso) > activityTimeMs(seenAt);
 }
 
-export function countUnreadProviderInquiries(items: Array<{ id: string; updatedAt: string }>) {
-  return items.filter((item) => isProviderInquiryUnread(item.id, item.updatedAt)).length;
+export function countUnreadProviderInquiries(
+  items: Array<{ id: string; updatedAt: string; createdAt?: string }>
+) {
+  return items.filter((item) => isProviderInquiryUnread(item.id, item.updatedAt, item.createdAt)).length;
 }
 
-export function markAllProviderInquiriesSeen(items: Array<{ id: string; updatedAt: string }>) {
+export function markAllProviderInquiriesSeen(
+  items: Array<{ id: string; updatedAt: string; createdAt?: string }>
+) {
   if (!items.length) return;
   const map = readMap();
   for (const item of items) {
-    map[item.id] = item.updatedAt;
+    const activity = providerInquiryActivityIso(item.updatedAt, item.createdAt);
+    const previous = map[item.id];
+    if (!previous || activityTimeMs(activity) >= activityTimeMs(previous)) {
+      map[item.id] = activity;
+    }
   }
   writeMap(map);
 }

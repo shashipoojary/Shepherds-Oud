@@ -7,15 +7,39 @@ import { Check, Heart, Loader2 } from "lucide-react";
 import { selectFamilyIntake, withIntakeId } from "@/lib/client/case-selection";
 import { getSessionFamilyIntakes } from "@/lib/client/intake";
 import { isProviderSaved, toggleSavedProvider } from "@/lib/client/favourites";
-import { requestMatchAction } from "@/lib/client/match-request";
+import { passOnMatch } from "@/lib/client/match-request";
+import { FamilySchedulePanel } from "@/components/scheduling/family-schedule-panel";
 import { TOAST_DISMISS_MS } from "@/lib/client/toast-timing";
 import { useLocale } from "@/components/i18n/locale-provider";
 import { familyMatchNextStep, isFamilyActionableMatchStatus, matchStatusLabel } from "@/lib/domain/match-status";
-import { ActionFeedback } from "@/components/ui/action-feedback";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { cn } from "@/lib/core/utils";
 import type { ProviderMatch } from "@/lib/core/types";
 
-type PendingAction = "visit" | "callback" | "favourite" | null;
+type PendingAction = "visit" | "callback" | "favourite" | "pass" | null;
+
+function StatusNote({
+  message,
+  tone = "info"
+}: {
+  message: string;
+  tone?: "success" | "error" | "info";
+}) {
+  return (
+    <p
+      role="status"
+      className={cn(
+        "text-sm leading-6",
+        tone === "success" && "text-brand-green-dark",
+        tone === "error" && "text-brand-amber-dark",
+        tone === "info" && "text-neutral-600"
+      )}
+    >
+      {message}
+    </p>
+  );
+}
 
 export function ProviderDetailActions({ providerId, providerName }: { providerId: string; providerName: string }) {
   return (
@@ -42,6 +66,8 @@ function ProviderDetailActionsContent({ providerId, providerName }: { providerId
   const [message, setMessage] = useState("");
   const [messageTone, setMessageTone] = useState<"success" | "error" | "info">("info");
   const [saved, setSaved] = useState(false);
+  const [scheduleKind, setScheduleKind] = useState<"VISIT" | "CALLBACK" | null>(null);
+  const [confirmPass, setConfirmPass] = useState(false);
 
   useEffect(() => {
     setSaved(isProviderSaved(providerId));
@@ -108,22 +134,7 @@ function ProviderDetailActionsContent({ providerId, providerName }: { providerId
       return;
     }
 
-    setPending(status === "VISIT_REQUESTED" ? "visit" : "callback");
-    setMessage("");
-
-    const result = await requestMatchAction({ matchId, intakeId, status });
-
-    if (!result.ok) {
-      setMessageTone("error");
-      setMessage(result.error);
-      setPending(null);
-      return;
-    }
-
-    setMatchStatus(status);
-    setMessageTone("success");
-    setMessage(familyMatchNextStep(status, providerName, locale));
-    setPending(null);
+    setScheduleKind(status === "VISIT_REQUESTED" ? "VISIT" : "CALLBACK");
   }
 
   function handleFavourite() {
@@ -141,45 +152,70 @@ function ProviderDetailActionsContent({ providerId, providerName }: { providerId
   const coordinated = matchStatus === "CONTACTED";
   const placed = matchStatus === "PLACED";
   const declined = matchStatus === "DECLINED";
+  const closed = matchStatus === "CLOSED";
   const inProgress = isFamilyActionableMatchStatus(matchStatus || undefined) && (accepted || coordinated || placed);
-  const canRequest = Boolean(matchId) && !accepted && !coordinated && !placed && !declined;
+  const canRequest = Boolean(matchId) && !accepted && !coordinated && !placed && !declined && !closed;
+  const canPass = Boolean(matchId) && (!matchStatus || matchStatus === "SUGGESTED");
   const dashboardHref = intakeId ? `${withIntakeId("/family/dashboard", intakeId)}#provider-updates` : "/family/dashboard#provider-updates";
   const resultsHref = intakeId ? withIntakeId("/family/results", intakeId) : "/family/results";
+
+  async function handlePassOn() {
+    if (!intakeId || !matchId) {
+      setMessageTone("error");
+      setMessage(d.notMatchedYet);
+      setConfirmPass(false);
+      return;
+    }
+    setPending("pass");
+    const result = await passOnMatch({ matchId, intakeId });
+    setPending(null);
+    if (!result.ok) {
+      setMessageTone("error");
+      setMessage(result.error);
+      return;
+    }
+    setMatchStatus("CLOSED");
+    setConfirmPass(false);
+    setMessageTone("success");
+    setMessage(ui.family.passedOnProvider(providerName));
+  }
 
   if (loadingContext) {
     return <ProviderDetailActionsSkeleton />;
   }
 
   return (
-    <>
+    <div className="space-y-4">
       {!hasIntake ? (
-        <ActionFeedback tone="info" className="mt-4" message={d.completeIntakeForRequests} />
+        <StatusNote tone="info" message={d.completeIntakeForRequests} />
       ) : needsCaseSelection ? (
-        <ActionFeedback tone="info" className="mt-4" message={d.chooseRequestFirst} />
+        <StatusNote tone="info" message={d.chooseRequestFirst} />
       ) : caseNotFound ? (
-        <ActionFeedback tone="error" className="mt-4" message={d.caseNotFoundOnAccount} />
+        <StatusNote tone="error" message={d.caseNotFoundOnAccount} />
       ) : !matchId ? (
-        <ActionFeedback tone="info" className="mt-4" message={d.matchNotPublished} />
+        <StatusNote tone="info" message={d.matchNotPublished} />
       ) : inProgress && matchStatus ? (
-        <ActionFeedback tone="success" className="mt-4" message={familyMatchNextStep(matchStatus, providerName, locale)} />
-      ) : declined ? (
-        <ActionFeedback
+        <StatusNote tone="success" message={familyMatchNextStep(matchStatus, providerName, locale)} />
+      ) : declined || closed ? (
+        <StatusNote
           tone="info"
-          className="mt-4"
-          message={`${familyMatchNextStep("DECLINED", providerName, locale)} ${d.chooseAnotherProvider}`}
+          message={
+            closed
+              ? ui.family.passedOnProvider(providerName)
+              : `${familyMatchNextStep("DECLINED", providerName, locale)} ${d.chooseAnotherProvider}`
+          }
         />
       ) : matchStatus && (visitSent || callbackSent) ? (
-        <ActionFeedback
+        <StatusNote
           tone="success"
-          className="mt-4"
           message={`${d.statusLabel(matchStatusLabel(matchStatus, locale))} ${familyMatchNextStep(matchStatus, providerName, locale)}`}
         />
       ) : null}
 
-      {message ? <ActionFeedback message={message} tone={messageTone} className="mt-4" /> : null}
+      {message ? <StatusNote message={message} tone={messageTone} /> : null}
 
-      {inProgress || declined ? (
-        <div className="mt-5 flex flex-col gap-2">
+      {inProgress || declined || closed ? (
+        <div className="flex flex-col gap-2">
           <Button asChild className="w-full">
             <Link href={fromDashboard ? dashboardHref : resultsHref}>
               {fromDashboard ? d.backToDashboard : d.backToMatches}
@@ -190,7 +226,7 @@ function ProviderDetailActionsContent({ providerId, providerName }: { providerId
               <Link href={dashboardHref}>{d.yourDashboard}</Link>
             </Button>
           ) : null}
-          {!declined ? (
+          {!declined && !closed ? (
             <Button variant="ghost" className="w-full" disabled={pending === "favourite"} onClick={handleFavourite}>
               {pending === "favourite" ? (
                 <>
@@ -212,7 +248,7 @@ function ProviderDetailActionsContent({ providerId, providerName }: { providerId
           ) : null}
         </div>
       ) : (
-        <div className="mt-5 flex flex-col gap-2">
+        <div className="flex flex-col gap-2">
           <Button
             className="w-full"
             disabled={!canRequest || pending !== null || visitSent}
@@ -254,6 +290,12 @@ function ProviderDetailActionsContent({ providerId, providerName }: { providerId
             )}
           </Button>
 
+          {canPass ? (
+            <Button variant="ghost" className="w-full" disabled={pending !== null} onClick={() => setConfirmPass(true)}>
+              {d.notInterested}
+            </Button>
+          ) : null}
+
           <Button variant="ghost" className="w-full" disabled={pending === "favourite"} onClick={handleFavourite}>
             {pending === "favourite" ? (
               <>
@@ -284,16 +326,49 @@ function ProviderDetailActionsContent({ providerId, providerName }: { providerId
           ) : null}
         </div>
       )}
-    </>
+
+      {scheduleKind && matchId && intakeId ? (
+        <FamilySchedulePanel
+          open
+          onClose={() => setScheduleKind(null)}
+          matchId={matchId}
+          intakeId={intakeId}
+          providerName={providerName}
+          kind={scheduleKind}
+          locale={locale}
+          onSuccess={(status) => {
+            setMatchStatus(status);
+            setMessageTone("success");
+            setMessage(familyMatchNextStep(status, providerName, locale));
+          }}
+          onError={(msg) => {
+            setMessageTone("error");
+            setMessage(msg);
+          }}
+        />
+      ) : null}
+
+      <ConfirmDialog
+        open={confirmPass}
+        tone="danger"
+        pending={pending === "pass"}
+        title={ui.family.notInterestedConfirmTitle}
+        description={`${ui.family.notInterestedConfirmDesc} (${providerName})`}
+        confirmLabel={ui.family.notInterestedConfirm}
+        cancelLabel={ui.family.cancel}
+        onCancel={() => setConfirmPass(false)}
+        onConfirm={() => void handlePassOn()}
+      />
+    </div>
   );
 }
 
 function ProviderDetailActionsSkeleton() {
   return (
-    <div className="mt-5 space-y-2">
-      <div className="h-11 animate-pulse rounded-lg bg-sage-200/60" />
-      <div className="h-11 animate-pulse rounded-lg bg-sage-100" />
-      <div className="h-9 animate-pulse rounded-lg bg-sage-100/80" />
+    <div className="space-y-2">
+      <div className="h-11 animate-pulse rounded-lg bg-stone-100" />
+      <div className="h-11 animate-pulse rounded-lg bg-stone-100" />
+      <div className="h-9 animate-pulse rounded-lg bg-stone-50" />
     </div>
   );
 }

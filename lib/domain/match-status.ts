@@ -7,7 +7,8 @@ const familyVisibleStatusList = [
   "CALLBACK_REQUESTED",
   "ACCEPTED",
   "PLACED",
-  "DECLINED"
+  "DECLINED",
+  "CLOSED"
 ] as const;
 
 export const familyVisibleMatchStatuses = familyVisibleStatusList;
@@ -147,9 +148,9 @@ export function adminMatchStatusLabel(status: string) {
 export function matchStatusBadgeClass(status: string) {
   switch (status) {
     case "VISIT_REQUESTED":
-      return "bg-brand-amber/15 text-brand-amber-dark ring-1 ring-brand-amber/30";
+      return "bg-brand-amber/15 text-brand-amber-dark";
     case "CALLBACK_REQUESTED":
-      return "bg-brand-green-pale/40 text-brand-green-dark ring-1 ring-brand-green-light/40";
+      return "bg-brand-green-pale/40 text-brand-green-dark";
     case "ACCEPTED":
     case "PLACED":
       return "bg-brand-green-pale/60 text-brand-green-dark";
@@ -157,7 +158,7 @@ export function matchStatusBadgeClass(status: string) {
     case "CLOSED":
       return "bg-stone-200 text-neutral-600";
     case "CONTACTED":
-      return "bg-brand-cream text-ink/70 ring-1 ring-stone-200";
+      return "bg-brand-cream text-ink/70";
     default:
       return "bg-brand-service-pale text-brand-green-dark";
   }
@@ -188,7 +189,7 @@ export function familyMatchNextStep(status: string, providerName: string, locale
       case "DECLINED":
         return `${providerName} is not available for this request right now. View other matches on your shortlist.`;
       case "CLOSED":
-        return `This match with ${providerName} is closed.`;
+        return `You passed on ${providerName}. Your Care Guide can add this option again if you change your mind.`;
       default:
         return "";
     }
@@ -208,7 +209,7 @@ export function familyMatchNextStep(status: string, providerName: string, locale
     case "DECLINED":
       return `${providerName} is nu niet beschikbaar voor dit verzoek. Bekijk andere matches of wacht op nieuwe voorstellen van uw Care Guide.`;
     case "CLOSED":
-      return `Deze match met ${providerName} is afgesloten.`;
+      return `U heeft ${providerName} overgeslagen. Uw Care Guide kan deze optie opnieuw toevoegen als u van gedachten verandert.`;
     default:
       return "";
   }
@@ -373,7 +374,7 @@ export function adminInquiryHint(status: string) {
     CONTACTED: "Step 4 - visit or call arranged. Record the chosen provider when the family commits.",
     DECLINED: "Provider declined. Re-create the match in the family case (section 4) or match another facility. Closing this inquiry only archives it for the provider — it does not close the family case.",
     PLACED: "Provider choice recorded. The family sees placement in progress on their dashboard.",
-    CLOSED: "This inquiry is closed."
+    CLOSED: "This match is closed (family passed or Care Guide archived it)."
   };
 
   if (updatedHints[status]) return updatedHints[status];

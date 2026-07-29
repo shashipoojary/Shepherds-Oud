@@ -9,12 +9,14 @@ type SessionUserLike = {
   role?: string | null;
   emailVerified?: boolean | null;
   linkedProviderId?: string | null;
+  linkedHospitalId?: string | null;
 };
 
 type SyncCacheEntry = {
   expiresAt: number;
   role: string;
   linkedProviderId: string | null;
+  linkedHospitalId: string | null;
 };
 
 /** Short in-process cache — cuts repeated DB role lookups on warm serverless instances. */
@@ -29,7 +31,6 @@ const syncCache = new Map<string, SyncCacheEntry>();
  * Invite/provider DB lookups are throttled for ~5 minutes per user.
  */
 export async function syncSessionUser<T extends SessionUserLike>(user: T): Promise<T> {
-  // Cheap path: honor admin allowlist without DB. Also forces demotion when revoked.
   if (isAdminEmail(user.email)) {
     if (user.role !== "ADMIN") {
       await prisma.user.update({
@@ -40,7 +41,8 @@ export async function syncSessionUser<T extends SessionUserLike>(user: T): Promi
     syncCache.set(user.id, {
       expiresAt: Date.now() + SESSION_SYNC_TTL_MS,
       role: "ADMIN",
-      linkedProviderId: user.linkedProviderId ?? null
+      linkedProviderId: user.linkedProviderId ?? null,
+      linkedHospitalId: user.linkedHospitalId ?? null
     });
     return { ...user, role: "ADMIN" };
   }
@@ -62,9 +64,14 @@ export async function syncSessionUser<T extends SessionUserLike>(user: T): Promi
       cached &&
       cached.expiresAt > Date.now() &&
       cached.role === (user.role ?? "FAMILY") &&
-      (cached.linkedProviderId ?? null) === (user.linkedProviderId ?? null)
+      (cached.linkedProviderId ?? null) === (user.linkedProviderId ?? null) &&
+      (cached.linkedHospitalId ?? null) === (user.linkedHospitalId ?? null)
     ) {
-      return { ...user, role: cached.role };
+      return {
+        ...user,
+        role: cached.role,
+        ...(cached.linkedHospitalId ? { linkedHospitalId: cached.linkedHospitalId } : {})
+      };
     }
   }
 
@@ -72,32 +79,46 @@ export async function syncSessionUser<T extends SessionUserLike>(user: T): Promi
     id: user.id,
     email: user.email,
     role: user.role,
-    linkedProviderId: user.linkedProviderId
+    linkedProviderId: user.linkedProviderId,
+    linkedHospitalId: user.linkedHospitalId
   });
 
   let linkedProviderId = user.linkedProviderId ?? null;
+  let linkedHospitalId = user.linkedHospitalId ?? null;
 
   if (resolvedRole !== "ADMIN" && user.email) {
-    const provider = await prisma.provider.findFirst({
-      where: { email: { equals: user.email.trim().toLowerCase(), mode: "insensitive" } },
-      select: { id: true }
-    });
+    if (resolvedRole === "PROVIDER") {
+      const provider = await prisma.provider.findFirst({
+        where: { email: { equals: user.email.trim().toLowerCase(), mode: "insensitive" } },
+        select: { id: true }
+      });
+      if (provider) {
+        linkedProviderId = provider.id;
+      }
+    }
 
-    if (provider && resolvedRole === "PROVIDER") {
-      linkedProviderId = provider.id;
+    if (resolvedRole === "HOSPITAL" && !linkedHospitalId) {
+      const dbUser = await prisma.user.findUnique({
+        where: { id: user.id },
+        select: { linkedHospitalId: true }
+      });
+      linkedHospitalId = dbUser?.linkedHospitalId ?? null;
     }
   }
 
   const roleChanged = user.role !== resolvedRole;
   const linkedProviderChanged =
     resolvedRole === "PROVIDER" && linkedProviderId !== (user.linkedProviderId ?? null);
+  const linkedHospitalChanged =
+    resolvedRole === "HOSPITAL" && linkedHospitalId !== (user.linkedHospitalId ?? null);
 
-  if (roleChanged || linkedProviderChanged) {
+  if (roleChanged || linkedProviderChanged || linkedHospitalChanged) {
     await prisma.user.update({
       where: { id: user.id },
       data: {
         role: resolvedRole,
-        ...(linkedProviderChanged && linkedProviderId ? { linkedProviderId } : {})
+        ...(linkedProviderChanged && linkedProviderId ? { linkedProviderId } : {}),
+        ...(linkedHospitalChanged && linkedHospitalId ? { linkedHospitalId } : {})
       }
     });
   }
@@ -105,12 +126,14 @@ export async function syncSessionUser<T extends SessionUserLike>(user: T): Promi
   syncCache.set(user.id, {
     expiresAt: Date.now() + SESSION_SYNC_TTL_MS,
     role: resolvedRole,
-    linkedProviderId: resolvedRole === "PROVIDER" ? linkedProviderId : null
+    linkedProviderId: resolvedRole === "PROVIDER" ? linkedProviderId : null,
+    linkedHospitalId: resolvedRole === "HOSPITAL" ? linkedHospitalId : null
   });
 
   return {
     ...user,
     role: resolvedRole,
-    ...(resolvedRole === "PROVIDER" && linkedProviderId ? { linkedProviderId } : {})
+    ...(resolvedRole === "PROVIDER" && linkedProviderId ? { linkedProviderId } : {}),
+    ...(resolvedRole === "HOSPITAL" && linkedHospitalId ? { linkedHospitalId } : {})
   };
 }

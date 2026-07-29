@@ -10,6 +10,11 @@ function toFamilyMatch(
     score: number;
     status: string;
     familyFacingReason: string | null;
+    proposedStartsAt: Date | null;
+    proposedEndsAt: Date | null;
+    alternateStartsAt: Date | null;
+    alternateEndsAt: Date | null;
+    schedulingStatus: string | null;
     provider: Parameters<typeof mapProviderRecord>[0];
   },
   actionFallback: string,
@@ -21,6 +26,11 @@ function toFamilyMatch(
     matchId: match.id,
     matchStatus: match.status,
     familyFacingReason: match.familyFacingReason,
+    proposedStartsAt: match.proposedStartsAt?.toISOString() ?? null,
+    proposedEndsAt: match.proposedEndsAt?.toISOString() ?? null,
+    alternateStartsAt: match.alternateStartsAt?.toISOString() ?? null,
+    alternateEndsAt: match.alternateEndsAt?.toISOString() ?? null,
+    schedulingStatus: match.schedulingStatus,
     action:
       match.status === "VISIT_REQUESTED"
         ? "Visit requested"
@@ -49,7 +59,9 @@ export async function countVisibleMatchesForIntake(intakeId: string) {
   return prisma.match.count({
     where: {
       intakeId,
-      status: { in: [...familyVisibleMatchStatuses] }
+      status: {
+        in: [...familyVisibleMatchStatuses].filter((status) => status !== "DECLINED" && status !== "CLOSED")
+      }
     }
   });
 }
@@ -65,7 +77,9 @@ export async function countVisibleMatchesForIntakes(intakeIds: string[]) {
     by: ["intakeId"],
     where: {
       intakeId: { in: uniqueIds },
-      status: { in: [...familyVisibleMatchStatuses] }
+      status: {
+        in: [...familyVisibleMatchStatuses].filter((status) => status !== "DECLINED" && status !== "CLOSED")
+      }
     },
     _count: { _all: true }
   });

@@ -5,16 +5,20 @@ import { productUi } from "@/lib/i18n/ui";
 
 export const PROVIDER_LOGIN_PATH = "/provider/login";
 export const PROVIDER_DASHBOARD_PATH = "/provider";
+export const HOSPITAL_LOGIN_PATH = "/hospital/login";
+export const HOSPITAL_DASHBOARD_PATH = "/hospital";
 
 export function dashboardHref(role: AppRole | undefined) {
   if (role === "ADMIN") return "/admin";
   if (role === "PROVIDER") return "/provider";
+  if (role === "HOSPITAL") return HOSPITAL_DASHBOARD_PATH;
   return "/family/dashboard";
 }
 
 export function roleLabel(role: AppRole | undefined) {
   if (role === "ADMIN") return "Administrator";
   if (role === "PROVIDER") return "Care provider";
+  if (role === "HOSPITAL") return "Hospital referrer";
   return "Family account";
 }
 
@@ -31,6 +35,10 @@ export function postLoginHref(role: AppRole | undefined, requestedCallback?: str
   }
 
   if (requestedCallback.startsWith("/provider") && role !== "PROVIDER") {
+    return fallback;
+  }
+
+  if (requestedCallback.startsWith("/hospital") && role !== "HOSPITAL") {
     return fallback;
   }
 
@@ -66,6 +74,10 @@ export function buildNavItems(
 
   if (signedIn && role === "PROVIDER") {
     items.push({ label: nav.myFacility, href: PROVIDER_DASHBOARD_PATH });
+  }
+
+  if (signedIn && role === "HOSPITAL") {
+    items.push({ label: locale === "en" ? "Hospital referrals" : "Ziekenhuisverwijzingen", href: HOSPITAL_DASHBOARD_PATH });
   }
 
   return items;
