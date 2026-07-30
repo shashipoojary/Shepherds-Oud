@@ -37,9 +37,5 @@ export async function sendFamilyMagicLinkEmail(email: string, url: string, local
     textContent
   });
 
-  if (result.mode === "demo") {
-    console.info(`[dev] Family magic link for ${email}: ${url}`);
-  }
-
   return result;
 }

@@ -70,9 +70,5 @@ export async function sendHospitalInviteEmail(input: {
     textContent
   });
 
-  if (result.mode === "demo") {
-    console.info(`[dev] Hospital invite for ${input.email}: ${inviteUrl}`);
-  }
-
   return result;
 }

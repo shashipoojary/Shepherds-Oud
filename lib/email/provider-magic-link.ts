@@ -37,9 +37,5 @@ export async function sendProviderMagicLinkEmail(email: string, url: string, loc
     textContent
   });
 
-  if (result.mode === "demo") {
-    console.info(`[dev] Provider magic link for ${email}: ${url}`);
-  }
-
   return result;
 }

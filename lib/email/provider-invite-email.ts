@@ -44,9 +44,5 @@ export async function sendProviderInviteEmail(input: {
     textContent
   });
 
-  if (result.mode === "demo") {
-    console.info(`[dev] Provider invite for ${input.email}: ${inviteUrl}`);
-  }
-
   return result;
 }
