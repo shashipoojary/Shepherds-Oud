@@ -32,10 +32,10 @@ export function emailCopy(locale: Locale) {
   return {
     intakeConfirmation: {
       subject: en
-        ? "We've received your Shepherds Oud Care care request"
+        ? "We've received your Shepherds Oud Care request"
         : "We hebben uw Shepherds Oud Care zorgaanvraag ontvangen",
       preheader: en
-        ? "We've received your Shepherds Oud Care care request."
+        ? "We've received your Shepherds Oud Care request."
         : "We hebben uw Shepherds Oud Care zorgaanvraag ontvangen.",
       eyebrow: en ? "Care request received" : "Zorgaanvraag ontvangen",
       title: en ? "Thank you — we're with you" : "Bedankt — wij staan naast u",
@@ -81,9 +81,9 @@ export function emailCopy(locale: Locale) {
         : "U hoeft niets te doen totdat wij u mailen."
     },
     familyMagicLink: {
-      subject: en ? "Open your Shepherds Oud Care care dashboard" : "Open uw Shepherds Oud Care zorgdashboard",
+      subject: en ? "Open your Shepherds Oud Care dashboard" : "Open uw Shepherds Oud Care zorgdashboard",
       preheader: en
-        ? "Your secure sign-in link for the Shepherds Oud Care care dashboard."
+        ? "Your secure sign-in link for the Shepherds Oud Care dashboard."
         : "Uw beveiligde inloglink voor het Shepherds Oud Care zorgdashboard.",
       eyebrow: en ? "Care dashboard sign-in" : "Inloggen zorgdashboard",
       title: en ? "Open your care dashboard" : "Open uw zorgdashboard",

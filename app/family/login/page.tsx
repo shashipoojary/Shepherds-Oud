@@ -2,13 +2,14 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { SiteHeader } from "@/components/layout/site-header";
 import { AuthLoginForm } from "@/components/auth/login-form";
+import { brand } from "@/lib/config/brand";
 import { getLocale } from "@/lib/i18n/get-locale";
 import { productUi } from "@/lib/i18n/ui";
 import { noIndexMetadata } from "@/lib/config/seo";
 
 export const metadata = {
   ...noIndexMetadata,
-  title: "Inloggen familie | Shepherds Oud Care"
+  title: `Inloggen familie | ${brand.name}`
 };
 
 export default async function FamilyLoginPage() {

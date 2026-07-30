@@ -2,12 +2,13 @@ import { SiteHeader } from "@/components/layout/site-header";
 import { AdminDashboardClient } from "@/components/admin/dashboard-client";
 import { getAdminDashboardData } from "@/lib/data/admin";
 import { requireRole } from "@/lib/auth/server";
+import { brand } from "@/lib/config/brand";
 import { isAdminDataResetEnabled } from "@/lib/config/env";
 import { noIndexMetadata } from "@/lib/config/seo";
 
 export const metadata = {
   ...noIndexMetadata,
-  title: "Admin | Shepherds Oud Care"
+  title: `Admin | ${brand.name}`
 };
 
 export const dynamic = "force-dynamic";

@@ -23,7 +23,7 @@ const bodyFont = DM_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Shepherds Oud Care",
+  title: brand.name,
   description: brand.metaDescription
 };
 

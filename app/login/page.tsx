@@ -1,13 +1,14 @@
 import { Suspense } from "react";
 import { SiteHeader } from "@/components/layout/site-header";
 import { AuthLoginForm } from "@/components/auth/login-form";
+import { brand } from "@/lib/config/brand";
 import { getLocale } from "@/lib/i18n/get-locale";
 import { productUi } from "@/lib/i18n/ui";
 import { noIndexMetadata } from "@/lib/config/seo";
 
 export const metadata = {
   ...noIndexMetadata,
-  title: "Care Guide-inlog | Shepherds Oud Care"
+  title: `Care Guide-inlog | ${brand.name}`
 };
 
 export default async function LoginPage() {

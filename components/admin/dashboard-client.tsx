@@ -26,6 +26,7 @@ import { StatGrid } from "@/components/ui/stat-grid";
 import type { AdminDashboardData } from "@/lib/data/admin";
 import { recordAction } from "@/lib/client/actions";
 import { TOAST_DISMISS_MS } from "@/lib/client/toast-timing";
+import { brand } from "@/lib/config/brand";
 import { cn } from "@/lib/core/utils";
 import {
   countUnseenFamilies,
@@ -307,7 +308,7 @@ export function AdminDashboardClient({
       <header className="mb-5 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-4">
         <div className="min-w-0">
           <h1 className="text-[1.3rem] font-semibold text-ink">Admin dashboard</h1>
-          <p className="mt-0.5 text-sm text-neutral-500">Shepherds Oud Care — Netherlands-wide operations</p>
+          <p className="mt-0.5 text-sm text-neutral-500">{brand.name} — Netherlands-wide operations</p>
         </div>
         <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
           <HospitalInvitePanel onNotify={setMessage} />

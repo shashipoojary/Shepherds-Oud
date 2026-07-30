@@ -90,7 +90,7 @@ function LogoIllustration({ tone, size }: { tone: "light" | "dark"; size: "foote
     >
       <Image
         src={src}
-        alt="Shepherds Oud Care logo"
+        alt={`${brand.name} logo`}
         fill
         className="object-contain object-left"
         sizes={size === "footer" ? "168px" : "40px"}

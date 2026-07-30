@@ -10,6 +10,8 @@ import { AuthLoginForm } from "@/components/auth/login-form";
 
 import { Button } from "@/components/ui/button";
 
+import { brand } from "@/lib/config/brand";
+
 import { getLocale } from "@/lib/i18n/get-locale";
 
 import { productUi } from "@/lib/i18n/ui";
@@ -24,7 +26,7 @@ export const metadata = {
 
   ...noIndexMetadata,
 
-  title: "Inloggen locatie | Shepherds Oud Care"
+  title: `Inloggen locatie | ${brand.name}`
 
 };
 

@@ -12,6 +12,7 @@ import { TOAST_DISMISS_MS } from "@/lib/client/toast-timing";
 import { PROVIDER_DASHBOARD_PATH, HOSPITAL_DASHBOARD_PATH, HOSPITAL_LOGIN_PATH } from "@/lib/auth/routes";
 import { providerLoginErrorMessage } from "@/lib/auth/provider-login-errors";
 import { hospitalLoginErrorMessage } from "@/lib/auth/hospital-login-errors";
+import { brand } from "@/lib/config/brand";
 
 function errorMessage(
   code: string | null,
@@ -25,8 +26,8 @@ function errorMessage(
       ? ui.auth.providerAccountNeeded
       : isHospital
         ? locale === "en"
-          ? "You need a hospital account for this page. Use an invite link from Shepherds Oud Care."
-          : "U heeft een ziekenhuisaccount nodig voor deze pagina. Gebruik een uitnodigingslink van Shepherds Oud Care."
+          ? `You need a hospital account for this page. Use an invite link from ${brand.name}.`
+          : `U heeft een ziekenhuisaccount nodig voor deze pagina. Gebruik een uitnodigingslink van ${brand.name}.`
         : ui.auth.adminOnly;
   }
 

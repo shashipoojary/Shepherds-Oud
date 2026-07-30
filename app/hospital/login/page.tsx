@@ -3,12 +3,13 @@ import Link from "next/link";
 import { SiteHeader } from "@/components/layout/site-header";
 import { AuthLoginForm } from "@/components/auth/login-form";
 import { Button } from "@/components/ui/button";
+import { brand } from "@/lib/config/brand";
 import { getLocale } from "@/lib/i18n/get-locale";
 import { noIndexMetadata } from "@/lib/config/seo";
 
 export const metadata = {
   ...noIndexMetadata,
-  title: "Hospital login | Shepherds Oud Care"
+  title: `Hospital login | ${brand.name}`
 };
 
 export default async function HospitalLoginPage() {
@@ -26,8 +27,8 @@ export default async function HospitalLoginPage() {
           </h1>
           <p className="mt-2 text-sm leading-relaxed text-ink/70">
             {en
-              ? "Use the email that received your Shepherds Oud Care hospital invite."
-              : "Gebruik het e-mailadres waarop u de Shepherds Oud Care-ziekenhuisuitnodiging heeft ontvangen."}
+              ? `Use the email that received your ${brand.name} hospital invite.`
+              : `Gebruik het e-mailadres waarop u de ${brand.name}-ziekenhuisuitnodiging heeft ontvangen.`}
           </p>
 
           <div className="mt-6">

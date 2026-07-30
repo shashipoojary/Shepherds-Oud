@@ -9,6 +9,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { RefreshButton } from "@/components/ui/refresh-button";
 import { useLocale } from "@/components/i18n/locale-provider";
 import { careTypeOptions } from "@/lib/config/content";
+import { brand } from "@/lib/config/brand";
 import { INTAKE_AGE_RANGE_OPTIONS } from "@/lib/domain/intake-field-utils";
 import { optionLabel } from "@/lib/i18n/ui";
 import { cn } from "@/lib/core/utils";
@@ -277,8 +278,8 @@ export function HospitalDashboardClient() {
             />
             <span>
               {en
-                ? "The family (or legal representative) consents to Shepherds Oud Care processing this referral for care navigation."
-                : "De familie (of wettelijke vertegenwoordiger) stemt in met verwerking van deze verwijzing door Shepherds Oud Care voor zorgnavigatie."}
+                ? `The family (or legal representative) consents to ${brand.name} processing this referral for care navigation.`
+                : `De familie (of wettelijke vertegenwoordiger) stemt in met verwerking van deze verwijzing door ${brand.name} voor zorgnavigatie.`}
             </span>
           </label>
 
