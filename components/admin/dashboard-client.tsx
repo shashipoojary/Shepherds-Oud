@@ -151,6 +151,15 @@ function canInviteProvider(entry: WaitlistEntry) {
   return entry.type === "FACILITY" && entry.canSendProviderInvite;
 }
 
+/** Verified flag stays editable until mark-contacted or any non-revoked invite. */
+function isRegistrationVerificationLocked(entry: WaitlistEntry) {
+  return (
+    entry.status !== "NEW" ||
+    entry.providerInviteAttemptsUsed > 0 ||
+    entry.hasActivePendingProviderInvite
+  );
+}
+
 function providerInviteButtonLabel(entry: WaitlistEntry) {
   if (entry.canSendProviderInvite) {
     return entry.providerInviteAttemptsUsed > 0 ? "Re-send invite" : "Invite provider";
@@ -3210,17 +3219,25 @@ function WaitlistTable({
     verified: boolean,
     notify: (message: string) => void = setMessage
   ) {
-    if (!verified) {
-      notify("Registration verification cannot be undone once confirmed.");
+    const entry = entries.find((item) => item.id === id) ?? (selected?.id === id ? selected : null);
+    if (entry && !verified && isRegistrationVerificationLocked(entry)) {
+      notify("Registration verification cannot be undone after the facility is contacted or invited.");
       return;
     }
 
-    setPendingId(id);
+    const previousVerified = Boolean(entry?.registrationVerified);
+
+    const optimisticPatch = (item: WaitlistEntry): WaitlistEntry =>
+      item.id === id ? { ...item, registrationVerified: verified } : item;
+
+    setEntries((current) => current.map(optimisticPatch));
+    setSelected((current) => (current ? optimisticPatch(current) : current));
+
     try {
       const response = await fetch(`/api/waitlist/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ registrationVerified: true })
+        body: JSON.stringify({ registrationVerified: verified })
       });
 
       if (!response.ok) {
@@ -3231,11 +3248,11 @@ function WaitlistTable({
       const result = (await response.json()) as Partial<WaitlistEntry> & { updatedAtIso?: string };
       const updatedAtIso = result.updatedAtIso ?? new Date().toISOString();
 
-      const patch = (item: WaitlistEntry): WaitlistEntry =>
+      const confirmPatch = (item: WaitlistEntry): WaitlistEntry =>
         item.id === id
           ? {
               ...item,
-              registrationVerified: Boolean(result.registrationVerified ?? true),
+              registrationVerified: Boolean(result.registrationVerified ?? verified),
               canSendProviderInvite: Boolean(result.canSendProviderInvite),
               providerInviteAttemptsUsed:
                 result.providerInviteAttemptsUsed ?? item.providerInviteAttemptsUsed,
@@ -3249,13 +3266,14 @@ function WaitlistTable({
             }
           : item;
 
-      setEntries((current) => current.map(patch));
-      setSelected((current) => (current ? patch(current) : current));
-      notify("Registration marked as verified. You can invite this provider.");
+      setEntries((current) => current.map(confirmPatch));
+      setSelected((current) => (current ? confirmPatch(current) : current));
     } catch (error) {
+      const revertPatch = (item: WaitlistEntry): WaitlistEntry =>
+        item.id === id ? { ...item, registrationVerified: previousVerified } : item;
+      setEntries((current) => current.map(revertPatch));
+      setSelected((current) => (current ? revertPatch(current) : current));
       notify(error instanceof Error ? error.message : "Could not update registration verification.");
-    } finally {
-      setPendingId(null);
     }
   }
 
@@ -3473,6 +3491,7 @@ function WaitlistDetailPanel({
   const isPending = entry ? pendingId === entry.id : false;
   const isInvitePending = entry ? pendingInviteId === entry.id : false;
   const isFamily = entry?.type === "FAMILY";
+  const verificationLocked = entry ? isRegistrationVerificationLocked(entry) : false;
 
   useEffect(() => {
     if (!entry) clearPanelMessage();
@@ -3574,18 +3593,19 @@ function WaitlistDetailPanel({
                     type="checkbox"
                     className="mt-1"
                     checked={Boolean(entry.registrationVerified)}
-                    disabled={isPending || Boolean(entry.registrationVerified)}
+                    disabled={Boolean(entry.registrationVerified) && verificationLocked}
                     onChange={(event) => {
-                      if (!event.target.checked) return;
-                      void onToggleRegistrationVerified(entry.id, true, setPanelMessage);
+                      void onToggleRegistrationVerified(entry.id, event.target.checked, setPanelMessage);
                     }}
                   />
                   <span>
                     <span className="font-medium text-ink">Registration verified externally</span>
                     <span className="mt-1 block text-xs text-neutral-500">
-                      {entry.registrationVerified
-                        ? "Confirmed. This cannot be undone — invite when ready."
-                        : "Confirm the KVK or government ID outside this app before inviting the facility."}
+                      {entry.registrationVerified && verificationLocked
+                        ? "Confirmed. This cannot be undone after contacting or inviting the facility."
+                        : entry.registrationVerified
+                          ? "Confirmed. You can untick this until you mark contacted or send an invite."
+                          : "Confirm the KVK or government ID outside this app before inviting the facility."}
                     </span>
                   </span>
                 </label>

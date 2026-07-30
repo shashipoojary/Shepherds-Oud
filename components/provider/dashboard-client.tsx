@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowUpRight, Settings } from "lucide-react";
+import { ArrowUpRight, Copy, Mail, Phone, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Chip } from "@/components/ui/chip";
@@ -26,6 +26,8 @@ import {
   providerMatchNotes,
   type ProviderInquiryTab
 } from "@/lib/domain/match-status";
+import { buildProviderInquiryInsights } from "@/lib/domain/provider-inquiry-insights";
+import { occupiedBeds, occupancyPercent } from "@/lib/domain/provider-occupancy";
 import { sanitizeClientErrorMessage } from "@/lib/providers/errors";
 import { recordAction } from "@/lib/client/actions";
 import {
@@ -48,7 +50,12 @@ import { brand } from "@/lib/config/brand";
 import { cn } from "@/lib/core/utils";
 import { formatReference, matchesListSearch, matchesReferenceQuery } from "@/lib/domain/reference";
 import { PROVIDER_AVAILABILITY_OPTIONS } from "@/lib/domain/provider-availability";
-import { isWaitEstimateStale, waitEstimateAgeDays } from "@/lib/domain/wait-estimate";
+import {
+  formatWaitEstimateDays,
+  hasStructuredWaitEstimate,
+  isWaitEstimateStale,
+  waitEstimateAgeDays
+} from "@/lib/domain/wait-estimate";
 
 type ProviderRecord = {
   id: string;
@@ -78,6 +85,7 @@ type ProviderRecord = {
   visitAvailability: string | null;
   priceMin: number | null;
   priceMax: number | null;
+  roomTypes: string[];
 };
 
 type Inquiry = {
@@ -86,6 +94,7 @@ type Inquiry = {
   score: number;
   status: string;
   notes: string | null;
+  declineReason: string | null;
   createdAt: string;
   updatedAt: string;
   intake: {
@@ -113,6 +122,8 @@ type FormState = {
   city: string;
   province: string;
   description: string;
+  website: string;
+  roomTypesText: string;
   bedsTotal: string;
   bedsOpen: string;
   availabilityStatus: string;
@@ -145,6 +156,8 @@ const emptyForm: FormState = {
   city: "",
   province: dutchProvinces[0],
   description: "",
+  website: "",
+  roomTypesText: "",
   bedsTotal: "",
   bedsOpen: "",
   availabilityStatus: "Not set",
@@ -163,6 +176,14 @@ const emptyForm: FormState = {
 
 const availabilityOptions = [...PROVIDER_AVAILABILITY_OPTIONS];
 
+function parseRoomTypesText(value: string) {
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .slice(0, 20);
+}
+
 function toForm(provider: ProviderRecord | null): FormState {
   if (!provider) return emptyForm;
   return {
@@ -174,6 +195,8 @@ function toForm(provider: ProviderRecord | null): FormState {
     city: provider.city || "",
     province: provider.province || dutchProvinces[0],
     description: provider.description || "",
+    website: provider.website || "",
+    roomTypesText: (provider.roomTypes ?? []).join(", "),
     bedsTotal: provider.bedsTotal?.toString() || "",
     bedsOpen: provider.bedsOpen?.toString() || "",
     availabilityStatus: provider.availabilityStatus || "Not set",
@@ -525,6 +548,8 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
           city: form.city.trim() || undefined,
           province: form.province,
           description: form.description.trim() || undefined,
+          website: form.website.trim() || undefined,
+          roomTypes: parseRoomTypesText(form.roomTypesText),
           ...(bedsTotal !== undefined ? { bedsTotal } : {}),
           ...(bedsOpen !== undefined ? { bedsOpen } : {}),
           availabilityStatus: form.availabilityStatus === "Not set" ? undefined : form.availabilityStatus,
@@ -559,7 +584,7 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
       setWaitEstimateUpdatedAt(provider.waitEstimateUpdatedAt ?? null);
       setProfileComplete(data.profileComplete);
       setProfileMissingRequirements(data.profileMissingRequirements);
-      setInquiries(data.inquiries ?? []);
+      // Profile PATCH does not re-fetch inquiries; keep the current queue.
       notify(
         data.profileComplete ? ui.provider.profileSavedComplete : ui.provider.profileSavedIncomplete
       );
@@ -653,21 +678,37 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
         )
     );
   }, [sortedInquiries, inquiryTab, inquirySearch]);
-  const actionNeededCount = inquiries.filter((item) => isProviderActionNeeded(item.status)).length;
-  const newInquiries = actionNeededCount;
-  const bedsDisplay = form.bedsOpen.trim() === "" ? "—" : form.bedsOpen;
+
+  const bedsOpenParsed = parseOptionalInt(form.bedsOpen) ?? null;
+  const bedsTotalParsed = parseOptionalInt(form.bedsTotal) ?? null;
+  const occupancyPct = occupancyPercent({ bedsOpen: bedsOpenParsed, bedsTotal: bedsTotalParsed });
+  const occupiedCount = occupiedBeds({ bedsOpen: bedsOpenParsed, bedsTotal: bedsTotalParsed });
+  const waitMinParsed = parseOptionalInt(form.waitEstimateMinDays);
+  const waitMaxParsed = parseOptionalInt(form.waitEstimateMaxDays);
+  const waitFields = {
+    waitEstimateMinDays: waitMinParsed ?? null,
+    waitEstimateMaxDays: waitMaxParsed ?? null,
+    waitEstimateUpdatedAt
+  };
+  const waitHasEstimate = hasStructuredWaitEstimate(waitFields);
+  const waitDisplay = waitHasEstimate
+    ? formatWaitEstimateDays(waitFields.waitEstimateMinDays!, waitFields.waitEstimateMaxDays!, locale)
+    : null;
+  const waitStale = waitHasEstimate && isWaitEstimateStale(waitEstimateUpdatedAt);
+
+  const inquiryInsights = useMemo(() => buildProviderInquiryInsights(inquiries, locale), [inquiries, locale]);
 
   if (loading) {
     return <DashboardSkeleton title="provider dashboard" />;
   }
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
-      <header className="mb-5 flex flex-wrap items-start justify-between gap-3">
+    <main className="mx-auto max-w-7xl px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
+      <header className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <p className="section-label">{ui.provider.dashboardTitle}</p>
           <h1 className="mt-1 text-h2 font-semibold text-ink">{ui.provider.inquiries}</h1>
-          <p className="mt-2 max-w-2xl text-body text-ink/70">{ui.provider.inquiriesIntro}</p>
+          <p className="mt-1 hidden max-w-2xl text-sm text-ink/65 sm:block">{ui.provider.inquiriesIntro}</p>
         </div>
         <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
           <Button
@@ -694,7 +735,7 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
 
       {message ? (
         <div
-          className={`mb-5 rounded-lg px-4 py-3 text-sm ${
+          className={`mb-4 rounded-lg px-4 py-3 text-sm ${
             messageTone === "success" ? "bg-brand-green-pale/30 text-brand-green-dark" : "bg-brand-beige-light/50 text-brand-amber-dark"
           }`}
           role="status"
@@ -704,14 +745,122 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
       ) : null}
 
       <StatGrid
-        className="mb-5"
+        className="mb-3"
         stats={[
-          [bedsDisplay, ui.provider.availableBeds],
-          [profileComplete ? String(newInquiries) : ui.provider.locked, ui.provider.actionNeeded],
-          [optionLabel(locale, form.availabilityStatus), ui.provider.availability],
-          [profileComplete ? ui.provider.complete : ui.provider.missingCount(profileMissingRequirements.length), ui.provider.profileStatus]
+          [
+            profileComplete ? String(inquiryInsights.actionNeeded) : ui.provider.locked,
+            ui.provider.actionNeeded
+          ],
+          [profileComplete ? String(inquiryInsights.ongoing) : "—", ui.provider.insightsOngoing],
+          [profileComplete ? String(inquiryInsights.closed) : "—", ui.provider.insightsClosed],
+          [
+            profileComplete
+              ? inquiryInsights.acceptanceRatePercent != null
+                ? ui.provider.insightsAcceptanceApprox(inquiryInsights.acceptanceRatePercent)
+                : "—"
+              : ui.provider.missingCount(profileMissingRequirements.length),
+            profileComplete ? ui.provider.insightsAcceptanceRate : ui.provider.profileStatus
+          ]
         ]}
       />
+
+      <section className="mb-3 rounded-xl border border-stone-200 bg-white px-3 py-3 shadow-soft sm:px-4">
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold text-ink">{ui.provider.occupancyTitle}</h2>
+          <Button
+            type="button"
+            size="xs"
+            variant="outline"
+            className="shrink-0 bg-white"
+            onClick={() => setProfilePanelOpen(true)}
+          >
+            {ui.provider.occupancyEditCapacity}
+          </Button>
+        </div>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <div className="min-w-0 rounded-lg bg-brand-cream/60 px-3 py-2">
+            <p className="text-[10px] font-medium uppercase tracking-wide text-ink/50">{ui.provider.occupancyPercentLabel}</p>
+            <p className="mt-0.5 truncate text-lg font-semibold tabular-nums text-ink sm:text-xl">
+              {occupancyPct != null ? `${occupancyPct}%` : "—"}
+            </p>
+            <p className="mt-0.5 truncate text-xs text-ink/55">
+              {occupiedCount != null && bedsTotalParsed != null
+                ? ui.provider.occupancyOccupiedCount(occupiedCount, bedsTotalParsed)
+                : bedsOpenParsed == null || bedsTotalParsed == null
+                  ? ui.provider.occupancyNoBeds
+                  : ui.provider.occupancyBedsMismatch}
+            </p>
+          </div>
+          <div className="min-w-0 rounded-lg bg-brand-cream/60 px-3 py-2">
+            <p className="text-[10px] font-medium uppercase tracking-wide text-ink/50">{ui.provider.occupancyBedsLabel}</p>
+            <p className="mt-0.5 truncate text-lg font-semibold tabular-nums text-ink sm:text-xl">
+              {bedsOpenParsed != null ? bedsOpenParsed : "—"}
+            </p>
+            <p className="mt-0.5 truncate text-xs text-ink/55">
+              {bedsOpenParsed != null && bedsTotalParsed != null && bedsOpenParsed <= bedsTotalParsed
+                ? ui.provider.occupancyBedsOfTotal(bedsOpenParsed, bedsTotalParsed)
+                : bedsOpenParsed != null && bedsTotalParsed != null
+                  ? ui.provider.occupancyBedsMismatch
+                  : "—"}
+            </p>
+          </div>
+          <div className="min-w-0 rounded-lg bg-brand-cream/60 px-3 py-2">
+            <p className="text-[10px] font-medium uppercase tracking-wide text-ink/50">{ui.provider.occupancyAvailability}</p>
+            <p className="mt-0.5 truncate text-sm font-semibold text-ink sm:text-base">
+              {optionLabel(locale, form.availabilityStatus)}
+            </p>
+          </div>
+          <div className="min-w-0 rounded-lg bg-brand-cream/60 px-3 py-2">
+            <p className="text-[10px] font-medium uppercase tracking-wide text-ink/50">{ui.provider.occupancyWaitEstimate}</p>
+            <p className="mt-0.5 truncate text-sm font-semibold text-ink sm:text-base">
+              {waitDisplay ?? ui.provider.occupancyWaitUnset}
+            </p>
+            {waitHasEstimate ? (
+              <p className={cn("mt-0.5 truncate text-xs", waitStale ? "text-brand-amber-dark" : "text-ink/55")}>
+                {waitStale ? ui.provider.occupancyWaitStale : ui.provider.occupancyWaitFresh}
+              </p>
+            ) : null}
+          </div>
+        </div>
+      </section>
+
+      {profileComplete && inquiryInsights.recent.length ? (
+        <section className="mb-3 rounded-xl border border-stone-200 bg-white px-3 py-3 shadow-soft sm:px-4">
+          <h2 className="text-sm font-semibold text-ink">{ui.provider.insightsRecentTitle}</h2>
+          <ul className="mt-1.5 divide-y divide-stone-100">
+            {inquiryInsights.recent.slice(0, 3).map((item) => {
+              const match = inquiries.find((inquiry) => inquiry.id === item.id);
+              return (
+                <li key={item.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-ink">{item.familyName}</p>
+                    <p className="mt-0.5 truncate text-xs text-ink/55">
+                      {item.statusLabel}
+                      {" · "}
+                      {new Date(item.updatedAt).toLocaleString(dateLocale(locale), {
+                        dateStyle: "medium",
+                        timeStyle: "short"
+                      })}
+                    </p>
+                  </div>
+                  {match ? (
+                    <Button
+                      type="button"
+                      size="xs"
+                      variant="outline"
+                      className="bg-white"
+                      onClick={() => openInquiry(match)}
+                    >
+                      {ui.provider.insightsOpenInquiry}
+                      <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
+                    </Button>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ) : null}
 
       {!profileComplete ? (
         <section className="mb-5 rounded-xl border border-brand-amber/25 bg-brand-amber/10 px-4 py-4 sm:px-5">
@@ -734,7 +883,7 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
         </section>
       ) : null}
 
-      <div className="mb-5 flex w-full gap-1 overflow-x-auto rounded-[10px] bg-white p-1 shadow-soft sm:inline-flex sm:w-auto">
+      <div className="mb-3 flex w-full gap-1 overflow-x-auto rounded-[10px] bg-white p-1 shadow-soft sm:inline-flex sm:w-auto">
         {providerInquiryTabs.map((item) => {
           const badge = inquiryTabBadges[item];
           const isActive = inquiryTab === item;
@@ -745,7 +894,7 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
               type="button"
               onClick={() => setInquiryTab(item)}
               className={cn(
-                "relative min-w-fit flex-1 rounded-lg px-4 py-2 text-sm transition sm:flex-none",
+                "relative min-w-fit flex-1 rounded-lg px-3 py-2 text-sm transition sm:flex-none sm:px-4",
                 isActive ? "bg-brand-amber text-white" : "text-ink/70 hover:bg-brand-cream hover:text-brand-amber"
               )}
             >
@@ -763,13 +912,11 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
       </div>
 
       <section className="overflow-hidden rounded-xl bg-white shadow-soft">
-        <div className="border-b border-stone-100 px-4 py-4 sm:px-5">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="border-b border-stone-100 px-4 py-3 sm:px-5">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-lg font-semibold text-ink">{ui.provider.inquiryQueue}</h2>
-              </div>
-              <p className="mt-1 text-sm text-ink/60">{ui.provider.inquiryQueueIntro}</p>
+              <h2 className="text-base font-semibold text-ink sm:text-lg">{ui.provider.inquiryQueue}</h2>
+              <p className="mt-0.5 hidden text-sm text-ink/60 sm:block">{ui.provider.inquiryQueueIntro}</p>
             </div>
             {inquiries.length ? (
               <span className="shrink-0 rounded-full bg-brand-cream px-3 py-1 text-xs font-semibold text-ink/55">
@@ -983,6 +1130,7 @@ function ProviderInquiryDetailPanel({
   onDecline: (inquiry: Inquiry) => void;
 }) {
   const { locale, ui } = useLocale();
+  const [copiedField, setCopiedField] = useState<"phone" | "email" | null>(null);
   const isPending = inquiry ? pendingInquiryId === inquiry.id : false;
   const needsResponse = inquiry ? isProviderActionNeeded(inquiry.status) : false;
   const banner = inquiry ? providerInquiryBanner(inquiry.status, locale) : null;
@@ -992,18 +1140,57 @@ function ProviderInquiryDetailPanel({
   const visitSummary = inquiry ? formatProviderVisit(inquiry, locale) : null;
   const showVisitInBanner = Boolean(nextStep?.visitLine);
   const p = ui.provider;
+  const phone = inquiry?.intake.phone?.trim() || "";
+  const email = inquiry?.intake.email?.trim() || "";
+
+  useEffect(() => {
+    if (!copiedField) return;
+    const timer = window.setTimeout(() => setCopiedField(null), 2000);
+    return () => window.clearTimeout(timer);
+  }, [copiedField]);
+
+  async function copyValue(field: "phone" | "email", value: string) {
+    if (!value) return;
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopiedField(field);
+    } catch {
+      // Clipboard may be unavailable; links still work.
+    }
+  }
 
   const details = inquiry
     ? [
         { label: p.detailFamilyContact, value: inquiry.intake.contactName },
-        { label: p.detailPhone, value: inquiry.intake.phone },
-        { label: p.detailEmail, value: inquiry.intake.email },
+        {
+          label: p.detailPhone,
+          value: phone ? (
+            <a href={`tel:${phone.replace(/\s+/g, "")}`} className="font-medium text-brand-amber hover:text-brand-amber-mid">
+              {phone}
+            </a>
+          ) : (
+            "—"
+          )
+        },
+        {
+          label: p.detailEmail,
+          value: email ? (
+            <a href={`mailto:${email}`} className="font-medium text-brand-amber hover:text-brand-amber-mid">
+              {email}
+            </a>
+          ) : (
+            "—"
+          )
+        },
         { label: p.detailPreferredArea, value: inquiry.intake.preferredArea },
         { label: p.detailCareNeeded, value: inquiry.intake.careTypes.map((item) => optionLabel(locale, item)).join(", ") || "—" },
         { label: p.detailUrgency, value: optionLabel(locale, inquiry.intake.urgency) },
         { label: p.detailAgeRange, value: optionLabel(locale, inquiry.intake.ageRange) },
         { label: p.detailMatchScore, value: `${inquiry.score}%` },
         { label: p.detailStatus, value: providerInquiryStatusLabel(inquiry.status, locale) },
+        ...(inquiry.status === "DECLINED" && inquiry.declineReason
+          ? [{ label: p.detailDeclineReason, value: optionLabel(locale, inquiry.declineReason) }]
+          : []),
         {
           label: p.detailReceived,
           value: new Date(inquiry.createdAt).toLocaleString(dateLocale(locale), { dateStyle: "medium", timeStyle: "short" })
@@ -1077,6 +1264,53 @@ function ProviderInquiryDetailPanel({
                 <p className="mt-1 text-sm leading-6 text-ink/70">{nextStep.description}</p>
                 {nextStep.visitLine ? (
                   <p className="mt-3 rounded-lg bg-white/80 px-3 py-2.5 text-sm font-medium leading-6 text-ink">{nextStep.visitLine}</p>
+                ) : null}
+              </div>
+            </PanelSection>
+          ) : null}
+
+          {(phone || email) ? (
+            <PanelSection title={p.contactFamilyTitle}>
+              <div className="flex flex-wrap gap-2">
+                {phone ? (
+                  <>
+                    <Button asChild size="sm">
+                      <a href={`tel:${phone.replace(/\s+/g, "")}`}>
+                        <Phone className="h-4 w-4" aria-hidden />
+                        {p.contactCall}
+                      </a>
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="bg-white"
+                      onClick={() => void copyValue("phone", phone)}
+                    >
+                      <Copy className="h-4 w-4" aria-hidden />
+                      {copiedField === "phone" ? p.contactCopied : p.contactCopyPhone}
+                    </Button>
+                  </>
+                ) : null}
+                {email ? (
+                  <>
+                    <Button asChild size="sm" variant="outline" className="bg-white">
+                      <a href={`mailto:${email}`}>
+                        <Mail className="h-4 w-4" aria-hidden />
+                        {p.contactEmail}
+                      </a>
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="bg-white"
+                      onClick={() => void copyValue("email", email)}
+                    >
+                      <Copy className="h-4 w-4" aria-hidden />
+                      {copiedField === "email" ? p.contactCopied : p.contactCopyEmail}
+                    </Button>
+                  </>
                 ) : null}
               </div>
             </PanelSection>
@@ -1256,7 +1490,25 @@ function ProviderProfilePanel({
             <Field label={p.provinceLabel}>
               <CustomSelect value={form.province} onChange={(value) => updateForm("province", value)} options={dutchProvinces} />
             </Field>
+            <Field label={p.websiteLabel}>
+              <input
+                type="url"
+                value={form.website}
+                onChange={(e) => updateForm("website", e.target.value)}
+                className={inputClass}
+                placeholder={p.websitePlaceholder}
+              />
+            </Field>
+            <Field label={p.roomTypesLabel}>
+              <input
+                value={form.roomTypesText}
+                onChange={(e) => updateForm("roomTypesText", e.target.value)}
+                className={inputClass}
+                placeholder={p.roomTypesPlaceholder}
+              />
+            </Field>
           </div>
+          <p className="mt-2 text-sm leading-6 text-ink/65">{p.roomTypesHelper}</p>
           <div className="mt-4">
             <Field label={p.descriptionLabel}>
               <textarea value={form.description} onChange={(e) => updateForm("description", e.target.value)} className={`${inputClass} min-h-24`} placeholder={p.descriptionPlaceholder} />

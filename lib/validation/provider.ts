@@ -32,6 +32,7 @@ export function providerProfileSchemaFor(locale: Locale = "nl") {
       .transform((value) => (value && value.length ? value : undefined)),
     phone: optionalText,
     website: optionalText,
+    roomTypes: z.array(z.string().trim().min(1).max(100)).max(20).optional(),
     bedsTotal: optionalCount.pipe(
       z.number().int(v.bedsWhole).min(0, v.bedsNegative).optional()
     ),
