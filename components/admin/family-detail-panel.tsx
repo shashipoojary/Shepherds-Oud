@@ -577,7 +577,10 @@ export function FamilyDetailPanel({
   const currentStepIndex = family ? journeyStepIndex(family.status) : 0;
   const progressStep = Math.min(currentStepIndex + 1, JOURNEY_STEPS.length);
   const progressPct = Math.round((progressStep / JOURNEY_STEPS.length) * 100);
-  const showCloseFooter = !isReadOnlyAssigned && (canCloseCase || isClosedCase || workMode === "advance");
+  const showCloseFooter =
+    !isReadOnlyAssigned &&
+    nextAction?.key !== "CLOSED" &&
+    (canCloseCase || isClosedCase || workMode === "advance");
   const hasVisitSnapshot = Boolean(
     family?.visitScheduledAtLabel || family?.visitType || family?.visitProviderName
   );
@@ -943,9 +946,47 @@ export function FamilyDetailPanel({
               {workMode === "advance" ? (
                 <div className="space-y-3">
                   {nextAction.key === "CLOSED" ? (
-                    <p className="text-sm leading-6 text-neutral-600">
-                      Use Close case below to record the outcome and finish this journey.
-                    </p>
+                    <div className="space-y-3">
+                      <CustomSelect
+                        label="Outcome"
+                        value={caseOutcome}
+                        placeholder="Select outcome"
+                        options={CASE_OUTCOME_OPTIONS}
+                        onChange={setCaseOutcome}
+                      />
+                      {caseOutcome ? (
+                        <button
+                          type="button"
+                          className="text-xs font-medium text-neutral-500 underline-offset-2 hover:text-ink hover:underline"
+                          onClick={() => setCaseOutcome("")}
+                        >
+                          Clear selection
+                        </button>
+                      ) : null}
+                      <p className="text-xs leading-5 text-neutral-600">
+                        {caseOutcome
+                          ? `“${caseOutcome}” will close this case for the family.`
+                          : "Choose an outcome, then close the case to finish this journey."}
+                      </p>
+                      <PanelActions>
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="w-full sm:w-auto"
+                          disabled={
+                            savingCaseOutcome ||
+                            isCaseActionPending ||
+                            !caseOutcome ||
+                            caseOutcome === (family.caseOutcome || "")
+                          }
+                          onClick={() => void saveCaseOutcome()}
+                        >
+                          {savingCaseOutcome || (isCaseActionPending && pendingAction === "CLOSED")
+                            ? "Saving..."
+                            : "Apply outcome & close case"}
+                        </Button>
+                      </PanelActions>
+                    </div>
                   ) : milestoneAdvanceActions.length ? (
                     milestoneAdvanceActions.map((action) => {
                       const disabledReason =

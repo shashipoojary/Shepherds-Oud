@@ -226,7 +226,7 @@ export function getAdminCaseNextAction(intake: IntakeForNextAction, matches: Mat
 
   if (status === "FOLLOW_UP_90") {
     return intakeAction("CLOSED", {
-      instruction: "Close the case once no further follow-up is needed.",
+      instruction: "Choose an outcome below, then close the case.",
       target: "Do this now"
     });
   }
