@@ -141,7 +141,7 @@ function FamilyDashboardContent() {
   const showShortlistSkeleton =
     !caseClosed &&
     Boolean(intake?.id) &&
-    (matchesLoading || matchesForIntakeId !== intake.id);
+    (matchesLoading || matchesForIntakeId !== intake?.id);
 
   if (selection.state === "needs-picker" || selection.state === "not-found") {
     return (
