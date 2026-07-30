@@ -21,39 +21,47 @@ function writeMap(map: SeenMap) {
   }
 }
 
-export function markAdminInquirySeen(inquiryId: string, updatedAtIso: string) {
+function activityMs(updatedAtIso: string, createdAtIso?: string) {
+  const updated = new Date(updatedAtIso).getTime();
+  const created = createdAtIso ? new Date(createdAtIso).getTime() : Number.NaN;
+  if (Number.isFinite(created) && Number.isFinite(updated)) return Math.max(created, updated);
+  if (Number.isFinite(updated)) return updated;
+  if (Number.isFinite(created)) return created;
+  return 0;
+}
+
+export function markAdminInquirySeen(inquiryId: string, updatedAtIso: string, createdAtIso?: string) {
   const map = readMap();
-  map[inquiryId] = updatedAtIso;
-  writeMap(map);
+  const activity = new Date(activityMs(updatedAtIso, createdAtIso)).toISOString();
+  const previous = map[inquiryId];
+  if (!previous || activityMs(activity) >= activityMs(previous)) {
+    map[inquiryId] = activity;
+    writeMap(map);
+  }
 }
 
 /** First visit: treat current inquiries as already seen so only future updates badge. */
-export function initAdminInquirySeenFromData(items: Array<{ id: string; updatedAtIso: string }>) {
+export function initAdminInquirySeenFromData(
+  items: Array<{ id: string; updatedAtIso: string; createdAtIso?: string }>
+) {
   if (typeof window === "undefined") return;
   if (window.localStorage.getItem(STORAGE_KEY)) return;
 
   const map: SeenMap = {};
   for (const item of items) {
-    map[item.id] = item.updatedAtIso;
+    map[item.id] = new Date(activityMs(item.updatedAtIso, item.createdAtIso)).toISOString();
   }
   writeMap(map);
 }
 
-export function isAdminInquiryUnread(inquiryId: string, updatedAtIso: string) {
+export function isAdminInquiryUnread(inquiryId: string, updatedAtIso: string, createdAtIso?: string) {
   const seenAt = readMap()[inquiryId];
   if (!seenAt) return true;
-  return new Date(updatedAtIso).getTime() > new Date(seenAt).getTime();
+  return activityMs(updatedAtIso, createdAtIso) > activityMs(seenAt);
 }
 
-export function countUnreadAdminInquiries(items: Array<{ id: string; updatedAtIso: string }>) {
-  return items.filter((item) => isAdminInquiryUnread(item.id, item.updatedAtIso)).length;
-}
-
-export function markAllAdminInquiriesSeen(items: Array<{ id: string; updatedAtIso: string }>) {
-  if (!items.length) return;
-  const map = readMap();
-  for (const item of items) {
-    map[item.id] = item.updatedAtIso;
-  }
-  writeMap(map);
+export function countUnreadAdminInquiries(
+  items: Array<{ id: string; updatedAtIso: string; createdAtIso?: string }>
+) {
+  return items.filter((item) => isAdminInquiryUnread(item.id, item.updatedAtIso, item.createdAtIso)).length;
 }

@@ -35,8 +35,13 @@ export function activityIso(createdAtIso: string, updatedAtIso?: string) {
 
 export function markAdminItemSeen(scope: AdminItemScope, id: string, createdAtIso: string, updatedAtIso?: string) {
   const map = readMap();
-  map[itemKey(scope, id)] = activityIso(createdAtIso, updatedAtIso);
-  writeMap(map);
+  const activity = activityIso(createdAtIso, updatedAtIso);
+  const key = itemKey(scope, id);
+  const previous = map[key];
+  if (!previous || new Date(activity).getTime() >= new Date(previous).getTime()) {
+    map[key] = activity;
+    writeMap(map);
+  }
 }
 
 export function isAdminItemUnread(scope: AdminItemScope, id: string, createdAtIso: string, updatedAtIso?: string) {

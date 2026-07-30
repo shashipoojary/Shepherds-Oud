@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { AdminResetDataButton } from "@/components/admin/reset-data-button";
 import { ComposeAnnouncementBar } from "@/components/admin/compose-announcement";
+import { FamilyDetailPanel } from "@/components/admin/family-detail-panel";
 import { HospitalInvitePanel } from "@/components/admin/hospital-invite-panel";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -22,7 +23,6 @@ import { RefreshButton } from "@/components/ui/refresh-button";
 import { UnreadDot } from "@/components/ui/unread-dot";
 import { DetailList, PanelSection, PanelTopic, panelNoticeTone, SlidePanel, StatusPill, TagList, usePanelMessage } from "@/components/ui/slide-panel";
 import { StatGrid } from "@/components/ui/stat-grid";
-import { adminFitLabel, adminMatchScoreBands } from "@/components/ui/match-score";
 import type { AdminDashboardData } from "@/lib/data/admin";
 import { recordAction } from "@/lib/client/actions";
 import { TOAST_DISMISS_MS } from "@/lib/client/toast-timing";
@@ -39,24 +39,13 @@ import {
 import {
   initAdminInquirySeenFromData,
   isAdminInquiryUnread,
-  markAdminInquirySeen,
-  markAllAdminInquiriesSeen
+  markAdminInquirySeen
 } from "@/lib/client/admin-inquiry-seen";
 import { initAdminItemsSeenFromData, isAdminItemUnread, markAdminItemSeen } from "@/lib/client/admin-item-seen";
-import { CARE_PATHWAYS } from "@/lib/domain/care-pathways";
-import { CASE_OUTCOME_OPTIONS, caseOutcomeEndsCase } from "@/lib/domain/case-outcomes";
-import { CustomSelect } from "@/components/ui/custom-select";
 import { getAdminCaseNextAction } from "@/lib/domain/admin-case-next-action";
 import {
   adminIntakeActionMeta,
-  adminIntakeJourneyHint,
   adminIntakeStatusLabel,
-  assessmentComplete,
-  canCreateMatches,
-  carePlanComplete,
-  JOURNEY_STEPS,
-  journeyStepIndex,
-  nextIntakeActions,
   normalizeIntakeStatus,
   type IntakeStatus
 } from "@/lib/domain/intake-workflow";
@@ -70,7 +59,6 @@ import {
   isAdminActionNeeded,
   matchStatusBadgeClass
 } from "@/lib/domain/match-status";
-import { isRematchableMatchStatus } from "@/lib/domain/match-rematch";
 import { INTAKE_STALE_CONFLICT_MESSAGE, isIntakeStaleConflictError } from "@/lib/domain/intake-stale-conflict";
 import { displayProviderAvailability, formatAvailabilityLastUpdated } from "@/lib/domain/provider-availability";
 import {
@@ -108,31 +96,6 @@ function normalizeRecordLocale(value?: string | null): Locale {
 
 function localeLanguageLabel(locale: Locale) {
   return locale === "en" ? "English" : "Dutch";
-}
-
-function AdminAudienceLocaleNotice({
-  audience,
-  locale,
-  writeTarget
-}: {
-  audience: "family" | "provider";
-  locale: Locale;
-  /** e.g. "the care plan summary" → "Write the care plan summary in Dutch" */
-  writeTarget?: string;
-}) {
-  const language = localeLanguageLabel(locale);
-  const who = audience === "family" ? "family" : "provider";
-  const writeLine = writeTarget ? `Write ${writeTarget} in ${language}` : `Write in ${language}`;
-
-  return (
-    <div
-      className="rounded-lg border border-amber-200/80 bg-amber-50 px-3 py-2.5 text-sm leading-relaxed text-amber-950"
-      role="note"
-    >
-      This {who} uses <strong>{language}</strong> in the app and emails. {writeLine} — free text is <strong>not</strong>{" "}
-      auto-translated.
-    </div>
-  );
 }
 
 /** Compact multi-value cells in admin tables (e.g. "A, B +3"). */
@@ -192,13 +155,6 @@ function groupInquiriesByIntake(inquiries: InquiryEntry[]) {
   return grouped;
 }
 
-function providerAvailableForMatching(providerId: string, matches: InquiryEntry[]) {
-  const existing = matches.find((match) => match.providerId === providerId);
-  if (!existing) return { available: true, rematch: false };
-  if (isRematchableMatchStatus(existing.statusRaw)) return { available: true, rematch: true };
-  return { available: false, rematch: false };
-}
-
 export function AdminDashboardClient({
   data: initialData,
   currentUserId,
@@ -215,12 +171,11 @@ export function AdminDashboardClient({
   const [refreshing, setRefreshing] = useState(false);
   const [tabSeenAt, setTabSeenAt] = useState(getTabSeenAt);
   const [itemSeenVersion, setItemSeenVersion] = useState(0);
-  const dataRef = useRef(data);
+  const [inquiryHandoffSearch, setInquiryHandoffSearch] = useState("");
   const intakeSavePendingRef = useRef(false);
   const focusRefetchTimerRef = useRef<number | null>(null);
   /** Avoid full dashboard reloads every time the admin tab is re-focused. */
   const lastFocusSyncAtRef = useRef(0);
-  dataRef.current = data;
 
   const onMarkItemSeen = useCallback(() => {
     setItemSeenVersion((current) => current + 1);
@@ -237,7 +192,11 @@ export function AdminDashboardClient({
   useEffect(() => {
     initTabSeenFromData(initialData);
     initAdminInquirySeenFromData(
-      initialData.inquiries.map((inquiry) => ({ id: inquiry.id, updatedAtIso: inquiry.updatedAtIso }))
+      initialData.inquiries.map((inquiry) => ({
+        id: inquiry.id,
+        updatedAtIso: inquiry.updatedAtIso,
+        createdAtIso: inquiry.createdAtIso
+      }))
     );
     initAdminItemsSeenFromData([
       ...initialData.families.map((family) => ({
@@ -257,20 +216,20 @@ export function AdminDashboardClient({
         id: entry.id,
         createdAtIso: entry.createdAtIso,
         updatedAtIso: entry.updatedAtIso
+      })),
+      ...initialData.inquiries.map((inquiry) => ({
+        scope: "inquiry" as const,
+        id: inquiry.id,
+        createdAtIso: inquiry.createdAtIso,
+        updatedAtIso: inquiry.updatedAtIso
       }))
     ]);
   }, [initialData]);
 
+  // Tab badge watermark only — row pulse clears when a row is opened, not on tab visit.
   useEffect(() => {
-    const seen = markTabSeen(tab, dataRef.current);
-    setTabSeenAt(seen);
-    if (tab === "inquiries") {
-      markAllAdminInquiriesSeen(
-        dataRef.current.inquiries.map((inquiry) => ({ id: inquiry.id, updatedAtIso: inquiry.updatedAtIso }))
-      );
-      onMarkItemSeen();
-    }
-  }, [tab, data, onMarkItemSeen]);
+    setTabSeenAt(markTabSeen(tab, data));
+  }, [tab, data]);
 
   const tabBadges = useMemo(
     () => ({
@@ -344,11 +303,11 @@ export function AdminDashboardClient({
   }
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-[1.3rem] font-semibold">Admin dashboard</h1>
-          <p className="text-sm text-neutral-500">Shepherds Oud — Netherlands-wide operations</p>
+    <main className="mx-auto max-w-7xl px-3 py-5 sm:px-6 sm:py-8 lg:px-8">
+      <header className="mb-5 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-4">
+        <div className="min-w-0">
+          <h1 className="text-[1.3rem] font-semibold text-ink">Admin dashboard</h1>
+          <p className="mt-0.5 text-sm text-neutral-500">Shepherds Oud — Netherlands-wide operations</p>
         </div>
         <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
           <HospitalInvitePanel onNotify={setMessage} />
@@ -360,7 +319,7 @@ export function AdminDashboardClient({
 
       <StatGrid stats={data.stats} />
 
-      <div className="mt-6 flex w-full gap-1 overflow-x-auto rounded-[10px] bg-white p-1 shadow-soft sm:inline-flex sm:w-auto">
+      <div className="mt-5 flex w-full gap-1 overflow-x-auto rounded-[10px] bg-white p-1 shadow-soft [-ms-overflow-style:none] [scrollbar-width:none] sm:mt-6 sm:inline-flex sm:w-auto [&::-webkit-scrollbar]:hidden">
         {(["families", "providers", "inquiries", "waitlist"] as const).map((item) => {
           const label = item === "waitlist" ? "Waitlist" : item[0].toUpperCase() + item.slice(1);
           const badge = tabBadges[item];
@@ -369,16 +328,17 @@ export function AdminDashboardClient({
           return (
             <button
               key={item}
+              type="button"
               onClick={() => selectTab(item)}
               className={cn(
-                "relative min-w-fit flex-1 rounded-lg px-4 py-2 text-sm transition sm:flex-none",
+                "relative min-w-fit flex-1 rounded-lg px-3 py-2 text-sm transition sm:flex-none sm:px-4",
                 isActive ? "bg-brand-amber text-white" : "text-ink/70 hover:bg-brand-cream hover:text-brand-amber"
               )}
             >
-              <span className="inline-flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
                 {label}
                 {badge > 0 && !isActive ? (
-                  <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-amber px-1.5 text-[10px] font-bold leading-none text-white">
+                  <span className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-brand-amber px-1.5 text-[10px] font-bold leading-none text-white">
                     {badge > 9 ? "9+" : badge}
                   </span>
                 ) : null}
@@ -407,6 +367,10 @@ export function AdminDashboardClient({
                 }}
                 itemSeenVersion={itemSeenVersion}
                 onMarkItemSeen={onMarkItemSeen}
+                onOpenInquiries={(familyName) => {
+                  setInquiryHandoffSearch(familyName);
+                  setTab("inquiries");
+                }}
               />
             ) : (
               <EmptyState title="No family intakes yet" description="New submissions from the intake form will appear here." />
@@ -435,11 +399,13 @@ export function AdminDashboardClient({
                 onSync={syncDashboard}
                 itemSeenVersion={itemSeenVersion}
                 onMarkItemSeen={onMarkItemSeen}
+                handoffSearch={inquiryHandoffSearch}
+                onHandoffSearchConsumed={() => setInquiryHandoffSearch("")}
               />
             ) : (
               <EmptyState
-                title="No provider follow-up needed"
-                description="Visit requests, callback requests, and accepted provider responses will appear here."
+                title="No inquiries yet"
+                description="When families are matched to providers, those records appear here."
               />
             )
           ) : null}
@@ -472,7 +438,8 @@ function FamiliesTable({
   onSync,
   onIntakeSavePendingChange,
   itemSeenVersion,
-  onMarkItemSeen
+  onMarkItemSeen,
+  onOpenInquiries
 }: {
   families: FamilyEntry[];
   inquiries: InquiryEntry[];
@@ -484,6 +451,7 @@ function FamiliesTable({
   onIntakeSavePendingChange: (pending: boolean) => void;
   itemSeenVersion: number;
   onMarkItemSeen: () => void;
+  onOpenInquiries: (familyName: string) => void;
 }) {
   const [rows, setRows] = useState(families);
   const [selected, setSelected] = useState<FamilyEntry | null>(null);
@@ -634,20 +602,20 @@ function FamiliesTable({
 
   return (
     <>
-      <div className="border-b border-stone-100 px-4 py-3">
+      <div className="border-b border-stone-100 px-3 py-3 sm:px-4">
         <ListSearch value={search} onChange={setSearch} placeholder="Search families by name, area, care guide, or reference…" />
       </div>
-      <table className="w-full min-w-[720px] border-collapse text-left">
+      <table className="w-full min-w-[320px] border-collapse text-left sm:min-w-[560px]">
         <thead className="bg-cream text-xs uppercase tracking-wide text-neutral-500">
           <tr>
-            <th className="px-4 py-3">Family</th>
+            <th className="px-3 py-3 sm:px-4">Family</th>
             <th className="hidden px-4 py-3 sm:table-cell">Care needed</th>
             <th className="hidden px-4 py-3 md:table-cell">Location</th>
             <th className="hidden px-4 py-3 xl:table-cell">Urgency</th>
             <th className="hidden px-4 py-3 xl:table-cell">Care Guide</th>
-            <th className="min-w-[8.5rem] whitespace-nowrap px-4 py-3">Status</th>
-            <th className="min-w-[9rem] px-4 py-3">Next action</th>
-            <th className="whitespace-nowrap px-4 py-3">Actions</th>
+            <th className="hidden whitespace-nowrap px-4 py-3 lg:table-cell">Status</th>
+            <th className="hidden px-4 py-3 lg:table-cell">Next action</th>
+            <th className="whitespace-nowrap px-3 py-3 sm:px-4">Actions</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-stone-200">
@@ -659,23 +627,26 @@ function FamiliesTable({
               selected?.id !== family.id &&
               itemSeenVersion >= 0 &&
               isAdminItemUnread("family", family.id, family.createdAtIso, family.updatedAtIso);
+            const statusLabel = adminIntakeStatusLabel(family.status);
+            const nextActionVariant =
+              nextAction.severity === "action"
+                ? ("softPending" as const)
+                : nextAction.severity === "waiting"
+                  ? ("softMuted" as const)
+                  : ("softSuccess" as const);
             return (
-              <tr key={family.id} className="cursor-pointer hover:bg-cream" onClick={() => openFamily(family)}>
-                <td className="min-w-0 max-w-[14rem] px-4 py-3 text-sm">
+              <tr key={family.id} className={cn("cursor-pointer hover:bg-cream", isUnread && "bg-brand-amber/[0.06] shadow-[inset_3px_0_0_0_var(--brand-amber)]")} onClick={() => openFamily(family)}>
+                <td className="min-w-0 max-w-[16rem] px-3 py-3 text-sm sm:max-w-[18rem] sm:px-4">
                   <div className="flex min-w-0 items-start gap-2">
-                    {isUnread ? <UnreadDot /> : null}
-                    <div className="min-w-0">
-                      <strong className="block truncate">{family.name}</strong>
+                    {isUnread ? <UnreadDot className="mt-1.5 shrink-0" /> : null}
+                    <div className="min-w-0 space-y-1">
+                      <strong className="block truncate text-ink">{family.name}</strong>
                       {(family.emergencyStopped || family.referralSource === "HOSPITAL") && (
-                        <div className="mt-1 flex min-w-0 flex-wrap gap-1">
-                          {family.emergencyStopped ? (
-                            <span className="shrink-0 rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-red-800">
-                              Emergency
-                            </span>
-                          ) : null}
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {family.emergencyStopped ? <Badge variant="softDanger">Emergency</Badge> : null}
                           {family.referralSource === "HOSPITAL" ? (
-                            <span
-                              className="max-w-[11rem] truncate rounded-full bg-brand-amber/15 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-brand-amber-dark"
+                            <Badge
+                              variant="softPending"
                               title={
                                 family.referringHospitalName
                                   ? `Hospital referral · ${family.referringHospitalName}`
@@ -683,20 +654,23 @@ function FamiliesTable({
                               }
                             >
                               Hospital
-                              {family.referringHospitalName
-                                ? ` · ${family.referringHospitalName}`
-                                : ""}
-                            </span>
+                            </Badge>
                           ) : null}
                         </div>
                       )}
-                      <span className="mt-0.5 block text-xs text-neutral-500">
-                        {family.ageRange ? `Age ${family.ageRange}` : null}
+                      <p className="text-xs leading-5 text-neutral-500">
+                        {family.ageRange ? `Age ${family.ageRange}` : "Age not specified"}
                         <span className="md:hidden">
-                          {family.ageRange ? " · " : ""}
+                          {" · "}
                           {family.location}
                         </span>
-                      </span>
+                      </p>
+                      <div className="flex flex-wrap items-center gap-1.5 lg:hidden">
+                        <Badge variant="softSage">{statusLabel}</Badge>
+                        <Badge variant={nextActionVariant} title={nextAction.instruction}>
+                          {nextAction.label}
+                        </Badge>
+                      </div>
                     </div>
                   </div>
                 </td>
@@ -710,27 +684,14 @@ function FamiliesTable({
                 <td className="hidden max-w-[8rem] truncate px-4 py-3 text-sm text-neutral-600 xl:table-cell">
                   {family.careGuideName || "—"}
                 </td>
-                <td className="whitespace-nowrap px-4 py-3">
-                  <span className="inline-flex whitespace-nowrap rounded-full bg-sage-100 px-3 py-1 text-xs font-semibold leading-none text-sage-700">
-                    {adminIntakeStatusLabel(family.status)}
-                  </span>
+                <td className="hidden whitespace-nowrap px-4 py-3 lg:table-cell">
+                  <Badge variant="softSage">{statusLabel}</Badge>
                 </td>
-                <td className="px-4 py-3">
-                  <span
-                    className={cn(
-                      "inline-flex max-w-[11rem] truncate rounded-full px-2.5 py-1 text-xs font-semibold leading-none",
-                      nextAction.severity === "action"
-                        ? "bg-brand-amber/15 text-brand-amber-dark ring-1 ring-brand-amber/25"
-                        : nextAction.severity === "waiting"
-                          ? "bg-brand-cream text-ink/70 ring-1 ring-stone-200"
-                          : "bg-brand-green-pale/70 text-brand-green-dark"
-                    )}
-                    title={nextAction.instruction}
-                  >
+                <td className="hidden px-4 py-3 lg:table-cell">
+                  <Badge variant={nextActionVariant} className="max-w-[12rem] truncate" title={nextAction.instruction}>
                     {nextAction.label}
-                  </span>
-                </td>
-                <td className="whitespace-nowrap px-4 py-3" onClick={(event) => event.stopPropagation()}>
+                  </Badge>
+                </td>                <td className="whitespace-nowrap px-3 py-3 sm:px-4" onClick={(event) => event.stopPropagation()}>
                   <div className="flex items-center gap-1">
                     {family.status === "NEW" ? (
                       <IconActionButton
@@ -763,1434 +724,9 @@ function FamiliesTable({
         onSync={onSync}
         pendingId={pendingId}
         setGlobalMessage={setMessage}
+        onOpenInquiries={onOpenInquiries}
       />
     </>
-  );
-}
-
-function FamilyDetailPanel({
-  family,
-  matches,
-  providers,
-  careGuides,
-  currentUserId,
-  onClose,
-  onUpdateStatus,
-  onPatchIntake,
-  onSync,
-  pendingId,
-  setGlobalMessage
-}: {
-  family: FamilyEntry | null;
-  matches: InquiryEntry[];
-  providers: ProviderOption[];
-  careGuides: CareGuideOption[];
-  currentUserId: string;
-  onClose: () => void;
-  onUpdateStatus: (
-    id: string,
-    status: IntakeStatus,
-    name: string,
-    notify?: (message: string) => void,
-    expectedUpdatedAt?: string | null
-  ) => Promise<void>;
-  onPatchIntake: (
-    id: string,
-    body: Record<string, unknown>,
-    name: string,
-    successMessage: string,
-    notify?: (message: string) => void
-  ) => Promise<void>;
-  onSync: () => Promise<boolean>;
-  pendingId: string | null;
-  setGlobalMessage: (message: string) => void;
-}) {
-  const { message: panelMessage, setMessage: setPanelMessage, clearMessage: clearPanelMessage } = usePanelMessage();
-  const previousFamilyIdRef = useRef<string | null>(null);
-
-  function notifyPanel(message: string) {
-    setPanelMessage(message);
-    setGlobalMessage(message);
-  }
-  const [providerId, setProviderId] = useState("");
-  const selectedProvider = useMemo(
-    () => providers.find((item) => item.id === providerId) ?? null,
-    [providers, providerId]
-  );
-  const familyLocale = normalizeRecordLocale(family?.preferredLocale);
-  const [score, setScore] = useState("85");
-  const [matchNotes, setMatchNotes] = useState("");
-  const [familyFacingReason, setFamilyFacingReason] = useState("");
-  const [creatingMatch, setCreatingMatch] = useState(false);
-  const [pendingAction, setPendingAction] = useState<IntakeStatus | null>(null);
-  const [confirmCloseCase, setConfirmCloseCase] = useState(false);
-  const [careGuideId, setCareGuideId] = useState("");
-  const [carePathway, setCarePathway] = useState("");
-  const [assessmentNotes, setAssessmentNotes] = useState("");
-  const [carePlanSummary, setCarePlanSummary] = useState("");
-  const [visitScheduledAt, setVisitScheduledAt] = useState("");
-  const [visitType, setVisitType] = useState<"VISIT" | "CALLBACK" | "">("");
-  const [visitProviderName, setVisitProviderName] = useState("");
-  const [visitNotes, setVisitNotes] = useState("");
-  const [savingAssessment, setSavingAssessment] = useState(false);
-  const [savingVisit, setSavingVisit] = useState(false);
-  const [savingCareGuide, setSavingCareGuide] = useState(false);
-  const [savingCaseOutcome, setSavingCaseOutcome] = useState(false);
-  const [caseOutcome, setCaseOutcome] = useState("");
-  const [loadedUpdatedAtIso, setLoadedUpdatedAtIso] = useState<string | null>(null);
-  const [staleConflict, setStaleConflict] = useState(false);
-  const [refreshingCase, setRefreshingCase] = useState(false);
-  const hasUnsavedCaseDraft = family
-    ? careGuideId !== (family.careGuideId || "") ||
-      carePathway !== (family.carePathway || "") ||
-      assessmentNotes !== (family.assessmentNotes || "") ||
-      carePlanSummary !== (family.carePlanSummary || "") ||
-      visitScheduledAt !== (family.visitScheduledAt ? family.visitScheduledAt.slice(0, 16) : "") ||
-      visitType !== ((family.visitType as "VISIT" | "CALLBACK") || "") ||
-      visitProviderName !== (family.visitProviderName || "") ||
-      visitNotes !== (family.visitNotes || "") ||
-      caseOutcome !== (family.caseOutcome || "")
-    : false;
-
-  function intakePatchBody(body: Record<string, unknown>) {
-    return loadedUpdatedAtIso ? { ...body, expectedUpdatedAt: loadedUpdatedAtIso } : body;
-  }
-
-  function handleStaleConflict(error: unknown) {
-    if (isIntakeStaleConflictError(error)) {
-      setStaleConflict(true);
-      return true;
-    }
-    return false;
-  }
-
-  async function refreshCase() {
-    setRefreshingCase(true);
-    try {
-      const ok = await onSync();
-      if (ok) {
-        setStaleConflict(false);
-        clearPanelMessage();
-      } else {
-        notifyPanel("Could not refresh this case. Try the dashboard Refresh button.");
-      }
-    } finally {
-      setRefreshingCase(false);
-    }
-  }
-
-  useEffect(() => {
-    if (!family) {
-      previousFamilyIdRef.current = null;
-      setLoadedUpdatedAtIso(null);
-      setStaleConflict(false);
-      return;
-    }
-
-    const isNewCase = previousFamilyIdRef.current !== family.id;
-    if (isNewCase) {
-      previousFamilyIdRef.current = family.id;
-      clearPanelMessage();
-      setStaleConflict(false);
-      setLoadedUpdatedAtIso(family.updatedAtIso);
-    } else if (!staleConflict && !hasUnsavedCaseDraft) {
-      setLoadedUpdatedAtIso(family.updatedAtIso);
-    }
-
-    if (isNewCase || (!staleConflict && !hasUnsavedCaseDraft)) {
-      setCareGuideId(family.careGuideId || "");
-      setCarePathway(family.carePathway || "");
-      setAssessmentNotes(family.assessmentNotes || "");
-      setCarePlanSummary(family.carePlanSummary || "");
-      setVisitScheduledAt(family.visitScheduledAt ? family.visitScheduledAt.slice(0, 16) : "");
-      setVisitType((family.visitType as "VISIT" | "CALLBACK") || "");
-      setVisitProviderName(family.visitProviderName || "");
-      setVisitNotes(family.visitNotes || "");
-      setCaseOutcome(family.caseOutcome || "");
-    }
-  }, [family, staleConflict, clearPanelMessage, hasUnsavedCaseDraft]);
-
-  const isCaseActionPending = family ? pendingId === family.id && pendingAction !== null : false;
-  const normalizedStatus = family ? normalizeIntakeStatus(family.status) : "NEW";
-  const isClosedCase = normalizedStatus === "CLOSED";
-  const isReadOnlyAssigned = Boolean(family?.careGuideId) && family?.careGuideId !== currentUserId;
-  const canAssignCareGuide = !family?.careGuideId;
-  const matchingAllowed =
-    family && !isClosedCase && !isReadOnlyAssigned
-      ? canCreateMatches(family.status, carePathway || family.carePathway)
-      : false;
-  const nextAction = family && !isReadOnlyAssigned ? getAdminCaseNextAction(family, matches) : null;
-  const hasMatches = matches.length > 0;
-  const hasFamilyRequestedMatch = matches.some((match) => match.statusRaw === "VISIT_REQUESTED" || match.statusRaw === "CALLBACK_REQUESTED");
-  const hasAcceptedOrContactedMatch = matches.some((match) => match.statusRaw === "ACCEPTED" || match.statusRaw === "CONTACTED" || match.statusRaw === "PLACED");
-  const visitSchedulingAllowed =
-    !isClosedCase &&
-    !isReadOnlyAssigned &&
-    (hasFamilyRequestedMatch || hasAcceptedOrContactedMatch || ["VISIT_SCHEDULED", "PROVIDER_RESPONSE", "PLACEMENT_IN_PROGRESS", "PLACED"].includes(normalizedStatus));
-  const placementActionAllowed =
-    !isClosedCase &&
-    !isReadOnlyAssigned &&
-    (hasAcceptedOrContactedMatch || ["PROVIDER_RESPONSE", "PLACEMENT_IN_PROGRESS", "PLACED"].includes(normalizedStatus));
-  const createMatchDisabledReason = !assessmentComplete({ carePathway: carePathway || family?.carePathway || null })
-    ? "Select a care pathway before creating provider matches."
-    : !carePlanComplete({ carePlanSummary: carePlanSummary || family?.carePlanSummary || null })
-      ? "Publish the care plan summary before creating provider matches."
-      : providerId && providers.find((provider) => provider.id === providerId)?.profileComplete === false
-        ? "This provider is locked until their facility profile is complete."
-      : providerId && providers.find((provider) => provider.id === providerId)?.matchable === false
-        ? "Only verified providers can be matched. Update verification status in the Providers tab first."
-      : !matchingAllowed
-        ? "Move the case to the care-plan stage before creating matches."
-        : "";
-  const shortlistDisabledReason = !hasMatches ? "Create at least one provider match before marking the shortlist ready." : "";
-  const visitDisabledReason = !visitSchedulingAllowed ? "Wait until the family requests a visit/callback or a provider accepts before scheduling." : "";
-
-  async function handleCaseAction(status: IntakeStatus) {
-    if (!family || isReadOnlyAssigned) return;
-    setPendingAction(status);
-    try {
-      if (status === "CLOSED") {
-        await onPatchIntake(
-          family.id,
-          intakePatchBody({
-            status: "CLOSED",
-            ...(caseOutcome ? { caseOutcome } : {})
-          }),
-          family.name,
-          caseOutcome
-            ? `You closed the case for ${family.name} with outcome “${caseOutcome}”.`
-            : `You closed the case for ${family.name}.`,
-          notifyPanel
-        );
-      } else {
-        await onUpdateStatus(family.id, status, family.name, notifyPanel, loadedUpdatedAtIso);
-      }
-    } catch (error) {
-      handleStaleConflict(error);
-    } finally {
-      setPendingAction(null);
-      if (status === "CLOSED") {
-        setConfirmCloseCase(false);
-      }
-    }
-  }
-
-  async function saveCaseOutcome() {
-    if (!family || isReadOnlyAssigned) return;
-
-    const nextOutcome = caseOutcome || null;
-    const shouldClose = !isClosedCase && caseOutcomeEndsCase(nextOutcome);
-
-    if (shouldClose) {
-      setConfirmCloseCase(true);
-      return;
-    }
-
-    setSavingCaseOutcome(true);
-    try {
-      await onPatchIntake(
-        family.id,
-        intakePatchBody({ caseOutcome: nextOutcome }),
-        family.name,
-        nextOutcome
-          ? `You updated the case outcome for ${family.name}.`
-          : `You cleared the case outcome for ${family.name}.`,
-        notifyPanel
-      );
-    } catch (error) {
-      handleStaleConflict(error);
-    } finally {
-      setSavingCaseOutcome(false);
-    }
-  }
-
-  async function saveCareGuide() {
-    if (!family || !careGuideId || isReadOnlyAssigned) return;
-    setSavingCareGuide(true);
-    try {
-      await onPatchIntake(
-        family.id,
-        intakePatchBody({ careGuideId, ...(family.status === "NEW" ? { status: "CARE_GUIDE_ASSIGNED" } : {}) }),
-        family.name,
-        `You assigned a Care Guide to ${family.name}.`,
-        notifyPanel
-      );
-    } catch (error) {
-      handleStaleConflict(error);
-    } finally {
-      setSavingCareGuide(false);
-    }
-  }
-
-  async function saveAndShareWithFamily() {
-    if (!family || isReadOnlyAssigned) return;
-    if (!carePathway) {
-      notifyPanel("Select a recommended care pathway before saving.");
-      return;
-    }
-
-    if (normalizedStatus === "NEW") {
-      notifyPanel("Assign a Care Guide before starting the assessment.");
-      return;
-    }
-
-    const mode = carePlanButtonMode;
-    let nextStatus: IntakeStatus | undefined;
-    let successMessage: string;
-
-    if (mode === "publish") {
-      nextStatus = "CARE_PLAN";
-      successMessage = `You published the care plan for ${family.name}. It is now visible on their dashboard and can still be edited until the case closes.`;
-    } else if (mode === "save-assessment" && normalizedStatus === "CARE_GUIDE_ASSIGNED") {
-      nextStatus = "ASSESSMENT";
-      successMessage = `You saved the assessment for ${family.name}. Add the care plan summary when you are ready to publish.`;
-    } else if (mode === "save-care-plan") {
-      successMessage = isCarePlanPublished
-        ? `You updated the care plan for ${family.name}.`
-        : `You saved the care plan draft for ${family.name}. Publish when the family should see it.`;
-    } else {
-      return;
-    }
-
-    setSavingAssessment(true);
-    try {
-      await onPatchIntake(
-        family.id,
-        intakePatchBody({
-          careGuideId: careGuideId || family.careGuideId || null,
-          carePathway,
-          assessmentNotes,
-          carePlanSummary,
-          ...(nextStatus ? { status: nextStatus } : {})
-        }),
-        family.name,
-        successMessage,
-        notifyPanel
-      );
-    } catch (error) {
-      handleStaleConflict(error);
-    } finally {
-      setSavingAssessment(false);
-    }
-  }
-
-  async function markShortlistReady() {
-    if (!family || isReadOnlyAssigned) return;
-    if (!carePathway) {
-      notifyPanel("Select a care pathway before marking the shortlist ready.");
-      return;
-    }
-
-    if (!carePlanSummary.trim()) {
-      notifyPanel("Publish a care plan summary before marking providers matched.");
-      return;
-    }
-
-    setSavingAssessment(true);
-    try {
-      await onPatchIntake(
-        family.id,
-        intakePatchBody({
-          careGuideId: careGuideId || family.careGuideId || null,
-          carePathway,
-          assessmentNotes,
-          carePlanSummary,
-          status: "MATCHED"
-        }),
-        family.name,
-        `You marked ${family.name} as matched. They can now view providers on their shortlist.`,
-        notifyPanel
-      );
-    } catch (error) {
-      handleStaleConflict(error);
-    } finally {
-      setSavingAssessment(false);
-    }
-  }
-
-  async function saveVisitSchedule() {
-    if (!family || isReadOnlyAssigned) return;
-    if (!visitScheduledAt) {
-      notifyPanel("Set a visit or callback date and time before saving.");
-      return;
-    }
-
-    const canAdvanceToVisitScheduled = ["MATCHED", "VISIT_SCHEDULED"].includes(normalizedStatus);
-
-    setSavingVisit(true);
-    try {
-      await onPatchIntake(
-        family.id,
-        intakePatchBody({
-          visitScheduledAt: new Date(visitScheduledAt).toISOString(),
-          visitType: visitType || null,
-          visitProviderName: visitProviderName || null,
-          visitNotes: visitNotes || null,
-          ...(canAdvanceToVisitScheduled ? { status: "VISIT_SCHEDULED" as const } : {})
-        }),
-        family.name,
-        canAdvanceToVisitScheduled
-          ? `You scheduled a visit or callback for ${family.name}. It is now visible on their dashboard.`
-          : `You updated visit details for ${family.name}.`,
-        notifyPanel
-      );
-    } catch (error) {
-      handleStaleConflict(error);
-    } finally {
-      setSavingVisit(false);
-    }
-  }
-
-  async function createMatch() {
-    if (!family || !providerId || isReadOnlyAssigned) return;
-    if (createMatchDisabledReason) {
-      notifyPanel(createMatchDisabledReason);
-      return;
-    }
-
-    setCreatingMatch(true);
-    try {
-      const response = await fetch("/api/matches", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          intakeId: family.id,
-          providerId,
-          score: Number(score),
-          notes: matchNotes || undefined,
-          familyFacingReason: familyFacingReason.trim() || undefined
-        })
-      });
-
-      if (!response.ok) {
-        const data = (await response.json().catch(() => ({}))) as { error?: string };
-        throw new Error(data.error || "Could not create match.");
-      }
-
-      try {
-        await recordAction({
-          type: "match_created",
-          targetType: "intake",
-          targetId: family.id,
-          label: `Matched ${family.name} with a provider.`,
-          payload: { intakeId: family.id, providerId, score: Number(score) }
-        });
-      } catch {
-        // Action log is optional; the match already succeeded.
-      }
-
-      notifyPanel(
-        selectedProviderRematch
-          ? `You re-opened this provider on ${family.name}'s shortlist. The family can request a visit or callback again.`
-          : `You created a provider match for ${family.name}. They can now see this provider on their shortlist.`
-      );
-      setProviderId("");
-      setScore("85");
-      setMatchNotes("");
-      setFamilyFacingReason("");
-      await onSync();
-    } catch (error) {
-      notifyPanel(error instanceof Error ? error.message : `Could not create match for ${family.name}.`);
-    } finally {
-      setCreatingMatch(false);
-    }
-  }
-
-  const nextActions = family
-    ? nextIntakeActions(family.status).map((status) => {
-        const meta = adminIntakeActionMeta(status);
-        return { label: meta.label, status, description: meta.description };
-      })
-    : [];
-  const advanceActions = nextActions.filter((action) => action.status !== "CLOSED");
-  const canCloseCase = nextActions.some((action) => action.status === "CLOSED");
-  const workflowManagedAdvanceStatuses = new Set<IntakeStatus>([
-    "CARE_GUIDE_ASSIGNED",
-    "ASSESSMENT",
-    "CARE_PLAN",
-    "MATCHED",
-    "VISIT_SCHEDULED"
-  ]);
-  const milestoneAdvanceActions = advanceActions.filter((action) => !workflowManagedAdvanceStatuses.has(action.status));
-  const currentStepIndex = family ? journeyStepIndex(family.status) : 0;
-  const careGuideStepLocked = Boolean(family?.careGuideId) && currentStepIndex >= journeyStepIndex("CARE_GUIDE_ASSIGNED");
-  const forwardMatchStatuses = new Set([
-    "SUGGESTED",
-    "VISIT_REQUESTED",
-    "CALLBACK_REQUESTED",
-    "ACCEPTED",
-    "CONTACTED",
-    "PLACED"
-  ]);
-  const declineRematchMode =
-    normalizedStatus === "CARE_PLAN" &&
-    matches.some((match) => match.statusRaw === "DECLINED") &&
-    !matches.some((match) => forwardMatchStatuses.has(match.statusRaw || ""));
-  const selectedProviderRematch = providerId ? providerAvailableForMatching(providerId, matches).rematch : false;
-  const assessmentStepLocked =
-    !declineRematchMode &&
-    carePlanComplete({ carePlanSummary: family?.carePlanSummary }) &&
-    currentStepIndex >= journeyStepIndex("CARE_PLAN");
-  const visitStepLocked = Boolean(family?.visitScheduledAt) && currentStepIndex >= journeyStepIndex("VISIT_SCHEDULED");
-  const advanceStepLocked = currentStepIndex < journeyStepIndex("VISIT_SCHEDULED");
-  const publishedCarePlanStatuses = new Set<IntakeStatus>([
-    "CARE_PLAN",
-    "MATCHED",
-    "VISIT_SCHEDULED",
-    "PROVIDER_RESPONSE",
-    "PLACEMENT_IN_PROGRESS",
-    "PLACED",
-    "FOLLOW_UP_7",
-    "FOLLOW_UP_30",
-    "FOLLOW_UP_90"
-  ]);
-  const isCarePlanPublished = publishedCarePlanStatuses.has(normalizedStatus);
-  const isCarePlanDirty =
-    carePathway !== (family?.carePathway || "") ||
-    assessmentNotes !== (family?.assessmentNotes || "") ||
-    carePlanSummary !== (family?.carePlanSummary || "");
-  const carePlanButtonMode = (() => {
-    if (!isCarePlanPublished) {
-      if (!carePlanSummary.trim()) return "save-assessment" as const;
-      if (isCarePlanDirty) return "save-care-plan" as const;
-      return "publish" as const;
-    }
-    if (isCarePlanDirty) return "save-care-plan" as const;
-    return "published" as const;
-  })();
-  const visitNotesLabel =
-    visitType === "CALLBACK" ? "Callback notes" : visitType === "VISIT" ? "Visit notes" : "Visit or callback notes";
-  const visibleJourneySteps = JOURNEY_STEPS;
-
-  return (
-    <SlidePanel
-      open={Boolean(family)}
-      onClose={onClose}
-      size="xl"
-      title={family?.name || "Family intake"}
-      subtitle={
-        family
-          ? `${family.location} · ${family.urgency}${family.emergencyStopped ? " · Emergency flagged" : ""}`
-          : "Care intake details"
-      }
-      notice={staleConflict ? undefined : panelMessage}
-      noticeTone={staleConflict ? "error" : panelNoticeTone(panelMessage)}
-    >
-      {family ? (
-        <div className="space-y-5">
-          {family.emergencyStopped ? (
-            <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-950">
-              <p className="font-semibold">Emergency screening flagged</p>
-              <p className="mt-1 leading-6 text-red-900">
-                The family was shown 112 instructions and blocked from the normal care-matching journey. Follow up after confirming
-                emergency needs are handled.
-              </p>
-            </div>
-          ) : null}
-
-          {family.referralSource === "HOSPITAL" ? (
-            <div className="rounded-lg bg-brand-amber/10 px-4 py-3 text-sm text-ink">
-              <p className="font-semibold">Hospital referral</p>
-              <p className="mt-1 leading-6 text-ink/70">
-                Submitted by {family.referringHospitalName || "a hospital"}. The family can sign in with the
-                referral email to track the case. Use the same Care Guide workflow as family self-serve intakes.
-              </p>
-            </div>
-          ) : null}
-
-          {staleConflict ? (
-            <div className="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-950">
-              <p className="font-semibold">{INTAKE_STALE_CONFLICT_MESSAGE}</p>
-              <p className="mt-1 leading-6 text-amber-900">
-                Your form may be out of date. Refresh to load the latest version before saving again.
-              </p>
-              <Button
-                type="button"
-                size="sm"
-                className="mt-3"
-                disabled={refreshingCase}
-                onClick={() => void refreshCase()}
-              >
-                {refreshingCase ? "Refreshing…" : "Refresh case"}
-              </Button>
-            </div>
-          ) : null}
-
-          {isReadOnlyAssigned ? (
-            <div className="rounded-lg bg-stone-50 px-4 py-3 text-sm text-ink">
-              <p className="font-semibold">
-                Read-only — assigned to {family.careGuideName || "another Care Guide"}
-              </p>
-              <p className="mt-1 leading-6 text-neutral-600">
-                You can view this case. Only the assigned Care Guide can edit, advance status, create matches, or schedule visits.
-              </p>
-            </div>
-          ) : null}
-
-          <StatusPill className="bg-transparent px-0 py-0">
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <div>
-                <span className="text-xs font-medium text-neutral-500">Case status</span>
-                <p className="mt-1 font-semibold text-ink">{adminIntakeStatusLabel(family.status)}</p>
-              </div>
-              <div>
-                <span className="text-xs font-medium text-neutral-500">Care Guide</span>
-                <p className="mt-1 font-semibold text-ink">{family.careGuideName || "Not assigned"}</p>
-              </div>
-              <div>
-                <span className="text-xs font-medium text-neutral-500">Urgency</span>
-                <p className="mt-1 font-semibold text-ink">{family.urgency}</p>
-              </div>
-              <div>
-                <span className="text-xs font-medium text-neutral-500">Location</span>
-                <p className="mt-1 font-semibold text-ink">{family.location}</p>
-              </div>
-            </div>
-          </StatusPill>
-
-          <PanelSection
-            title={isClosedCase ? "Case archived" : "Case stage"}
-            description={
-              isClosedCase
-                ? "This family case is closed. Workflow steps below are locked — review the summary or case record only."
-                : "Current milestone for this family case and what you should do next in this panel."
-            }
-            collapsible
-            defaultOpen
-          >
-            {isClosedCase ? (
-              <p className="text-sm leading-6 text-neutral-600">{adminIntakeJourneyHint(family.status)}</p>
-            ) : (
-              <>
-                <p className="text-sm font-semibold text-ink">
-                  Step {Math.min(currentStepIndex + 1, visibleJourneySteps.length)} of {visibleJourneySteps.length} ·{" "}
-                  {adminIntakeStatusLabel(family.status)}
-                </p>
-                <p className="mt-1 text-sm leading-6 text-neutral-600">{adminIntakeJourneyHint(family.status)}</p>
-              </>
-            )}
-          </PanelSection>
-
-          {nextAction && !isClosedCase ? (
-            <div
-              className={cn(
-                "rounded-lg px-4 py-3.5",
-                nextAction.severity === "action"
-                  ? "bg-brand-amber/10"
-                  : nextAction.severity === "waiting"
-                    ? "bg-stone-50"
-                    : "bg-brand-green-pale/25"
-              )}
-            >
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-brand-amber-dark">Do this next</p>
-                  <h3 className="mt-1 text-base font-semibold text-ink">{nextAction.label}</h3>
-                </div>
-                <span className="inline-flex rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-ink">
-                  {nextAction.target}
-                </span>
-              </div>
-              <p className="mt-2 text-sm font-medium leading-6 text-ink">{nextAction.instruction}</p>
-              <p className="mt-1 text-sm leading-6 text-neutral-600">{nextAction.description}</p>
-              <p className="mt-2 text-xs font-medium uppercase tracking-wide text-neutral-500">
-                {nextAction.tab === "inquiries" ? "Go to Inquiries when ready" : "Continue in this family case"}
-              </p>
-            </div>
-          ) : null}
-
-          <PanelSection
-            title="Intake details"
-            description="Family submission, care needs, decision context, and notes."
-            collapsible
-            defaultOpen={false}
-          >
-            <div className="divide-y divide-stone-100">
-              <PanelTopic title="Contact" defaultOpen>
-                <DetailList
-                  columns={1}
-                  items={[
-                    { label: "Contact name", value: family.name },
-                    { label: "Email", value: family.email },
-                    { label: "Phone", value: family.phone },
-                    { label: "Relationship", value: family.relationship },
-                    { label: "Age range", value: family.ageRange },
-                    { label: "Preferred area", value: family.location },
-                    { label: "Preferred distance", value: family.preferredDistance }
-                  ]}
-                />
-              </PanelTopic>
-              <PanelTopic title="Safety & emergency">
-                <DetailList
-                  columns={1}
-                  items={[
-                    { label: "Emergency flagged", value: family.emergencyStopped ? "Yes — follow up urgently" : "No" },
-                    { label: "Person safe tonight", value: family.personSafeTonight },
-                    { label: "Urgent medical help", value: family.urgentMedicalHelp },
-                    { label: "Can remain home tonight", value: family.canRemainHomeTonight },
-                    { label: "Caregiver burnout risk", value: family.caregiverBurnoutRisk }
-                  ]}
-                />
-                {(family.immediateRiskFlags?.length ?? 0) > 0 ? (
-                  <div className="mt-2">
-                    <p className="text-xs font-medium text-neutral-500">Immediate risk flags</p>
-                    <div className="mt-1.5">
-                      <TagList items={family.immediateRiskFlags ?? []} />
-                    </div>
-                  </div>
-                ) : null}
-              </PanelTopic>
-              <PanelTopic title="Decision support">
-                <DetailList
-                  columns={1}
-                  items={[
-                    { label: "Primary decision-maker", value: family.decisionMakerName },
-                    { label: "Primary decision-maker role", value: family.decisionMakerRelationship },
-                    { label: "Person agreed to search", value: family.seniorAgreedToSearch },
-                    { label: "Other participants", value: family.decisionParticipants },
-                    { label: "Living situation", value: family.livingSituation },
-                    { label: "Move-in timeline", value: family.moveInTimeline },
-                    { label: "Consent accepted", value: family.consentAcceptedAt },
-                    { label: "Consent version", value: family.consentVersion }
-                  ]}
-                />
-                {(family.decisionMakers?.length ?? 0) > 0 ? (
-                  <div className="mt-2 space-y-2">
-                    <p className="text-xs font-medium text-neutral-500">Decision-makers</p>
-                    {family.decisionMakers.map((maker) => (
-                      <div key={maker.id} className="py-1">
-                        <p className="text-sm font-semibold text-ink">
-                          {maker.name}
-                          <span className="ml-2 font-normal text-neutral-500">· {maker.relationship}</span>
-                        </p>
-                        {maker.responsibilities.length ? (
-                          <div className="mt-1.5">
-                            <TagList items={maker.responsibilities} />
-                          </div>
-                        ) : null}
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
-              </PanelTopic>
-              <PanelTopic title="Care needs">
-                <DetailList
-                  columns={1}
-                  items={[
-                    { label: "Urgency", value: family.urgency },
-                    { label: "Budget", value: family.budget },
-                    { label: "Mobility", value: family.mobility },
-                    { label: "Medical / nursing support", value: family.medicalSupportNeeds },
-                    { label: "Dementia needs", value: family.dementiaNeeds },
-                    { label: "Hospital discharge", value: family.hospitalDischargeDate }
-                  ]}
-                />
-                <div className="mt-2 space-y-3">
-                  <div>
-                    <p className="text-xs font-medium text-neutral-500">Care types</p>
-                    <div className="mt-1.5">
-                      <TagList items={family.careTypes?.length ? family.careTypes : family.care.split(",").map((item) => item.trim()).filter(Boolean)} />
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-neutral-500">Funding types</p>
-                    <div className="mt-1.5">
-                      <TagList items={family.fundingTypes ?? []} />
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-neutral-500">Functional needs</p>
-                    <div className="mt-1.5">
-                      <TagList items={family.functionalNeeds ?? []} />
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-neutral-500">Placement preferences</p>
-                    <div className="mt-1.5">
-                      <TagList items={family.placementPreferences ?? []} />
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-neutral-500">UI language (emails)</p>
-                    <p className="mt-1.5 text-sm font-medium text-ink">{localeLanguageLabel(familyLocale)}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-neutral-500">Languages</p>
-                    <div className="mt-1.5">
-                      <TagList items={family.languages ?? []} />
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-neutral-500">Support needed</p>
-                    <div className="mt-1.5">
-                      <TagList items={family.supportTypes ?? []} />
-                    </div>
-                  </div>
-                </div>
-              </PanelTopic>
-              {family.notes?.trim() ? (
-                <PanelTopic title="Family notes">
-                  <p className="text-sm leading-7 text-neutral-700">{family.notes}</p>
-                </PanelTopic>
-              ) : null}
-            </div>
-          </PanelSection>
-
-          {isClosedCase ? (
-            <PanelSection
-              title="Closed case summary"
-              description="This case is archived. Reopen or create a new intake if the family needs more help later."
-            >
-              <DetailList
-                columns={1}
-                items={[
-                  { label: "Final status", value: adminIntakeStatusLabel(family.status) },
-                  { label: "Case outcome", value: family.caseOutcome || "Not recorded" },
-                  { label: "Care Guide", value: family.careGuideName || "Not assigned" },
-                  { label: "Care pathway", value: family.carePathway },
-                  { label: "Last provider", value: family.visitProviderName },
-                  { label: "Last updated", value: family.updatedAt }
-                ]}
-              />
-            </PanelSection>
-          ) : (
-          <div className="space-y-1 border-t border-stone-100 pt-2">
-            <PanelSection
-              step={2}
-              title="Assign Care Guide"
-              description="Pick who owns this case."
-              completed={careGuideStepLocked && !canAssignCareGuide}
-              locked={(careGuideStepLocked && !canAssignCareGuide) || isReadOnlyAssigned}
-              collapsible={careGuideStepLocked && !canAssignCareGuide}
-              defaultOpen={!(careGuideStepLocked && !canAssignCareGuide)}
-            >
-              <div className="space-y-3">
-                <label className="grid gap-1.5 text-sm font-medium">
-                  Care Guide
-                  <select
-                    value={careGuideId}
-                    onChange={(event) => setCareGuideId(event.target.value)}
-                    disabled={isReadOnlyAssigned}
-                    className={adminFieldClass}
-                  >
-                    <option value="">Select Care Guide</option>
-                    {careGuides.map((guide) => (
-                      <option key={guide.id} value={guide.id}>
-                        {guide.name || guide.email}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <AdminPanelActions>
-                  <Button
-                    type="button"
-                    size="sm"
-                    disabled={!careGuideId || savingCareGuide || isReadOnlyAssigned}
-                    onClick={() => void saveCareGuide()}
-                  >
-                    {savingCareGuide ? "Saving..." : "Assign Care Guide"}
-                  </Button>
-                </AdminPanelActions>
-              </div>
-            </PanelSection>
-
-            <PanelSection
-              step={3}
-              title="Assessment & care plan"
-              description="Internal notes stay private; the care plan summary is shared with the family."
-              completed={assessmentStepLocked}
-              locked={assessmentStepLocked || isReadOnlyAssigned}
-              collapsible={assessmentStepLocked}
-              defaultOpen={!assessmentStepLocked && !isReadOnlyAssigned}
-            >
-              <div className="space-y-3">
-                <label className="grid gap-1.5 text-sm font-medium">
-                  Care pathway
-                  <select
-                    value={carePathway}
-                    onChange={(event) => setCarePathway(event.target.value)}
-                    disabled={isReadOnlyAssigned}
-                    className={adminFieldClass}
-                  >
-                    <option value="">Select pathway</option>
-                    {CARE_PATHWAYS.map((pathway) => (
-                      <option key={pathway} value={pathway}>
-                        {pathway}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                {selectedProvider ? (
-                  <p className="text-xs leading-5 text-neutral-600">
-                    Selected provider uses <strong>{localeLanguageLabel(normalizeRecordLocale(selectedProvider.preferredLocale))}</strong>{" "}
-                    in the app and emails. Match notifications to this provider use that language.
-                  </p>
-                ) : null}
-                <label className="grid gap-1.5 text-sm font-medium">
-                  Assessment notes (internal)
-                  <textarea
-                    value={assessmentNotes}
-                    onChange={(event) => setAssessmentNotes(event.target.value)}
-                    disabled={isReadOnlyAssigned}
-                    className={`${adminFieldClass} min-h-20`}
-                    placeholder="Situation, decision-makers, funding…"
-                  />
-                </label>
-                <label className="grid gap-1.5 text-sm font-medium">
-                  Care plan summary (family-facing)
-                  <AdminAudienceLocaleNotice
-                    audience="family"
-                    locale={familyLocale}
-                    writeTarget="the care plan summary"
-                  />
-                  <textarea
-                    value={carePlanSummary}
-                    onChange={(event) => setCarePlanSummary(event.target.value)}
-                    disabled={isReadOnlyAssigned}
-                    className={`${adminFieldClass} min-h-20`}
-                    placeholder={
-                      familyLocale === "en"
-                        ? "What the family should see next, in English…"
-                        : "What the family should see next, in Dutch…"
-                    }
-                  />
-                </label>
-                <AdminPanelActions>
-                  <Button
-                    type="button"
-                    size="sm"
-                    disabled={isReadOnlyAssigned || savingAssessment || carePlanButtonMode === "published"}
-                    onClick={() => void saveAndShareWithFamily()}
-                  >
-                    {savingAssessment
-                      ? "Saving..."
-                      : carePlanButtonMode === "save-assessment"
-                        ? "Save assessment"
-                        : carePlanButtonMode === "save-care-plan"
-                          ? "Save care plan"
-                          : carePlanButtonMode === "publish"
-                            ? "Publish care plan"
-                            : "Care plan published"}
-                  </Button>
-                  {!["MATCHED", "VISIT_SCHEDULED", "PROVIDER_RESPONSE", "PLACEMENT_IN_PROGRESS", "PLACED", "CLOSED"].includes(normalizedStatus) ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      disabled={
-                        isReadOnlyAssigned ||
-                        savingAssessment ||
-                        !carePlanSummary.trim() ||
-                        Boolean(shortlistDisabledReason)
-                      }
-                      onClick={() => void markShortlistReady()}
-                    >
-                      Mark shortlist ready
-                    </Button>
-                  ) : null}
-                </AdminPanelActions>
-                {shortlistDisabledReason ? <p className="text-xs leading-5 text-neutral-500">{shortlistDisabledReason}</p> : null}
-              </div>
-            </PanelSection>
-
-            <PanelSection
-              step={4}
-              title="Create provider match"
-              description="Add a provider to the family shortlist. Saved matches appear below."
-              locked={isReadOnlyAssigned}
-              lockedNote="Only the assigned Care Guide can create matches."
-            >
-              <div className="space-y-3">
-                <label className="grid gap-1.5 text-sm font-medium">
-                  Provider
-                  <select
-                    value={providerId}
-                    onChange={(event) => setProviderId(event.target.value)}
-                    disabled={!matchingAllowed}
-                    className={adminFieldClass}
-                  >
-                    <option value="">Select provider</option>
-                    {providers
-                      .filter((provider) => providerAvailableForMatching(provider.id, matches).available)
-                      .map((provider) => {
-                        const rematch = providerAvailableForMatching(provider.id, matches).rematch;
-                        return (
-                          <option key={provider.id} value={provider.id}>
-                            {provider.name} - {provider.area}
-                            {rematch
-                              ? " (re-open)"
-                              : !provider.profileComplete
-                                ? " (locked)"
-                                : !provider.matchable
-                                  ? " (not verified)"
-                                  : ""}
-                          </option>
-                        );
-                      })}
-                  </select>
-                </label>
-                <label className="grid gap-1.5 text-sm font-medium">
-                  Match score (%)
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={score}
-                    disabled={!matchingAllowed}
-                    onChange={(event) => setScore(event.target.value)}
-                    className={adminFieldClass}
-                  />
-                  <MatchScoreGuidance score={score} />
-                </label>
-                <label className="grid gap-1.5 text-sm font-medium">
-                  Why this match (shown to family)
-                  <AdminAudienceLocaleNotice audience="family" locale={familyLocale} writeTarget="this match reason" />
-                  <textarea
-                    value={familyFacingReason}
-                    disabled={!matchingAllowed}
-                    onChange={(event) => setFamilyFacingReason(event.target.value)}
-                    placeholder={
-                      familyLocale === "en"
-                        ? "e.g. Strong dementia care and open bed nearby"
-                        : "e.g. Sterke dementiezorg en een bed in de buurt"
-                    }
-                    className={`${adminFieldClass} min-h-16`}
-                  />
-                </label>
-                <label className="grid gap-1.5 text-sm font-medium">
-                  Internal notes (optional)
-                  <textarea
-                    value={matchNotes}
-                    disabled={!matchingAllowed}
-                    onChange={(event) => setMatchNotes(event.target.value)}
-                    className={`${adminFieldClass} min-h-16`}
-                  />
-                </label>
-                <AdminPanelActions>
-                  <Button
-                    type="button"
-                    size="sm"
-                    disabled={!providerId || creatingMatch || Boolean(createMatchDisabledReason)}
-                    onClick={() => void createMatch()}
-                  >
-                    {creatingMatch ? "Saving..." : selectedProviderRematch ? "Re-open match" : "Create match"}
-                  </Button>
-                </AdminPanelActions>
-                {createMatchDisabledReason ? <p className="text-xs leading-5 text-neutral-500">{createMatchDisabledReason}</p> : null}
-
-                <div className="mt-4 border-t border-stone-200 pt-4">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
-                    Shortlist{hasMatches ? ` · ${matches.length}` : ""}
-                  </p>
-                  {hasMatches ? (
-                    <div className="mt-1 divide-y divide-stone-100">
-                      {matches.map((match) => (
-                        <SavedProviderMatchCard key={match.id} match={match} />
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="mt-2 text-sm text-neutral-500">No providers matched yet.</p>
-                  )}
-                </div>
-              </div>
-            </PanelSection>
-
-            <PanelSection
-              step={5}
-              title="Schedule visit or callback"
-              description="Shared scheduling board — prefer confirming a proposed slot over inventing a datetime."
-              completed={visitStepLocked}
-              locked={visitStepLocked || isReadOnlyAssigned}
-              collapsible={visitStepLocked}
-              defaultOpen={!visitStepLocked && !isReadOnlyAssigned}
-            >
-              <div className="space-y-4">
-                <div>
-                  <p className="text-sm font-semibold text-ink">Live proposals</p>
-                  <div className="mt-2">
-                    {matches.filter(
-                      (match) =>
-                        match.proposedStartsAt ||
-                        match.confirmedStartsAt ||
-                        match.schedulingStatus === "EXPIRED" ||
-                        match.schedulingStatus === "AWAITING_PROVIDER" ||
-                        match.schedulingStatus === "AWAITING_FAMILY"
-                    ).length ? (
-                      <div className="divide-y divide-stone-100 rounded-lg bg-brand-cream/50">
-                        {matches
-                          .filter(
-                            (match) =>
-                              match.proposedStartsAt ||
-                              match.confirmedStartsAt ||
-                              match.schedulingStatus === "EXPIRED"
-                          )
-                          .map((match) => (
-                            <div
-                              key={match.id}
-                              className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 text-sm"
-                            >
-                              <div className="min-w-0">
-                                <p className="font-medium text-ink">{match.provider}</p>
-                                <p className="break-words text-xs text-neutral-500">
-                                  {match.schedulingStatus || "—"}
-                                  {match.proposedStartsAt
-                                    ? ` · Proposed ${new Date(match.proposedStartsAt).toLocaleString("en-GB", {
-                                        day: "numeric",
-                                        month: "short",
-                                        year: "numeric",
-                                        hour: "2-digit",
-                                        minute: "2-digit"
-                                      })}`
-                                    : ""}
-                                  {match.confirmedStartsAt
-                                    ? ` · Confirmed ${new Date(match.confirmedStartsAt).toLocaleString("en-GB", {
-                                        day: "numeric",
-                                        month: "short",
-                                        year: "numeric",
-                                        hour: "2-digit",
-                                        minute: "2-digit"
-                                      })}`
-                                    : ""}
-                                </p>
-                              </div>
-                              <div className="flex flex-wrap gap-2">
-                                {match.proposedStartsAt && match.schedulingStatus !== "CONFIRMED" ? (
-                                  <Button
-                                    type="button"
-                                    size="sm"
-                                    disabled={!visitSchedulingAllowed}
-                                    onClick={() =>
-                                      void fetch(`/api/matches/${match.id}`, {
-                                        method: "POST",
-                                        headers: { "Content-Type": "application/json" },
-                                        body: JSON.stringify({ action: "confirm" })
-                                      }).then(async (response) => {
-                                        if (!response.ok) {
-                                          const payload = (await response.json().catch(() => null)) as {
-                                            error?: string;
-                                          } | null;
-                                          notifyPanel(payload?.error || "Could not confirm slot.");
-                                          return;
-                                        }
-                                        notifyPanel("Visit/callback confirmed from proposed slot.");
-                                        await onSync();
-                                      })
-                                    }
-                                  >
-                                    Confirm slot
-                                  </Button>
-                                ) : null}
-                                {match.schedulingStatus === "CONFIRMED" || match.proposedStartsAt ? (
-                                  <Button
-                                    type="button"
-                                    size="sm"
-                                    variant="outline"
-                                    disabled={!visitSchedulingAllowed}
-                                    onClick={() =>
-                                      void fetch(`/api/matches/${match.id}`, {
-                                        method: "POST",
-                                        headers: { "Content-Type": "application/json" },
-                                        body: JSON.stringify({
-                                          action: "cancel",
-                                          reason: "Care Guide cancelled"
-                                        })
-                                      }).then(async (response) => {
-                                        if (!response.ok) {
-                                          notifyPanel("Could not cancel schedule.");
-                                          return;
-                                        }
-                                        notifyPanel("Schedule cancelled.");
-                                        await onSync();
-                                      })
-                                    }
-                                  >
-                                    Cancel
-                                  </Button>
-                                ) : null}
-                              </div>
-                            </div>
-                          ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-neutral-500">
-                        No family/provider slot proposals yet. When the provider has no calendar, use manual
-                        lock below.
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Manual override</p>
-                <label className="grid gap-1.5 text-sm font-medium">
-                  Date & time
-                  <input
-                    type="datetime-local"
-                    value={visitScheduledAt}
-                    disabled={!visitSchedulingAllowed}
-                    onChange={(event) => setVisitScheduledAt(event.target.value)}
-                    className={adminFieldClass}
-                  />
-                </label>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <label className="grid gap-1.5 text-sm font-medium">
-                    Type
-                    <select
-                      value={visitType}
-                      disabled={!visitSchedulingAllowed}
-                      onChange={(event) => setVisitType(event.target.value as "VISIT" | "CALLBACK" | "")}
-                      className={adminFieldClass}
-                    >
-                      <option value="">Select type</option>
-                      <option value="VISIT">Facility visit</option>
-                      <option value="CALLBACK">Phone callback</option>
-                    </select>
-                  </label>
-                  <label className="grid gap-1.5 text-sm font-medium">
-                    Provider / facility
-                    <input
-                      value={visitProviderName}
-                      disabled={!visitSchedulingAllowed}
-                      onChange={(event) => setVisitProviderName(event.target.value)}
-                      className={adminFieldClass}
-                      placeholder="Provider name"
-                    />
-                  </label>
-                </div>
-                <label className="grid gap-1.5 text-sm font-medium">
-                  {visitNotesLabel}
-                  <AdminAudienceLocaleNotice
-                    audience="family"
-                    locale={familyLocale}
-                    writeTarget={visitType === "CALLBACK" ? "callback notes" : "visit notes"}
-                  />
-                  <textarea
-                    value={visitNotes}
-                    disabled={!visitSchedulingAllowed}
-                    onChange={(event) => setVisitNotes(event.target.value)}
-                    className={`${adminFieldClass} min-h-16`}
-                    placeholder={
-                      visitType === "CALLBACK"
-                        ? familyLocale === "en"
-                          ? "Best time to call, who to ask for…"
-                          : "Beste tijd om te bellen, wie te vragen…"
-                        : familyLocale === "en"
-                          ? "Directions, contact person…"
-                          : "Route, contactpersoon…"
-                    }
-                  />
-                </label>
-                <AdminPanelActions>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    disabled={savingVisit || !visitScheduledAt || !visitType || !visitSchedulingAllowed}
-                    onClick={() => {
-                      const target = matches.find(
-                        (match) =>
-                          match.provider === visitProviderName ||
-                          match.statusRaw === "VISIT_REQUESTED" ||
-                          match.statusRaw === "CALLBACK_REQUESTED" ||
-                          match.statusRaw === "ACCEPTED"
-                      );
-                      if (!target || !visitScheduledAt || !visitType) {
-                        notifyPanel("Select type and a match provider for manual lock.");
-                        return;
-                      }
-                      const starts = new Date(visitScheduledAt);
-                      const ends = new Date(starts.getTime() + (visitType === "CALLBACK" ? 30 : 60) * 60_000);
-                      void fetch(`/api/matches/${target.id}`, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                          action: "manual_lock",
-                          startsAt: starts.toISOString(),
-                          endsAt: ends.toISOString(),
-                          kind: visitType,
-                          notes: visitNotes || undefined
-                        })
-                      }).then(async (response) => {
-                        if (!response.ok) {
-                          const payload = (await response.json().catch(() => null)) as { error?: string } | null;
-                          notifyPanel(payload?.error || "Manual lock failed.");
-                          return;
-                        }
-                        notifyPanel("Manual schedule locked (visible to family and provider).");
-                        await onSync();
-                      });
-                    }}
-                  >
-                    Manual lock (no calendar)
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    disabled={savingVisit || !visitScheduledAt || !visitSchedulingAllowed}
-                    onClick={() => void saveVisitSchedule()}
-                  >
-                    {savingVisit
-                      ? "Saving..."
-                      : ["MATCHED", "VISIT_SCHEDULED"].includes(normalizedStatus)
-                        ? "Save intake visit fields"
-                        : "Update visit details"}
-                  </Button>
-                </AdminPanelActions>
-                {visitDisabledReason ? <p className="text-xs leading-5 text-neutral-500">{visitDisabledReason}</p> : null}
-              </div>
-            </PanelSection>
-
-            <PanelSection
-              step={6}
-              title="Advance case status"
-              description="Placement milestones and follow-up."
-              locked={advanceStepLocked || isReadOnlyAssigned}
-              lockedNote={
-                isReadOnlyAssigned
-                  ? "Only the assigned Care Guide can advance this case."
-                  : "Finish visit scheduling before advancing placement."
-              }
-              collapsible={advanceStepLocked}
-              defaultOpen={!advanceStepLocked && !isReadOnlyAssigned}
-            >
-              <div className="space-y-3">
-                {milestoneAdvanceActions.length ? (
-                  milestoneAdvanceActions.map((action) => {
-                    const disabledReason =
-                      isReadOnlyAssigned
-                        ? "Only the assigned Care Guide can advance this case."
-                        : action.status === "VISIT_SCHEDULED" && !visitSchedulingAllowed
-                          ? "Wait until the family requests a visit/callback or a provider accepts."
-                          : (action.status === "PLACEMENT_IN_PROGRESS" || action.status === "PLACED") && !placementActionAllowed
-                            ? "Coordinate with an accepted provider first."
-                            : "";
-
-                    return (
-                      <div key={action.status} className="flex flex-wrap items-center gap-3">
-                        <Button
-                          size="sm"
-                          disabled={isCaseActionPending || Boolean(disabledReason)}
-                          onClick={() => void handleCaseAction(action.status)}
-                        >
-                          {isCaseActionPending && pendingAction === action.status ? "Saving..." : action.label}
-                        </Button>
-                        <p className="text-xs leading-5 text-neutral-500">{disabledReason || action.description}</p>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <p className="text-sm leading-6 text-neutral-600">Milestones appear here after visit scheduling.</p>
-                )}
-              </div>
-            </PanelSection>
-
-            {!isReadOnlyAssigned ? (
-              <PanelSection
-                title="Case outcome"
-                description="Select why the case is ending or pausing. Applying an outcome closes the family journey and stops provider matching."
-                collapsible
-                defaultOpen={canCloseCase || isClosedCase}
-              >
-                <div className="space-y-3">
-                  <CustomSelect
-                    label="Outcome"
-                    value={caseOutcome}
-                    placeholder="Select outcome"
-                    options={CASE_OUTCOME_OPTIONS}
-                    onChange={setCaseOutcome}
-                  />
-                  {caseOutcome ? (
-                    <button
-                      type="button"
-                      className="text-xs font-medium text-neutral-500 underline-offset-2 hover:text-ink hover:underline"
-                      onClick={() => setCaseOutcome("")}
-                    >
-                      Clear selection
-                    </button>
-                  ) : null}
-                  {!isClosedCase ? (
-                    <p className="text-xs leading-5 text-neutral-500">
-                      {caseOutcome
-                        ? `“${caseOutcome}” will close this case for the family.`
-                        : "Choose an outcome, then apply it to close or pause this case."}
-                    </p>
-                  ) : (
-                    <p className="text-xs leading-5 text-neutral-500">
-                      This case is closed. You can still update or clear the recorded outcome.
-                    </p>
-                  )}
-                  <AdminPanelActions>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant={isClosedCase ? "outline" : "primary"}
-                      disabled={
-                        savingCaseOutcome ||
-                        isCaseActionPending ||
-                        caseOutcome === (family.caseOutcome || "") ||
-                        (!isClosedCase && !caseOutcome)
-                      }
-                      onClick={() => void saveCaseOutcome()}
-                    >
-                      {savingCaseOutcome || (isCaseActionPending && pendingAction === "CLOSED")
-                        ? "Saving..."
-                        : isClosedCase
-                          ? caseOutcome
-                            ? "Update outcome"
-                            : "Clear outcome"
-                          : "Apply outcome & close case"}
-                    </Button>
-                  </AdminPanelActions>
-                </div>
-              </PanelSection>
-            ) : null}
-          </div>
-          )}
-
-          <PanelSection title="Case record">
-            <DetailList
-              columns={1}
-              items={[
-                { label: "Reference", value: formatReference(family.id) },
-                { label: "Intake ID", value: family.id },
-                { label: "Case outcome", value: family.caseOutcome },
-                { label: "Consent accepted", value: family.consentAcceptedAt },
-                { label: "Consent version", value: family.consentVersion },
-                { label: "Care pathway", value: family.carePathway },
-                { label: "Visit scheduled", value: family.visitScheduledAtLabel },
-                { label: "Visit type", value: family.visitType },
-                { label: "Visit provider", value: family.visitProviderName },
-                { label: "7-day follow-up", value: family.followUp7At },
-                { label: "30-day follow-up", value: family.followUp30At },
-                { label: "90-day follow-up", value: family.followUp90At },
-                { label: "Submitted", value: family.createdAt },
-                { label: "Last updated", value: family.updatedAt }
-              ]}
-            />
-          </PanelSection>
-        </div>
-      ) : null}
-      <ConfirmDialog
-        open={confirmCloseCase}
-        tone="danger"
-        pending={isCaseActionPending && pendingAction === "CLOSED"}
-        title="Apply outcome and close this case?"
-        description={
-          caseOutcome
-            ? `This records “${caseOutcome}” and closes the entire family journey. The family dashboard shows the case as archived and provider matching stops.`
-            : "Select a case outcome before closing."
-        }
-        confirmLabel="Apply & close"
-        onCancel={() => setConfirmCloseCase(false)}
-        onConfirm={() => {
-          if (!caseOutcome) {
-            notifyPanel("Select a case outcome before closing.");
-            setConfirmCloseCase(false);
-            return;
-          }
-          void handleCaseAction("CLOSED");
-        }}
-      />
-    </SlidePanel>
   );
 }
 
@@ -2247,18 +783,18 @@ function ProvidersTable({
 
   return (
     <>
-      <div className="border-b border-stone-100 px-4 py-3">
+      <div className="border-b border-stone-100 px-3 py-3 sm:px-4">
         <ListSearch value={search} onChange={setSearch} placeholder="Search providers by name, area, availability, or reference…" />
       </div>
-      <table className="w-full min-w-[900px] border-collapse text-left">
+      <table className="w-full min-w-[320px] border-collapse text-left sm:min-w-[520px]">
         <thead className="bg-cream text-xs uppercase tracking-wide text-neutral-500">
           <tr>
-            <th className="px-4 py-3">Provider</th>
-            <th className="px-4 py-3">Type</th>
-            <th className="px-4 py-3">Area</th>
-            <th className="px-4 py-3">Availability</th>
-            <th className="px-4 py-3">Beds open</th>
-            <th className="px-4 py-3">Actions</th>
+            <th className="px-3 py-3 sm:px-4">Provider</th>
+            <th className="hidden px-4 py-3 sm:table-cell">Type</th>
+            <th className="hidden px-4 py-3 md:table-cell">Area</th>
+            <th className="hidden px-4 py-3 lg:table-cell">Availability</th>
+            <th className="hidden px-4 py-3 xl:table-cell">Beds open</th>
+            <th className="whitespace-nowrap px-3 py-3 sm:px-4">Actions</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-stone-200">
@@ -2270,44 +806,45 @@ function ProvidersTable({
             const availability = displayProviderAvailability(provider);
 
             return (
-            <tr key={provider.id} className="cursor-pointer hover:bg-cream" onClick={() => openProvider(provider)}>
-              <td className="px-4 py-3 text-sm font-semibold">
-                <div className="flex flex-wrap items-center gap-2">
-                  {isUnread ? <UnreadDot /> : null}
-                  <span>{provider.name}</span>
-                  <span
-                    className={cn(
-                      "rounded-full px-2.5 py-1 text-[11px] font-semibold leading-none",
-                      provider.profileComplete
-                        ? "bg-brand-green-pale/70 text-brand-green-dark"
-                        : "bg-brand-amber/15 text-brand-amber-dark ring-1 ring-brand-amber/25"
-                    )}
-                  >
-                    {provider.profileComplete ? "Active" : "Provider locked"}
-                  </span>
-                  <Badge variant={providerVerificationBadgeVariant(provider.verificationStatus)}>
-                    {provider.verificationLabel || providerVerificationLabel(provider.verificationStatus)}
-                  </Badge>
+            <tr key={provider.id} className={cn("cursor-pointer hover:bg-cream", isUnread && "bg-brand-amber/[0.06] shadow-[inset_3px_0_0_0_var(--brand-amber)]")} onClick={() => openProvider(provider)}>
+              <td className="min-w-0 max-w-[20rem] px-3 py-3 align-middle text-sm sm:px-4">
+                <div className="flex min-w-0 items-center gap-2">
+                  {isUnread ? <UnreadDot className="shrink-0" /> : null}
+                  <div className="min-w-0">
+                    <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                      <strong className="min-w-0 truncate text-ink">{provider.name}</strong>
+                      <span className="inline-flex flex-wrap items-center gap-1.5">
+                        <Badge variant={provider.profileComplete ? "softSuccess" : "softPending"}>
+                          {provider.profileComplete ? "Active" : "Locked"}
+                        </Badge>
+                        <Badge variant={providerVerificationBadgeVariant(provider.verificationStatus)}>
+                          {provider.verificationLabel || providerVerificationLabel(provider.verificationStatus)}
+                        </Badge>
+                      </span>
+                    </div>
+                    <p className="mt-0.5 font-mono text-[11px] text-neutral-400">
+                      Ref {formatReference(provider.id)}
+                      <span className="sm:hidden">
+                        {" · "}
+                        {provider.type} · {provider.area}
+                      </span>
+                    </p>
+                    {!provider.profileComplete ? (
+                      <p className="mt-0.5 text-xs text-neutral-500">Complete profile to unlock</p>
+                    ) : !provider.matchable ? (
+                      <p className="mt-0.5 text-xs text-neutral-500">Needs Verified status to match</p>
+                    ) : null}
+                  </div>
                 </div>
-                <span className="mt-1 block font-mono text-[11px] font-normal text-neutral-400">Ref {formatReference(provider.id)}</span>
-                {!provider.profileComplete ? (
-                  <span className="mt-1 block text-xs font-normal text-neutral-500">
-                    Provider locked until profile is complete
-                  </span>
-                ) : !provider.matchable ? (
-                  <span className="mt-1 block text-xs font-normal text-neutral-500">
-                    Not matchable until verification reaches Verified or later
-                  </span>
-                ) : null}
               </td>
-              <td className="px-4 py-3 text-sm text-neutral-600">{provider.type}</td>
-              <td className="px-4 py-3 text-sm text-neutral-600">{provider.area}</td>
-              <td className="px-4 py-3 text-sm text-neutral-600">{availability}</td>
-              <td className="px-4 py-3 text-sm text-neutral-600">
+              <td className="hidden px-4 py-3 align-middle text-sm text-neutral-600 sm:table-cell">{provider.type}</td>
+              <td className="hidden px-4 py-3 align-middle text-sm text-neutral-600 md:table-cell">{provider.area}</td>
+              <td className="hidden px-4 py-3 align-middle text-sm text-neutral-600 lg:table-cell">{availability}</td>
+              <td className="hidden px-4 py-3 align-middle text-sm text-neutral-600 xl:table-cell">
                 {provider.bedsOpen ?? "—"}
                 {provider.bedsTotal ? ` / ${provider.bedsTotal}` : ""}
               </td>
-              <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}>
+              <td className="px-3 py-3 align-middle sm:px-4" onClick={(event) => event.stopPropagation()}>
                 <IconActionButton label="Open details" icon={ArrowUpRight} onClick={() => openProvider(provider)} />
               </td>
             </tr>
@@ -2751,60 +1288,6 @@ function ProviderDetailPanel({
   );
 }
 
-function formatAdminMatchScore(value: string) {
-  const trimmed = value.trim();
-  if (!trimmed) return "—";
-  return trimmed.endsWith("%") ? trimmed : `${trimmed}%`;
-}
-
-function parseAdminMatchScore(value: string) {
-  const numeric = Number(value.replace("%", "").trim());
-  return Number.isFinite(numeric) ? numeric : null;
-}
-
-function SavedProviderMatchCard({ match }: { match: InquiryEntry }) {
-  const scoreValue = parseAdminMatchScore(match.match);
-  const notes = adminMatchNotes(match.notes);
-  const rematchable = isRematchableMatchStatus(match.statusRaw);
-
-  return (
-    <div className="flex flex-wrap items-start justify-between gap-2 py-2.5">
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-ink break-words">{match.provider}</p>
-        <p className="mt-0.5 text-xs text-neutral-500">
-          {formatAdminMatchScore(match.match)}
-          {scoreValue != null ? ` · ${adminFitLabel(scoreValue)}` : ""}
-          {` · ${match.updatedAt}`}
-          {rematchable ? " · can re-open" : ""}
-        </p>
-        {notes ? <p className="mt-1 line-clamp-2 text-xs leading-5 text-neutral-600">{notes}</p> : null}
-        {match.declineReason ? (
-          <p className="mt-1 text-xs leading-5 text-neutral-600">Declined: {match.declineReason}</p>
-        ) : null}
-      </div>
-      <span
-        className={cn(
-          "shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold",
-          matchStatusBadgeClass(match.statusRaw || "SUGGESTED")
-        )}
-      >
-        {adminMatchStatusLabel(match.statusRaw || "SUGGESTED")}
-      </span>
-    </div>
-  );
-}
-
-function MatchScoreGuidance({ score }: { score: string }) {
-  const numericScore = Number(score);
-  const validScore = Number.isFinite(numericScore) && numericScore >= 0 && numericScore <= 100;
-
-  if (!validScore) {
-    return <p className="text-xs text-neutral-500">0–100. {adminMatchScoreBands()}</p>;
-  }
-
-  return <p className="text-xs font-medium text-brand-green-dark">{adminFitLabel(numericScore)}</p>;
-}
-
 function formatProviderPriceRange(priceMin: number | null, priceMax: number | null) {
   if (priceMin != null && priceMax != null) {
     return `EUR ${priceMin.toLocaleString("en-GB")} – EUR ${priceMax.toLocaleString("en-GB")} per month`;
@@ -2828,7 +1311,9 @@ function InquiriesTable({
   setMessage,
   onSync,
   itemSeenVersion,
-  onMarkItemSeen
+  onMarkItemSeen,
+  handoffSearch = "",
+  onHandoffSearchConsumed
 }: {
   inquiries: InquiryEntry[];
   currentUserId: string;
@@ -2836,6 +1321,8 @@ function InquiriesTable({
   onSync: () => Promise<boolean>;
   itemSeenVersion: number;
   onMarkItemSeen: () => void;
+  handoffSearch?: string;
+  onHandoffSearchConsumed?: () => void;
 }) {
   const [rows, setRows] = useState(inquiries);
   const [pendingId, setPendingId] = useState<string | null>(null);
@@ -2843,11 +1330,18 @@ function InquiriesTable({
   const [selected, setSelected] = useState<InquiryEntry | null>(null);
   const [confirmClose, setConfirmClose] = useState<InquiryEntry | null>(null);
   const [confirmContacted, setConfirmContacted] = useState<InquiryEntry | null>(null);
-  const [showHistory, setShowHistory] = useState(false);
+  const [listFilter, setListFilter] = useState<"follow_up" | "all">("follow_up");
   const [search, setSearch] = useState("");
 
+  useEffect(() => {
+    if (!handoffSearch) return;
+    setSearch(handoffSearch);
+    setListFilter("all");
+    onHandoffSearchConsumed?.();
+  }, [handoffSearch, onHandoffSearchConsumed]);
+
   function openInquiry(inquiry: InquiryEntry) {
-    markAdminInquirySeen(inquiry.id, inquiry.updatedAtIso);
+    markAdminInquirySeen(inquiry.id, inquiry.updatedAtIso, inquiry.createdAtIso);
     onMarkItemSeen();
     setSelected(inquiry);
   }
@@ -2858,7 +1352,7 @@ function InquiriesTable({
       if (!current) return null;
       const fresh = inquiries.find((item) => item.id === current.id) ?? null;
       if (fresh) {
-        markAdminInquirySeen(fresh.id, fresh.updatedAtIso);
+        markAdminInquirySeen(fresh.id, fresh.updatedAtIso, fresh.createdAtIso);
         onMarkItemSeen();
       }
       return fresh;
@@ -2866,8 +1360,9 @@ function InquiriesTable({
   }, [inquiries, onMarkItemSeen]);
 
   const visibleRows = useMemo(
-    () => (showHistory ? rows : rows.filter((item) => inquiryCoordinationStatuses.has(item.statusRaw))),
-    [rows, showHistory]
+    () =>
+      listFilter === "all" ? rows : rows.filter((item) => inquiryCoordinationStatuses.has(item.statusRaw)),
+    [rows, listFilter]
   );
   const filteredRows = useMemo(
     () =>
@@ -2891,7 +1386,16 @@ function InquiriesTable({
     () => [...filteredRows].sort((a, b) => compareMatchPriority(a.statusRaw, b.statusRaw)),
     [filteredRows]
   );
-  const followUpCount = visibleRows.filter((item) => isAdminActionNeeded(item.statusRaw) || item.statusRaw === "CONTACTED").length;
+  const followUpCount = useMemo(
+    () =>
+      rows.filter((item) => {
+        if (inquiryAssignedToOtherGuide(item, currentUserId)) return false;
+        if (!isAdminActionNeeded(item.statusRaw)) return false;
+        if (selected?.id === item.id) return false;
+        return itemSeenVersion >= 0 && isAdminInquiryUnread(item.id, item.updatedAtIso, item.createdAtIso);
+      }).length,
+    [rows, currentUserId, selected?.id, itemSeenVersion]
+  );
 
   async function updateMatchStatus(id: string, status: MatchStatus, notify: (message: string) => void = setMessage) {
     setPendingActionKey(`${id}:${status}`);
@@ -2951,59 +1455,61 @@ function InquiriesTable({
 
   return (
     <>
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-100 px-4 py-3">
-        <div>
-          <p className="text-sm font-semibold text-ink">{showHistory ? "All provider match records" : "Provider follow-up queue"}</p>
-          <p className="text-xs leading-5 text-neutral-500">
-            {showHistory
-              ? "Showing every match record, including suggested matches and closed history."
-              : "Only showing matches that need provider or Care Guide follow-up."}
-          </p>
+      <div className="space-y-3 border-b border-stone-100 px-3 py-3 sm:px-4">
+        <div className="inline-flex w-full gap-1 rounded-lg bg-stone-100 p-1 sm:w-auto">
+          <button
+            type="button"
+            onClick={() => setListFilter("follow_up")}
+            className={cn(
+              "inline-flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition sm:flex-none",
+              listFilter === "follow_up" ? "bg-white font-semibold text-ink shadow-sm" : "text-ink/60 hover:text-ink"
+            )}
+          >
+            Needs follow-up
+            {followUpCount > 0 ? (
+              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-amber px-1.5 text-[10px] font-bold leading-none text-white">
+                {followUpCount > 9 ? "9+" : followUpCount}
+              </span>
+            ) : null}
+          </button>
+          <button
+            type="button"
+            onClick={() => setListFilter("all")}
+            className={cn(
+              "flex-1 rounded-md px-3 py-1.5 text-sm transition sm:flex-none",
+              listFilter === "all" ? "bg-white font-semibold text-ink shadow-sm" : "text-ink/60 hover:text-ink"
+            )}
+          >
+            All matches
+          </button>
         </div>
-        <Button type="button" size="sm" variant="outline" onClick={() => setShowHistory((current) => !current)}>
-          {showHistory ? "Back to follow-up queue" : "Show all matches"}
-        </Button>
-      </div>
-
-      {followUpCount ? (
-        <div className="flex items-center gap-2.5 border-b border-brand-amber/15 bg-brand-amber/5 px-4 py-2.5 text-sm text-brand-amber-dark">
-          <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-amber text-xs font-bold text-white">
-            {followUpCount}
-          </span>
-          <span>
-            {followUpCount === 1 ? "Inquiry needs" : "Inquiries need"} your follow-up — open a row for the step-by-step guide.
-          </span>
-        </div>
-      ) : null}
-
-      <div className="border-b border-stone-100 px-4 py-3">
         <ListSearch
           value={search}
           onChange={setSearch}
-          placeholder="Search inquiries by family, provider, phone, or reference…"
+          placeholder="Search by family, provider, phone, or reference…"
         />
       </div>
 
       {!sortedInquiries.length ? (
         <EmptyState
-          title={showHistory ? "No inquiries yet" : "No provider follow-up needed"}
+          title={listFilter === "all" ? "No inquiries yet" : "Nothing needs follow-up"}
           description={
-            showHistory
-              ? "When families are matched to providers, those records will show here."
-              : "Visit requests, callback requests, and accepted provider responses will appear here."
+            listFilter === "all"
+              ? "Matched family–provider records will show up here."
+              : "When a family requests a visit or callback, or a provider accepts, it appears here."
           }
         />
       ) : (
 
-      <table className="w-full min-w-[980px] border-collapse text-left">
+      <table className="w-full min-w-[320px] border-collapse text-left sm:min-w-[560px]">
         <thead className="bg-cream text-xs uppercase tracking-wide text-neutral-500">
           <tr>
-            <th className="px-4 py-3">Family</th>
-            <th className="px-4 py-3">Provider</th>
-            <th className="px-4 py-3">Match</th>
-            <th className="px-4 py-3">Updated</th>
-            <th className="px-4 py-3">Status</th>
-            <th className="px-4 py-3">Actions</th>
+            <th className="px-3 py-3 sm:px-4">Family</th>
+            <th className="hidden px-4 py-3 sm:table-cell">Provider</th>
+            <th className="hidden px-4 py-3 md:table-cell">Match</th>
+            <th className="hidden px-4 py-3 lg:table-cell">Updated</th>
+            <th className="hidden px-4 py-3 md:table-cell">Status</th>
+            <th className="whitespace-nowrap px-3 py-3 sm:px-4">Actions</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-stone-200">
@@ -3015,37 +1521,62 @@ function InquiriesTable({
             const isUnread =
               selected?.id !== inquiry.id &&
               itemSeenVersion >= 0 &&
-              isAdminInquiryUnread(inquiry.id, inquiry.updatedAtIso);
+              isAdminInquiryUnread(inquiry.id, inquiry.updatedAtIso, inquiry.createdAtIso);
 
             return (
               <tr
                 key={inquiry.id}
-                className={`cursor-pointer hover:bg-cream ${needsFollowUp ? "bg-brand-amber/5" : ""}`}
+                className={cn(
+                  "cursor-pointer hover:bg-cream",
+                  isUnread && "bg-brand-amber/[0.06] shadow-[inset_3px_0_0_0_var(--brand-amber)]",
+                  needsFollowUp && !isUnread && "bg-brand-amber/[0.04]"
+                )}
                 onClick={() => openInquiry(inquiry)}
               >
-                <td className="px-4 py-3 text-sm text-neutral-700">
-                  <div className="flex items-center gap-2">
-                    {isUnread ? <UnreadDot /> : null}
-                    <span>{inquiry.family}</span>
+                <td className="min-w-0 max-w-[16rem] px-3 py-3 text-sm sm:px-4">
+                  <div className="flex min-w-0 items-start gap-2">
+                    {isUnread ? <UnreadDot className="mt-1.5 shrink-0" /> : null}
+                    <div className="min-w-0 space-y-1">
+                      <strong className="block truncate text-ink">{inquiry.family}</strong>
+                      <p className="font-mono text-[11px] text-neutral-400">Ref {formatReference(inquiry.intakeId)}</p>
+                      <p className="text-xs text-neutral-500 sm:hidden">{inquiry.provider}</p>
+                      <div className="flex flex-wrap items-center gap-1.5 md:hidden">
+                        <span
+                          className={cn(
+                            "inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold leading-none",
+                            matchStatusBadgeClass(inquiry.statusRaw)
+                          )}
+                        >
+                          {adminMatchStatusLabel(inquiry.statusRaw)}
+                        </span>
+                        {needsFollowUp ? <Badge variant="softPending">Follow up</Badge> : null}
+                      </div>
+                      {readOnly ? (
+                        <p className="text-[11px] text-neutral-500">
+                          Read-only · {inquiry.careGuideName || "another Care Guide"}
+                        </p>
+                      ) : null}
+                    </div>
                   </div>
-                  <span className="mt-1 block font-mono text-[11px] text-neutral-400">
-                    Ref {formatReference(inquiry.intakeId)}
-                  </span>
-                  {readOnly ? (
-                    <span className="mt-1 block text-[11px] text-neutral-500">
-                      Read-only · {inquiry.careGuideName || "another Care Guide"}
-                    </span>
-                  ) : null}
                 </td>
-                <td className="px-4 py-3 text-sm text-neutral-700">{inquiry.provider}</td>
-                <td className="px-4 py-3 text-sm font-semibold text-sage-700">{inquiry.match}</td>
-                <td className="px-4 py-3 text-sm text-neutral-600">{inquiry.updatedAt}</td>
-                <td className="px-4 py-3">
-                  <span className={`rounded-full px-3 py-1 text-xs font-medium ${matchStatusBadgeClass(inquiry.statusRaw)}`}>
+                <td className="hidden max-w-[12rem] truncate px-4 py-3 text-sm text-neutral-700 sm:table-cell">
+                  {inquiry.provider}
+                </td>
+                <td className="hidden px-4 py-3 text-sm font-semibold text-sage-700 md:table-cell">{inquiry.match}</td>
+                <td className="hidden whitespace-nowrap px-4 py-3 text-sm text-neutral-600 lg:table-cell">
+                  {inquiry.updatedAt}
+                </td>
+                <td className="hidden px-4 py-3 md:table-cell">
+                  <span
+                    className={cn(
+                      "inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold leading-none",
+                      matchStatusBadgeClass(inquiry.statusRaw)
+                    )}
+                  >
                     {adminMatchStatusLabel(inquiry.statusRaw)}
                   </span>
                 </td>
-                <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}>
+                <td className="px-3 py-3 sm:px-4" onClick={(event) => event.stopPropagation()}>
                   <div className="flex flex-wrap items-center gap-1">
                     {!readOnly &&
                     (inquiry.statusRaw === "VISIT_REQUESTED" ||
@@ -3146,7 +1677,6 @@ function InquiryDetailPanel({
   const isReadOnly = inquiry ? inquiryAssignedToOtherGuide(inquiry, currentUserId) : false;
   const [confirmClose, setConfirmClose] = useState(false);
   const [confirmContacted, setConfirmContacted] = useState(false);
-  const hint = inquiry ? adminInquiryHint(inquiry.statusRaw) : "";
 
   useEffect(() => {
     if (!inquiry) clearPanelMessage();
@@ -3155,6 +1685,18 @@ function InquiryDetailPanel({
   async function updateFromPanel(id: string, status: MatchStatus) {
     await onUpdateStatus(id, status, setPanelMessage);
   }
+
+  const status = inquiry?.statusRaw;
+  const canMarkContacted =
+    !isReadOnly &&
+    (status === "VISIT_REQUESTED" || status === "CALLBACK_REQUESTED" || status === "ACCEPTED");
+  const canMarkPlaced = !isReadOnly && (status === "ACCEPTED" || status === "CONTACTED");
+  const canClose = !isReadOnly && canAdminCloseProviderMatch(status);
+  const hasActions = canMarkContacted || canMarkPlaced || canClose;
+  const nextStep =
+    inquiry && status && !isReadOnly && (canMarkContacted || canMarkPlaced || status === "DECLINED")
+      ? adminInquiryHint(status)
+      : "";
 
   const details = inquiry
     ? [
@@ -3179,12 +1721,21 @@ function InquiryDetailPanel({
       onClose={onClose}
       size="wide"
       title={inquiry?.family || "Inquiry"}
-      subtitle={inquiry ? `${inquiry.provider} · ${adminMatchStatusLabel(inquiry.statusRaw)}` : "Match details"}
+      subtitle={
+        inquiry
+          ? `${inquiry.provider} · ${adminMatchStatusLabel(inquiry.statusRaw)}`
+          : "Match details"
+      }
       notice={panelMessage}
       noticeTone={panelNoticeTone(panelMessage)}
     >
       {inquiry ? (
         <div className="space-y-5">
+          <p className="text-sm leading-6 text-neutral-600">
+            Contact details and history for this one family–provider match. Use actions here only when you arrange a
+            visit/call, record the chosen provider, or close an unused match.
+          </p>
+
           {isReadOnly ? (
             <div className="rounded-lg bg-stone-50 px-4 py-3 text-sm text-ink">
               <p className="font-semibold">
@@ -3196,18 +1747,58 @@ function InquiryDetailPanel({
             </div>
           ) : null}
 
-          <StatusPill className={cn("px-3 py-2 text-sm", matchStatusBadgeClass(inquiry.statusRaw))}>{hint}</StatusPill>
+          {nextStep ? (
+            <StatusPill className={cn("px-3 py-2 text-sm", matchStatusBadgeClass(inquiry.statusRaw))}>
+              {nextStep}
+            </StatusPill>
+          ) : !isReadOnly && (inquiry.statusRaw === "PLACED" || inquiry.statusRaw === "CLOSED") ? (
+            <p className="text-sm text-neutral-500">No further action on this match.</p>
+          ) : null}
 
-          <PanelSection title="Inquiry flow" collapsible defaultOpen={false}>
-            <ol className="list-decimal space-y-2 pl-5 text-sm leading-6 text-neutral-600">
-              <li>Create a match — family sees the provider on their shortlist.</li>
-              <li>Family requests a visit or callback.</li>
-              <li>Provider accepts or declines.</li>
-              <li>Mark the visit or call as arranged after timing is agreed.</li>
-              <li>Record the chosen provider when the family commits.</li>
-              <li>Close the provider match only if it was never used or the provider declined.</li>
-            </ol>
-          </PanelSection>
+          {hasActions ? (
+            <div className="space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-ink/45">Your next steps</p>
+              {canMarkContacted ? (
+                <div className="flex flex-col gap-2 rounded-lg bg-brand-cream/50 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-ink">{adminInquiryActionMeta("CONTACTED").label}</p>
+                    <p className="mt-0.5 text-xs leading-5 text-neutral-500">{adminInquiryActionMeta("CONTACTED").description}</p>
+                  </div>
+                  <Button size="sm" className="w-full shrink-0 sm:w-auto" disabled={isPending} onClick={() => setConfirmContacted(true)}>
+                    {pendingActionKey === `${inquiry.id}:CONTACTED` ? "Saving..." : "Confirm"}
+                  </Button>
+                </div>
+              ) : null}
+              {canMarkPlaced ? (
+                <div className="flex flex-col gap-2 rounded-lg bg-stone-50 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-ink">{adminInquiryActionMeta("PLACED").label}</p>
+                    <p className="mt-0.5 text-xs leading-5 text-neutral-500">{adminInquiryActionMeta("PLACED").description}</p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full shrink-0 sm:w-auto"
+                    disabled={isPending}
+                    onClick={() => void updateFromPanel(inquiry.id, "PLACED")}
+                  >
+                    {pendingActionKey === `${inquiry.id}:PLACED` ? "Saving..." : "Confirm"}
+                  </Button>
+                </div>
+              ) : null}
+              {canClose ? (
+                <div className="flex flex-col gap-2 rounded-lg bg-stone-50 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-ink">{adminInquiryActionMeta("CLOSED").label}</p>
+                    <p className="mt-0.5 text-xs leading-5 text-neutral-500">{adminInquiryActionMeta("CLOSED").description}</p>
+                  </div>
+                  <Button size="sm" variant="outline" className="w-full shrink-0 sm:w-auto" disabled={isPending} onClick={() => setConfirmClose(true)}>
+                    {pendingActionKey === `${inquiry.id}:CLOSED` ? "Saving..." : "Confirm"}
+                  </Button>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
 
           <div className="divide-y divide-stone-100 border-t border-stone-100">
             <PanelTopic title="Family" defaultOpen>
@@ -3225,42 +1816,6 @@ function InquiryDetailPanel({
               />
             </PanelTopic>
           </div>
-
-          {!isReadOnly ? (
-            <div className="space-y-4 border-t border-stone-100 pt-4">
-              {(inquiry.statusRaw === "VISIT_REQUESTED" ||
-                inquiry.statusRaw === "CALLBACK_REQUESTED" ||
-                inquiry.statusRaw === "ACCEPTED") && (
-                <PanelSection title={adminInquiryActionMeta("CONTACTED").label} description={adminInquiryActionMeta("CONTACTED").description}>
-                  <Button size="sm" disabled={isPending} onClick={() => setConfirmContacted(true)}>
-                    {pendingActionKey === `${inquiry.id}:CONTACTED` ? "Saving..." : "Confirm"}
-                  </Button>
-                </PanelSection>
-              )}
-              {inquiry.statusRaw !== "PLACED" && inquiry.statusRaw !== "CLOSED" ? (
-                <PanelSection title={adminInquiryActionMeta("PLACED").label} description={adminInquiryActionMeta("PLACED").description}>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={isPending || !(inquiry.statusRaw === "ACCEPTED" || inquiry.statusRaw === "CONTACTED")}
-                    onClick={() => void updateFromPanel(inquiry.id, "PLACED")}
-                  >
-                    {pendingActionKey === `${inquiry.id}:PLACED` ? "Saving..." : "Confirm"}
-                  </Button>
-                  {inquiry.statusRaw === "ACCEPTED" || inquiry.statusRaw === "CONTACTED" ? null : (
-                    <p className="mt-2 text-xs leading-5 text-neutral-500">Arrange the visit or call before recording the chosen provider.</p>
-                  )}
-                </PanelSection>
-              ) : null}
-              {canAdminCloseProviderMatch(inquiry.statusRaw) ? (
-                <PanelSection title={adminInquiryActionMeta("CLOSED").label} description={adminInquiryActionMeta("CLOSED").description}>
-                  <Button size="sm" variant="outline" disabled={isPending} onClick={() => setConfirmClose(true)}>
-                    {pendingActionKey === `${inquiry.id}:CLOSED` ? "Saving..." : "Confirm"}
-                  </Button>
-                </PanelSection>
-              ) : null}
-            </div>
-          ) : null}
         </div>
       ) : null}
       <ConfirmDialog
@@ -3587,19 +2142,19 @@ function WaitlistTable({
 
   return (
     <>
-      <div className="border-b border-stone-100 px-4 py-3">
+      <div className="border-b border-stone-100 px-3 py-3 sm:px-4">
         <ListSearch value={search} onChange={setSearch} placeholder="Search waitlist by name, email, location, or reference…" />
       </div>
-      <table className="w-full min-w-[980px] border-collapse text-left">
+      <table className="w-full min-w-[320px] border-collapse text-left sm:min-w-[520px]">
         <thead className="bg-cream text-xs uppercase tracking-wide text-neutral-500">
           <tr>
-            <th className="px-4 py-3">Type</th>
-            <th className="px-4 py-3">Name</th>
-            <th className="px-4 py-3">Email</th>
-            <th className="px-4 py-3">Location</th>
-            <th className="px-4 py-3">Registered</th>
-            <th className="px-4 py-3">Status</th>
-            <th className="px-4 py-3">Actions</th>
+            <th className="hidden px-4 py-3 sm:table-cell">Type</th>
+            <th className="px-3 py-3 sm:px-4">Name</th>
+            <th className="hidden px-4 py-3 md:table-cell">Email</th>
+            <th className="hidden px-4 py-3 lg:table-cell">Location</th>
+            <th className="hidden px-4 py-3 xl:table-cell">Registered</th>
+            <th className="hidden px-4 py-3 sm:table-cell">Status</th>
+            <th className="whitespace-nowrap px-3 py-3 sm:px-4">Actions</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-stone-200">
@@ -3612,27 +2167,47 @@ function WaitlistTable({
               !isResolvedWaitlistStatus(entry.status) &&
               itemSeenVersion >= 0 &&
               isAdminItemUnread("waitlist", entry.id, entry.createdAtIso, entry.updatedAtIso);
+            const typeLabel = entry.type === "FACILITY" ? "Facility" : "Family";
 
             return (
-              <tr key={entry.id} className="cursor-pointer hover:bg-cream" onClick={() => openEntry(entry)}>
-                <td className="px-4 py-3 text-sm text-neutral-600">{entry.type === "FACILITY" ? "Facility" : "Family"}</td>
-                <td className="px-4 py-3 text-sm font-semibold">
-                  <div className="flex items-center gap-2">
-                    {isUnread ? <UnreadDot /> : null}
-                    <span>{entry.name}</span>
+              <tr
+                key={entry.id}
+                className={cn(
+                  "cursor-pointer hover:bg-cream",
+                  isUnread && "bg-brand-amber/[0.06] shadow-[inset_3px_0_0_0_var(--brand-amber)]"
+                )}
+                onClick={() => openEntry(entry)}
+              >                <td className="hidden px-4 py-3 text-sm text-neutral-600 sm:table-cell">{typeLabel}</td>
+                <td className="min-w-0 max-w-[16rem] px-3 py-3 text-sm sm:px-4">
+                  <div className="flex min-w-0 items-start gap-2">
+                    {isUnread ? <UnreadDot className="mt-1.5 shrink-0" /> : null}
+                    <div className="min-w-0 space-y-1">
+                      <strong className="block truncate text-ink">{entry.name}</strong>
+                      <div className="flex flex-wrap items-center gap-1.5 sm:hidden">
+                        <Badge variant="softMuted">{typeLabel}</Badge>
+                        <span className={cn("inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold leading-none", waitlistStatusClass(entry.status))}>
+                          {waitlistStatusLabel(entry.status)}
+                        </span>
+                      </div>
+                      <p className="truncate text-xs text-neutral-500 md:hidden">{entry.email}</p>
+                      <p className="font-mono text-[11px] text-neutral-400">Ref {formatReference(entry.id)}</p>
+                    </div>
                   </div>
-                  <span className="mt-1 block font-mono text-[11px] font-normal text-neutral-400">Ref {formatReference(entry.id)}</span>
                 </td>
-                <td className="px-4 py-3 text-sm text-neutral-600">{entry.email}</td>
-                <td className="px-4 py-3 text-sm text-neutral-600">{entry.location}</td>
-                <td className="px-4 py-3 text-sm text-neutral-600">{entry.createdAt}</td>
-                <td className="px-4 py-3">
-                  <span className={cn("rounded-full px-3 py-1 text-xs font-medium", waitlistStatusClass(entry.status))}>
+                <td className="hidden max-w-[14rem] truncate px-4 py-3 text-sm text-neutral-600 md:table-cell">
+                  {entry.email}
+                </td>
+                <td className="hidden px-4 py-3 text-sm text-neutral-600 lg:table-cell">{entry.location}</td>
+                <td className="hidden whitespace-nowrap px-4 py-3 text-sm text-neutral-600 xl:table-cell">
+                  {entry.createdAt}
+                </td>
+                <td className="hidden px-4 py-3 sm:table-cell">
+                  <span className={cn("inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold leading-none", waitlistStatusClass(entry.status))}>
                     {waitlistStatusLabel(entry.status)}
                   </span>
                 </td>
-                <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}>
-                  <div className="flex items-center gap-1">
+                <td className="px-3 py-3 sm:px-4" onClick={(event) => event.stopPropagation()}>
+                  <div className="flex flex-wrap items-center gap-1">
                     <IconActionButton label="Open details" icon={ArrowUpRight} onClick={() => openEntry(entry)} />
                     {entry.type === "FACILITY" ? (
                       <IconActionButton

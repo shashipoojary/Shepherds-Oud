@@ -20,7 +20,9 @@ const badgeVariants = cva("inline-flex items-center rounded px-2 py-0.5 text-xs 
       softPending:
         "rounded-full bg-brand-amber/15 px-2.5 py-1 text-[11px] font-semibold leading-none text-brand-amber-dark ring-1 ring-brand-amber/25",
       softNeutral: "rounded-full bg-stone-200/80 px-2.5 py-1 text-[11px] font-semibold leading-none text-ink/70",
-      softMuted: "rounded-full bg-neutral-100 px-2.5 py-1 text-[11px] font-semibold leading-none text-neutral-600 ring-1 ring-stone-200/80"
+      softMuted: "rounded-full bg-neutral-100 px-2.5 py-1 text-[11px] font-semibold leading-none text-neutral-600 ring-1 ring-stone-200/80",
+      softDanger: "rounded-full bg-red-100 px-2.5 py-1 text-[11px] font-semibold leading-none text-red-800",
+      softSage: "rounded-full bg-sage-100 px-2.5 py-1 text-[11px] font-semibold leading-none text-sage-700"
     }
   },
   defaultVariants: {
