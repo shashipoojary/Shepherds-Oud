@@ -43,7 +43,7 @@ export default function GlobalError({
             <p style={{ margin: 0, fontSize: 12, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#c07a4a" }}>
               Er ging iets mis
             </p>
-            <h1 style={{ margin: "0.5rem 0 0", fontSize: 28, color: "#404d3c" }}>Shepherds Oud</h1>
+            <h1 style={{ margin: "0.5rem 0 0", fontSize: 28, color: "#404d3c" }}>Shepherds Oud Care</h1>
             <p style={{ margin: "1rem 0 0", lineHeight: 1.6, color: "#666" }}>
               De applicatie kon niet worden geladen. Probeer het opnieuw.
               <br />

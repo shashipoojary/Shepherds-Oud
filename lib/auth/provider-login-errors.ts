@@ -12,19 +12,19 @@ export type ProviderLoginErrorCode = (typeof PROVIDER_LOGIN_ERROR)[keyof typeof 
 
 /** @deprecated Prefer providerLoginErrorMessage(code, locale). */
 export const PROVIDER_ACCOUNT_NOT_FOUND_MESSAGE =
-  "Er is geen locatie-account gevonden voor dit e-mailadres. Meld u aan op de aanbiederswachtlijst — zodra Shepherds Oud u uitnodigt, kunt u hier inloggen.";
+  "Er is geen locatie-account gevonden voor dit e-mailadres. Meld u aan op de aanbiederswachtlijst — zodra Shepherds Oud Care u uitnodigt, kunt u hier inloggen.";
 
 /** @deprecated Prefer providerLoginErrorMessage(code, locale). */
 export const PROVIDER_INVITE_PENDING_MESSAGE =
-  "U heeft een openstaande uitnodiging. Open eerst de uitnodigingslink uit uw Shepherds Oud-e-mail om te accepteren, daarna kunt u hier inloggen.";
+  "U heeft een openstaande uitnodiging. Open eerst de uitnodigingslink uit uw Shepherds Oud Care-e-mail om te accepteren, daarna kunt u hier inloggen.";
 
 /** @deprecated Prefer providerLoginErrorMessage(code, locale). */
 export const PROVIDER_INVITE_EXPIRED_MESSAGE =
-  "Deze uitnodigingslink is verlopen. Neem contact op met Shepherds Oud support voor een nieuwe uitnodiging.";
+  "Deze uitnodigingslink is verlopen. Neem contact op met Shepherds Oud Care support voor een nieuwe uitnodiging.";
 
 /** @deprecated Prefer providerLoginErrorMessage(code, locale). */
 export const PROVIDER_INVITE_EMAIL_MISMATCH_MESSAGE =
-  "Deze uitnodiging hoort bij een ander e-mailadres. Log in met het e-mailadres uit uw Shepherds Oud-uitnodiging.";
+  "Deze uitnodiging hoort bij een ander e-mailadres. Log in met het e-mailadres uit uw Shepherds Oud Care-uitnodiging.";
 
 export function providerLoginErrorMessage(code: string | null | undefined, locale: Locale = "nl") {
   const auth = productUi(locale).auth;

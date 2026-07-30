@@ -41,7 +41,7 @@ export async function sendProviderInquiryEmail(input: {
 
   return sendBrevoEmail({
     to: [{ email: input.providerEmail, name: input.providerName }],
-    subject: `${title} — Shepherds Oud`,
+    subject: `${title} — Shepherds Oud Care`,
     htmlContent,
     textContent: paragraphs.join(" ")
   });

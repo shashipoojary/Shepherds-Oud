@@ -3,7 +3,7 @@ import { getIsPrelaunch } from "@/lib/config/prelaunch";
 
 /** Core positioning — used across marketing surfaces. */
 export const positioningStatementNl =
-  "Shepherds Oud is het vertrouwde zorgnavigatieplatform dat ouderen en hun families begeleidt door elke fase van ouder worden — van zelfstandig wonen, naar thuiszorg, naar begeleid wonen, naar verpleegzorg, via één adviseur.";
+  "Shepherds Oud Care is het vertrouwde zorgnavigatieplatform dat ouderen en hun families begeleidt door elke fase van ouder worden — van zelfstandig wonen, naar thuiszorg, naar begeleid wonen, naar verpleegzorg, via één adviseur.";
 
 /** Primary positioning line for intake notices and short surfaces. */
 export const siteTaglineNl = "Zorg zoeken hoort niet overweldigend te zijn.";
@@ -27,7 +27,7 @@ export const homeContentNl = {
   secondaryCtaShort: "Care Guide",
   responsePromise: "Een Care Guide belt u binnen 24 uur.",
   freeSupportLine:
-    "Gratis voor families. Shepherds Oud wordt gecompenseerd door deelnemende zorgaanbieders. Transparant over hoe we betaald worden — zodat u weet dat uw opties niet afhangen van wie betaalt.",
+    "Gratis voor families. Shepherds Oud Care wordt gecompenseerd door deelnemende zorgaanbieders. Transparant over hoe we betaald worden — zodat u weet dat uw opties niet afhangen van wie betaalt.",
   problem: {
     label: "De uitdaging",
     title: "Nederland verandert.",
@@ -40,7 +40,7 @@ export const homeContentNl = {
       "Complexe Wmo-regels",
       "Woningtekorten"
     ],
-    closing: "Families raken overweldigd. Shepherds Oud vereenvoudigt elke stap."
+    closing: "Families raken overweldigd. Shepherds Oud Care vereenvoudigt elke stap."
   },
   followUp: {
     label: "Nazorg",
@@ -95,7 +95,7 @@ export const homeContentNl = {
     title: `Begeleiding door ${brand.founderName}`,
     credentials:
       "Begeleiding door zorgprofessionals die het Nederlandse stelsel kennen — van CIZ-aanvraag tot eigen bijdrage en keuze tussen thuiszorg, begeleid wonen of verpleegzorg.",
-    bio: `${brand.founderName} bouwde Shepherds Oud omdat families in crisis verdwalen tussen directories en papieren. Één menselijke lijn van eerste gesprek tot nazorg — geen anonieme zoekmachine.`
+    bio: `${brand.founderName} bouwde Shepherds Oud Care omdat families in crisis verdwalen tussen directories en papieren. Één menselijke lijn van eerste gesprek tot nazorg — geen anonieme zoekmachine.`
   },
   providerSteps: [
     {

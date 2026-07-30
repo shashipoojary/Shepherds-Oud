@@ -24,7 +24,7 @@ type AnnouncementPreview = {
 };
 
 const DEFAULT_MESSAGE =
-  "We wanted to share a quick update from Shepherds Oud. Thank you for staying in touch with us — we appreciate your patience and support.";
+  "We wanted to share a quick update from Shepherds Oud Care. Thank you for staying in touch with us — we appreciate your patience and support.";
 
 type ComposeAnnouncementBarProps = {
   onNotify: (message: string) => void;
@@ -42,7 +42,7 @@ export function ComposeAnnouncementBar({ onNotify }: ComposeAnnouncementBarProps
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [sending, setSending] = useState(false);
   const [confirmPhrase, setConfirmPhrase] = useState("");
-  const [subject, setSubject] = useState("A note from Shepherds Oud");
+  const [subject, setSubject] = useState("A note from Shepherds Oud Care");
   const [message, setMessage] = useState(DEFAULT_MESSAGE);
   const [audience, setAudience] = useState<AnnouncementAudience>("waitlist_new");
   const [markNewAsContacted, setMarkNewAsContacted] = useState(false);

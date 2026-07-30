@@ -5,19 +5,19 @@ import type { Locale } from "@/lib/i18n/config";
  * them without a code change.
  */
 export const brand = {
-  name: "Shepherds Oud",
+  name: "Shepherds Oud Care",
   tagline: "Navigeer met vertrouwen door ouder worden.",
   taglineEn: "Navigate aging with confidence.",
   email: "dominique@shepherdsoud.com",
   metaDescription:
-    "Shepherds Oud is het vertrouwde zorgnavigatieplatform dat ouderen en hun families begeleidt door elke fase van ouder worden — via één Care Guide.",
+    "Shepherds Oud Care is het vertrouwde zorgnavigatieplatform dat ouderen en hun families begeleidt door elke fase van ouder worden — via één Care Guide.",
   metaDescriptionEn:
-    "Shepherds Oud is the trusted care navigation platform that guides older adults and their families through every stage of aging — through one Care Guide.",
+    "Shepherds Oud Care is the trusted care navigation platform that guides older adults and their families through every stage of aging — through one Care Guide.",
   emailFooterLine: "Begeleide zorgnavigatie in Nederland",
   emailFooterLineEn: "Guided care navigation in the Netherlands",
   logoFullPath: "/brand/logo.png",
   logoLightPath: "/brand/logo-light.png",
-  legalEntityName: "Shepherds Oud B.V.",
+  legalEntityName: "Shepherds Oud Care B.V.",
   /**
    * Chamber of Commerce number. Set NEXT_PUBLIC_KVK_NUMBER in Vercel when registered.
    * null → legal pages show a clear “registration pending” label (not a fake number).

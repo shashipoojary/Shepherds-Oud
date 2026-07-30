@@ -21,28 +21,28 @@ export async function sendHospitalReferralFamilyEmails(input: {
 
   const copy = en
     ? {
-        subject: `A care referral was submitted for you — Shepherds Oud`,
+        subject: `A care referral was submitted for you — Shepherds Oud Care`,
         preheader: `${input.hospitalName} referred you for care navigation`,
         eyebrow: "Hospital referral",
         title: "Your care request is with us",
         body: (hospital: string) =>
-          `${hospital} submitted a care referral for you to Shepherds Oud. A Care Guide will follow up.`,
+          `${hospital} submitted a care referral for you to Shepherds Oud Care. A Care Guide will follow up.`,
         signIn:
           "Sign in with this email to open your family dashboard, track progress, and message your Care Guide when assigned.",
         cta: "Open family dashboard",
-        footerNote: (ref: string) => `Reference ${ref}. If you did not expect this, contact Shepherds Oud.`
+        footerNote: (ref: string) => `Reference ${ref}. If you did not expect this, contact Shepherds Oud Care.`
       }
     : {
-        subject: `Er is een zorgverwijzing voor u ingediend — Shepherds Oud`,
+        subject: `Er is een zorgverwijzing voor u ingediend — Shepherds Oud Care`,
         preheader: `${input.hospitalName} heeft u verwezen voor zorgnavigatie`,
         eyebrow: "Ziekenhuisverwijzing",
         title: "Uw zorgaanvraag is bij ons",
         body: (hospital: string) =>
-          `${hospital} heeft een zorgverwijzing voor u ingediend bij Shepherds Oud. Een Care Guide volgt dit op.`,
+          `${hospital} heeft een zorgverwijzing voor u ingediend bij Shepherds Oud Care. Een Care Guide volgt dit op.`,
         signIn:
           "Log in met dit e-mailadres om uw familiedashboard te openen, de voortgang te volgen en contact te hebben met uw Care Guide.",
         cta: "Open familiedashboard",
-        footerNote: (ref: string) => `Referentie ${ref}. Als u dit niet verwachtte, neem contact op met Shepherds Oud.`
+        footerNote: (ref: string) => `Referentie ${ref}. Als u dit niet verwachtte, neem contact op met Shepherds Oud Care.`
       };
 
   const paragraphs = [

@@ -17,7 +17,7 @@ export async function sendProviderMagicLinkEmail(email: string, url: string, loc
     "",
     copy.textExpiry,
     "",
-    `Shepherds Oud — ${tagline}`
+    `Shepherds Oud Care — ${tagline}`
   ].join("\n");
 
   const htmlContent = renderTransactionalEmail({

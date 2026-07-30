@@ -17,7 +17,7 @@ export async function sendFamilyMagicLinkEmail(email: string, url: string, local
     "",
     copy.textExpiry,
     "",
-    `Shepherds Oud — ${tagline}`
+    `Shepherds Oud Care — ${tagline}`
   ].join("\n");
 
   const htmlContent = renderTransactionalEmail({

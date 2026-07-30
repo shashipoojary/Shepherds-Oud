@@ -13,8 +13,8 @@ export function hospitalLoginErrorMessage(code: string | null | undefined, local
   switch (code) {
     case HOSPITAL_LOGIN_ERROR.NOT_FOUND:
       return en
-        ? "No hospital account was found for this email. Ask Shepherds Oud for an invite."
-        : "Geen ziekenhuisaccount gevonden voor dit e-mailadres. Vraag Shepherds Oud om een uitnodiging.";
+        ? "No hospital account was found for this email. Ask Shepherds Oud Care for an invite."
+        : "Geen ziekenhuisaccount gevonden voor dit e-mailadres. Vraag Shepherds Oud Care om een uitnodiging.";
     case HOSPITAL_LOGIN_ERROR.INVITE_EMAIL:
       return en
         ? "Sign in with the email address that received the hospital invite."

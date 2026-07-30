@@ -482,7 +482,7 @@ function complaintsContent(locale: Locale): LegalPageContent {
         {
           title: "Waarover u kunt klagen",
           paragraphs: [
-            "U kunt klagen over onze communicatie, de behandeling van een intake of match, hoe persoonsgegevens zijn gebruikt, de toegankelijkheid van de website, of het gedrag van iemand die namens Shepherds Oud handelt in een navigatie- of coördinatierol.",
+            "U kunt klagen over onze communicatie, de behandeling van een intake of match, hoe persoonsgegevens zijn gebruikt, de toegankelijkheid van de website, of het gedrag van iemand die namens Shepherds Oud Care handelt in een navigatie- of coördinatierol.",
             "Klachten over klinische zorg, een toelatingsbesluit of een contract van een zorginstelling moet u meestal eerst bij die aanbieder indienen. Wij kunnen u helpen de volgende stappen te begrijpen waar passend, maar wij beslissen niet over toelatingen."
           ]
         },
@@ -523,7 +523,7 @@ function complaintsContent(locale: Locale): LegalPageContent {
       {
         title: "What you can complain about",
         paragraphs: [
-          "You may complain about our communication, the handling of an intake or match, how personal data was used, accessibility of the website, or the conduct of someone acting for Shepherds Oud in a navigation or coordination role.",
+          "You may complain about our communication, the handling of an intake or match, how personal data was used, accessibility of the website, or the conduct of someone acting for Shepherds Oud Care in a navigation or coordination role.",
           "Complaints about a care facility's clinical care, admission decision, or contract should usually be raised with that provider first. We can help you understand next steps where appropriate, but we do not decide facility admissions."
         ]
       },

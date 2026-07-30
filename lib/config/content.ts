@@ -125,8 +125,8 @@ function buildIntakeSteps(locale: Locale): IntakeStep[] {
         {
           type: "notice",
           text: nl
-            ? "Bij acuut gevaar: bel eerst 112. Shepherds Oud vervangt geen spoeddiensten."
-            : "If anyone is in immediate danger, call 112 first. Shepherds Oud cannot replace emergency services."
+            ? "Bij acuut gevaar: bel eerst 112. Shepherds Oud Care vervangt geen spoeddiensten."
+            : "If anyone is in immediate danger, call 112 first. Shepherds Oud Care cannot replace emergency services."
         },
         { type: "select", label: "Is the person currently safe tonight?", options: [...YES_NO_UNSURE_OPTIONS] },
         { type: "select", label: "Is urgent medical help required?", options: [...YES_NO_UNSURE_OPTIONS] },

@@ -84,7 +84,7 @@ export const JOURNEY_STEPS: Array<{ status: IntakeStatus; label: string; hint: s
   {
     status: "CLOSED",
     label: "Thank you — case closed",
-    hint: "Thank you for trusting Shepherds Oud. Your guided care journey is complete. Reach out anytime if your needs change."
+    hint: "Thank you for trusting Shepherds Oud Care. Your guided care journey is complete. Reach out anytime if your needs change."
   }
 ];
 

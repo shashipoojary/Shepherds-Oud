@@ -34,7 +34,7 @@ export async function sendFamilyMatchCreatedEmail(input: {
 
   return sendBrevoEmail({
     to: [{ email: input.email, name: input.contactName }],
-    subject: `${title} — Shepherds Oud`,
+    subject: `${title} — Shepherds Oud Care`,
     htmlContent,
     textContent: `${title}. ${paragraphs.join(" ")} Matches: ${resultsUrl}`
   });
@@ -74,7 +74,7 @@ export async function sendProviderMatchCreatedEmail(input: {
 
   return sendBrevoEmail({
     to: [{ email: input.providerEmail, name: input.providerName }],
-    subject: `${title} — Shepherds Oud`,
+    subject: `${title} — Shepherds Oud Care`,
     htmlContent,
     textContent: `${title}. ${paragraphs.join(" ")} Dashboard: ${dashboardUrl}`
   });

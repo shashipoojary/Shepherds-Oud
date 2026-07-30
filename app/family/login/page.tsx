@@ -8,7 +8,7 @@ import { noIndexMetadata } from "@/lib/config/seo";
 
 export const metadata = {
   ...noIndexMetadata,
-  title: "Inloggen familie | Shepherds Oud"
+  title: "Inloggen familie | Shepherds Oud Care"
 };
 
 export default async function FamilyLoginPage() {

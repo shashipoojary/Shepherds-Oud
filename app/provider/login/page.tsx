@@ -24,7 +24,7 @@ export const metadata = {
 
   ...noIndexMetadata,
 
-  title: "Inloggen locatie | Shepherds Oud"
+  title: "Inloggen locatie | Shepherds Oud Care"
 
 };
 

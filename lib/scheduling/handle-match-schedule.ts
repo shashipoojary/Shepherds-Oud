@@ -164,7 +164,7 @@ export async function handleMatchSchedulePost(request: Request, matchId: string)
       if (existing.provider.email && match.confirmedStartsAt && match.confirmedEndsAt) {
         const ics = buildVisitIcs({
           uid: `${match.id}@shepherds-oud`,
-          title: `Shepherds Oud ${match.status}`,
+          title: `Shepherds Oud Care ${match.status}`,
           description: `Scheduled with ${existing.intake.contactName}`,
           startsAt: match.confirmedStartsAt,
           endsAt: match.confirmedEndsAt

@@ -326,8 +326,8 @@ export function providerInquiryBanner(status: string, locale: Locale = "nl") {
         : "Een familie vraagt u terug te bellen. Accepteer als u kunt helpen, of wijs af als u niet beschikbaar bent.";
     case "SUGGESTED":
       return en
-        ? "Shepherds Oud matched this family to your facility. They may request a visit or callback soon."
-        : "Shepherds Oud heeft deze familie aan uw locatie gematcht. Zij kunnen binnenkort een bezoek of terugbelverzoek doen.";
+        ? "Shepherds Oud Care matched this family to your facility. They may request a visit or callback soon."
+        : "Shepherds Oud Care heeft deze familie aan uw locatie gematcht. Zij kunnen binnenkort een bezoek of terugbelverzoek doen.";
     case "ACCEPTED":
       return en
         ? "You accepted this inquiry. The family's Care Guide will contact you to coordinate next steps."

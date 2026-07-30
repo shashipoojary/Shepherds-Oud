@@ -21,7 +21,7 @@ export type BrevoSendResult =
 
 export function resolveBrevoSender(): BrevoSender | null {
   const email = (process.env.BREVO_FROM_EMAIL || "").trim().toLowerCase();
-  const name = (process.env.BREVO_FROM_NAME || "Shepherds Oud").trim() || "Shepherds Oud";
+  const name = (process.env.BREVO_FROM_NAME || "Shepherds Oud Care").trim() || "Shepherds Oud Care";
 
   if (!email) {
     return null;

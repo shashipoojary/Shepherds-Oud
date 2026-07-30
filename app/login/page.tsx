@@ -7,7 +7,7 @@ import { noIndexMetadata } from "@/lib/config/seo";
 
 export const metadata = {
   ...noIndexMetadata,
-  title: "Care Guide-inlog | Shepherds Oud"
+  title: "Care Guide-inlog | Shepherds Oud Care"
 };
 
 export default async function LoginPage() {

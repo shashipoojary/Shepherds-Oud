@@ -1,6 +1,6 @@
-# Shepherds Oud
+# Shepherds Oud Care
 
-Shepherds Oud is a production-ready MVP for a care navigation service. It helps people with limited mobility explain their care situation, receive matched care options, and stay guided through placement. Providers can manage availability and respond to requests, while admins can oversee cases, providers, waitlist entries, and follow-ups.
+Shepherds Oud Care is a production-ready MVP for a care navigation service. It helps people with limited mobility explain their care situation, receive matched care options, and stay guided through placement. Providers can manage availability and respond to requests, while admins can oversee cases, providers, waitlist entries, and follow-ups.
 
 Production GitHub repository: https://github.com/dminoue15/shepherds-Oud-Care
 
@@ -10,7 +10,7 @@ The product is built as one Next.js application with separate experiences for th
 
 ## Product Overview
 
-Shepherds Oud supports four main users:
+Shepherds Oud Care supports four main users:
 
 - People seeking care when mobility is limited — assisted living, home care, rehabilitation, or placement guidance.
 - Providers who need a clear way to manage profile details, availability, and care requests.
@@ -158,7 +158,7 @@ GOOGLE_CLIENT_SECRET=
 
 BREVO_API_KEY=
 BREVO_FROM_EMAIL=
-BREVO_FROM_NAME=Shepherds Oud
+BREVO_FROM_NAME=Shepherds Oud Care
 ADVISOR_EMAIL=
 
 ADMIN_EMAILS=
@@ -223,7 +223,7 @@ Create a Brevo account and generate a transactional email API key:
 
 - `BREVO_API_KEY`
 - `BREVO_FROM_EMAIL` — verified sender, e.g. `dominique@shepherdsoud.com` (single From source for all emails via `lib/email/brevo.ts`)
-- `BREVO_FROM_NAME` — display name, e.g. `Shepherds Oud`
+- `BREVO_FROM_NAME` — display name, e.g. `Shepherds Oud Care`
 
 Also authenticate the sending domain in Brevo (Senders → Domains: Brevo code + DKIM + DMARC). Sender-email verification alone is not enough: without domain authentication Brevo rewrites From to `@<accountId>.brevosend.com`, which triggers Gmail rate limits.
 

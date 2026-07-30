@@ -51,7 +51,7 @@ export const productUiEn: ProductUi = {
     statusSubmitted: "Intake submitted. Opening your dashboard…",
     emergencyTitle: "Call emergency services first",
     emergencyLead:
-      "Shepherds Oud cannot replace emergency help. If someone is unsafe right now, call 112 immediately.",
+      "Shepherds Oud Care cannot replace emergency help. If someone is unsafe right now, call 112 immediately.",
     emergencyBody:
       "Your situation has been flagged for a Care Guide. They will contact you as soon as possible — but emergency help comes first.",
     emergencyCall112: "Call 112 for police, fire, or ambulance",
@@ -76,7 +76,7 @@ export const productUiEn: ProductUi = {
     questionsTitle: "Questions for your team",
     needToAsk: "Need to ask something?",
     emailCareGuide: "Email Care Guide",
-    contactUs: "Contact Shepherds Oud",
+    contactUs: "Contact Shepherds Oud Care",
     reportConcern: "Report a placement concern",
     caseNotFound: "We could not find that care request on your account. Choose one of your saved requests below.",
     journeyTitle: "Your guided care journey",
@@ -161,8 +161,8 @@ export const productUiEn: ProductUi = {
     savedTipPrefix: "Tip: save providers from your",
     savedTipSuffix: "while comparing options.",
     helpWithGuide: (name) =>
-      `Email your Care Guide, ${name}, for updates on your file. For general platform questions, contact the Shepherds Oud team.`,
-    helpWithoutGuide: "Email the Shepherds Oud team if you need help while your Care Guide is being assigned.",
+      `Email your Care Guide, ${name}, for updates on your file. For general platform questions, contact the Shepherds Oud Care team.`,
+    helpWithoutGuide: "Email the Shepherds Oud Care team if you need help while your Care Guide is being assigned.",
     needNewProvider: "Need a new provider?",
     contactGuideAddPrefix: "Contact your Care Guide",
     contactGuideAddSuffix: "— they can add another option to your shortlist.",
@@ -249,7 +249,7 @@ export const productUiEn: ProductUi = {
     switchCase: "Switch care request",
     reportConcernSubject: "Placement concern report",
     reportConcernBody: (id: string) =>
-      `Hello Shepherds Oud,\n\nI would like to report a placement concern for care request ${id}.\n\n`,
+      `Hello Shepherds Oud Care,\n\nI would like to report a placement concern for care request ${id}.\n\n`,
     providerDetail: {
       completeIntakeFirst: "Complete the intake form first so we can link your request to this provider.",
       notMatchedYet: "This provider has not been matched to your request yet. Your Care Guide will publish matches first.",
@@ -385,7 +385,7 @@ export const productUiEn: ProductUi = {
     colActions: "Actions",
     open: "Open",
     refLabel: "Ref",
-    needHelp: "Need help from Shepherds Oud?",
+    needHelp: "Need help from Shepherds Oud Care?",
     supportHint: "Platform or profile questions — not family-specific coordination.",
     emailSupport: "Email support",
     declineDescription:
@@ -499,13 +499,13 @@ export const productUiEn: ProductUi = {
     familyStarting: "Starting a new request?",
     loadingSignIn: "Loading sign-in...",
     providerLabel: "For care facilities",
-    providerTitle: "List your facility on Shepherds Oud",
+    providerTitle: "List your facility on Shepherds Oud Care",
     providerIntro: "Sign in with your work email or Google to manage your facility profile, availability, and family inquiries.",
     providerWaitlist: "Join the facility waitlist",
     providerNotReady: "Not ready to list yet?",
     backHome: "Back to homepage",
     adminLabel: "Care Guide sign in",
-    adminTitle: "Sign in to Shepherds Oud",
+    adminTitle: "Sign in to Shepherds Oud Care",
     adminIntro: "Use your approved Google account to access the Care Guide dashboard.",
     providerAccountNeeded:
       "You need a facility account for this page. Use List your facility to sign in.",
@@ -515,13 +515,13 @@ export const productUiEn: ProductUi = {
     providerNotApproved: "Your facility account is not approved yet.",
     workEmailHint: "Use your work email — Gmail, Microsoft, Apple, or your organisation domain.",
     providerAccountNotFound:
-      "No facility account was found for this email. Join the provider waitlist — once Shepherds Oud invites you, you can sign in here.",
+      "No facility account was found for this email. Join the provider waitlist — once Shepherds Oud Care invites you, you can sign in here.",
     providerInvitePending:
-      "You have a pending invitation. Open the invite link from your Shepherds Oud email first, then sign in here.",
+      "You have a pending invitation. Open the invite link from your Shepherds Oud Care email first, then sign in here.",
     providerInviteExpired:
-      "This invitation link has expired. Contact Shepherds Oud support for a new invite.",
+      "This invitation link has expired. Contact Shepherds Oud Care support for a new invite.",
     providerInviteEmailMismatch:
-      "This invitation belongs to a different email address. Sign in with the email from your Shepherds Oud invite."
+      "This invitation belongs to a different email address. Sign in with the email from your Shepherds Oud Care invite."
   },
   matchScore: {
     strongMatch: "Strong match for your situation",
@@ -666,7 +666,7 @@ export const productUiEn: ProductUi = {
     about: {
       metaTitle: `About | ${brand.name}`,
       metaDescription:
-        "Shepherds Oud is the trusted care navigation platform that guides older adults and families through every stage of aging — through one Care Guide.",
+        "Shepherds Oud Care is the trusted care navigation platform that guides older adults and families through every stage of aging — through one Care Guide.",
       label: "About",
       title: "Care navigation through every stage of aging",
       intro: `${brand.name} is the trusted care navigation platform that guides older adults and their families through every stage of aging — from independent living, to home care, to assisted living, to nursing care, through one advisor. We are not a directory. Every journey starts with a Care Guide who listens, assesses, and coordinates with suitable providers.`,
@@ -692,7 +692,7 @@ export const productUiEn: ProductUi = {
         {
           title: `Your Care Guide: ${brand.founderName}`,
           paragraphs: [
-            `${brand.founderName} (${brandFounderRole("en")}) built Shepherds Oud because families in crisis get lost between directories and paperwork. Guidance from care professionals who know the Dutch system — from CIZ applications to choosing between home care, assisted living, or nursing care.`,
+            `${brand.founderName} (${brandFounderRole("en")}) built Shepherds Oud Care because families in crisis get lost between directories and paperwork. Guidance from care professionals who know the Dutch system — from CIZ applications to choosing between home care, assisted living, or nursing care.`,
             brandRegionNote("en")
           ]
         }
@@ -704,7 +704,7 @@ export const productUiEn: ProductUi = {
       metaDescription:
         "Seven steps: assessment, Care Guide, options, Care Roadmap, visits, move support, and follow-up at 7, 30 and 90 days.",
       label: "How it works",
-      title: "How Shepherds Oud works",
+      title: "How Shepherds Oud Care works",
       intro: `${brand.name} is the trusted care navigation platform that guides older adults and their families through every stage of aging — through one Care Guide. You always know the next step and who is helping you.`,
       sections: [
         {
@@ -771,7 +771,7 @@ export const productUiEn: ProductUi = {
     faq: {
       metaTitle: `FAQ | ${brand.name}`,
       metaDescription:
-        "FAQ about Shepherds Oud: Wlz, Wmo, CIZ, PGB, eigen bijdrage, Care Guide, costs for families and follow-up.",
+        "FAQ about Shepherds Oud Care: Wlz, Wmo, CIZ, PGB, eigen bijdrage, Care Guide, costs for families and follow-up.",
       label: "FAQ",
       title: "Frequently asked questions",
       intro:
@@ -783,12 +783,12 @@ export const productUiEn: ProductUi = {
       fundingToolCta: "Open the care funding estimate",
       items: [
         {
-          q: "What is Shepherds Oud?",
-          a: "Shepherds Oud is the trusted care navigation platform that guides older adults and their families through every stage of aging — from independent living, to home care, to assisted living, to nursing care, through one advisor. You get one Care Guide from intake through placement and follow-up (7, 30, and 90 days)."
+          q: "What is Shepherds Oud Care?",
+          a: "Shepherds Oud Care is the trusted care navigation platform that guides older adults and their families through every stage of aging — from independent living, to home care, to assisted living, to nursing care, through one advisor. You get one Care Guide from intake through placement and follow-up (7, 30, and 90 days)."
         },
         {
           q: "Is it free for families?",
-          a: "Yes. Families pay us nothing. Shepherds Oud is compensated by participating care providers. Your options are never limited to only paying providers."
+          a: "Yes. Families pay us nothing. Shepherds Oud Care is compensated by participating care providers. Your options are never limited to only paying providers."
         },
         { q: "Where are you active?", a: brandRegionNote("en") },
         {
@@ -817,7 +817,7 @@ export const productUiEn: ProductUi = {
         },
         {
           q: "Can I get a rough cost estimate?",
-          a: "Yes. Use the care funding estimate tool to compare your budget band with typical monthly prices listed by providers on Shepherds Oud. It is educational only — not official CAK, Wmo, or insurance guidance. Your Care Guide confirms exact costs for your situation."
+          a: "Yes. Use the care funding estimate tool to compare your budget band with typical monthly prices listed by providers on Shepherds Oud Care. It is educational only — not official CAK, Wmo, or insurance guidance. Your Care Guide confirms exact costs for your situation."
         },
         {
           q: "What does the zorgkantoor do?",
@@ -836,7 +836,7 @@ export const productUiEn: ProductUi = {
     providers: {
       metaTitle: `For care providers | ${brand.name}`,
       metaDescription:
-        "List for free on Shepherds Oud. Pay only on successful placement. Pre-matched family inquiries across the Netherlands.",
+        "List for free on Shepherds Oud Care. Pay only on successful placement. Pre-matched family inquiries across the Netherlands.",
       label: "Care providers",
       title: "Free to list. Pay on placement.",
       intro: `${brand.name} is not a subscription directory. You are visible without a monthly listing fee. We only earn when there is a successful placement — transparent for families and providers.`,
@@ -887,14 +887,14 @@ export const productUiEn: ProductUi = {
     },
     registerSuccess: {
       title: "You're on the waitlist",
-      familyBody: "Thank you for registering. We'll contact you as soon as Shepherds Oud can guide you.",
+      familyBody: "Thank you for registering. We'll contact you as soon as Shepherds Oud Care can guide you.",
       facilityBody:
         "Thank you for registering your location. We'll contact you when provider onboarding starts."
     },
     home: {
       metaTitle: brand.name,
       metaDescription:
-        "Shepherds Oud is the trusted care navigation platform that guides older adults and families through every stage of aging — through one Care Guide.",
+        "Shepherds Oud Care is the trusted care navigation platform that guides older adults and families through every stage of aging — through one Care Guide.",
       heroSubline:
         "One dedicated Care Guide. Personal advice. Verified providers. Support from the first conversation to well after placement.",
       registerInterest: "Register interest",
@@ -907,7 +907,7 @@ export const productUiEn: ProductUi = {
       providersCard: "List for free. Pay only on placement. Receive pre-matched family inquiries.",
       viewTerms: "View terms",
       howItWorksLabel: "How it works",
-      howItWorksTitle: "How Shepherds Oud works",
+      howItWorksTitle: "How Shepherds Oud Care works",
       howItWorksDesc:
         "Seven clear steps — from a short assessment to placement and follow-up — with one dedicated Care Guide.",
       trustLabel: "Trust",
@@ -935,7 +935,7 @@ export const productUiEn: ProductUi = {
       label: "Tools",
       title: "Care funding estimate",
       intro:
-        "Compare your budget band with typical monthly prices listed by care providers on Shepherds Oud. Educational only — not a formal cost calculation.",
+        "Compare your budget band with typical monthly prices listed by care providers on Shepherds Oud Care. Educational only — not a formal cost calculation.",
       careTypesLabel: "Care type(s)",
       fundingTypesLabel: "Funding path(s) already known",
       budgetLabel: "Monthly budget band",

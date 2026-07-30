@@ -5,7 +5,7 @@ import { noIndexMetadata } from "@/lib/config/seo";
 
 export const metadata = {
   ...noIndexMetadata,
-  title: "Hospital referrals | Shepherds Oud"
+  title: "Hospital referrals | Shepherds Oud Care"
 };
 
 export default async function HospitalDashboardPage() {

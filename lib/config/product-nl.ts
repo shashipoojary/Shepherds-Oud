@@ -301,7 +301,7 @@ export const productUiNl = {
     statusSubmitted: "Intake verstuurd. Uw dashboard wordt geopend…",
     emergencyTitle: "Bel eerst de hulpdiensten",
     emergencyLead:
-      "Shepherds Oud vervangt geen spoedhulp. Als iemand nu onveilig is, bel direct 112.",
+      "Shepherds Oud Care vervangt geen spoedhulp. Als iemand nu onveilig is, bel direct 112.",
     emergencyBody:
       "Uw situatie is gemarkeerd voor een Care Guide. Zij nemen zo snel mogelijk contact op — maar spoedhulp gaat voor.",
     emergencyCall112: "Bel 112 voor politie, brandweer of ambulance",
@@ -326,7 +326,7 @@ export const productUiNl = {
     questionsTitle: "Vragen voor uw team",
     needToAsk: "Iets vragen?",
     emailCareGuide: "Mail Care Guide",
-    contactUs: "Neem contact op met Shepherds Oud",
+    contactUs: "Neem contact op met Shepherds Oud Care",
     reportConcern: "Melding over plaatsing",
     caseNotFound: "We konden die zorgaanvraag niet vinden op uw account. Kies hieronder een opgeslagen aanvraag.",
     journeyTitle: "Uw begeleide zorgreis",
@@ -413,8 +413,8 @@ export const productUiNl = {
     savedTipPrefix: "Tip: sla aanbieders op vanuit uw",
     savedTipSuffix: "terwijl u opties vergelijkt.",
     helpWithGuide: (name: string) =>
-      `Mail uw Care Guide, ${name}, voor updates over uw dossier. Algemene platformvragen kunt u stellen aan het Shepherds Oud-team.`,
-    helpWithoutGuide: "Mail het Shepherds Oud-team als u hulp nodig heeft terwijl uw Care Guide wordt toegewezen.",
+      `Mail uw Care Guide, ${name}, voor updates over uw dossier. Algemene platformvragen kunt u stellen aan het Shepherds Oud Care-team.`,
+    helpWithoutGuide: "Mail het Shepherds Oud Care-team als u hulp nodig heeft terwijl uw Care Guide wordt toegewezen.",
     needNewProvider: "Nieuwe aanbieder nodig?",
     contactGuideAddPrefix: "Neem contact op met uw Care Guide",
     contactGuideAddSuffix: "— zij kunnen een extra optie aan uw shortlist toevoegen.",
@@ -501,7 +501,7 @@ export const productUiNl = {
     switchCase: "Wissel van zorgaanvraag",
     reportConcernSubject: "Melding over plaatsing",
     reportConcernBody: (id: string) =>
-      `Hallo Shepherds Oud,\n\nIk wil een melding doen over een plaatsing voor zorgaanvraag ${id}.\n\n`,
+      `Hallo Shepherds Oud Care,\n\nIk wil een melding doen over een plaatsing voor zorgaanvraag ${id}.\n\n`,
     providerDetail: {
       completeIntakeFirst: "Rond eerst de intake af zodat we uw verzoek aan deze aanbieder kunnen koppelen.",
       notMatchedYet: "Deze aanbieder is nog niet aan uw aanvraag gekoppeld. Uw Care Guide publiceert eerst matches.",
@@ -639,7 +639,7 @@ export const productUiNl = {
     colActions: "Acties",
     open: "Openen",
     refLabel: "Ref",
-    needHelp: "Hulp nodig van Shepherds Oud?",
+    needHelp: "Hulp nodig van Shepherds Oud Care?",
     supportHint: "Platform- of profielvragen — geen familiespecifieke coördinatie.",
     emailSupport: "E-mail support",
     declineDescription:
@@ -755,13 +755,13 @@ export const productUiNl = {
     familyStarting: "Nieuwe aanvraag starten?",
     loadingSignIn: "Inloggen laden...",
     providerLabel: "Voor zorglocaties",
-    providerTitle: "Vermeld uw locatie op Shepherds Oud",
+    providerTitle: "Vermeld uw locatie op Shepherds Oud Care",
     providerIntro: "Log in met uw werk-e-mail of Google om profiel, beschikbaarheid en familieaanvragen te beheren.",
     providerWaitlist: "Meld u aan op de aanbiederswachtlijst",
     providerNotReady: "Nog niet klaar om te vermelden?",
     backHome: "Terug naar home",
     adminLabel: "Care Guide-login",
-    adminTitle: "Inloggen bij Shepherds Oud",
+    adminTitle: "Inloggen bij Shepherds Oud Care",
     adminIntro: "Gebruik uw goedgekeurde Google-account voor het Care Guide-dashboard.",
     providerAccountNeeded:
       "U heeft een zorglocatie-account nodig voor deze pagina. Gebruik Vermeld uw locatie om in te loggen.",
@@ -771,13 +771,13 @@ export const productUiNl = {
     providerNotApproved: "Uw locatie-account is nog niet goedgekeurd.",
     workEmailHint: "Gebruik uw werk-e-mail — Gmail, Microsoft, Apple of uw eigen domein.",
     providerAccountNotFound:
-      "Er is geen locatie-account gevonden voor dit e-mailadres. Meld u aan op de aanbiederswachtlijst — zodra Shepherds Oud u uitnodigt, kunt u hier inloggen.",
+      "Er is geen locatie-account gevonden voor dit e-mailadres. Meld u aan op de aanbiederswachtlijst — zodra Shepherds Oud Care u uitnodigt, kunt u hier inloggen.",
     providerInvitePending:
-      "U heeft een openstaande uitnodiging. Open eerst de uitnodigingslink uit uw Shepherds Oud-e-mail om te accepteren, daarna kunt u hier inloggen.",
+      "U heeft een openstaande uitnodiging. Open eerst de uitnodigingslink uit uw Shepherds Oud Care-e-mail om te accepteren, daarna kunt u hier inloggen.",
     providerInviteExpired:
-      "Deze uitnodigingslink is verlopen. Neem contact op met Shepherds Oud support voor een nieuwe uitnodiging.",
+      "Deze uitnodigingslink is verlopen. Neem contact op met Shepherds Oud Care support voor een nieuwe uitnodiging.",
     providerInviteEmailMismatch:
-      "Deze uitnodiging hoort bij een ander e-mailadres. Log in met het e-mailadres uit uw Shepherds Oud-uitnodiging."
+      "Deze uitnodiging hoort bij een ander e-mailadres. Log in met het e-mailadres uit uw Shepherds Oud Care-uitnodiging."
   },
   matchScore: {
     strongMatch: "Sterke match voor uw situatie",
@@ -922,7 +922,7 @@ export const productUiNl = {
     about: {
       metaTitle: `Over ons | ${brand.name}`,
       metaDescription:
-        "Shepherds Oud is het vertrouwde zorgnavigatieplatform dat ouderen en families begeleidt door elke fase van ouder worden — via één Care Guide.",
+        "Shepherds Oud Care is het vertrouwde zorgnavigatieplatform dat ouderen en families begeleidt door elke fase van ouder worden — via één Care Guide.",
       label: "Over ons",
       title: "Zorgnavigatie door elke fase van ouder worden",
       intro: `${brand.name} is het vertrouwde zorgnavigatieplatform dat ouderen en hun families begeleidt door elke fase van ouder worden — van zelfstandig wonen, naar thuiszorg, naar begeleid wonen, naar verpleegzorg, via één adviseur. Wij zijn geen directory. Elke reis begint met een Care Guide die luistert, beoordeelt en coördineert met passende aanbieders.`,
@@ -948,7 +948,7 @@ export const productUiNl = {
         {
           title: `Uw Care Guide: ${brand.founderName}`,
           paragraphs: [
-            `${brand.founderName} (${brandFounderRole("nl")}) bouwde Shepherds Oud omdat families in crisis verdwalen tussen directories en papieren. Begeleiding door zorgprofessionals die het Nederlandse stelsel kennen — van CIZ-aanvraag tot keuze tussen thuiszorg, begeleid wonen of verpleegzorg.`,
+            `${brand.founderName} (${brandFounderRole("nl")}) bouwde Shepherds Oud Care omdat families in crisis verdwalen tussen directories en papieren. Begeleiding door zorgprofessionals die het Nederlandse stelsel kennen — van CIZ-aanvraag tot keuze tussen thuiszorg, begeleid wonen of verpleegzorg.`,
             brandRegionNote("nl")
           ]
         }
@@ -960,7 +960,7 @@ export const productUiNl = {
       metaDescription:
         "Zeven stappen: intake, Care Guide, opties, Care Roadmap, bezoeken, verhuissteun en nazorg op 7, 30 en 90 dagen.",
       label: "Hoe het werkt",
-      title: "Hoe Shepherds Oud werkt",
+      title: "Hoe Shepherds Oud Care werkt",
       intro: `${brand.name} is het vertrouwde zorgnavigatieplatform dat ouderen en hun families begeleidt door elke fase van ouder worden — via één Care Guide. U weet altijd wat de volgende stap is en wie u helpt.`,
       sections: [
         {
@@ -1027,7 +1027,7 @@ export const productUiNl = {
     faq: {
       metaTitle: `Veelgestelde vragen | ${brand.name}`,
       metaDescription:
-        "FAQ over Shepherds Oud: Wlz, Wmo, CIZ, PGB, eigen bijdrage, Care Guide, kosten voor families en nazorg.",
+        "FAQ over Shepherds Oud Care: Wlz, Wmo, CIZ, PGB, eigen bijdrage, Care Guide, kosten voor families en nazorg.",
       label: "FAQ",
       title: "Veelgestelde vragen",
       intro:
@@ -1039,12 +1039,12 @@ export const productUiNl = {
       fundingToolCta: "Open de zorgkosten-indicatie",
       items: [
         {
-          q: "Wat is Shepherds Oud?",
-          a: "Shepherds Oud is het vertrouwde zorgnavigatieplatform dat ouderen en hun families begeleidt door elke fase van ouder worden — van zelfstandig wonen, naar thuiszorg, naar begeleid wonen, naar verpleegzorg, via één adviseur. U krijgt één Care Guide van intake tot plaatsing en nazorg (7, 30 en 90 dagen)."
+          q: "Wat is Shepherds Oud Care?",
+          a: "Shepherds Oud Care is het vertrouwde zorgnavigatieplatform dat ouderen en hun families begeleidt door elke fase van ouder worden — van zelfstandig wonen, naar thuiszorg, naar begeleid wonen, naar verpleegzorg, via één adviseur. U krijgt één Care Guide van intake tot plaatsing en nazorg (7, 30 en 90 dagen)."
         },
         {
           q: "Is het gratis voor families?",
-          a: "Ja. Families betalen ons niets. Shepherds Oud wordt gecompenseerd door deelnemende zorgaanbieders. Uw opties worden nooit beperkt tot alleen betalende aanbieders."
+          a: "Ja. Families betalen ons niets. Shepherds Oud Care wordt gecompenseerd door deelnemende zorgaanbieders. Uw opties worden nooit beperkt tot alleen betalende aanbieders."
         },
         { q: "Waar zijn jullie actief?", a: brandRegionNote("nl") },
         {
@@ -1073,7 +1073,7 @@ export const productUiNl = {
         },
         {
           q: "Kan ik een ruwe kostenindicatie krijgen?",
-          a: "Ja. Gebruik de zorgkosten-indicatie om uw budgetband te vergelijken met typische maandprijzen die aanbieders op Shepherds Oud vermelden. Alleen ter oriëntatie — geen officiële CAK-, Wmo- of verzekeringsberekening. Uw Care Guide bevestigt exacte kosten voor uw situatie."
+          a: "Ja. Gebruik de zorgkosten-indicatie om uw budgetband te vergelijken met typische maandprijzen die aanbieders op Shepherds Oud Care vermelden. Alleen ter oriëntatie — geen officiële CAK-, Wmo- of verzekeringsberekening. Uw Care Guide bevestigt exacte kosten voor uw situatie."
         },
         {
           q: "Wat doet het zorgkantoor?",
@@ -1089,7 +1089,7 @@ export const productUiNl = {
     providers: {
       metaTitle: `Voor zorgaanbieders | ${brand.name}`,
       metaDescription:
-        "Gratis vermelden bij Shepherds Oud. Betaal alleen bij succesvolle plaatsing. Vooraf gematchte familievraagstukken in heel Nederland.",
+        "Gratis vermelden bij Shepherds Oud Care. Betaal alleen bij succesvolle plaatsing. Vooraf gematchte familievraagstukken in heel Nederland.",
       label: "Zorgaanbieders",
       title: "Gratis vermelden. Betalen bij plaatsing.",
       intro: `${brand.name} is geen abonnementsgids. U bent zichtbaar zonder maandelijkse listing fee. Wij verdienen alleen mee als er een succesvolle plaatsing volgt — transparant voor families én aanbieders.`,
@@ -1141,14 +1141,14 @@ export const productUiNl = {
     },
     registerSuccess: {
       title: "U staat op de wachtlijst",
-      familyBody: "Bedankt voor uw aanmelding. Wij nemen contact op zodra Shepherds Oud u kan begeleiden.",
+      familyBody: "Bedankt voor uw aanmelding. Wij nemen contact op zodra Shepherds Oud Care u kan begeleiden.",
       facilityBody:
         "Bedankt voor het registreren van uw locatie. Wij nemen contact op wanneer onboarding voor aanbieders start."
     },
     home: {
       metaTitle: brand.name,
       metaDescription:
-        "Shepherds Oud is het vertrouwde zorgnavigatieplatform dat ouderen en families begeleidt door elke fase van ouder worden — via één Care Guide.",
+        "Shepherds Oud Care is het vertrouwde zorgnavigatieplatform dat ouderen en families begeleidt door elke fase van ouder worden — via één Care Guide.",
       heroSubline:
         "Eén vaste Care Guide. Persoonlijk advies. Geverifieerde aanbieders. Ondersteuning van het eerste gesprek tot ver na plaatsing.",
       registerInterest: "Meld interesse",
@@ -1162,7 +1162,7 @@ export const productUiNl = {
         "Gratis vermelden. Betalen alleen bij plaatsing. Ontvang vooraf gematchte familievraagstukken.",
       viewTerms: "Bekijk voorwaarden",
       howItWorksLabel: "Hoe het werkt",
-      howItWorksTitle: "Hoe Shepherds Oud werkt",
+      howItWorksTitle: "Hoe Shepherds Oud Care werkt",
       howItWorksDesc:
         "Zeven duidelijke stappen — van een korte intake tot plaatsing en nazorg — met één vaste Care Guide.",
       trustLabel: "Vertrouwen",
@@ -1190,7 +1190,7 @@ export const productUiNl = {
       label: "Tools",
       title: "Zorgkosten-indicatie",
       intro:
-        "Vergelijk uw budgetband met typische maandprijzen die zorgaanbieders op Shepherds Oud vermelden. Alleen ter oriëntatie — geen formele kostencalculatie.",
+        "Vergelijk uw budgetband met typische maandprijzen die zorgaanbieders op Shepherds Oud Care vermelden. Alleen ter oriëntatie — geen formele kostencalculatie.",
       careTypesLabel: "Zorgtype(n)",
       fundingTypesLabel: "Bekende financieringsroute(s)",
       budgetLabel: "Maandelijkse budgetband",

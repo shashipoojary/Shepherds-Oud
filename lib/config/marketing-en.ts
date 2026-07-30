@@ -10,7 +10,7 @@ import {
 
 /** Core positioning — used across marketing surfaces. */
 export const positioningStatementEn =
-  "Shepherds Oud is the trusted care navigation platform that guides older adults and their families through every stage of aging — from independent living, to home care, to assisted living, to nursing care, through one advisor.";
+  "Shepherds Oud Care is the trusted care navigation platform that guides older adults and their families through every stage of aging — from independent living, to home care, to assisted living, to nursing care, through one advisor.";
 
 export const siteTaglineEn = "Finding care shouldn't feel overwhelming.";
 
@@ -33,7 +33,7 @@ export const homeContentEn = {
   secondaryCtaShort: "Care Guide",
   responsePromise: "A Care Guide calls you within 24 hours.",
   freeSupportLine:
-    "Free for families. Shepherds Oud is compensated by participating care providers. Transparent about how we are paid — so you know your options do not depend on who pays.",
+    "Free for families. Shepherds Oud Care is compensated by participating care providers. Transparent about how we are paid — so you know your options do not depend on who pays.",
   problem: {
     label: "The challenge",
     title: "The Netherlands is changing.",
@@ -46,7 +46,7 @@ export const homeContentEn = {
       "Complex Wmo rules",
       "Housing shortages"
     ],
-    closing: "Families are overwhelmed. Shepherds Oud simplifies every step."
+    closing: "Families are overwhelmed. Shepherds Oud Care simplifies every step."
   },
   followUp: {
     label: "Follow-up",
@@ -102,7 +102,7 @@ export const homeContentEn = {
     title: `Guidance from ${brand.founderName}`,
     credentials:
       "Guided by care professionals who know the Dutch system — from CIZ applications to eigen bijdrage and choosing between home care, assisted living, or nursing care.",
-    bio: `${brand.founderName} built Shepherds Oud because families in crisis get lost between directories and paperwork. One human line from first conversation to follow-up — not an anonymous search engine.`
+    bio: `${brand.founderName} built Shepherds Oud Care because families in crisis get lost between directories and paperwork. One human line from first conversation to follow-up — not an anonymous search engine.`
   },
   providerSteps: [
     {

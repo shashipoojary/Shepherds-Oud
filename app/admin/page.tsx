@@ -7,7 +7,7 @@ import { noIndexMetadata } from "@/lib/config/seo";
 
 export const metadata = {
   ...noIndexMetadata,
-  title: "Admin | Shepherds Oud"
+  title: "Admin | Shepherds Oud Care"
 };
 
 export const dynamic = "force-dynamic";

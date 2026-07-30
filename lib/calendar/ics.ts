@@ -12,7 +12,7 @@ export function buildVisitIcs(input: {
   return [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//Shepherds Oud//Visit Scheduling//EN",
+    "PRODID:-//Shepherds Oud Care//Visit Scheduling//EN",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     "BEGIN:VEVENT",

@@ -32,11 +32,11 @@ export function emailCopy(locale: Locale) {
   return {
     intakeConfirmation: {
       subject: en
-        ? "We've received your Shepherds Oud care request"
-        : "We hebben uw Shepherds Oud zorgaanvraag ontvangen",
+        ? "We've received your Shepherds Oud Care care request"
+        : "We hebben uw Shepherds Oud Care zorgaanvraag ontvangen",
       preheader: en
-        ? "We've received your Shepherds Oud care request."
-        : "We hebben uw Shepherds Oud zorgaanvraag ontvangen.",
+        ? "We've received your Shepherds Oud Care care request."
+        : "We hebben uw Shepherds Oud Care zorgaanvraag ontvangen.",
       eyebrow: en ? "Care request received" : "Zorgaanvraag ontvangen",
       title: en ? "Thank you — we're with you" : "Bedankt — wij staan naast u",
       received: (reference: string) =>
@@ -59,32 +59,32 @@ export function emailCopy(locale: Locale) {
     },
     waitlist: {
       subject: en
-        ? "Thanks for registering with Shepherds Oud"
-        : "Bedankt voor uw aanmelding bij Shepherds Oud",
+        ? "Thanks for registering with Shepherds Oud Care"
+        : "Bedankt voor uw aanmelding bij Shepherds Oud Care",
       preheader: en
-        ? "Thanks for registering with Shepherds Oud."
-        : "Bedankt voor uw aanmelding bij Shepherds Oud.",
+        ? "Thanks for registering with Shepherds Oud Care."
+        : "Bedankt voor uw aanmelding bij Shepherds Oud Care.",
       eyebrow: en ? "Waitlist" : "Wachtlijst",
       title: en ? "You're on the list" : "U staat op de lijst",
       thanks: en
-        ? "Thanks for registering with Shepherds Oud."
-        : "Bedankt voor uw aanmelding bij Shepherds Oud.",
+        ? "Thanks for registering with Shepherds Oud Care."
+        : "Bedankt voor uw aanmelding bij Shepherds Oud Care.",
       facility: en
         ? "We'll contact you when provider onboarding starts in your region."
         : "Wij nemen contact op wanneer onboarding voor aanbieders in uw regio start.",
       family: en
         ? "We'll contact you when guided matching starts in your region."
         : "Wij nemen contact op zodra begeleide matching in uw regio start.",
-      cta: en ? "Visit Shepherds Oud" : "Bezoek Shepherds Oud",
+      cta: en ? "Visit Shepherds Oud Care" : "Bezoek Shepherds Oud Care",
       footerNote: en
         ? "You don't need to do anything until we email you."
         : "U hoeft niets te doen totdat wij u mailen."
     },
     familyMagicLink: {
-      subject: en ? "Open your Shepherds Oud care dashboard" : "Open uw Shepherds Oud zorgdashboard",
+      subject: en ? "Open your Shepherds Oud Care care dashboard" : "Open uw Shepherds Oud Care zorgdashboard",
       preheader: en
-        ? "Your secure sign-in link for the Shepherds Oud care dashboard."
-        : "Uw beveiligde inloglink voor het Shepherds Oud zorgdashboard.",
+        ? "Your secure sign-in link for the Shepherds Oud Care care dashboard."
+        : "Uw beveiligde inloglink voor het Shepherds Oud Care zorgdashboard.",
       eyebrow: en ? "Care dashboard sign-in" : "Inloggen zorgdashboard",
       title: en ? "Open your care dashboard" : "Open uw zorgdashboard",
       paragraphs: en
@@ -109,10 +109,10 @@ export function emailCopy(locale: Locale) {
         : "Deze link verloopt over 15 minuten. Heeft u deze niet aangevraagd? Dan kunt u deze e-mail negeren."
     },
     providerMagicLink: {
-      subject: en ? "Sign in to Shepherds Oud" : "Inloggen bij Shepherds Oud",
+      subject: en ? "Sign in to Shepherds Oud Care" : "Inloggen bij Shepherds Oud Care",
       preheader: en
-        ? "Your secure sign-in link for the Shepherds Oud provider dashboard."
-        : "Uw beveiligde inloglink voor het Shepherds Oud aanbiedersdashboard.",
+        ? "Your secure sign-in link for the Shepherds Oud Care provider dashboard."
+        : "Uw beveiligde inloglink voor het Shepherds Oud Care aanbiedersdashboard.",
       eyebrow: en ? "Provider sign-in" : "Inloggen aanbieder",
       title: en ? "Open your provider dashboard" : "Open uw aanbiedersdashboard",
       paragraphs: en
@@ -235,8 +235,8 @@ export function emailCopy(locale: Locale) {
         ? "A Care Guide reopened a family referral to your facility."
         : "Een Care Guide heeft een familiedoorverwijzing naar uw locatie heropend.",
       newBody: en
-        ? "You have a new possible referral via Shepherds Oud."
-        : "U heeft een nieuwe mogelijke doorverwijzing via Shepherds Oud.",
+        ? "You have a new possible referral via Shepherds Oud Care."
+        : "U heeft een nieuwe mogelijke doorverwijzing via Shepherds Oud Care.",
       details: (area: string, care: string, urgency: string) =>
         en
           ? `Area: ${area}. Care need: ${care}. Urgency: ${urgency}.`
@@ -257,8 +257,8 @@ export function emailCopy(locale: Locale) {
         : "Een familie heeft een terugbelafspraak gevraagd",
       body: (family: string, area: string, isVisit: boolean) =>
         en
-          ? `${family} from ${area} requested ${isVisit ? "a visit" : "a callback"} via Shepherds Oud.`
-          : `${family} uit ${area} heeft via Shepherds Oud ${isVisit ? "een bezoek" : "een terugbelafspraak"} aangevraagd.`,
+          ? `${family} from ${area} requested ${isVisit ? "a visit" : "a callback"} via Shepherds Oud Care.`
+          : `${family} uit ${area} heeft via Shepherds Oud Care ${isVisit ? "een bezoek" : "een terugbelafspraak"} aangevraagd.`,
       details: (care: string, urgency: string) =>
         en
           ? `Care need: ${care}. Urgency: ${urgency}.`
@@ -270,7 +270,7 @@ export function emailCopy(locale: Locale) {
     providerStatus: {
       eyebrow: en ? "Status update" : "Statusupdate",
       cta: en ? "Open provider dashboard" : "Open aanbiedersdashboard",
-      footerTagline: (tagline: string) => `Shepherds Oud — ${tagline}`,
+      footerTagline: (tagline: string) => `Shepherds Oud Care — ${tagline}`,
       visitTitle: en
         ? "Visit or callback confirmed"
         : "Bezoek of terugbelafspraak bevestigd",
@@ -301,18 +301,18 @@ export function emailCopy(locale: Locale) {
     },
     providerInvite: {
       subject: en
-        ? "You're invited to onboard your facility on Shepherds Oud"
-        : "U bent uitgenodigd om uw locatie te onboarden bij Shepherds Oud",
+        ? "You're invited to onboard your facility on Shepherds Oud Care"
+        : "U bent uitgenodigd om uw locatie te onboarden bij Shepherds Oud Care",
       preheader: en
-        ? "Finish your Shepherds Oud provider onboarding."
-        : "Rond uw Shepherds Oud aanbieder-onboarding af.",
+        ? "Finish your Shepherds Oud Care provider onboarding."
+        : "Rond uw Shepherds Oud Care aanbieder-onboarding af.",
       eyebrow: en ? "Provider invitation" : "Uitnodiging aanbieder",
       title: en ? "Set up your facility profile" : "Richt uw locatieprofiel in",
       facilityFallback: en ? "your facility" : "uw locatie",
       invited: (facility: string) =>
         en
-          ? `Your facility, ${facility}, is invited to finish provider onboarding on Shepherds Oud.`
-          : `Uw locatie, ${facility}, is uitgenodigd om de aanbieder-onboarding bij Shepherds Oud af te ronden.`,
+          ? `Your facility, ${facility}, is invited to finish provider onboarding on Shepherds Oud Care.`
+          : `Uw locatie, ${facility}, is uitgenodigd om de aanbieder-onboarding bij Shepherds Oud Care af te ronden.`,
       hint: en
         ? "Use the secure link below to sign in with this email address and set up your facility profile."
         : "Gebruik de beveiligde link hieronder om in te loggen met dit e-mailadres en uw locatieprofiel in te richten.",
@@ -326,21 +326,21 @@ export function emailCopy(locale: Locale) {
     waitlistLaunch: {
       family: {
         subject: en
-          ? "Shepherds Oud is live — start your guided care intake"
-          : "Shepherds Oud is live — start uw begeleide intake",
+          ? "Shepherds Oud Care is live — start your guided care intake"
+          : "Shepherds Oud Care is live — start uw begeleide intake",
         preheader: en
-          ? "Guided care navigation is now open on Shepherds Oud."
-          : "Begeleide zorgnavigatie is nu open op Shepherds Oud.",
+          ? "Guided care navigation is now open on Shepherds Oud Care."
+          : "Begeleide zorgnavigatie is nu open op Shepherds Oud Care.",
         eyebrow: en ? "We are live" : "Wij zijn live",
         title: en ? "Your guided care journey can begin" : "Uw begeleide zorgreis kan beginnen",
         body: en
           ? [
-              "Shepherds Oud is now live. Guided care navigation is open across the Netherlands — for anyone whose mobility limits daily life.",
+              "Shepherds Oud Care is now live. Guided care navigation is open across the Netherlands — for anyone whose mobility limits daily life.",
               "You can start your care intake today. A dedicated Care Guide will personally review your situation, help prepare a care plan, and support you through matching, visits, and placement.",
               "Thank you for waiting with us — we are ready to help you take the next step."
             ]
           : [
-              "Shepherds Oud is nu live. Begeleide zorgnavigatie is open in Nederland — voor iedereen bij wie thuis wonen niet meer gaat of mobiliteit het dagelijks leven beperkt.",
+              "Shepherds Oud Care is nu live. Begeleide zorgnavigatie is open in Nederland — voor iedereen bij wie thuis wonen niet meer gaat of mobiliteit het dagelijks leven beperkt.",
               "U kunt vandaag uw zorgintake starten. Een vaste Care Guide beoordeelt uw situatie persoonlijk, helpt bij een zorgplan en begeleidt u bij matching, bezoeken en plaatsing.",
               "Bedankt dat u met ons heeft gewacht — wij helpen u graag met de volgende stap."
             ],
@@ -351,17 +351,17 @@ export function emailCopy(locale: Locale) {
       },
       facility: {
         subject: en
-          ? "Shepherds Oud is live — sign in to your facility dashboard"
-          : "Shepherds Oud is live — log in op uw locatiedashboard",
+          ? "Shepherds Oud Care is live — sign in to your facility dashboard"
+          : "Shepherds Oud Care is live — log in op uw locatiedashboard",
         preheader: en
-          ? "Provider onboarding is open on Shepherds Oud."
-          : "Aanbieder-onboarding is open op Shepherds Oud.",
+          ? "Provider onboarding is open on Shepherds Oud Care."
+          : "Aanbieder-onboarding is open op Shepherds Oud Care.",
         eyebrow: en ? "We are live" : "Wij zijn live",
         title: (name: string) =>
-          en ? `${name} can now list on Shepherds Oud` : `${name} kan nu vermelden op Shepherds Oud`,
+          en ? `${name} can now list on Shepherds Oud Care` : `${name} kan nu vermelden op Shepherds Oud Care`,
         intro: en
-          ? "Shepherds Oud is now live. Care facilities can sign in, list services, and receive matched family inquiries through the provider dashboard."
-          : "Shepherds Oud is nu live. Zorglocaties kunnen inloggen, diensten vermelden en gematchte familieaanvragen ontvangen via het aanbiedersdashboard.",
+          ? "Shepherds Oud Care is now live. Care facilities can sign in, list services, and receive matched family inquiries through the provider dashboard."
+          : "Shepherds Oud Care is nu live. Zorglocaties kunnen inloggen, diensten vermelden en gematchte familieaanvragen ontvangen via het aanbiedersdashboard.",
         named: (facility: string) =>
           en
             ? `${facility} can now complete facility onboarding and manage availability, inquiries, and visit requests in one place.`
@@ -381,17 +381,17 @@ export function emailCopy(locale: Locale) {
     waitlistAnnouncement: {
       greetingFallback: en ? "there" : "daar",
       facilityFallback: en ? "your facility" : "uw locatie",
-      eyebrow: en ? "Shepherds Oud update" : "Update van Shepherds Oud",
-      familyCta: en ? "Open Shepherds Oud" : "Open Shepherds Oud",
+      eyebrow: en ? "Shepherds Oud Care update" : "Update van Shepherds Oud Care",
+      familyCta: en ? "Open Shepherds Oud Care" : "Open Shepherds Oud Care",
       facilityCta: en ? "Open facility dashboard" : "Open locatiedashboard",
       footerNote: en
-        ? "You are receiving this because you joined the Shepherds Oud waitlist. Reply if you need help."
-        : "U ontvangt deze e-mail omdat u zich heeft aangemeld voor de Shepherds Oud-wachtlijst. Antwoord als u hulp nodig heeft."
+        ? "You are receiving this because you joined the Shepherds Oud Care waitlist. Reply if you need help."
+        : "U ontvangt deze e-mail omdat u zich heeft aangemeld voor de Shepherds Oud Care-wachtlijst. Antwoord als u hulp nodig heeft."
     },
     announcement: {
       greetingFallback: en ? "there" : "daar",
       facilityFallback: en ? "your facility" : "uw locatie",
-      eyebrow: en ? "Shepherds Oud update" : "Update van Shepherds Oud",
+      eyebrow: en ? "Shepherds Oud Care update" : "Update van Shepherds Oud Care",
       familyCta: en ? "Open your care dashboard" : "Open uw zorgdashboard",
       providerCta: en ? "Open facility dashboard" : "Open locatiedashboard",
       facilityLine: (facilityName: string) =>
@@ -399,17 +399,17 @@ export function emailCopy(locale: Locale) {
       footerNote: (kind: "FAMILY" | "FACILITY" | "PROVIDER") => {
         if (kind === "PROVIDER") {
           return en
-            ? "You are receiving this as a care provider on Shepherds Oud. Reply if you need help."
-            : "U ontvangt deze e-mail als zorgaanbieder op Shepherds Oud. Antwoord als u hulp nodig heeft.";
+            ? "You are receiving this as a care provider on Shepherds Oud Care. Reply if you need help."
+            : "U ontvangt deze e-mail als zorgaanbieder op Shepherds Oud Care. Antwoord als u hulp nodig heeft.";
         }
         if (kind === "FACILITY") {
           return en
-            ? "You are receiving this because you joined the Shepherds Oud waitlist as a facility. Reply if you need help."
-            : "U ontvangt deze e-mail omdat u zich als locatie heeft aangemeld voor de Shepherds Oud-wachtlijst. Antwoord als u hulp nodig heeft.";
+            ? "You are receiving this because you joined the Shepherds Oud Care waitlist as a facility. Reply if you need help."
+            : "U ontvangt deze e-mail omdat u zich als locatie heeft aangemeld voor de Shepherds Oud Care-wachtlijst. Antwoord als u hulp nodig heeft.";
         }
         return en
-          ? "You are receiving this because you are connected with Shepherds Oud. Reply if you need help."
-          : "U ontvangt deze e-mail omdat u verbonden bent met Shepherds Oud. Antwoord als u hulp nodig heeft.";
+          ? "You are receiving this because you are connected with Shepherds Oud Care. Reply if you need help."
+          : "U ontvangt deze e-mail omdat u verbonden bent met Shepherds Oud Care. Antwoord als u hulp nodig heeft.";
       }
     }
   };

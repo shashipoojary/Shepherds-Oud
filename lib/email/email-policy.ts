@@ -26,5 +26,5 @@ export function shouldSendFamilyStatusEmail(status: string) {
 export type AdvisorAlertKind = "new_intake";
 
 export function advisorAlertSubject(kind: AdvisorAlertKind, detail: string) {
-  return kind === "new_intake" ? `New care intake: ${detail}` : `Shepherds Oud alert: ${detail}`;
+  return kind === "new_intake" ? `New care intake: ${detail}` : `Shepherds Oud Care alert: ${detail}`;
 }

@@ -136,7 +136,7 @@ export async function confirmMatchSlot(input: {
     providerId: ctx.match.providerId,
     event: {
       title: `${kind === "VISIT" ? "Visit" : "Callback"} — ${ctx.match.intake.contactName}`,
-      description: `Shepherds Oud ${kind === "VISIT" ? "facility visit" : "callback"} with ${ctx.match.intake.contactName} (${ctx.match.intake.email}).`,
+      description: `Shepherds Oud Care ${kind === "VISIT" ? "facility visit" : "callback"} with ${ctx.match.intake.contactName} (${ctx.match.intake.email}).`,
       startsAt,
       endsAt,
       attendeeEmail: ctx.match.intake.email

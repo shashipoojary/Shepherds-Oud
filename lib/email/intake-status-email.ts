@@ -81,7 +81,7 @@ export async function sendIntakeStatusEmail(input: {
 
   await sendBrevoEmail({
     to: [{ email: input.email, name: input.contactName }],
-    subject: `${content.title} — Shepherds Oud`,
+    subject: `${content.title} — Shepherds Oud Care`,
     htmlContent,
     textContent: `${content.title}. ${content.paragraphs.join(" ")} Dashboard: ${dashboardUrl}`
   });

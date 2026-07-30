@@ -8,7 +8,7 @@ import { noIndexMetadata } from "@/lib/config/seo";
 
 export const metadata = {
   ...noIndexMetadata,
-  title: "Hospital login | Shepherds Oud"
+  title: "Hospital login | Shepherds Oud Care"
 };
 
 export default async function HospitalLoginPage() {
@@ -26,8 +26,8 @@ export default async function HospitalLoginPage() {
           </h1>
           <p className="mt-2 text-sm leading-relaxed text-ink/70">
             {en
-              ? "Use the email that received your Shepherds Oud hospital invite."
-              : "Gebruik het e-mailadres waarop u de Shepherds Oud-ziekenhuisuitnodiging heeft ontvangen."}
+              ? "Use the email that received your Shepherds Oud Care hospital invite."
+              : "Gebruik het e-mailadres waarop u de Shepherds Oud Care-ziekenhuisuitnodiging heeft ontvangen."}
           </p>
 
           <div className="mt-6">

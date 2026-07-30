@@ -277,8 +277,8 @@ export function HospitalDashboardClient() {
             />
             <span>
               {en
-                ? "The family (or legal representative) consents to Shepherds Oud processing this referral for care navigation."
-                : "De familie (of wettelijke vertegenwoordiger) stemt in met verwerking van deze verwijzing door Shepherds Oud voor zorgnavigatie."}
+                ? "The family (or legal representative) consents to Shepherds Oud Care processing this referral for care navigation."
+                : "De familie (of wettelijke vertegenwoordiger) stemt in met verwerking van deze verwijzing door Shepherds Oud Care voor zorgnavigatie."}
             </span>
           </label>
 

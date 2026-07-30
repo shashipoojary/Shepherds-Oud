@@ -34,7 +34,7 @@ export async function sendAdvisorAlertEmail(input: {
   });
 
   return sendBrevoEmail({
-    to: [{ email: advisorEmail, name: "Shepherds Oud Care Guide team" }],
+    to: [{ email: advisorEmail, name: "Shepherds Oud Care team" }],
     subject,
     htmlContent,
     textContent: `${subject}. ${input.paragraphs.join(" ")} ${input.ctaUrl || adminUrl}`

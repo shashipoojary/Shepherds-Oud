@@ -25,8 +25,8 @@ function errorMessage(
       ? ui.auth.providerAccountNeeded
       : isHospital
         ? locale === "en"
-          ? "You need a hospital account for this page. Use an invite link from Shepherds Oud."
-          : "U heeft een ziekenhuisaccount nodig voor deze pagina. Gebruik een uitnodigingslink van Shepherds Oud."
+          ? "You need a hospital account for this page. Use an invite link from Shepherds Oud Care."
+          : "U heeft een ziekenhuisaccount nodig voor deze pagina. Gebruik een uitnodigingslink van Shepherds Oud Care."
         : ui.auth.adminOnly;
   }
 

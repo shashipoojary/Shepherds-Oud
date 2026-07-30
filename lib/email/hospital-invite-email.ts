@@ -20,24 +20,24 @@ export async function sendHospitalInviteEmail(input: {
 
   const copy = en
     ? {
-        subject: `You're invited to refer families on Shepherds Oud`,
-        preheader: `Join ${input.hospitalName} on Shepherds Oud`,
+        subject: `You're invited to refer families on Shepherds Oud Care`,
+        preheader: `Join ${input.hospitalName} on Shepherds Oud Care`,
         eyebrow: "Hospital referral access",
         title: "You're invited",
         invited: (name: string) =>
-          `Shepherds Oud invited you to submit care referrals for ${name}.`,
+          `Shepherds Oud Care invited you to submit care referrals for ${name}.`,
         hint: "Sign in with this email to open your hospital referral dashboard.",
         expires: (when: string) => `This invite expires on ${when}.`,
         cta: "Open hospital login",
         footerNote: "If you did not expect this invite, you can ignore this email."
       }
     : {
-        subject: `U bent uitgenodigd om families te verwijzen via Shepherds Oud`,
-        preheader: `Sluit aan bij ${input.hospitalName} op Shepherds Oud`,
+        subject: `U bent uitgenodigd om families te verwijzen via Shepherds Oud Care`,
+        preheader: `Sluit aan bij ${input.hospitalName} op Shepherds Oud Care`,
         eyebrow: "Ziekenhuisverwijzing",
         title: "U bent uitgenodigd",
         invited: (name: string) =>
-          `Shepherds Oud heeft u uitgenodigd om zorgverwijzingen in te dienen voor ${name}.`,
+          `Shepherds Oud Care heeft u uitgenodigd om zorgverwijzingen in te dienen voor ${name}.`,
         hint: "Log in met dit e-mailadres om uw ziekenhuis-verwijzingsdashboard te openen.",
         expires: (when: string) => `Deze uitnodiging verloopt op ${when}.`,
         cta: "Open ziekenhuis-login",
