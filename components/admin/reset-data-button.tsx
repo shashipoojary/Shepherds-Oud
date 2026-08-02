@@ -19,7 +19,11 @@ export function AdminResetDataButton() {
     setPending(true);
 
     try {
-      const response = await fetch("/api/admin/reset-data", { method: "POST" });
+      const response = await fetch("/api/admin/reset-data", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirmPhrase: "RESET" })
+      });
       const data = (await response.json()) as { error?: string; deleted?: Record<string, number> };
 
       if (!response.ok) {

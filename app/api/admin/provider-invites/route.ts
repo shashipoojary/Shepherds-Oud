@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { getServerSession, getUserRole } from "@/lib/auth/server";
-import { handleApiError, jsonError, jsonOk, readJsonBody } from "@/lib/core/api-helpers";
+import { handleApiError, jsonError, jsonOk, rateLimitResponse, readJsonBody } from "@/lib/core/api-helpers";
 import { prisma } from "@/lib/core/db";
 import { sendProviderInviteEmail } from "@/lib/email/provider-invite-email";
 import { getProviderInviteEligibility } from "@/lib/providers/invite-access";
@@ -13,6 +13,9 @@ const inviteSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  const limited = rateLimitResponse(request, "admin-provider-invite", 30, 60 * 60 * 1000);
+  if (limited) return limited;
+
   try {
     const session = await getServerSession();
     if (!session || getUserRole(session) !== "ADMIN") {

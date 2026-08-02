@@ -1,29 +1,37 @@
 import { NextResponse } from "next/server";
 import { getLocale } from "@/lib/i18n/get-locale";
 import {
+  HOSPITAL_LOGIN_ERROR,
   hospitalLoginErrorFromAccessCode,
   hospitalLoginErrorMessage
 } from "@/lib/auth/hospital-login-errors";
 import { resolveHospitalLoginAccess } from "@/lib/hospitals/invite";
+import { handleApiError, jsonError, jsonOk, rateLimitResponse, readJsonBody } from "@/lib/core/api-helpers";
+
+export const runtime = "nodejs";
 
 export async function POST(request: Request) {
+  const limited = rateLimitResponse(request, "hospital-login-access", 30, 60 * 60 * 1000);
+  if (limited) return limited;
+
   try {
-    const body = (await request.json().catch(() => ({}))) as { email?: string; invite?: string };
+    const body = (await readJsonBody(request, 8_000)) as { email?: unknown; invite?: unknown };
     const locale = await getLocale();
-    const access = await resolveHospitalLoginAccess(body.email, body.invite);
+    const email = typeof body.email === "string" ? body.email : undefined;
+    const invite = typeof body.invite === "string" ? body.invite : undefined;
+    const access = await resolveHospitalLoginAccess(email, invite);
 
     if (!access.allowed) {
-      return NextResponse.json(
-        {
-          error: hospitalLoginErrorMessage(hospitalLoginErrorFromAccessCode(access.code), locale)
-        },
-        { status: 403 }
-      );
+      const accessCode = access.code ?? "not_found";
+      const message =
+        hospitalLoginErrorMessage(hospitalLoginErrorFromAccessCode(accessCode), locale) ||
+        hospitalLoginErrorMessage(HOSPITAL_LOGIN_ERROR.NOT_FOUND, locale) ||
+        "Access denied.";
+      return jsonError(message, 403);
     }
 
-    return NextResponse.json({ ok: true });
+    return jsonOk({ ok: true });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unable to check hospital login access.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return handleApiError(error, "hospital_login_access");
   }
 }

@@ -15,7 +15,7 @@ import { sendProviderStatusEmail } from "@/lib/email/provider-status-email";
 import { resolveProviderEmailLocale } from "@/lib/email/locale-from-intake";
 import { localizedOptionLabel, localizedOptionList } from "@/lib/i18n/labels-for-locale";
 import { familyRequestNote } from "@/lib/domain/match-status";
-import { handleApiError, jsonError, jsonOk, readJsonBody, runInBackground } from "@/lib/core/api-helpers";
+import { handleApiError, jsonError, jsonOk, rateLimitResponse, readJsonBody, runInBackground } from "@/lib/core/api-helpers";
 import { toSafeMatch } from "@/lib/serializers/match";
 import {
   appendMatchNotes,
@@ -35,11 +35,17 @@ export const runtime = "nodejs";
 /** Visit/callback scheduling (propose, confirm, alternate, cancel). Mounted here because
  * the nested `/schedule` route was not reliably picked up by the local Next.js watcher. */
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const limited = rateLimitResponse(request, "match-schedule", 60, 60 * 60 * 1000);
+  if (limited) return limited;
+
   const { id } = await params;
   return handleMatchSchedulePost(request, id);
 }
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const limited = rateLimitResponse(request, "match-update", 60, 60 * 60 * 1000);
+  if (limited) return limited;
+
   try {
     const session = await getServerSession();
     const { id } = await params;

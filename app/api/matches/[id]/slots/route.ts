@@ -1,6 +1,6 @@
 import { getServerSession, getUserRole } from "@/lib/auth/server";
 import { canAccessIntake } from "@/lib/auth/case-access";
-import { handleApiError, jsonError, jsonOk } from "@/lib/core/api-helpers";
+import { handleApiError, jsonError, jsonOk, rateLimitResponse } from "@/lib/core/api-helpers";
 import { prisma } from "@/lib/core/db";
 import { listProviderFreeSlots } from "@/lib/calendar/provider-calendar";
 import { getUserLinkedProvider } from "@/lib/providers/server";
@@ -8,6 +8,9 @@ import { getUserLinkedProvider } from "@/lib/providers/server";
 export const runtime = "nodejs";
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const limited = rateLimitResponse(request, "match-slots", 60, 60 * 1000);
+  if (limited) return limited;
+
   try {
     const session = await getServerSession();
     if (!session) return jsonError("Unauthorized", 401);

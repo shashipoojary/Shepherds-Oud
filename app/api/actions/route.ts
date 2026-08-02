@@ -1,11 +1,14 @@
 import { Prisma } from "@prisma/client";
 import { getServerSession, getUserRole } from "@/lib/auth/server";
 import { actionSchema } from "@/lib/validation/action";
-import { handleApiError, jsonError, jsonOk, readJsonBody } from "@/lib/core/api-helpers";
+import { handleApiError, jsonError, jsonOk, rateLimitResponse, readJsonBody } from "@/lib/core/api-helpers";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
+  const limited = rateLimitResponse(request, "actions-create", 120, 60 * 60 * 1000);
+  if (limited) return limited;
+
   try {
     const session = await getServerSession();
 

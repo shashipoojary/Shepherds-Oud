@@ -1,24 +1,32 @@
-import { NextResponse } from "next/server";
-import { prisma } from "@/lib/core/db";
 import { requireRole } from "@/lib/auth/server";
+import { handleApiError, jsonError, jsonOk, rateLimitResponse, readJsonBody } from "@/lib/core/api-helpers";
+import { prisma } from "@/lib/core/db";
 import { canTransitionWaitlistStatus, type WaitlistStatus } from "@/lib/domain/waitlist-status";
 import { summarizeProviderInviteEligibility } from "@/lib/providers/invite-access";
 
+export const runtime = "nodejs";
+
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const limited = rateLimitResponse(request, "waitlist-update", 60, 60 * 60 * 1000);
+  if (limited) return limited;
+
   try {
     await requireRole(["ADMIN"], "/admin");
     const { id } = await params;
-    const body = await request.json();
-    const status = body.status as WaitlistStatus | undefined;
+    const body = (await readJsonBody(request, 8_000)) as {
+      status?: unknown;
+      registrationVerified?: unknown;
+    };
+    const status = typeof body.status === "string" ? (body.status as WaitlistStatus) : undefined;
     const registrationVerified =
       typeof body.registrationVerified === "boolean" ? body.registrationVerified : undefined;
 
     if (status === undefined && registrationVerified === undefined) {
-      return NextResponse.json({ error: "Nothing to update." }, { status: 400 });
+      return jsonError("Nothing to update.", 400);
     }
 
     if (status !== undefined && !["NEW", "CONTACTED", "CONVERTED", "CLOSED"].includes(status)) {
-      return NextResponse.json({ error: "Invalid status." }, { status: 400 });
+      return jsonError("Invalid status.", 400);
     }
 
     const existing = await prisma.waitlistEntry.findUnique({
@@ -32,16 +40,13 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     });
 
     if (!existing) {
-      return NextResponse.json({ error: "Waitlist entry not found." }, { status: 404 });
+      return jsonError("Waitlist entry not found.", 404);
     }
 
     if (status !== undefined) {
       const currentStatus = existing.status as WaitlistStatus;
       if (!canTransitionWaitlistStatus(currentStatus, status)) {
-        return NextResponse.json(
-          { error: `Cannot change waitlist status from ${currentStatus} to ${status}.` },
-          { status: 409 }
-        );
+        return jsonError(`Cannot change waitlist status from ${currentStatus} to ${status}.`, 409);
       }
     }
 
@@ -51,12 +56,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       const hasInviteActivity = existing.providerInvites.some((invite) => invite.status !== "REVOKED");
       const locked = existing.status !== "NEW" || hasInviteActivity;
       if (locked) {
-        return NextResponse.json(
-          {
-            error:
-              "Registration verification cannot be undone after the facility is contacted or invited."
-          },
-          { status: 409 }
+        return jsonError(
+          "Registration verification cannot be undone after the facility is contacted or invited.",
+          409
         );
       }
     }
@@ -82,7 +84,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       entry.providerInvites
     );
 
-    return NextResponse.json({
+    return jsonOk({
       id: entry.id,
       status: entry.status,
       registrationVerified: entry.registrationVerified,
@@ -94,8 +96,6 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       providerInviteLockReason: inviteEligibility.lockReason || null
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unable to update waitlist entry.";
-    const status = message.includes("Forbidden") ? 403 : message.includes("Unauthorized") ? 401 : 500;
-    return NextResponse.json({ error: message }, { status });
+    return handleApiError(error, "waitlist_update");
   }
 }

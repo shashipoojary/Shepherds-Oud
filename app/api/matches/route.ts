@@ -84,6 +84,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const limited = rateLimitResponse(request, "matches-create", 60, 60 * 60 * 1000);
+  if (limited) return limited;
+
   try {
     const auth = await assertAdmin();
     if (auth.error) return auth.error;

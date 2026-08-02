@@ -1,4 +1,4 @@
-import { jsonError, jsonOk, handleApiError } from "@/lib/core/api-helpers";
+import { jsonError, jsonOk, handleApiError, rateLimitResponse, readJsonBody } from "@/lib/core/api-helpers";
 import { aggregateProviderPricesForCareTypes } from "@/lib/data/funding-estimate";
 import { compareBudgetToTypicalRange } from "@/lib/domain/funding-estimate";
 import { CARE_TYPE_OPTIONS, FUNDING_TYPE_OPTIONS } from "@/lib/domain/intake-field-utils";
@@ -18,8 +18,11 @@ function asStringArray(value: unknown, allowed: readonly string[]) {
 }
 
 export async function POST(request: Request) {
+  const limited = rateLimitResponse(request, "funding-estimate", 60, 60 * 60 * 1000);
+  if (limited) return limited;
+
   try {
-    const body = (await request.json()) as Body;
+    const body = (await readJsonBody(request, 8_000)) as Body;
     const careTypes = asStringArray(body.careTypes, CARE_TYPE_OPTIONS);
     const fundingTypes = asStringArray(body.fundingTypes, FUNDING_TYPE_OPTIONS);
     const budget = typeof body.budget === "string" ? body.budget.trim() : "";

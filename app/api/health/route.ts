@@ -1,11 +1,17 @@
 import { NextResponse } from "next/server";
+import { isCronAuthorized } from "@/lib/auth/cron";
+import { rateLimitResponse } from "@/lib/core/api-helpers";
 import { prisma } from "@/lib/core/db";
 import { getEnvHealth } from "@/lib/config/env";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-export async function GET() {
+export async function GET(request: Request) {
+  const limited = rateLimitResponse(request, "health", 60, 60 * 1000);
+  if (limited) return limited;
+
+  const detailed = isCronAuthorized(request);
   const env = getEnvHealth();
   let database = false;
 
@@ -22,9 +28,8 @@ export async function GET() {
   const status = healthy ? "ok" : database ? "degraded" : "down";
 
   let emailOutboxPending: number | null = null;
-  if (database) {
+  if (detailed && database) {
     try {
-      const { prisma } = await import("@/lib/core/db");
       emailOutboxPending = await prisma.emailOutbox.count({
         where: { status: { in: ["PENDING", "SENDING"] } }
       });
@@ -33,24 +38,32 @@ export async function GET() {
     }
   }
 
-  return NextResponse.json(
-    {
-      status,
-      checks: {
-        database,
-        env: env.ok,
-        email: env.emailConfigured,
-        careGuide: env.careGuideConfigured,
-        emailOutboxPending
-      },
-      missingEnv: env.missing,
-      timestamp: new Date().toISOString()
-    },
-    {
-      status: healthy ? 200 : database ? 200 : 503,
-      headers: {
-        "Cache-Control": "no-store"
+  const body = detailed
+    ? {
+        status,
+        checks: {
+          database,
+          env: env.ok,
+          email: env.emailConfigured,
+          careGuide: env.careGuideConfigured,
+          emailOutboxPending
+        },
+        missingEnv: env.missing,
+        timestamp: new Date().toISOString()
       }
+    : {
+        status,
+        checks: {
+          database,
+          env: env.ok
+        },
+        timestamp: new Date().toISOString()
+      };
+
+  return NextResponse.json(body, {
+    status: healthy ? 200 : database ? 200 : 503,
+    headers: {
+      "Cache-Control": "no-store"
     }
-  );
+  });
 }

@@ -1,5 +1,5 @@
 import { providerLoginErrorMessage } from "@/lib/auth/provider-login-errors";
-import { jsonError, jsonOk, handleApiError, readJsonBody } from "@/lib/core/api-helpers";
+import { jsonError, jsonOk, handleApiError, rateLimitResponse, readJsonBody } from "@/lib/core/api-helpers";
 import { resolveProviderLoginAccess } from "@/lib/providers/invite-access";
 import { getLocale } from "@/lib/i18n/get-locale";
 import { productUi } from "@/lib/i18n/ui";
@@ -7,6 +7,9 @@ import { productUi } from "@/lib/i18n/ui";
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
+  const limited = rateLimitResponse(request, "provider-login-access", 30, 60 * 60 * 1000);
+  if (limited) return limited;
+
   try {
     const locale = await getLocale();
     const ui = productUi(locale);

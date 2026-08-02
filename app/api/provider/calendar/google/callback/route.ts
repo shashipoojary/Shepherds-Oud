@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { getServerSession } from "@/lib/auth/server";
 import { prisma } from "@/lib/core/db";
 import { exchangeGoogleCalendarCode, googleCalendarAdapter } from "@/lib/calendar/google";
 import { verifyCalendarOAuthState } from "@/lib/calendar/oauth-state";
@@ -17,8 +18,13 @@ export async function GET(request: Request) {
     redirect("/provider?calendar=error");
   }
 
+  const session = await getServerSession();
+  if (!session) {
+    redirect("/provider?calendar=error");
+  }
+
   const verified = verifyCalendarOAuthState(state);
-  if (!verified || verified.platform !== "GOOGLE") {
+  if (!verified || verified.platform !== "GOOGLE" || verified.userId !== session.user.id) {
     redirect("/provider?calendar=error");
   }
 

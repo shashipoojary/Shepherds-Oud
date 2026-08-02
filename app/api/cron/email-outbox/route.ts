@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isCronAuthorized } from "@/lib/auth/cron";
 import { processEmailOutboxBatch } from "@/lib/email/email-outbox";
 
 export const runtime = "nodejs";
@@ -12,9 +13,7 @@ export const dynamic = "force-dynamic";
  * this cron only retries failed/pending jobs.
  */
 export async function GET(request: Request) {
-  const authorization = request.headers.get("authorization");
-
-  if (!process.env.CRON_SECRET?.trim() || authorization !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!isCronAuthorized(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

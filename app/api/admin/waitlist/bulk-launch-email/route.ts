@@ -116,6 +116,9 @@ export async function PUT(request: Request) {
   try {
     await requireRole(["ADMIN"], "/admin");
 
+    const limited = rateLimitResponse(request, "waitlist-announcement-bulk", 4, 60 * 60 * 1000);
+    if (limited) return limited;
+
     const body = (await readJsonBody(request)) as { confirmPhrase?: string };
     if (body.confirmPhrase !== WAITLIST_LAUNCH_CONFIRM_PHRASE && body.confirmPhrase !== "SEND LAUNCH EMAILS") {
       return jsonError(`Type ${WAITLIST_LAUNCH_CONFIRM_PHRASE} to confirm this bulk send.`, 400);

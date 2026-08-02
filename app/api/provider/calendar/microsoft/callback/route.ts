@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { getServerSession } from "@/lib/auth/server";
 import { prisma } from "@/lib/core/db";
 import { exchangeMicrosoftCalendarCode, microsoftCalendarAdapter } from "@/lib/calendar/microsoft";
 import { verifyCalendarOAuthState } from "@/lib/calendar/oauth-state";
@@ -17,8 +18,13 @@ export async function GET(request: Request) {
     redirect("/provider?calendar=error");
   }
 
+  const session = await getServerSession();
+  if (!session) {
+    redirect("/provider?calendar=error");
+  }
+
   const verified = verifyCalendarOAuthState(state);
-  if (!verified || verified.platform !== "MICROSOFT") {
+  if (!verified || verified.platform !== "MICROSOFT" || verified.userId !== session.user.id) {
     redirect("/provider?calendar=error");
   }
 
