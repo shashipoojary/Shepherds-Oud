@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Analytics } from "@vercel/analytics/next";
 import { DM_Sans, Outfit } from "next/font/google";
 import { LocaleProvider } from "@/components/i18n/locale-provider";
 import { PrelaunchProvider } from "@/components/layout/prelaunch-context";
@@ -42,6 +43,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
         <LocaleProvider initialLocale={locale}>
           <PrelaunchProvider value={isPrelaunch}>{children}</PrelaunchProvider>
         </LocaleProvider>
+        <Analytics />
       </body>
     </html>
   );

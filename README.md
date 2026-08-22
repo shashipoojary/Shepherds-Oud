@@ -68,6 +68,7 @@ The app is designed to be simple, calm, mobile-first, and usable by older family
 ## API Routes
 
 - `GET /api/health` - health check for monitoring.
+- `GET /api/cron/db-ping` - Neon keep-alive ping (cron auth; use with an external 10‑minute scheduler on Vercel Hobby).
 - `POST /api/intakes` - create a family intake.
 - `GET /api/intakes/[id]` - fetch an intake.
 - `PATCH /api/intakes/[id]` - update intake status and admin fields.
@@ -192,6 +193,15 @@ Create a Neon project, then get:
 - `DIRECT_URL` from the direct connection string.
 
 Use the pooled URL for app runtime traffic and the direct URL for Prisma migrations.
+
+Neon’s free tier scales the database down after a few minutes with no queries. Vercel **Hobby** cron jobs can only run **once per day** (more frequent schedules fail at deploy), so a 10‑minute Vercel cron is not available on the free plan.
+
+To keep Neon warm between visits, use a free external scheduler (e.g. [cron-job.org](https://cron-job.org)) every **10 minutes**:
+
+- URL: `GET https://<your-vercel-domain>/api/cron/db-ping`
+- Header: `Authorization: Bearer <CRON_SECRET>`
+
+That endpoint runs `SELECT 1` only — minimal cost and well within Hobby limits (~144 pings/day). Your existing daily Vercel crons (`retention`, `email-outbox`, `scheduling-expiry`) stay on once‑per‑day schedules in `vercel.json`.
 
 ### Better Auth
 
