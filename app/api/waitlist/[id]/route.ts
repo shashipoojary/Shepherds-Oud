@@ -1,4 +1,4 @@
-import { requireRole } from "@/lib/auth/server";
+import { assertApiRole } from "@/lib/auth/api-auth";
 import { handleApiError, jsonError, jsonOk, rateLimitResponse, readJsonBody } from "@/lib/core/api-helpers";
 import { prisma } from "@/lib/core/db";
 import { canTransitionWaitlistStatus, type WaitlistStatus } from "@/lib/domain/waitlist-status";
@@ -11,7 +11,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (limited) return limited;
 
   try {
-    await requireRole(["ADMIN"], "/admin");
+    const auth = await assertApiRole(["ADMIN"]);
+    if (auth.error) return auth.error;
+
     const { id } = await params;
     const body = (await readJsonBody(request, 8_000)) as {
       status?: unknown;

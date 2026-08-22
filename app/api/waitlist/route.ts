@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { sendWaitlistConfirmationEmails } from "@/lib/email/waitlist-confirmation-email";
 import { getLocale } from "@/lib/i18n/get-locale";
 import { waitlistSchemaFor } from "@/lib/validation/waitlist";
-import { handleApiError, jsonError, jsonOk, rateLimitResponse, readJsonBody, runInBackground } from "@/lib/core/api-helpers";
+import { handleApiError, jsonError, jsonOk, rateLimitResponse, readJsonBody, runInBackground, databaseUnavailableResponse } from "@/lib/core/api-helpers";
 
 export const runtime = "nodejs";
 
@@ -19,6 +19,9 @@ export async function POST(request: Request) {
       return jsonError("Invalid registration", 400, { issues: parsed.error.flatten() });
     }
 
+    const unavailable = databaseUnavailableResponse();
+    if (unavailable) return unavailable;
+
     if (!process.env.DATABASE_URL) {
       runInBackground(
         () =>
@@ -34,6 +37,26 @@ export async function POST(request: Request) {
     }
 
     const { prisma } = await import("@/lib/core/db");
+    const normalizedEmail = parsed.data.email.trim().toLowerCase();
+    const existing = await prisma.waitlistEntry.findFirst({
+      where: { email: { equals: normalizedEmail, mode: "insensitive" }, type: parsed.data.type },
+      select: { id: true, preferredLocale: true }
+    });
+
+    if (existing) {
+      runInBackground(
+        () =>
+          sendWaitlistConfirmationEmails({
+            contactName: parsed.data.contactName,
+            email: parsed.data.email,
+            type: parsed.data.type,
+            locale: existing.preferredLocale === "en" ? "en" : "nl"
+          }),
+        "waitlist_confirmation_email"
+      );
+      return jsonOk({ id: existing.id, mode: "database", duplicate: true }, 200);
+    }
+
     const entry = await prisma.waitlistEntry.create({
       data: { ...parsed.data, preferredLocale: locale }
     });

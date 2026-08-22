@@ -1,8 +1,12 @@
 import { prisma } from "@/lib/core/db";
+import { isProduction } from "@/lib/config/env";
 import { logError, logInfo } from "@/lib/core/logger";
-import { sendAnnouncementEmail } from "@/lib/email/announcement-email";
-import { processBulkEmailQueue } from "@/lib/email/bulk-email-queue";
+import { buildAnnouncementBrevoPayload, sendAnnouncementEmail } from "@/lib/email/announcement-email";
+import { DEFAULT_BULK_BATCH_DELAY_MS, processBulkEmailQueue } from "@/lib/email/bulk-email-queue";
+import { createEmailOutboxJob } from "@/lib/email/email-outbox";
 import {
+  buildWaitlistFacilityLaunchPayload,
+  buildWaitlistFamilyLaunchPayload,
   sendWaitlistFacilityLaunchEmail,
   sendWaitlistFamilyLaunchEmail
 } from "@/lib/email/waitlist-launch-email";
@@ -166,32 +170,61 @@ async function markWaitlistContacted(id: string) {
 }
 
 export async function runWaitlistLaunchBulkSend(recipients: WaitlistLaunchRecipient[]) {
-  const result = await processBulkEmailQueue<WaitlistLaunchRecipient>(
-    recipients.map((recipient) => ({
-      item: recipient,
-      send: async (item) => {
-        if (item.type === "FAMILY") {
-          await sendWaitlistFamilyLaunchEmail({
+  const immediateCap = isProduction() ? 8 : recipients.length;
+  const immediateRecipients = recipients.slice(0, immediateCap);
+  const deferredRecipients = recipients.slice(immediateCap);
+
+  const result =
+    immediateRecipients.length > 0
+      ? await processBulkEmailQueue<WaitlistLaunchRecipient>(
+          immediateRecipients.map((recipient) => ({
+            item: recipient,
+            send: async (item) => {
+              if (item.type === "FAMILY") {
+                await sendWaitlistFamilyLaunchEmail({
+                  contactName: item.contactName,
+                  email: item.email,
+                  locale: item.preferredLocale
+                });
+              } else {
+                await sendWaitlistFacilityLaunchEmail({
+                  contactName: item.contactName,
+                  email: item.email,
+                  facilityName: item.facilityName,
+                  locale: item.preferredLocale
+                });
+              }
+
+              await markWaitlistContacted(item.id);
+            }
+          })),
+          {
+            context: "waitlist_launch_bulk",
+            delayMs: isProduction() ? 0 : DEFAULT_BULK_BATCH_DELAY_MS
+          }
+        )
+      : { sent: 0, failed: 0, total: 0, errors: [] as Array<{ id: string; email: string; message: string }> };
+
+  let queuedToOutbox = 0;
+  for (const item of deferredRecipients) {
+    const payload =
+      item.type === "FAMILY"
+        ? await buildWaitlistFamilyLaunchPayload({
             contactName: item.contactName,
             email: item.email,
             locale: item.preferredLocale
-          });
-        } else {
-          await sendWaitlistFacilityLaunchEmail({
+          })
+        : await buildWaitlistFacilityLaunchPayload({
             contactName: item.contactName,
             email: item.email,
             facilityName: item.facilityName,
             locale: item.preferredLocale
           });
-        }
+    const job = await createEmailOutboxJob(payload);
+    if (job?.id) queuedToOutbox += 1;
+  }
 
-        await markWaitlistContacted(item.id);
-      }
-    })),
-    { context: "waitlist_launch_bulk" }
-  );
-
-  logInfo("waitlist_launch_bulk_complete", result);
+  logInfo("waitlist_launch_bulk_complete", { ...result, queuedToOutbox, deferred: deferredRecipients.length });
 
   if (result.errors.length) {
     logError("waitlist_launch_bulk_partial_failure", {
@@ -200,7 +233,7 @@ export async function runWaitlistLaunchBulkSend(recipients: WaitlistLaunchRecipi
     });
   }
 
-  return result;
+  return { ...result, queuedToOutbox, deferred: deferredRecipients.length };
 }
 
 export async function runWaitlistAnnouncementBulkSend(input: {
@@ -209,29 +242,58 @@ export async function runWaitlistAnnouncementBulkSend(input: {
   message: string;
   markNewAsContacted?: boolean;
 }) {
-  const result = await processBulkEmailQueue<WaitlistLaunchRecipient>(
-    input.recipients.map((recipient) => ({
-      item: recipient,
-      send: async (item) => {
-        await sendAnnouncementEmail({
-          email: item.email,
-          contactName: item.contactName,
-          facilityName: item.facilityName,
-          kind: item.type,
-          subject: input.subject,
-          message: input.message,
-          locale: item.preferredLocale
-        });
+  const immediateCap = isProduction() ? 8 : input.recipients.length;
+  const immediateRecipients = input.recipients.slice(0, immediateCap);
+  const deferredRecipients = input.recipients.slice(immediateCap);
 
-        if (input.markNewAsContacted) {
-          await markWaitlistContacted(item.id);
-        }
-      }
-    })),
-    { context: "waitlist_announcement_bulk" }
-  );
+  const result =
+    immediateRecipients.length > 0
+      ? await processBulkEmailQueue<WaitlistLaunchRecipient>(
+          immediateRecipients.map((recipient) => ({
+            item: recipient,
+            send: async (item) => {
+              await sendAnnouncementEmail({
+                email: item.email,
+                contactName: item.contactName,
+                facilityName: item.facilityName,
+                kind: item.type,
+                subject: input.subject,
+                message: input.message,
+                locale: item.preferredLocale
+              });
 
-  logInfo("waitlist_announcement_bulk_complete", result);
+              if (input.markNewAsContacted) {
+                await markWaitlistContacted(item.id);
+              }
+            }
+          })),
+          {
+            context: "waitlist_announcement_bulk",
+            delayMs: isProduction() ? 0 : DEFAULT_BULK_BATCH_DELAY_MS
+          }
+        )
+      : { sent: 0, failed: 0, total: 0, errors: [] as Array<{ id: string; email: string; message: string }> };
+
+  let queuedToOutbox = 0;
+  for (const item of deferredRecipients) {
+    const payload = await buildAnnouncementBrevoPayload({
+      email: item.email,
+      contactName: item.contactName,
+      facilityName: item.facilityName,
+      kind: item.type,
+      subject: input.subject,
+      message: input.message,
+      locale: item.preferredLocale
+    });
+    const job = await createEmailOutboxJob(payload);
+    if (job?.id) queuedToOutbox += 1;
+  }
+
+  logInfo("waitlist_announcement_bulk_complete", {
+    ...result,
+    queuedToOutbox,
+    deferred: deferredRecipients.length
+  });
 
   if (result.errors.length) {
     logError("waitlist_announcement_bulk_partial_failure", {
@@ -240,5 +302,5 @@ export async function runWaitlistAnnouncementBulkSend(input: {
     });
   }
 
-  return result;
+  return { ...result, queuedToOutbox, deferred: deferredRecipients.length };
 }

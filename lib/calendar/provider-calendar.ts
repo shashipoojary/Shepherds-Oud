@@ -2,6 +2,7 @@ import { prisma } from "@/lib/core/db";
 import {
   hasGoogleCalendarOAuth,
   hasMicrosoftCalendarOAuth,
+  isCalendarMockModeAllowed,
   isCalendarSchedulingEnabled
 } from "@/lib/calendar/config";
 import { googleCalendarAdapter, refreshGoogleAccessToken } from "@/lib/calendar/google";
@@ -47,9 +48,7 @@ export async function providerHasActiveCalendar(providerId: string) {
   if (!isCalendarSchedulingEnabled()) return false;
   const settings = await getOrCreateBookingSettings(providerId);
   if (!settings.activeCalendarConnectionId) {
-    // Mock mode: treat as "connected" for slot generation when OAuth not configured,
-    // so the non-blind flow can be tested locally.
-    if (!hasGoogleCalendarOAuth() && !hasMicrosoftCalendarOAuth()) {
+    if (isCalendarMockModeAllowed()) {
       return true;
     }
     return false;
@@ -121,7 +120,7 @@ export async function listProviderFreeSlots(input: {
   }
 
   if (!settings.activeCalendarConnectionId) {
-    if (!hasGoogleCalendarOAuth() && !hasMicrosoftCalendarOAuth()) {
+    if (isCalendarMockModeAllowed()) {
       const busy = mockBusyIntervals(timeMin, timeMax);
       const slots = buildAvailableSlots({
         timeMin,
@@ -179,7 +178,7 @@ export async function createProviderCalendarEvent(input: {
 }): Promise<{ eventId: string; platform: CalendarPlatform } | null> {
   const settings = await getOrCreateBookingSettings(input.providerId);
   if (!settings.activeCalendarConnectionId) {
-    if (!hasGoogleCalendarOAuth() && !hasMicrosoftCalendarOAuth()) {
+    if (isCalendarMockModeAllowed()) {
       return { eventId: `mock_${Date.now()}`, platform: "GOOGLE" };
     }
     return null;

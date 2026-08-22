@@ -13,7 +13,7 @@ import {
 } from "@/lib/domain/provider-verification";
 import { isProviderProfileComplete } from "@/lib/providers/completeness";
 import { createMatchSchema } from "@/lib/validation/match";
-import { handleApiError, jsonError, jsonOk, rateLimitResponse, readJsonBody } from "@/lib/core/api-helpers";
+import { handleApiError, jsonError, jsonOk, rateLimitResponse, readJsonBody, databaseUnavailableResponse } from "@/lib/core/api-helpers";
 import { toSafeMatch } from "@/lib/serializers/match";
 import { appendMatchNotes } from "@/lib/domain/match-transitions";
 import {
@@ -57,6 +57,8 @@ export async function GET(request: Request) {
     }
 
     if (!process.env.DATABASE_URL) {
+      const unavailable = databaseUnavailableResponse();
+      if (unavailable) return unavailable;
       return jsonOk([]);
     }
 

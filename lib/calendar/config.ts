@@ -1,8 +1,15 @@
+import { isProduction } from "@/lib/config/env";
+
 export function isCalendarSchedulingEnabled() {
   const flag = process.env.CALENDAR_SCHEDULING_ENABLED;
   if (flag === "false" || flag === "0") return false;
   // Default on so local/dev can exercise the flow; OAuth still optional (mock free/busy).
   return true;
+}
+
+/** Mock free/busy slots — local dev only when OAuth is not configured. */
+export function isCalendarMockModeAllowed() {
+  return !isProduction() && !hasGoogleCalendarOAuth() && !hasMicrosoftCalendarOAuth();
 }
 
 export function hasGoogleCalendarOAuth() {

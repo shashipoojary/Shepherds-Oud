@@ -5,7 +5,7 @@ import type { Locale } from "@/lib/i18n/config";
 
 const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.BETTER_AUTH_URL || "https://shepherds-oud.vercel.app";
 
-export async function sendWaitlistFamilyLaunchEmail(input: {
+export async function buildWaitlistFamilyLaunchPayload(input: {
   contactName: string;
   email: string;
   locale?: Locale;
@@ -15,7 +15,7 @@ export async function sendWaitlistFamilyLaunchEmail(input: {
   const intakeUrl = `${appUrl}/family/intake`;
   const paragraphs = [emailGreeting(locale, input.contactName), ...copy.body];
 
-  return sendBrevoEmail({
+  return {
     to: [{ email: input.email, name: input.contactName }],
     subject: copy.subject,
     htmlContent: renderTransactionalEmail({
@@ -28,10 +28,10 @@ export async function sendWaitlistFamilyLaunchEmail(input: {
       footerNote: copy.footerNote
     }),
     textContent: [...paragraphs, `${copy.cta}: ${intakeUrl}`].join(" ")
-  });
+  };
 }
 
-export async function sendWaitlistFacilityLaunchEmail(input: {
+export async function buildWaitlistFacilityLaunchPayload(input: {
   contactName: string;
   email: string;
   facilityName?: string | null;
@@ -48,7 +48,7 @@ export async function sendWaitlistFacilityLaunchEmail(input: {
     copy.thanks
   ];
 
-  return sendBrevoEmail({
+  return {
     to: [{ email: input.email, name: input.contactName }],
     subject: copy.subject,
     htmlContent: renderTransactionalEmail({
@@ -61,5 +61,22 @@ export async function sendWaitlistFacilityLaunchEmail(input: {
       footerNote: copy.footerNote
     }),
     textContent: [...paragraphs, `${copy.cta}: ${providerLoginUrl}`].join(" ")
-  });
+  };
+}
+
+export async function sendWaitlistFamilyLaunchEmail(input: {
+  contactName: string;
+  email: string;
+  locale?: Locale;
+}) {
+  return sendBrevoEmail(await buildWaitlistFamilyLaunchPayload(input));
+}
+
+export async function sendWaitlistFacilityLaunchEmail(input: {
+  contactName: string;
+  email: string;
+  facilityName?: string | null;
+  locale?: Locale;
+}) {
+  return sendBrevoEmail(await buildWaitlistFacilityLaunchPayload(input));
 }

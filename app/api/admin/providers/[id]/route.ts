@@ -1,5 +1,5 @@
 import { getServerSession, getUserRole } from "@/lib/auth/server";
-import { handleApiError, jsonError, jsonOk, readJsonBody } from "@/lib/core/api-helpers";
+import { handleApiError, jsonError, jsonOk, rateLimitResponse, readJsonBody } from "@/lib/core/api-helpers";
 import { prisma } from "@/lib/core/db";
 import { adminProviderNotesSchema } from "@/lib/validation/admin-provider";
 
@@ -14,6 +14,9 @@ async function assertAdmin() {
 }
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
+  const limited = rateLimitResponse(request, "admin-provider-update", 60, 60 * 60 * 1000);
+  if (limited) return limited;
+
   try {
     const auth = await assertAdmin();
     if (auth.error) return auth.error;

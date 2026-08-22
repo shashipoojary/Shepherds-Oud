@@ -69,6 +69,19 @@ export async function sendAnnouncementEmail(input: {
   message: string;
   locale?: Locale;
 }) {
+  const payload = await buildAnnouncementBrevoPayload(input);
+  return sendBrevoEmail(payload);
+}
+
+export async function buildAnnouncementBrevoPayload(input: {
+  email: string;
+  contactName: string;
+  facilityName?: string | null;
+  kind: AnnouncementRecipientKind;
+  subject: string;
+  message: string;
+  locale?: Locale;
+}) {
   const locale = await resolveEmailLocale(input.locale);
   const content = renderAnnouncementTemplate({
     contactName: input.contactName,
@@ -88,12 +101,12 @@ export async function sendAnnouncementEmail(input: {
     footerNote: content.footerNote
   });
 
-  return sendBrevoEmail({
+  return {
     to: [{ email: input.email, name: input.contactName }],
     subject: input.subject,
     htmlContent,
     textContent: content.textContent
-  });
+  };
 }
 
 /** @deprecated Prefer sendAnnouncementEmail */

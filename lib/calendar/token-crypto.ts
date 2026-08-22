@@ -1,11 +1,8 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "crypto";
+import { resolveCalendarCryptoSecret } from "@/lib/config/secrets";
 
 function tokenSecret() {
-  const raw =
-    process.env.CALENDAR_TOKEN_SECRET ||
-    process.env.BETTER_AUTH_SECRET ||
-    "dev-calendar-token-secret-change-me";
-  return createHash("sha256").update(raw).digest();
+  return createHash("sha256").update(resolveCalendarCryptoSecret()).digest();
 }
 
 /** Encrypt a token for DB storage (AES-256-GCM). Format: iv:tag:ciphertext hex. */

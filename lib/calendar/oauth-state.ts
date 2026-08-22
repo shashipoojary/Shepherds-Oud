@@ -1,7 +1,8 @@
 import { createHmac, timingSafeEqual } from "crypto";
+import { resolveCalendarCryptoSecret } from "@/lib/config/secrets";
 
 function stateSecret() {
-  return process.env.CALENDAR_TOKEN_SECRET || process.env.BETTER_AUTH_SECRET || "dev-calendar-state";
+  return resolveCalendarCryptoSecret();
 }
 
 export function signCalendarOAuthState(payload: { providerId: string; userId: string; platform: string }) {

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/core/db";
 import { exchangeGoogleCalendarCode, googleCalendarAdapter } from "@/lib/calendar/google";
 import { verifyCalendarOAuthState } from "@/lib/calendar/oauth-state";
 import { encryptSecret } from "@/lib/calendar/token-crypto";
+import { getUserLinkedProvider } from "@/lib/providers/server";
 import { activateSoleCalendarConnection } from "@/lib/calendar/provider-calendar";
 
 export const runtime = "nodejs";
@@ -25,6 +26,11 @@ export async function GET(request: Request) {
 
   const verified = verifyCalendarOAuthState(state);
   if (!verified || verified.platform !== "GOOGLE" || verified.userId !== session.user.id) {
+    redirect("/provider?calendar=error");
+  }
+
+  const linked = await getUserLinkedProvider(session.user.id);
+  if (!linked || linked.id !== verified.providerId) {
     redirect("/provider?calendar=error");
   }
 

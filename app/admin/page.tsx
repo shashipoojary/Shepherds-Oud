@@ -3,7 +3,6 @@ import { AdminDashboardClient } from "@/components/admin/dashboard-client";
 import { getAdminDashboardData } from "@/lib/data/admin";
 import { requireRole } from "@/lib/auth/server";
 import { brand } from "@/lib/config/brand";
-import { isAdminDataResetEnabled } from "@/lib/config/env";
 import { noIndexMetadata } from "@/lib/config/seo";
 
 export const metadata = {
@@ -20,11 +19,7 @@ export default async function AdminPage() {
   return (
     <>
       <SiteHeader variant="admin" />
-      <AdminDashboardClient
-        data={data}
-        currentUserId={session.user.id}
-        allowDataReset={isAdminDataResetEnabled()}
-      />
+      <AdminDashboardClient data={data} currentUserId={session.user.id} />
     </>
   );
 }

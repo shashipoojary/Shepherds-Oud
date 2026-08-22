@@ -76,7 +76,6 @@ The app is designed to be simple, calm, mobile-first, and usable by older family
 - `PATCH /api/matches/[id]` - update a match workflow state.
 - `POST /api/actions` - log admin and provider actions.
 - `GET /api/admin/dashboard` - admin dashboard data.
-- `POST /api/admin/reset-data` - reset demo data.
 - `POST /api/admin/waitlist/bulk-launch-email` - send waitlist launch emails.
 - `GET /api/provider/me` - provider dashboard data.
 - `POST /api/waitlist` - create a family or facility waitlist entry.
@@ -202,6 +201,13 @@ To keep Neon warm between visits, use a free external scheduler (e.g. [cron-job.
 - Header: `Authorization: Bearer <CRON_SECRET>`
 
 That endpoint runs `SELECT 1` only — minimal cost and well within Hobby limits (~144 pings/day). Your existing daily Vercel crons (`retention`, `email-outbox`, `scheduling-expiry`) stay on once‑per‑day schedules in `vercel.json`.
+
+For faster email retries (especially after bulk announcements), also schedule an external job every **30 minutes**:
+
+- URL: `GET https://<your-vercel-domain>/api/cron/email-outbox`
+- Header: `Authorization: Bearer <CRON_SECRET>`
+
+The outbox worker processes up to 25 pending emails per run. Bulk sends queue overflow recipients to the outbox automatically in production.
 
 ### Better Auth
 

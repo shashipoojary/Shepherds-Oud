@@ -11,6 +11,7 @@
  */
 
 import { prisma } from "@/lib/core/db";
+import { isProduction } from "@/lib/config/env";
 import { logWarn } from "@/lib/core/logger";
 import { deliverBrevoEmail, resolveBrevoSender, type BrevoEmailPayload } from "@/lib/email/brevo-deliver";
 import {
@@ -45,6 +46,9 @@ export async function sendBrevoEmail(email: BrevoEmail) {
   const apiKey = process.env.BREVO_API_KEY;
 
   if (!apiKey || !sender) {
+    if (isProduction()) {
+      throw new Error("Brevo email is not configured (BREVO_API_KEY / BREVO_FROM_EMAIL).");
+    }
     return { mode: "demo" as const, skipped: true };
   }
 

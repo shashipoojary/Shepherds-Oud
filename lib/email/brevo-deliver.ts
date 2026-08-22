@@ -3,6 +3,8 @@
  * (outbox + immediate send). This module is used by the outbox worker too.
  */
 
+import { isProduction } from "@/lib/config/env";
+
 export type BrevoSender = {
   name: string;
   email: string;
@@ -36,6 +38,9 @@ export async function deliverBrevoEmail(email: BrevoEmailPayload): Promise<Brevo
   const sender = resolveBrevoSender();
 
   if (!apiKey || !sender) {
+    if (isProduction()) {
+      throw new Error("Brevo email is not configured (BREVO_API_KEY / BREVO_FROM_EMAIL).");
+    }
     return { mode: "demo" as const, skipped: true };
   }
 

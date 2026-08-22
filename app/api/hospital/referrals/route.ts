@@ -37,7 +37,10 @@ async function requireHospitalUser() {
   return { session, user, hospital: user.linkedHospital };
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const limited = rateLimitResponse(request, "hospital-referrals-read", 120, 60 * 1000);
+  if (limited) return limited;
+
   try {
     const auth = await requireHospitalUser();
     if (auth.error) return auth.error;

@@ -18,6 +18,7 @@ import { hospitalLoginErrorFromAccessCode, hospitalLoginErrorMessage } from "@/l
 import { toSafeSession } from "@/lib/serializers/session";
 import { toSafeUser } from "@/lib/serializers/user";
 import { syncSessionUser } from "@/lib/auth/sync-session-user";
+import { resolveAuthSecret } from "@/lib/config/secrets";
 
 const appUrl = process.env.BETTER_AUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
@@ -51,7 +52,7 @@ function isHospitalMagicLink(url: string) {
 }
 
 const authOptions = {
-  secret: process.env.BETTER_AUTH_SECRET || "development-only-better-auth-secret-change-in-production",
+  secret: resolveAuthSecret(),
   baseURL: appUrl,
   database: prismaAdapter(prisma, {
     provider: "postgresql"

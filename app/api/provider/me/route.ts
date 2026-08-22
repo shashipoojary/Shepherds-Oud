@@ -1,6 +1,6 @@
 import { getServerSession, getUserRole } from "@/lib/auth/server";
 import { logError } from "@/lib/core/logger";
-import { handleApiError, jsonError, jsonOk, readJsonBody } from "@/lib/core/api-helpers";
+import { handleApiError, jsonError, jsonOk, rateLimitResponse, readJsonBody } from "@/lib/core/api-helpers";
 import { providerSaveErrorMessage } from "@/lib/providers/errors";
 import { getProviderInquiries, getUserLinkedProvider, upsertProviderForUser } from "@/lib/providers/server";
 import { getProviderProfileMissingRequirements } from "@/lib/providers/completeness";
@@ -20,7 +20,10 @@ async function assertProviderAccess() {
   return { session };
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const limited = rateLimitResponse(request, "provider-me-read", 120, 60 * 1000);
+  if (limited) return limited;
+
   try {
     const auth = await assertProviderAccess();
     if (auth.error) return auth.error;
@@ -41,6 +44,9 @@ export async function GET() {
 }
 
 export async function PATCH(request: Request) {
+  const limited = rateLimitResponse(request, "provider-me-update", 30, 60 * 60 * 1000);
+  if (limited) return limited;
+
   try {
     const auth = await assertProviderAccess();
     if (auth.error) return auth.error;

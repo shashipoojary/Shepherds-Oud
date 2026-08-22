@@ -1,4 +1,5 @@
 import { after, NextResponse } from "next/server";
+import { isDatabaseConfigured, isProduction } from "@/lib/config/env";
 import { logError } from "@/lib/core/logger";
 import { checkRateLimit, getClientIp } from "@/lib/core/rate-limit";
 
@@ -10,6 +11,14 @@ export function jsonError(message: string, status = 400, extra?: Record<string, 
 
 export function jsonOk<T>(data: T, status = 200) {
   return NextResponse.json(data, { status });
+}
+
+/** Returns 503 in production when DATABASE_URL is missing; null otherwise (demo mode allowed locally). */
+export function databaseUnavailableResponse() {
+  if (!isDatabaseConfigured() && isProduction()) {
+    return jsonError("Service temporarily unavailable.", 503);
+  }
+  return null;
 }
 
 export function rateLimitResponse(request: Request, scope: string, limit: number, windowMs: number) {

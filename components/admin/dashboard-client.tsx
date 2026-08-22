@@ -10,7 +10,6 @@ import {
   Mail,
   X
 } from "lucide-react";
-import { AdminResetDataButton } from "@/components/admin/reset-data-button";
 import { ComposeAnnouncementBar } from "@/components/admin/compose-announcement";
 import { FamilyDetailPanel } from "@/components/admin/family-detail-panel";
 import { HospitalInvitePanel } from "@/components/admin/hospital-invite-panel";
@@ -158,13 +157,10 @@ function groupInquiriesByIntake(inquiries: InquiryEntry[]) {
 
 export function AdminDashboardClient({
   data: initialData,
-  currentUserId,
-  allowDataReset = false
+  currentUserId
 }: {
   data: AdminDashboardData;
   currentUserId: string;
-  /** When true, show the wipe button (ALLOW_ADMIN_DATA_RESET=true). */
-  allowDataReset?: boolean;
 }) {
   const [data, setData] = useState(initialData);
   const [tab, setTab] = useState<AdminTab>("families");
@@ -314,7 +310,6 @@ export function AdminDashboardClient({
           <HospitalInvitePanel onNotify={setMessage} />
           <ComposeAnnouncementBar onNotify={setMessage} />
           <RefreshButton onClick={() => void refreshDashboard()} loading={refreshing} />
-          {allowDataReset ? <AdminResetDataButton /> : null}
         </div>
       </header>
 

@@ -1,12 +1,13 @@
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth/config";
+import { sanitizeCallbackPath } from "@/lib/auth/routes";
 
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const requestedDestination = searchParams.get("callbackUrl");
+  const requestedDestination = sanitizeCallbackPath(searchParams.get("callbackUrl"));
   const invite = searchParams.get("invite");
   const callbackURL =
     requestedDestination?.startsWith("/login/continue")

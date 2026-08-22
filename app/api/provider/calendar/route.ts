@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
+import { isProduction } from "@/lib/config/env";
 import { getServerSession, getUserRole } from "@/lib/auth/server";
-import { handleApiError, jsonError, jsonOk, readJsonBody } from "@/lib/core/api-helpers";
+import { handleApiError, jsonError, jsonOk, rateLimitResponse, readJsonBody } from "@/lib/core/api-helpers";
 import { prisma } from "@/lib/core/db";
 import {
   hasGoogleCalendarOAuth,
   hasMicrosoftCalendarOAuth,
+  isCalendarMockModeAllowed,
   isCalendarSchedulingEnabled
 } from "@/lib/calendar/config";
 import { buildGoogleCalendarAuthUrl } from "@/lib/calendar/google";
@@ -25,7 +27,10 @@ async function requireProvider() {
   return { session, provider: linked };
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const limited = rateLimitResponse(request, "provider-calendar-read", 120, 60 * 1000);
+  if (limited) return limited;
+
   try {
     if (!isCalendarSchedulingEnabled()) {
       return jsonOk({ enabled: false, connections: [], settings: null, oauth: { google: false, microsoft: false } });
@@ -56,7 +61,7 @@ export async function GET() {
       oauth: {
         google: hasGoogleCalendarOAuth(),
         microsoft: hasMicrosoftCalendarOAuth(),
-        mockMode: !hasGoogleCalendarOAuth() && !hasMicrosoftCalendarOAuth()
+        mockMode: isCalendarMockModeAllowed()
       },
       settings: {
         visitDurationMinutes: settings.visitDurationMinutes,
@@ -74,6 +79,9 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const limited = rateLimitResponse(request, "provider-calendar-write", 60, 60 * 60 * 1000);
+  if (limited) return limited;
+
   try {
     const auth = await requireProvider();
     if (auth.error) return auth.error;
@@ -112,8 +120,8 @@ export async function POST(request: Request) {
     }
 
     if (action === "enable_mock") {
-      if (hasGoogleCalendarOAuth() || hasMicrosoftCalendarOAuth()) {
-        return jsonError("Mock calendar is only available when OAuth is not configured.", 400);
+      if (isProduction() || !isCalendarMockModeAllowed()) {
+        return jsonError("Mock calendar is not available in production.", 400);
       }
       const settings = await getOrCreateBookingSettings(auth.provider.id);
       // No real connection row — provider-calendar treats missing OAuth as mock-connected.
@@ -121,33 +129,52 @@ export async function POST(request: Request) {
     }
 
     if (action === "update_settings") {
+      let activeCalendarConnectionId: string | null | undefined;
+      if (body.activeCalendarConnectionId === null) {
+        activeCalendarConnectionId = null;
+      } else if (typeof body.activeCalendarConnectionId === "string") {
+        const connection = await prisma.providerCalendarConnection.findFirst({
+          where: {
+            id: body.activeCalendarConnectionId,
+            providerId: auth.provider.id,
+            syncStatus: { not: "DISCONNECTED" }
+          },
+          select: { id: true }
+        });
+        if (!connection) {
+          return jsonError("Invalid calendar connection.", 400);
+        }
+        activeCalendarConnectionId = connection.id;
+      }
+
+      const clampInt = (value: unknown, min: number, max: number, fallback: number) => {
+        const parsed = Number(value);
+        if (!Number.isFinite(parsed)) return fallback;
+        return Math.min(max, Math.max(min, Math.round(parsed)));
+      };
+
       const settings = await prisma.providerBookingSettings.upsert({
         where: { providerId: auth.provider.id },
         create: {
           providerId: auth.provider.id,
-          visitDurationMinutes: Number(body.visitDurationMinutes) || 60,
-          callbackDurationMinutes: Number(body.callbackDurationMinutes) || 30,
-          bufferMinutes: Number(body.bufferMinutes) || 15,
-          horizonDays: Number(body.horizonDays) || 14,
-          timezone: typeof body.timezone === "string" ? body.timezone : "Europe/Amsterdam",
-          activeCalendarConnectionId:
-            typeof body.activeCalendarConnectionId === "string" ? body.activeCalendarConnectionId : undefined
+          visitDurationMinutes: clampInt(body.visitDurationMinutes, 15, 240, 60),
+          callbackDurationMinutes: clampInt(body.callbackDurationMinutes, 10, 120, 30),
+          bufferMinutes: clampInt(body.bufferMinutes, 0, 120, 15),
+          horizonDays: clampInt(body.horizonDays, 1, 60, 14),
+          timezone: typeof body.timezone === "string" ? body.timezone.slice(0, 64) : "Europe/Amsterdam",
+          activeCalendarConnectionId: activeCalendarConnectionId ?? undefined
         },
         update: {
           ...(body.visitDurationMinutes != null
-            ? { visitDurationMinutes: Number(body.visitDurationMinutes) }
+            ? { visitDurationMinutes: clampInt(body.visitDurationMinutes, 15, 240, 60) }
             : {}),
           ...(body.callbackDurationMinutes != null
-            ? { callbackDurationMinutes: Number(body.callbackDurationMinutes) }
+            ? { callbackDurationMinutes: clampInt(body.callbackDurationMinutes, 10, 120, 30) }
             : {}),
-          ...(body.bufferMinutes != null ? { bufferMinutes: Number(body.bufferMinutes) } : {}),
-          ...(body.horizonDays != null ? { horizonDays: Number(body.horizonDays) } : {}),
-          ...(typeof body.timezone === "string" ? { timezone: body.timezone } : {}),
-          ...(body.activeCalendarConnectionId === null
-            ? { activeCalendarConnectionId: null }
-            : typeof body.activeCalendarConnectionId === "string"
-              ? { activeCalendarConnectionId: body.activeCalendarConnectionId }
-              : {})
+          ...(body.bufferMinutes != null ? { bufferMinutes: clampInt(body.bufferMinutes, 0, 120, 15) } : {}),
+          ...(body.horizonDays != null ? { horizonDays: clampInt(body.horizonDays, 1, 60, 14) } : {}),
+          ...(typeof body.timezone === "string" ? { timezone: body.timezone.slice(0, 64) } : {}),
+          ...(activeCalendarConnectionId !== undefined ? { activeCalendarConnectionId } : {})
         }
       });
       return jsonOk({ settings });

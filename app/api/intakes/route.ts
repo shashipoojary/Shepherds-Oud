@@ -5,7 +5,7 @@ import { normalizeIntakeStatus } from "@/lib/domain/intake-workflow";
 import { sendIntakeConfirmationEmails } from "@/lib/email/intake-confirmation-email";
 import { getLocale } from "@/lib/i18n/get-locale";
 import { intakeSchemaFor } from "@/lib/validation/intake";
-import { handleApiError, jsonError, jsonOk, rateLimitResponse, readJsonBody, runInBackground } from "@/lib/core/api-helpers";
+import { handleApiError, jsonError, jsonOk, rateLimitResponse, readJsonBody, runInBackground, databaseUnavailableResponse } from "@/lib/core/api-helpers";
 import type { Prisma } from "@prisma/client";
 
 export const runtime = "nodejs";
@@ -89,6 +89,9 @@ export async function POST(request: Request) {
     if (!parsed.success) {
       return jsonError("Invalid intake", 400, { issues: parsed.error.flatten() });
     }
+
+    const unavailable = databaseUnavailableResponse();
+    if (unavailable) return unavailable;
 
     if (!process.env.DATABASE_URL) {
       if (!parsed.data.emergencyStopped) {

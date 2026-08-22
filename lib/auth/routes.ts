@@ -22,27 +22,49 @@ export function roleLabel(role: AppRole | undefined) {
   return "Family account";
 }
 
+/** Same-origin relative path only — blocks open redirects (`//evil.com`, etc.). */
+export function sanitizeCallbackPath(callback: string | null | undefined) {
+  if (!callback) return null;
+
+  const trimmed = callback.trim();
+  if (!trimmed.startsWith("/") || trimmed.startsWith("//") || trimmed.includes("\\")) {
+    return null;
+  }
+
+  if (trimmed.includes(":") || trimmed.includes("@")) {
+    return null;
+  }
+
+  const lower = trimmed.toLowerCase();
+  if (lower.includes("%2f%2f") || lower.includes("%5c")) {
+    return null;
+  }
+
+  return trimmed;
+}
+
 /** After Google sign-in, resolve the safest landing page for this account. */
 export function postLoginHref(role: AppRole | undefined, requestedCallback?: string | null) {
   const fallback = dashboardHref(role);
+  const callback = sanitizeCallbackPath(requestedCallback);
 
-  if (!requestedCallback || requestedCallback === "/login" || requestedCallback.startsWith("/login?")) {
+  if (!callback || callback === "/login" || callback.startsWith("/login?")) {
     return fallback;
   }
 
-  if (requestedCallback.startsWith("/admin") && role !== "ADMIN") {
+  if (callback.startsWith("/admin") && role !== "ADMIN") {
     return fallback;
   }
 
-  if (requestedCallback.startsWith("/provider") && role !== "PROVIDER") {
+  if (callback.startsWith("/provider") && role !== "PROVIDER") {
     return fallback;
   }
 
-  if (requestedCallback.startsWith("/hospital") && role !== "HOSPITAL") {
+  if (callback.startsWith("/hospital") && role !== "HOSPITAL") {
     return fallback;
   }
 
-  return requestedCallback;
+  return callback;
 }
 
 export type NavItem = { label: string; href: string };

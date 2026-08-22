@@ -1,13 +1,16 @@
 import { getServerSession } from "@/lib/auth/server";
 import { prisma } from "@/lib/core/db";
-import { jsonError, jsonOk, handleApiError } from "@/lib/core/api-helpers";
+import { jsonError, jsonOk, handleApiError, rateLimitResponse } from "@/lib/core/api-helpers";
 import { countVisibleMatchesForIntakes } from "@/lib/data/matches";
 import { normalizeIntakeStatus } from "@/lib/domain/intake-workflow";
 import { claimFamilyIntakesByEmail } from "@/lib/hospitals/claim-family-intakes";
 
 export const runtime = "nodejs";
 
-export async function GET() {
+export async function GET(request: Request) {
+  const limited = rateLimitResponse(request, "family-intakes-read", 120, 60 * 1000);
+  if (limited) return limited;
+
   try {
     const session = await getServerSession();
     if (!session) {

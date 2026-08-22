@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { requireRole } from "@/lib/auth/server";
-import { handleApiError, jsonError, jsonOk, rateLimitResponse, readJsonBody, runInBackground } from "@/lib/core/api-helpers";
+import { assertApiRole } from "@/lib/auth/api-auth";
+import { handleApiError, jsonError, jsonOk, rateLimitResponse, readJsonBody, runInBackground, databaseUnavailableResponse } from "@/lib/core/api-helpers";
 import type { WaitlistAnnouncementAudience } from "@/lib/email/waitlist-announcement-email";
 import {
   getWaitlistAnnouncementPreview,
@@ -14,6 +14,7 @@ import { WAITLIST_LAUNCH_BATCH_SIZE, WAITLIST_LAUNCH_CONFIRM_PHRASE } from "@/li
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 const announcementSchema = z.object({
   confirmPhrase: z.string(),
@@ -24,13 +25,20 @@ const announcementSchema = z.object({
 });
 
 export async function GET(request: Request) {
+  const limited = rateLimitResponse(request, "waitlist-announcement-preview", 120, 60 * 1000);
+  if (limited) return limited;
+
   try {
-    await requireRole(["ADMIN"], "/admin");
+    const auth = await assertApiRole(["ADMIN"]);
+    if (auth.error) return auth.error;
 
     const audience = new URL(request.url).searchParams.get("audience");
     const parsedAudience: WaitlistAnnouncementAudience = audience === "active" ? "active" : "new";
 
     if (!process.env.DATABASE_URL) {
+      const unavailable = databaseUnavailableResponse();
+      if (unavailable) return unavailable;
+
       return jsonOk({
         familyCount: 0,
         facilityCount: 0,
@@ -57,7 +65,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    await requireRole(["ADMIN"], "/admin");
+    const auth = await assertApiRole(["ADMIN"]);
+    if (auth.error) return auth.error;
 
     const limited = rateLimitResponse(request, "waitlist-announcement-bulk", 4, 60 * 60 * 1000);
     if (limited) return limited;
@@ -73,6 +82,9 @@ export async function POST(request: Request) {
     }
 
     if (!process.env.DATABASE_URL) {
+      const unavailable = databaseUnavailableResponse();
+      if (unavailable) return unavailable;
+
       return jsonError("Bulk announcements are not available in demo mode.", 400);
     }
 
@@ -114,7 +126,8 @@ export async function POST(request: Request) {
 /** Legacy launch-only send kept for scripts; UI uses POST with custom message. */
 export async function PUT(request: Request) {
   try {
-    await requireRole(["ADMIN"], "/admin");
+    const auth = await assertApiRole(["ADMIN"]);
+    if (auth.error) return auth.error;
 
     const limited = rateLimitResponse(request, "waitlist-announcement-bulk", 4, 60 * 60 * 1000);
     if (limited) return limited;

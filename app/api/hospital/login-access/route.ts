@@ -22,11 +22,18 @@ export async function POST(request: Request) {
     const access = await resolveHospitalLoginAccess(email, invite);
 
     if (!access.allowed) {
-      const accessCode = access.code ?? "not_found";
+      if (invite) {
+        const accessCode = access.code ?? "not_found";
+        const message =
+          hospitalLoginErrorMessage(hospitalLoginErrorFromAccessCode(accessCode), locale) ||
+          hospitalLoginErrorMessage(HOSPITAL_LOGIN_ERROR.NOT_FOUND, locale) ||
+          "Access denied.";
+        return jsonError(message, 403);
+      }
+
       const message =
-        hospitalLoginErrorMessage(hospitalLoginErrorFromAccessCode(accessCode), locale) ||
         hospitalLoginErrorMessage(HOSPITAL_LOGIN_ERROR.NOT_FOUND, locale) ||
-        "Access denied.";
+        "No hospital account was found for this email.";
       return jsonError(message, 403);
     }
 

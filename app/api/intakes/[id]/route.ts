@@ -19,7 +19,7 @@ import { sendIntakeStatusEmail } from "@/lib/email/intake-status-email";
 import { sendProviderStatusEmail } from "@/lib/email/provider-status-email";
 import { resolveFamilyEmailLocale, resolveProviderEmailLocale } from "@/lib/email/locale-from-intake";
 import { getLocale } from "@/lib/i18n/get-locale";
-import { handleApiError, jsonError, jsonOk, rateLimitResponse, readJsonBody, runInBackground } from "@/lib/core/api-helpers";
+import { handleApiError, jsonError, jsonOk, rateLimitResponse, readJsonBody, runInBackground, databaseUnavailableResponse } from "@/lib/core/api-helpers";
 import { getIsPrelaunch } from "@/lib/config/prelaunch";
 import { INTAKE_CONSENT_VERSION } from "@/lib/domain/intake-consent";
 import { intakeSchemaFor } from "@/lib/validation/intake";
@@ -105,6 +105,9 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     }
 
     if (!process.env.DATABASE_URL) {
+      const unavailable = databaseUnavailableResponse();
+      if (unavailable) return unavailable;
+
       return jsonOk({
         id,
         status: "CARE_GUIDE_ASSIGNED",
@@ -386,6 +389,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     }
 
     if (!process.env.DATABASE_URL) {
+      const unavailable = databaseUnavailableResponse();
+      if (unavailable) return unavailable;
+
       return jsonOk({ id, status: "NEW", mode: "demo" });
     }
 

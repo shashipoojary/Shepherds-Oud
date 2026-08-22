@@ -1,3 +1,5 @@
+import { sanitizeCallbackPath } from "@/lib/auth/routes";
+
 function decodeRedirectParam(value: string) {
   let decoded = value;
   for (let index = 0; index < 3; index += 1) {
@@ -16,13 +18,13 @@ function toCallbackPath(callbackUrl: string) {
   if (callbackUrl.startsWith("http://") || callbackUrl.startsWith("https://")) {
     try {
       const parsed = new URL(callbackUrl);
-      return `${parsed.pathname}${parsed.search}`;
+      return sanitizeCallbackPath(`${parsed.pathname}${parsed.search}`) ?? null;
     } catch {
-      return callbackUrl;
+      return sanitizeCallbackPath(callbackUrl);
     }
   }
 
-  return callbackUrl;
+  return sanitizeCallbackPath(callbackUrl);
 }
 
 export function parseLoginContinueContext(callbackUrl?: string | null, invite?: string | null) {
@@ -31,7 +33,8 @@ export function parseLoginContinueContext(callbackUrl?: string | null, invite?: 
 
   while (destination) {
     const path = toCallbackPath(destination);
-    if (!path.startsWith("/login/continue")) {
+    if (!path || !path.startsWith("/login/continue")) {
+      destination = path;
       break;
     }
 
@@ -41,7 +44,7 @@ export function parseLoginContinueContext(callbackUrl?: string | null, invite?: 
   }
 
   return {
-    destination,
+    destination: destination ? sanitizeCallbackPath(destination) : null,
     invite: providerInvite
   };
 }

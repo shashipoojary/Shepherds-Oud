@@ -1,7 +1,8 @@
 import { Prisma } from "@prisma/client";
+import { canLogAction } from "@/lib/auth/action-access";
 import { getServerSession, getUserRole } from "@/lib/auth/server";
 import { actionSchema } from "@/lib/validation/action";
-import { handleApiError, jsonError, jsonOk, rateLimitResponse, readJsonBody } from "@/lib/core/api-helpers";
+import { handleApiError, jsonError, jsonOk, rateLimitResponse, readJsonBody, databaseUnavailableResponse } from "@/lib/core/api-helpers";
 
 export const runtime = "nodejs";
 
@@ -28,6 +29,14 @@ export async function POST(request: Request) {
     if (!parsed.success) {
       return jsonError("Invalid action", 400, { issues: parsed.error.flatten() });
     }
+
+    const allowed = await canLogAction(role, session.user.id, parsed.data.targetType, parsed.data.targetId);
+    if (!allowed) {
+      return jsonError("Forbidden", 403);
+    }
+
+    const unavailable = databaseUnavailableResponse();
+    if (unavailable) return unavailable;
 
     if (!process.env.DATABASE_URL) {
       return jsonOk({ id: `demo-${Date.now()}`, mode: "demo", action: parsed.data }, 201);

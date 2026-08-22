@@ -23,8 +23,10 @@ export async function POST(request: Request) {
 
     const access = await resolveProviderLoginAccess(email, inviteToken || null);
     if (!access.allowed) {
-      const message = providerLoginErrorMessage(access.code, locale);
-      return jsonError(message || ui.auth.providerNotApproved, 403, { code: access.code });
+      const message = inviteToken
+        ? providerLoginErrorMessage(access.code, locale) || ui.auth.providerNotApproved
+        : ui.auth.providerNotApproved;
+      return jsonError(message, 403, inviteToken ? { code: access.code } : undefined);
     }
 
     return jsonOk({ ok: true });
