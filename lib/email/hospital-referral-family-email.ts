@@ -16,7 +16,7 @@ export async function sendHospitalReferralFamilyEmails(input: {
 }) {
   const locale = await resolveEmailLocale(input.locale);
   const en = locale === "en";
-  const dashboardUrl = `${appUrl}/family/login?callbackUrl=${encodeURIComponent("/family/dashboard")}`;
+  const dashboardUrl = `${appUrl}/family/login?callbackUrl=${encodeURIComponent("/dashboard")}`;
   const reference = input.intakeId.slice(0, 8).toUpperCase();
 
   const copy = en

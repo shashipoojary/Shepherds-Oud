@@ -16,7 +16,7 @@ export async function sendIntakeConfirmationEmails(input: {
 }) {
   const locale = await resolveEmailLocale(input.locale);
   const copy = emailCopy(locale).intakeConfirmation;
-  const dashboardUrl = `${appUrl}/family/dashboard`;
+  const dashboardUrl = `${appUrl}/dashboard`;
   const reference = input.intakeId.slice(0, 8).toUpperCase();
   const guideName = input.careGuide?.name || copy.guideFallback;
 

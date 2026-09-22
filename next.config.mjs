@@ -3,7 +3,11 @@ import path from "node:path";
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   poweredByHeader: false,
+  compress: true,
   serverExternalPackages: ["better-auth"],
+  images: {
+    formats: ["image/avif", "image/webp"]
+  },
   turbopack: {
     root: path.resolve(".")
   },

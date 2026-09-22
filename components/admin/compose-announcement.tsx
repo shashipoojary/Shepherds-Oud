@@ -34,7 +34,7 @@ type ComposeAnnouncementBarProps = {
 const AUDIENCE_OPTIONS: Array<{ value: AnnouncementAudience; label: string }> = [
   { value: "waitlist_new", label: "Waitlist — new only (not yet contacted)" },
   { value: "waitlist_active", label: "Waitlist — active (new + contacted)" },
-  { value: "families", label: "All families (open intakes)" },
+  { value: "families", label: "Triage families (active cases)" },
   { value: "providers", label: "All care providers" }
 ];
 

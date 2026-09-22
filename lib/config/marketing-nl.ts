@@ -3,112 +3,104 @@ import { getIsPrelaunch } from "@/lib/config/prelaunch";
 
 /** Core positioning — used across marketing surfaces. */
 export const positioningStatementNl =
-  "Shepherds Oud Care is het vertrouwde zorgnavigatieplatform dat ouderen en hun families begeleidt door elke fase van ouder worden — van zelfstandig wonen, naar thuiszorg, naar begeleid wonen, naar verpleegzorg, via één adviseur.";
+  "Shepherds Oud Care helpt families handelen wanneer ouderenzorg plots urgent wordt — korte triage, een duidelijk pad, een checklist en een Haaglanden-directory. Gratis voor families.";
 
 /** Primary positioning line for intake notices and short surfaces. */
 export const siteTaglineNl = "Zorg zoeken hoort niet overweldigend te zijn.";
 
 export function homeHeroCopy(prelaunch = getIsPrelaunch()) {
   return {
-    badge: prelaunch ? "Vroege aanmeldingen open" : "Voor families in heel Nederland",
-    headline: "Navigeer met vertrouwen door ouder worden.",
+    badge: prelaunch ? "Vroege aanmeldingen open" : "Den Haag / Haaglanden",
+    headline: "Wat moet ik nu doen?",
     supportLine:
-      "Eén vaste Care Guide. Persoonlijk advies. Geverifieerde aanbieders. Ondersteuning van het eerste gesprek tot ver na plaatsing.",
+      "Bij een val, ziekenhuisontslag of snelle achteruitgang: start een korte triage — krijg een aanbevolen pad, bewaar een checklist en bekijk lokale aanbieders. Gratis voor families. Geen login om te starten.",
     intro: prelaunch
       ? "Meld u nu aan; wij nemen contact op wanneer begeleide matching in uw regio start."
-      : "Start online, of spreek een Care Guide als u eerst wilt praten."
+      : "Start triage online in enkele minuten — of bel ons als een formulier te zwaar voelt."
   };
 }
 
 export const homeContentNl = {
-  primaryCta: "Start uw zorgreis",
-  primaryCtaShort: "Zorgreis",
-  secondaryCta: "Spreek een Care Guide",
-  secondaryCtaShort: "Care Guide",
-  responsePromise: "Een Care Guide belt u binnen 24 uur.",
+  primaryCta: "Start triage",
+  primaryCtaShort: "Triage",
+  secondaryCta: "Bekijk aanbieders",
+  secondaryCtaShort: "Directory",
+  responsePromise: "Gratis voor families. Geen login om te starten.",
   freeSupportLine:
-    "Gratis voor families. Shepherds Oud Care wordt gecompenseerd door deelnemende zorgaanbieders. Transparant over hoe we betaald worden — zodat u weet dat uw opties niet afhangen van wie betaalt.",
+    "Gratis voor families. Sommige aanbieders betalen een succesfee als een plaatsing via onze directory tot stand komt — dat verandert niet welke opties wij tonen.",
   problem: {
     label: "De uitdaging",
-    title: "Nederland verandert.",
+    title: "Als zorg urgent wordt, raken families vast.",
     bullets: [
-      "Meer ouderen dan ooit",
-      "Langere wachtlijsten",
-      "Minder mantelzorgers",
-      "Families die alles moeten coördineren",
-      "Honderden aanbieders om te vergelijken",
-      "Complexe Wmo-regels",
-      "Woningtekorten"
+      "Een val, ontslag of snelle achteruitgang van de ene op de andere dag",
+      "Onduidelijk of thuiszorg of een locatie eerst komt",
+      "CIZ-, DigiD- en gemeenteportalen die u zelf moet gebruiken",
+      "Lange wachtlijsten en honderden aanbieders",
+      "Geen eenduidige checklist van wat u nu moet doen",
+      "Complexe Wmo- / Wlz-financieringsroutes"
     ],
-    closing: "Families raken overweldigd. Shepherds Oud Care vereenvoudigt elke stap."
+    closing:
+      "Shepherds Oud Care geeft u een duidelijk eerste pad en vervolgstappen — zonder te beloven dat wij formulieren voor u indienen."
   },
   followUp: {
-    label: "Nazorg",
-    title: "Wij blijven tot het werkt",
+    label: "Blijf op schema",
+    title: "Deadlines die u kunt volgen",
     description:
-      "Na plaatsing checken we in op 7, 30 en 90 dagen. Dat doet bijna niemand in deze markt — niet de gidsen, niet de bemiddeling. Wij wel, met dezelfde Care Guide.",
-    daysLabel: "dagen"
+      "Na triage houdt uw dashboard-checklist bij wat er moet gebeuren — met optionele herinneringen zonder patiëntnamen of gezondheidsdetails.",
+    daysLabel: "focus"
   },
   ourRole: {
     title: "Onze rol",
     description: positioningStatementNl,
     points: [
-      "Navigatie, matching en coördinatie via één Care Guide",
-      "Geen medisch advies",
-      "Geen garantie op opname",
-      "Vervangt geen arts, gemeente, zorgkantoor of spoeddiensten",
-      "Geen definitieve indicatiebeslissingen (CIZ / gemeente)"
+      "Softwaregestuurde triage en padadvies — geen medisch advies",
+      "Checklists die linken naar officiële portalen (CIZ, DigiD, gemeente) zodat u zelf handelt",
+      "Haaglanden-directory met transparante succesfee-vermelding",
+      "Menselijke ondersteuning per telefoon of e-mail wanneer nodig",
+      "Geen garantie op opname; wij vervangen geen arts, gemeente of spoeddiensten"
     ]
   },
   familySteps: [
     {
-      title: "Vertel over uw naaste",
-      text: "Een begeleide intake (ongeveer 10 minuten) over medische behoeften, voorkeuren, locatie, taal, mobiliteit en budget."
+      title: "Start triage",
+      text: "Beantwoord vijf korte vragen over urgentie, situatie en financiering — geen account nodig."
     },
     {
-      title: "Behoeften begrijpen",
-      text: "Uw Care Guide bepaalt zorgniveau, risico's, budget, Wmo-overwegingen en urgentie — zodat besluiten stevig staan, niet op giswerk."
+      title: "Bekijk uw pad",
+      text: "Krijg een aanbevolen richting: eerst thuiszorg, opnamepad, beide, of eerst informatie verzamelen — met duidelijke onderbouwing."
     },
     {
-      title: "Verken alle opties",
-      text: "Bekijk zorgpaden die bij uw situatie passen — waaronder thuiszorg, begeleid wonen, revalidatie, dementiezorg, respijtzorg, dagbesteding en verpleegzorg."
+      title: "Bewaar en plan",
+      text: "Maak een familieaccount, bevestig voor wie u handelt, en ontgrendel een checklist met herinneringen."
     },
     {
-      title: "Ontvang een Care Roadmap",
-      text: "Aanbevolen opties met geschatte wachttijden waar bekend, kosten en financieringsroutes, en duidelijke vervolgstappen van uw Care Guide."
+      title: "Bekijk lokale aanbieders",
+      text: "Filter thuiszorg en woonzorg in Haaglanden en vraag een introductie vanuit uw dossier."
     },
     {
-      title: "Bezoek aanbieders",
-      text: "Vraag bezoeken of terugbelafspraken aan via uw dashboard. Uw Care Guide helpt met vragen en kan meegaan wanneer nodig."
-    },
-    {
-      title: "Verhuis met vertrouwen",
-      text: "Hulp bij documentatie, een verhuischecklist, afstemming in de familie en communicatie met de gekozen aanbieder."
-    },
-    {
-      title: "Blijf ondersteund",
-      text: "Nazorg op 7, 30 en 90 dagen na plaatsing — met dezelfde Care Guide — zodat de regeling blijft werken."
+      title: "Handel op officiële portalen",
+      text: "Elke checkliststap linkt naar officiële bronnen. Wij dienen niets in bij CIZ, DigiD of uw gemeente."
     }
   ],
   careGuide: {
-    label: "Uw Care Guide",
-    title: `Begeleiding door ${brand.founderName}`,
+    label: "Menselijke steun",
+    title: `Gebouwd door ${brand.founderName}`,
     credentials:
-      "Begeleiding door zorgprofessionals die het Nederlandse stelsel kennen — van CIZ-aanvraag tot eigen bijdrage en keuze tussen thuiszorg, begeleid wonen of verpleegzorg.",
-    bio: `${brand.founderName} bouwde Shepherds Oud Care omdat families in crisis verdwalen tussen directories en papieren. Één menselijke lijn van eerste gesprek tot nazorg — geen anonieme zoekmachine.`
+      "Als een formulier te zwaar voelt, bel of mail ons. Wij kennen het Nederlandse zorglandschap — en zijn eerlijk over wat software wel en niet kan.",
+    bio: `${brand.founderName} bouwde Shepherds Oud Care omdat families in crisis verdwalen tussen directories en papieren. Start online in minuten; bereik een mens wanneer u dat nodig heeft.`
   },
   providerSteps: [
     {
-      title: "Alleen passende aanvragen",
-      text: "Families worden vooraf gematcht op zorgtype, taal, dementiecapaciteit en beschikbaarheid."
+      title: "Relevante familie-introducties",
+      text: "Families komen binnen met een triagepad en context — geen koude directory-spam."
     },
     {
       title: "Gratis vermelden, betalen bij plaatsing",
-      text: "Geen abonnement om zichtbaar te zijn. U betaalt alleen bij een succesvolle plaatsing — zie onze pagina voor aanbieders."
+      text: "Geen abonnement om zichtbaar te zijn. Succesfee alleen bij een plaatsing via verwijzing — zie onze pagina voor aanbieders."
     },
     {
-      title: "Leads beheren",
-      text: "Accepteer, wijs af met reden, of volg op vanuit één dashboard."
+      title: "Plaatsingen bevestigen",
+      text: "Partners bevestigen plaatsingen zodat de fee-status klopt."
     }
   ],
   prelaunch: {
@@ -118,9 +110,9 @@ export const homeContentNl = {
     facilityCta: "Locatie registreren"
   },
   live: {
-    title: "Start uw zorgreis",
-    description: "Rond de intake af. Een Care Guide belt binnen 24 uur en begeleidt u verder.",
-    familyCta: "Start uw zorgreis",
+    title: "Start triage",
+    description: "Vijf vragen, een aanbevolen pad en een checklist die u kunt volgen.",
+    familyCta: "Start triage",
     facilityCta: "Registreer uw locatie"
   },
   internationalsCta: {

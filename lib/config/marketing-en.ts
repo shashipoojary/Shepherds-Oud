@@ -10,112 +10,102 @@ import {
 
 /** Core positioning — used across marketing surfaces. */
 export const positioningStatementEn =
-  "Shepherds Oud Care is the trusted care navigation platform that guides older adults and their families through every stage of aging — from independent living, to home care, to assisted living, to nursing care, through one advisor.";
+  "Shepherds Oud Care helps families act when eldercare suddenly becomes urgent — short triage, a clear next path, a trackable checklist, and a Haaglanden provider directory. Free for families.";
 
 export const siteTaglineEn = "Finding care shouldn't feel overwhelming.";
 
 export function homeHeroCopyEn(prelaunch = getIsPrelaunch()) {
   return {
-    badge: prelaunch ? "Early registrations open" : `Serving families across the Netherlands`,
-    headline: "Navigate Aging with Confidence.",
+    badge: prelaunch ? "Early registrations open" : "Den Haag / Haaglanden",
+    headline: "What should I do right now?",
     supportLine:
-      "One dedicated Care Guide. Personal advice. Verified providers. Support from the first conversation to well after placement.",
+      "When a fall, hospital discharge, or rapid decline hits, start a short triage — get a recommended path, save a checklist, and browse local providers. Free for families. No login to start.",
     intro: prelaunch
       ? "Register now; we will contact you when guided matching opens in your area."
-      : "Start online, or speak with a Care Guide if you'd rather talk first."
+      : "Start triage online in minutes — or call us if a form feels too heavy right now."
   };
 }
 
 export const homeContentEn = {
-  primaryCta: "Start your Care Journey",
-  primaryCtaShort: "Care Journey",
-  secondaryCta: "Speak with a Care Guide",
-  secondaryCtaShort: "Care Guide",
-  responsePromise: "A Care Guide calls you within 24 hours.",
+  primaryCta: "Start triage",
+  primaryCtaShort: "Triage",
+  secondaryCta: "Browse providers",
+  secondaryCtaShort: "Directory",
+  responsePromise: "Free for families. No login to start.",
   freeSupportLine:
-    "Free for families. Shepherds Oud Care is compensated by participating care providers. Transparent about how we are paid — so you know your options do not depend on who pays.",
+    "Free for families. Some providers may pay a success fee if a placement starts through our directory — that does not change which options we show.",
   problem: {
     label: "The challenge",
-    title: "The Netherlands is changing.",
+    title: "When care becomes urgent, families freeze.",
     bullets: [
-      "More seniors than ever",
-      "Longer waiting lists",
-      "Fewer caregivers",
-      "Families expected to coordinate everything",
-      "Hundreds of providers to compare",
-      "Complex Wmo rules",
-      "Housing shortages"
+      "A fall, discharge, or sudden decline overnight",
+      "Unclear whether home care or a facility comes first",
+      "CIZ, DigiD, and gemeente portals you must use yourself",
+      "Long waiting lists and hundreds of providers",
+      "No single checklist of what to do next",
+      "Complex Wmo / Wlz funding paths"
     ],
-    closing: "Families are overwhelmed. Shepherds Oud Care simplifies every step."
+    closing: "Shepherds Oud Care gives you a clear first path and next steps — without claiming to submit forms for you."
   },
   followUp: {
-    label: "Follow-up",
-    title: "We stay until it works",
+    label: "Stay on track",
+    title: "Deadlines you can actually follow",
     description:
-      "After placement we check in at 7, 30, and 90 days. Almost nobody in this market does that — not directories, not facility brokers. We do, with the same Care Guide.",
-    daysLabel: "days"
+      "After triage, your dashboard checklist tracks what to do next — with optional reminders that never include patient names or health details.",
+    daysLabel: "focus"
   },
   ourRole: {
     title: "Our role",
     description: positioningStatementEn,
     points: [
-      "Navigation, matching, and coordination through one Care Guide",
-      "No medical advice",
-      "No guarantee of admission",
-      "Does not replace a doctor, municipality, zorgkantoor, or emergency services",
-      "No final eligibility decisions (CIZ / municipality)"
+      "Software-guided triage and path recommendation — not medical advice",
+      "Checklists that link to official portals (CIZ, DigiD, gemeente) for you to act yourself",
+      "Haaglanden directory with transparent success-fee disclosure",
+      "Human support by phone or email when you need it",
+      "No guarantee of admission; we do not replace a doctor, municipality, or emergency services"
     ]
   },
-  /** Seven-step journey — functional wording matches what the product can do today. */
   familySteps: [
     {
-      title: "Tell us about your loved one",
-      text: "A guided assessment (about 10 minutes) covering medical needs, preferences, location, language, mobility, and budget."
+      title: "Start triage",
+      text: "Answer five short questions about urgency, situation, and funding — no account required."
     },
     {
-      title: "Understand needs",
-      text: "Your Care Guide identifies care level, risks, budget, Wmo eligibility considerations, and urgency — so decisions are grounded, not guessed."
+      title: "See your path",
+      text: "Get a recommended direction: home care first, facility admission, both, or gather information — with clear reasoning."
     },
     {
-      title: "Explore every option",
-      text: "Review care paths that fit your situation — including home care, assisted living, rehabilitation, dementia care, respite care, day activities, and nursing care."
+      title: "Save and plan",
+      text: "Create a family account, confirm who you act for, and unlock a track-and-remind checklist."
     },
     {
-      title: "Receive a Care Roadmap",
-      text: "Recommended options with estimated waiting times where known, costs and funding paths, and clear next steps from your Care Guide."
+      title: "Browse local providers",
+      text: "Filter Haaglanden home-care and residential options, then request an introduction from your case."
     },
     {
-      title: "Visit providers",
-      text: "Request visits or callbacks from your dashboard. Your Care Guide helps you prepare questions and can join when needed."
-    },
-    {
-      title: "Move with confidence",
-      text: "Support with documentation, a moving checklist, family coordination, and communication with the chosen provider."
-    },
-    {
-      title: "Stay supported",
-      text: "Follow-up at 7, 30, and 90 days after placement — with the same Care Guide — so the arrangement keeps working."
+      title: "Act on official portals",
+      text: "Each checklist step links to official resources. We never submit CIZ, DigiD, or gemeente forms for you."
     }
   ],
   careGuide: {
-    label: "Your Care Guide",
-    title: `Guidance from ${brand.founderName}`,
+    label: "Human support",
+    title: `Built by ${brand.founderName}`,
     credentials:
-      "Guided by care professionals who know the Dutch system — from CIZ applications to eigen bijdrage and choosing between home care, assisted living, or nursing care.",
-    bio: `${brand.founderName} built Shepherds Oud Care because families in crisis get lost between directories and paperwork. One human line from first conversation to follow-up — not an anonymous search engine.`
+      "When a form feels too heavy, call or email us. We know the Dutch care landscape — and we are honest about what software can and cannot do.",
+    bio: `${brand.founderName} built Shepherds Oud Care because families in crisis get lost between directories and paperwork. Start online in minutes; reach a person when you need one.`
   },
   providerSteps: [
     {
-      title: "Only suitable inquiries",
-      text: "Families are pre-matched on care type, language, dementia capacity, and availability."
+      title: "Relevant family introductions",
+      text: "Families arrive with a triage path and case context — not cold directory spam."
     },
     {
       title: "Free to list, pay on placement",
-      text: "No subscription to be visible. You pay only on a successful placement — see our provider page."
+      text: "No subscription to be visible. Success fee only when a referred placement starts — see our provider page."
     },
     {
-      title: "Manage leads",
-      text: "Accept, decline with a reason, or follow up from one dashboard."
+      title: "Confirm placements",
+      text: "Partners confirm placements so fee status stays accurate."
     }
   ],
   prelaunch: {
@@ -125,9 +115,9 @@ export const homeContentEn = {
     facilityCta: "Register your location"
   },
   live: {
-    title: "Start your Care Journey",
-    description: "Complete the intake. A Care Guide calls within 24 hours and supports you further.",
-    familyCta: "Start your Care Journey",
+    title: "Start triage",
+    description: "Five questions, a recommended path, and a checklist you can track.",
+    familyCta: "Start triage",
     facilityCta: "Register your location"
   },
   internationalsCta: {

@@ -49,7 +49,7 @@ export function renderAnnouncementTemplate(input: {
   const cta =
     input.kind === "PROVIDER" || input.kind === "FACILITY"
       ? { label: copy.providerCta, url: `${appUrl}/provider/login` }
-      : { label: copy.familyCta, url: `${appUrl}/family/dashboard` };
+      : { label: copy.familyCta, url: `${appUrl}/dashboard` };
 
   return {
     paragraphs,

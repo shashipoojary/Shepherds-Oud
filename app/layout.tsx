@@ -4,6 +4,7 @@ import { DM_Sans, Outfit } from "next/font/google";
 import { LocaleProvider } from "@/components/i18n/locale-provider";
 import { PrelaunchProvider } from "@/components/layout/prelaunch-context";
 import { NavigationProgressHost } from "@/components/shared/navigation-progress-host";
+import { DbColdStartHost } from "@/components/shared/db-cold-start-host";
 import { brand } from "@/lib/config/brand";
 import { getIsPrelaunch } from "@/lib/config/prelaunch";
 import { getLocale } from "@/lib/i18n/get-locale";
@@ -12,20 +13,26 @@ import "./globals.css";
 const brandFont = Outfit({
   subsets: ["latin"],
   variable: "--font-brand",
-  weight: ["500", "600", "700"],
+  weight: ["600", "700"],
   display: "swap"
 });
 
 const bodyFont = DM_Sans({
   subsets: ["latin"],
   variable: "--font-body",
-  weight: ["400", "500", "600"],
+  weight: ["400", "600"],
   display: "swap"
 });
 
 export const metadata: Metadata = {
   title: brand.name,
-  description: brand.metaDescription
+  description: brand.metaDescription,
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: brand.name,
+    statusBarStyle: "default"
+  }
 };
 
 export const viewport: Viewport = {
@@ -42,6 +49,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
         <NavigationProgressHost />
         <LocaleProvider initialLocale={locale}>
           <PrelaunchProvider value={isPrelaunch}>{children}</PrelaunchProvider>
+          <DbColdStartHost />
         </LocaleProvider>
         <Analytics />
       </body>

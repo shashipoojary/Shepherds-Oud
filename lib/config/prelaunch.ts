@@ -43,7 +43,8 @@ const routePaths = {
   waitlist: "/register",
   waitlistFamily: "/register/family",
   waitlistFacility: "/register/facility",
-  intake: "/family/intake"
+  /** Primary family product — crisis triage (old Care Guide intake retired). */
+  intake: "/triage/1"
 } as const;
 
 export type PublicRoutes = {
@@ -62,9 +63,9 @@ export function getPublicRoutes(prelaunch = getIsPrelaunch()): PublicRoutes {
   return {
     ...routePaths,
     familyPrimary: prelaunch ? routePaths.waitlistFamily : routePaths.intake,
-    familyPrimaryLabel: prelaunch ? "Join the waitlist" : "Start guided intake",
-    familySecondary: prelaunch ? null : routePaths.waitlist,
-    familySecondaryLabel: "Join the waitlist"
+    familyPrimaryLabel: prelaunch ? "Join the waitlist" : "Start crisis triage",
+    familySecondary: prelaunch ? null : "/directory",
+    familySecondaryLabel: "Browse care directory"
   };
 }
 

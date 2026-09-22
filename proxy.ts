@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { getSessionCookie } from "better-auth/cookies";
-import { isFamilyFlowPath, getIsPrelaunch, isProviderPath, prelaunchFamilyRedirect } from "@/lib/config/prelaunch";
+import { getIsPrelaunch, isProviderPath, prelaunchFamilyRedirect, isFamilyFlowPath } from "@/lib/config/prelaunch";
 import { securityHeaders } from "@/lib/core/security-headers";
 import { DEFAULT_LOCALE, LOCALE_COOKIE, LOCALE_COOKIE_MAX_AGE, isLocale } from "@/lib/i18n/config";
 
@@ -26,6 +26,31 @@ function isProtectedHospitalPath(pathname: string) {
 
 function isProtectedAdminPath(pathname: string) {
   return pathname === "/admin" || pathname.startsWith("/admin/");
+}
+
+/** Public crisis triage surfaces (no login wall). */
+function isPublicCrisisPath(pathname: string) {
+  const publicPrefixes = ["/triage", "/result", "/signup", "/directory"];
+  return publicPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+}
+
+function isProtectedCrisisPath(pathname: string) {
+  const protectedPrefixes = ["/patient", "/dashboard", "/tasks", "/settings", "/partner"];
+  return protectedPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+}
+
+/** Old Care Guide + /v2 parallel path → primary crisis routes. */
+function legacyProductRedirect(pathname: string): string | null {
+  if (pathname === "/v2" || pathname === "/v2/") return "/triage/1";
+  if (pathname.startsWith("/v2/")) {
+    const rest = pathname.slice(3);
+    return rest.startsWith("/") ? rest : `/${rest}`;
+  }
+  if (pathname === "/family/intake" || pathname.startsWith("/family/intake/")) return "/triage/1";
+  if (pathname === "/family/results" || pathname.startsWith("/family/results/")) return "/result";
+  if (pathname === "/family/dashboard" || pathname.startsWith("/family/dashboard/")) return "/dashboard";
+  if (pathname === "/family/success" || pathname.startsWith("/family/success/")) return "/result";
+  return null;
 }
 
 function applySecurityHeaders(request: NextRequest, response: NextResponse) {
@@ -61,6 +86,7 @@ export function proxy(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-request-id", crypto.randomUUID());
 
+  // Prelaunch waitlist wins over retired Care Guide path redirects.
   if (getIsPrelaunch() && isFamilyFlowPath(pathname)) {
     const redirectUrl = new URL(prelaunchFamilyRedirect(pathname), request.url);
     return withLocaleCookie(request, applySecurityHeaders(request, NextResponse.redirect(redirectUrl)));
@@ -71,11 +97,19 @@ export function proxy(request: NextRequest) {
     return withLocaleCookie(request, applySecurityHeaders(request, NextResponse.redirect(redirectUrl)));
   }
 
+  const legacyTarget = legacyProductRedirect(pathname);
+  if (legacyTarget) {
+    const redirectUrl = new URL(legacyTarget, request.url);
+    redirectUrl.search = request.nextUrl.search;
+    return withLocaleCookie(request, applySecurityHeaders(request, NextResponse.redirect(redirectUrl)));
+  }
+
   const needsProviderAuth = isProtectedProviderPath(pathname);
   const needsHospitalAuth = isProtectedHospitalPath(pathname);
   const needsAdminAuth = isProtectedAdminPath(pathname);
+  const needsCrisisAuth = isProtectedCrisisPath(pathname) && !isPublicCrisisPath(pathname);
 
-  if (!needsProviderAuth && !needsHospitalAuth && !needsAdminAuth) {
+  if (!needsProviderAuth && !needsHospitalAuth && !needsAdminAuth && !needsCrisisAuth) {
     return withLocaleCookie(
       request,
       applySecurityHeaders(
@@ -94,7 +128,9 @@ export function proxy(request: NextRequest) {
       ? "/provider/login"
       : needsHospitalAuth
         ? "/hospital/login"
-        : "/login";
+        : needsCrisisAuth
+          ? "/family/login"
+          : "/login";
     const loginUrl = new URL(loginPath, request.url);
     loginUrl.searchParams.set("callbackUrl", pathname);
     return withLocaleCookie(request, applySecurityHeaders(request, NextResponse.redirect(loginUrl)));

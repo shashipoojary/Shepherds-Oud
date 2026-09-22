@@ -12,7 +12,7 @@ export function dashboardHref(role: AppRole | undefined) {
   if (role === "ADMIN") return "/admin";
   if (role === "PROVIDER") return "/provider";
   if (role === "HOSPITAL") return HOSPITAL_DASHBOARD_PATH;
-  return "/family/dashboard";
+  return "/dashboard";
 }
 
 export function roleLabel(role: AppRole | undefined) {
@@ -88,6 +88,7 @@ export function buildNavItems(
   } else {
     items.push({ label: nav.howItWorks, href: "/how-it-works" });
     items.push({ label: nav.startIntake, href: publicRoutes.intake });
+    items.push({ label: nav.directory, href: "/directory" });
     items.push({ label: nav.faq, href: "/faq" });
   }
 

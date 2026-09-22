@@ -1,14 +1,6 @@
-import { SiteHeader } from "@/components/layout/site-header";
-import { FamilySuccessClient } from "@/components/family/success-client";
-import { noIndexMetadata } from "@/lib/config/seo";
+import { redirect } from "next/navigation";
 
-export const metadata = noIndexMetadata;
-
-export default function SuccessPage() {
-  return (
-    <>
-      <SiteHeader />
-      <FamilySuccessClient />
-    </>
-  );
+/** Old Care Guide success — retired. */
+export default function LegacyFamilySuccessRedirect() {
+  redirect("/result");
 }

@@ -38,7 +38,13 @@ function decodeMagicLinkUrl(url: string) {
 
 function isFamilyMagicLink(url: string) {
   const decoded = decodeMagicLinkUrl(url);
-  return decoded.includes("/family/dashboard") || decoded.includes("/family/login");
+  return (
+    decoded.includes("/dashboard") ||
+    decoded.includes("/family/dashboard") ||
+    decoded.includes("/family/login") ||
+    decoded.includes("/signup") ||
+    decoded.includes("/patient")
+  );
 }
 
 function isProviderMagicLink(url: string) {

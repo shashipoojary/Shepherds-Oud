@@ -33,7 +33,7 @@ export default async function FamilyLoginPage() {
 
           <p className="mt-6 text-center text-sm text-ink/60">
             {ui.auth.familyStarting}{" "}
-            <Link href="/family/intake" className="font-medium text-brand-amber hover:text-brand-amber-mid">
+            <Link href="/triage/1" className="font-medium text-brand-amber hover:text-brand-amber-mid">
               {ui.auth.familyCta}
             </Link>
           </p>

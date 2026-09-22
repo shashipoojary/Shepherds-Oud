@@ -166,12 +166,33 @@ textarea {
   }
 }
 
+@keyframes db-cold-start-ring {
+  0% {
+    transform: scale(1);
+    opacity: 0.55;
+  }
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+.db-cold-start-ring {
+  animation: db-cold-start-ring 0.9s ease-out infinite;
+}
+
+.db-cold-start-ring-delay {
+  animation-delay: 0.45s;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .home-reveal,
   .home-reveal-delay-1,
   .home-reveal-delay-2,
   .home-reveal-delay-3,
-  .home-milestone {
+  .home-milestone,
+  .db-cold-start-ring {
     animation: none;
+    opacity: 0;
   }
 }

@@ -1,0 +1,22 @@
+{
+  "name": "Shepherds Oud Care",
+  "short_name": "Shepherds Oud",
+  "description": "Crisis triage and track-and-remind checklist for eldercare decisions in Haaglanden.",
+  "start_url": "/v2",
+  "display": "standalone",
+  "background_color": "#f7f4f0",
+  "theme_color": "#404D3C",
+  "lang": "nl",
+  "icons": [
+    {
+      "src": "/icon",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "/apple-icon",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
+}

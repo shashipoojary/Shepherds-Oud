@@ -16,7 +16,7 @@ export async function sendFamilyMatchCreatedEmail(input: {
 }) {
   const locale = await resolveEmailLocale(input.locale);
   const copy = emailCopy(locale).familyMatch;
-  const dashboardUrl = `${appUrl}/family/dashboard?intakeId=${encodeURIComponent(input.intakeId)}`;
+  const dashboardUrl = `${appUrl}/dashboard`;
   const resultsUrl = `${appUrl}/family/results?intakeId=${encodeURIComponent(input.intakeId)}`;
   const title = input.reopened ? copy.reopenedTitle(input.providerName) : copy.newTitle(input.providerName);
   const body = input.reopened ? copy.reopenedBody(input.providerName) : copy.newBody(input.providerName);

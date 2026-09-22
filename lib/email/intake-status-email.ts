@@ -27,7 +27,7 @@ export async function sendIntakeStatusEmail(input: {
   const locale = await resolveEmailLocale(input.locale);
   const copy = emailCopy(locale).intakeStatus;
   const guideName = input.careGuide?.name || copy.guideFallback;
-  const dashboardUrl = `${appUrl}/family/dashboard?intakeId=${encodeURIComponent(input.intakeId)}`;
+  const dashboardUrl = `${appUrl}/dashboard`;
   const visitWhen =
     input.visitScheduledAt && !Number.isNaN(input.visitScheduledAt.getTime())
       ? formatEmailDateTime(locale, input.visitScheduledAt)

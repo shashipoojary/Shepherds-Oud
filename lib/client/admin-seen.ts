@@ -1,19 +1,19 @@
-export type AdminTab = "families" | "providers" | "inquiries" | "waitlist";
+export type AdminTab = "cases" | "referrals" | "providers" | "waitlist";
 
 const STORAGE_KEY = "shepherds:admin-tab-seen";
 
 type SeenMap = Record<AdminTab, string>;
 type AdminSeenSnapshot = {
-  families: Array<{ createdAtIso: string; updatedAtIso?: string }>;
+  crisisCases?: Array<{ createdAt: string; updatedAt?: string }>;
+  crisisReferrals?: Array<{ referredAt: string; confirmedAt?: string | null }>;
   providerList: Array<{ createdAtIso: string; updatedAtIso?: string }>;
-  inquiries: Array<{ createdAtIso: string; updatedAtIso: string }>;
   waitlist: Array<{ createdAtIso: string; updatedAtIso?: string }>;
 };
 
 const emptySeen = (): SeenMap => ({
-  families: new Date(0).toISOString(),
+  cases: new Date(0).toISOString(),
+  referrals: new Date(0).toISOString(),
   providers: new Date(0).toISOString(),
-  inquiries: new Date(0).toISOString(),
   waitlist: new Date(0).toISOString()
 });
 
@@ -48,12 +48,14 @@ function maxActivityIso(items: Array<{ createdAtIso: string; updatedAtIso?: stri
 
 function tabActivityIso(tab: AdminTab, snapshot: AdminSeenSnapshot) {
   switch (tab) {
-    case "families":
-      return maxActivityIso(snapshot.families);
+    case "cases":
+      return maxIso((snapshot.crisisCases || []).flatMap((item) => [item.createdAt, item.updatedAt].filter(Boolean) as string[]));
+    case "referrals":
+      return maxIso(
+        (snapshot.crisisReferrals || []).flatMap((item) => [item.referredAt, item.confirmedAt].filter(Boolean) as string[])
+      );
     case "providers":
       return maxActivityIso(snapshot.providerList);
-    case "inquiries":
-      return maxActivityIso(snapshot.inquiries);
     case "waitlist":
       return maxActivityIso(snapshot.waitlist);
     default:
@@ -88,9 +90,9 @@ export function initTabSeenFromData(snapshot: AdminSeenSnapshot) {
   if (window.localStorage.getItem(STORAGE_KEY)) return;
 
   writeSeen({
-    families: tabActivityIso("families", snapshot) ?? new Date(0).toISOString(),
+    cases: tabActivityIso("cases", snapshot) ?? new Date(0).toISOString(),
+    referrals: tabActivityIso("referrals", snapshot) ?? new Date(0).toISOString(),
     providers: tabActivityIso("providers", snapshot) ?? new Date(0).toISOString(),
-    inquiries: tabActivityIso("inquiries", snapshot) ?? new Date(0).toISOString(),
     waitlist: tabActivityIso("waitlist", snapshot) ?? new Date(0).toISOString()
   });
 }
@@ -104,19 +106,7 @@ function itemActivityTime(item: { createdAtIso: string; updatedAtIso?: string })
   );
 }
 
-export function countUnseenFamilies(items: Array<{ createdAtIso: string; updatedAtIso?: string }>, seenAt: string) {
-  const seen = new Date(seenAt).getTime();
-  if (!Number.isFinite(seen)) return items.length;
-  return items.filter((item) => itemActivityTime(item) > seen).length;
-}
-
 export function countUnseenProviders(items: Array<{ createdAtIso: string; updatedAtIso?: string }>, seenAt: string) {
-  const seen = new Date(seenAt).getTime();
-  if (!Number.isFinite(seen)) return items.length;
-  return items.filter((item) => itemActivityTime(item) > seen).length;
-}
-
-export function countUnseenInquiries(items: Array<{ createdAtIso: string; updatedAtIso: string }>, seenAt: string) {
   const seen = new Date(seenAt).getTime();
   if (!Number.isFinite(seen)) return items.length;
   return items.filter((item) => itemActivityTime(item) > seen).length;
@@ -135,4 +125,30 @@ export function countUnseenWaitlist(
     if (item.status === "CONTACTED" || item.status === "CONVERTED" || item.status === "CLOSED") return false;
     return itemActivityTime(item) > seen;
   }).length;
+}
+
+function countUnseenByActivity(items: Array<{ createdAtIso: string; updatedAtIso?: string }>, seenAt: string) {
+  const seen = new Date(seenAt).getTime();
+  if (!Number.isFinite(seen)) return items.length;
+  return items.filter((item) => itemActivityTime(item) > seen).length;
+}
+
+export function countUnseenCrisisCases(items: Array<{ createdAt: string; updatedAt?: string }>, seenAt: string) {
+  return countUnseenByActivity(
+    items.map((item) => ({ createdAtIso: item.createdAt, updatedAtIso: item.updatedAt })),
+    seenAt
+  );
+}
+
+export function countUnseenCrisisReferrals(
+  items: Array<{ referredAt: string; confirmedAt?: string | null }>,
+  seenAt: string
+) {
+  return countUnseenByActivity(
+    items.map((item) => ({
+      createdAtIso: item.referredAt,
+      updatedAtIso: item.confirmedAt || item.referredAt
+    })),
+    seenAt
+  );
 }

@@ -19,7 +19,7 @@ export function RoleAwareNav({ variant = "desktop", onNavigate }: RoleAwareNavPr
   const pathname = usePathname();
   const { data: session, isPending } = authClient.useSession();
   const sessionRole = session?.user.role as AppRole | undefined;
-  const role = pathname.startsWith("/family") && session ? "FAMILY" : sessionRole;
+  const role = (pathname.startsWith("/family") || pathname.startsWith("/dashboard") || pathname.startsWith("/patient") || pathname.startsWith("/tasks") || pathname.startsWith("/settings") || pathname.startsWith("/signup")) && session ? "FAMILY" : sessionRole;
   const items = buildNavItems(role, Boolean(session), prelaunch, locale);
   // While session loads, use the same signed-in flag as unknown→false is fine now that
   // marketing links are always shown; avoid a second layout shift from role-only items.

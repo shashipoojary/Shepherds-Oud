@@ -7,6 +7,20 @@ import { getLocale } from "@/lib/i18n/get-locale";
 import { productUi } from "@/lib/i18n/ui";
 import type { Locale } from "@/lib/i18n/config";
 
+// Heading for the new "Operating companies" column, translated per language.
+// If a language is not listed here, it falls back to English.
+const operatingCompaniesHeading: Record<string, string> = {
+  en: "Operating companies",
+  nl: "Onze bedrijven",
+  fr: "Nos sociétés"
+};
+
+// Company names are proper names, so they are not translated.
+const operatingCompanies = [
+  { label: "Invest Shepherds LLC", href: "https://www.investshepherds.com/en/" },
+  { label: "Shepherds Oud Advisory", href: "https://www.shepherdsoud.com/" }
+];
+
 function footerLinks(prelaunch: boolean, locale: Locale) {
   const publicRoutes = getPublicRoutes(prelaunch);
   const nav = productUi(locale).nav;
@@ -24,10 +38,11 @@ function footerLinks(prelaunch: boolean, locale: Locale) {
     : [
         { label: nav.home, href: publicRoutes.home },
         { label: nav.howItWorks, href: "/how-it-works" },
+        { label: nav.startIntake, href: publicRoutes.intake },
+        { label: nav.directory, href: "/directory" },
         { label: nav.about, href: "/about" },
         { label: nav.faq, href: "/faq" },
         { label: nav.contact, href: "/contact" },
-        { label: nav.startIntake, href: publicRoutes.intake },
         { label: nav.forProviders, href: "/for-providers" },
         { label: nav.forInternationals, href: "/internationals" }
       ];
@@ -39,11 +54,12 @@ export async function Footer() {
   const ui = productUi(locale);
   const links = footerLinks(isPrelaunch, locale);
   const phoneHref = brand.phone ? `tel:${brand.phone.replace(/\s+/g, "")}` : null;
+  const operatingHeading = operatingCompaniesHeading[locale] ?? operatingCompaniesHeading.en;
 
   return (
     <footer className="bg-brand-green-dark text-white">
       <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
-        <div className="grid gap-8 md:grid-cols-[1.2fr_1fr_0.8fr] md:items-start">
+        <div className="grid gap-8 md:grid-cols-[1.2fr_1fr_0.8fr_0.9fr] md:items-start">
           <div>
             <BrandLogo variant="footer" showTagline tone="light" href="/" />
             <p className="mt-4 max-w-sm text-sm leading-[1.7] text-white/80">
@@ -75,6 +91,21 @@ export async function Footer() {
               <Link key={link.href} href={link.href} className="text-sm leading-relaxed text-white/80 hover:text-brand-amber">
                 {ui.footer.legalLabel(link.href, link.label)}
               </Link>
+            ))}
+          </nav>
+
+          <nav className="grid gap-3" aria-label={operatingHeading}>
+            <p className="text-xs font-semibold uppercase tracking-wide text-white/50">{operatingHeading}</p>
+            {operatingCompanies.map((company) => (
+              <a
+                key={company.href}
+                href={company.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm leading-relaxed text-white/80 hover:text-brand-amber"
+              >
+                {company.label} ↗
+              </a>
             ))}
           </nav>
         </div>

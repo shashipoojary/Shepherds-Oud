@@ -51,11 +51,14 @@ The app is designed to be simple, calm, mobile-first, and usable by older family
 - `/register/family` - family waitlist form.
 - `/register/facility` - facility/provider waitlist form.
 - `/register/success` - waitlist confirmation.
-- `/family/intake` - family intake flow.
-- `/family/success` - intake confirmation.
-- `/family/results` - matched care providers.
-- `/family/dashboard` - family case dashboard.
-- `/providers/[providerId]` - provider details page.
+- `/triage/[step]` - crisis triage questions.
+- `/result` - triage path recommendation.
+- `/signup` - claim anonymous triage to an account.
+- `/patient` - patient consent / bewindvoerder / invite.
+- `/dashboard` - family crisis checklist dashboard.
+- `/tasks/[id]` - checklist task detail.
+- `/directory` - Haaglanden care directory.
+- `/providers/[providerId]` - provider details page (legacy matching).
 - `/provider/login` - provider login page.
 - `/provider` - provider dashboard.
 - `/admin` - admin dashboard.
@@ -81,6 +84,20 @@ The app is designed to be simple, calm, mobile-first, and usable by older family
 - `POST /api/waitlist` - create a family or facility waitlist entry.
 - `PATCH /api/waitlist/[id]` - update waitlist status.
 - `/api/auth/[...all]` - Better Auth route.
+
+## Crisis triage (primary family product)
+
+Self-serve crisis triage is the main family flow:
+
+- Start: `/triage/1` → `/result` → `/signup` → `/patient` → `/dashboard`
+- Directory: `/directory`
+- Seed demo directory: `npm run db:seed:haaglanden`
+- Launch checklist: [`docs/CRISIS_V2_LAUNCH_CHECKLIST.md`](./docs/CRISIS_V2_LAUNCH_CHECKLIST.md)
+- PWA: `public/manifest.webmanifest` + `public/sw.js`; optional `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY`
+- Cron: `/api/cron/checklist-reminders` (daily) marks approaching/stale tasks for privacy-safe reminders
+- Legacy Care Guide paths (`/family/intake`, `/family/dashboard`, `/v2/*`) redirect to the new routes
+
+Old family Care Guide UI is parked (redirects only). Admin / provider / hospital tools remain.
 
 ## Core Data Model
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { useLocale } from "@/components/i18n/locale-provider";
@@ -62,11 +62,23 @@ type AuthLoginFormProps = {
 
 export function AuthLoginForm({ intent }: AuthLoginFormProps) {
   const { locale, ui } = useLocale();
-  const router = useRouter();
   const searchParams = useSearchParams();
   const callbackParam = searchParams.get("callbackUrl");
   const inviteParam = searchParams.get("invite");
-  const familyDestination = callbackParam?.startsWith("/family") ? callbackParam : "/family/dashboard";
+  const familyDestination =
+    callbackParam?.startsWith("/family") ||
+    callbackParam?.startsWith("/triage") ||
+    callbackParam?.startsWith("/result") ||
+    callbackParam?.startsWith("/signup") ||
+    callbackParam?.startsWith("/patient") ||
+    callbackParam?.startsWith("/dashboard") ||
+    callbackParam?.startsWith("/tasks") ||
+    callbackParam?.startsWith("/directory") ||
+    callbackParam?.startsWith("/partner") ||
+    callbackParam?.startsWith("/settings") ||
+    callbackParam?.startsWith("/v2")
+      ? callbackParam
+      : "/dashboard";
   const adminDestination = callbackParam?.startsWith("/admin") ? callbackParam : "/admin";
   const requestedDestination =
     intent === "provider"
@@ -80,7 +92,15 @@ export function AuthLoginForm({ intent }: AuthLoginFormProps) {
             : callbackParam;
   const isProvider = intent === "provider" || requestedDestination?.startsWith(PROVIDER_DASHBOARD_PATH);
   const isHospital = intent === "hospital" || requestedDestination?.startsWith(HOSPITAL_DASHBOARD_PATH);
-  const isFamily = intent === "family" || requestedDestination?.startsWith("/family");
+  const isFamily =
+    intent === "family" ||
+    requestedDestination?.startsWith("/family") ||
+    requestedDestination?.startsWith("/dashboard") ||
+    requestedDestination?.startsWith("/patient") ||
+    requestedDestination?.startsWith("/signup") ||
+    requestedDestination?.startsWith("/settings") ||
+    requestedDestination?.startsWith("/tasks") ||
+    requestedDestination?.startsWith("/partner");
   const callbackUrlParams = new URLSearchParams();
   if (requestedDestination) {
     callbackUrlParams.set("callbackUrl", requestedDestination);
@@ -107,8 +127,37 @@ export function AuthLoginForm({ intent }: AuthLoginFormProps) {
 
   function startGoogleSignIn() {
     setLoadingGoogle(true);
-    router.push(googleLoginHref);
+    window.location.assign(googleLoginHref);
   }
+
+  useEffect(() => {
+    setLoadingGoogle(false);
+  }, [error]);
+
+  useEffect(() => {
+    function resetGoogleLoading() {
+      setLoadingGoogle(false);
+    }
+
+    function onPageShow(event: PageTransitionEvent) {
+      if (event.persisted) {
+        resetGoogleLoading();
+      }
+    }
+
+    function onVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        resetGoogleLoading();
+      }
+    }
+
+    window.addEventListener("pageshow", onPageShow);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      window.removeEventListener("pageshow", onPageShow);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, []);
 
   useEffect(() => {
     if (!emailFeedback) return;

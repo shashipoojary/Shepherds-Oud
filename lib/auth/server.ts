@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth/config";
@@ -6,13 +7,14 @@ export type AppRole = "FAMILY" | "PROVIDER" | "ADMIN" | "HOSPITAL";
 
 type Session = NonNullable<Awaited<ReturnType<typeof auth.api.getSession>>>;
 
-export async function getServerSession() {
+/** One session lookup per server request (layout + page share this). */
+export const getServerSession = cache(async () => {
   const session = await auth.api.getSession({
     headers: await headers()
   });
 
   return session ?? null;
-}
+});
 
 export function getUserRole(session: Session) {
   const role = session.user.role;

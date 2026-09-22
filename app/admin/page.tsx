@@ -13,13 +13,14 @@ export const metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function AdminPage() {
-  const session = await requireRole(["ADMIN"], "/admin");
-  const data = await getAdminDashboardData();
+  await requireRole(["ADMIN"], "/admin");
+  // First paint: cases + stats only. Other tabs load on demand.
+  const data = await getAdminDashboardData({ only: "cases" });
 
   return (
     <>
       <SiteHeader variant="admin" />
-      <AdminDashboardClient data={data} currentUserId={session.user.id} />
+      <AdminDashboardClient data={data} />
     </>
   );
 }

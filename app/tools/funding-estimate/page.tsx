@@ -30,7 +30,7 @@ export default async function FundingEstimatePage() {
   if (session) {
     const role = getUserRole(session);
     if (role === "FAMILY") {
-      primaryHref = "/family/intake";
+      primaryHref = "/triage/1";
       const intake = await prisma.intake.findFirst({
         where: { userId: session.user.id },
         orderBy: { createdAt: "desc" },

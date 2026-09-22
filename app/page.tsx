@@ -26,9 +26,9 @@ export default async function HomePage() {
   const content = homeContentFor(locale);
   const hero = homeHeroCopyFor(locale, isPrelaunch);
   const tagline = siteTagline(locale);
-  const primaryHref = publicRoutes.familyPrimary;
-  const primaryLabel = content.primaryCta;
-  const secondaryHref = "/contact";
+  const primaryHref = isPrelaunch ? publicRoutes.familyPrimary : "/triage/1";
+  const primaryLabel = isPrelaunch ? content.primaryCta : content.live.familyCta;
+  const secondaryHref = isPrelaunch ? "/contact" : "/directory";
   const secondaryLabel = content.secondaryCta;
 
   const providerSteps = [
@@ -85,9 +85,9 @@ export default async function HomePage() {
           label: ui.common.families,
           title: home.readyToBegin,
           text: home.familiesLiveCard,
-          href: publicRoutes.intake,
+          href: "/triage/1",
           cta: content.live.familyCta,
-          showPromise: true
+          showPromise: false
         },
         {
           label: ui.common.careProviders,

@@ -10,11 +10,11 @@ export const brand = {
   taglineEn: "Navigate aging with confidence.",
   email: "dominique@shepherdsoud.com",
   metaDescription:
-    "Shepherds Oud Care is het vertrouwde zorgnavigatieplatform dat ouderen en hun families begeleidt door elke fase van ouder worden — via één Care Guide.",
+    "Shepherds Oud Care helpt families bij urgente ouderenzorg — triage, checklist en Haaglanden-directory. Gratis voor families.",
   metaDescriptionEn:
-    "Shepherds Oud Care is the trusted care navigation platform that guides older adults and their families through every stage of aging — through one Care Guide.",
-  emailFooterLine: "Begeleide zorgnavigatie in Nederland",
-  emailFooterLineEn: "Guided care navigation in the Netherlands",
+    "Shepherds Oud Care helps families with urgent eldercare — triage, checklist, and Haaglanden directory. Free for families.",
+  emailFooterLine: "Zorgnavigatie in Nederland",
+  emailFooterLineEn: "Care navigation in the Netherlands",
   logoFullPath: "/brand/logo.png",
   logoLightPath: "/brand/logo-light.png",
   legalEntityName: "Shepherds Oud Care B.V.",
@@ -24,17 +24,17 @@ export const brand = {
    */
   kvkNumber: (process.env.NEXT_PUBLIC_KVK_NUMBER || "").trim() || null,
   registeredAddress: (process.env.NEXT_PUBLIC_REGISTERED_ADDRESS || "").trim() || "Netherlands",
-  /** Care Guide line — set NEXT_PUBLIC_CARE_GUIDE_PHONE in Vercel / .env.local */
+  /** Family support line — set NEXT_PUBLIC_CARE_GUIDE_PHONE in Vercel / .env.local */
   phone: (process.env.NEXT_PUBLIC_CARE_GUIDE_PHONE || "").trim() || null,
-  phoneLabel: "Care Guide-lijn",
-  phoneLabelEn: "Care Guide line",
+  phoneLabel: "Hulplijn",
+  phoneLabelEn: "Support line",
   founderName: "Dominique",
-  founderRole: "Oprichter & Care Guide",
-  founderRoleEn: "Founder & Care Guide",
+  founderRole: "Oprichter",
+  founderRoleEn: "Founder",
   regionPrimary: "Nederland",
   regionPrimaryEn: "Netherlands",
-  regionNote: "Actief in heel Nederland — begeleide zorgnavigatie voor families landelijk.",
-  regionNoteEn: "Active across the Netherlands — guided care navigation for families nationwide."
+  regionNote: "Actief in Haaglanden — crisis-triage en directory voor families.",
+  regionNoteEn: "Active in Haaglanden — crisis triage and directory for families."
 };
 
 /** Display KvK on legal/company pages — never invent a number. */

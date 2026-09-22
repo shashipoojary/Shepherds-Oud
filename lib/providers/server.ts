@@ -1,17 +1,8 @@
 import { prisma } from "@/lib/core/db";
 import type { ProviderProfileInput } from "@/lib/validation/provider";
-import { getProviderProfileMissingRequirements, isProviderProfileComplete } from "@/lib/providers/completeness";
-import { toSafeProvider, toSafeProviderInquiry } from "@/lib/serializers/provider";
-
-export const providerVisibleMatchStatuses = [
-  "VISIT_REQUESTED",
-  "CALLBACK_REQUESTED",
-  "CONTACTED",
-  "ACCEPTED",
-  "DECLINED",
-  "PLACED",
-  "CLOSED"
-] as const;
+import { getProviderProfileMissingRequirements } from "@/lib/providers/completeness";
+import { toSafeProvider } from "@/lib/serializers/provider";
+import { listCrisisReferralsForProvider } from "@/lib/data/crisis-ops";
 
 export async function getUserLinkedProvider(userId: string) {
   const user = await prisma.user.findUnique({
@@ -123,50 +114,23 @@ export async function upsertProviderForUser(userId: string, userEmail: string, i
   return provider;
 }
 
-export async function getProviderInquiries(providerId: string) {
-  const provider = await prisma.provider.findUnique({ where: { id: providerId } });
-  if (!isProviderProfileComplete(provider)) {
-    return [];
-  }
-
-  return prisma.match.findMany({
-    where: {
-      providerId,
-      status: { in: [...providerVisibleMatchStatuses] }
-    },
-    orderBy: { createdAt: "desc" },
-    include: {
-      intake: {
-        select: {
-          id: true,
-          contactName: true,
-          preferredArea: true,
-          careTypes: true,
-          urgency: true,
-          ageRange: true,
-          phone: true,
-          email: true,
-          status: true,
-          visitScheduledAt: true,
-          visitType: true,
-          visitProviderName: true,
-          visitNotes: true
-        }
-      }
-    }
-  });
-}
-
-export async function getProviderDashboardData(userId: string) {
+export async function getProviderDashboardData(userId: string, referralsPage = 1) {
   const provider = await getUserLinkedProvider(userId);
   const profileMissingRequirements = getProviderProfileMissingRequirements(provider);
   const profileComplete = profileMissingRequirements.length === 0;
-  const inquiries = provider && profileComplete ? await getProviderInquiries(provider.id) : [];
+  const referralPage = provider
+    ? await listCrisisReferralsForProvider(provider.id, referralsPage)
+    : { items: [], page: 1, pageSize: 25, total: 0 };
 
   return {
     provider: toSafeProvider(provider),
     profileComplete,
     profileMissingRequirements,
-    inquiries: inquiries.map(toSafeProviderInquiry)
+    referrals: referralPage.items,
+    referralsPagination: {
+      page: referralPage.page,
+      pageSize: referralPage.pageSize,
+      total: referralPage.total
+    }
   };
 }

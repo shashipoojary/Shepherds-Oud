@@ -76,29 +76,32 @@ export async function getAnnouncementRecipients(audience: AnnouncementAudience):
   }
 
   if (audience === "families") {
-    const intakes = await prisma.intake.findMany({
+    const members = await prisma.careCaseMember.findMany({
       where: {
-        email: { not: "" },
-        status: { not: "CLOSED" }
+        email: { not: null },
+        role: "FAMILY",
+        careCase: { status: "ACTIVE" }
       },
       orderBy: { updatedAt: "desc" },
       select: {
         id: true,
         email: true,
-        contactName: true,
+        name: true,
         preferredLocale: true
       }
     });
 
     return dedupeByEmail(
-      intakes.map((intake) => ({
-        id: intake.id,
-        email: intake.email,
-        contactName: intake.contactName,
-        facilityName: null,
-        kind: "FAMILY" as const,
-        preferredLocale: normalizePreferredLocale(intake.preferredLocale)
-      }))
+      members
+        .filter((member): member is typeof member & { email: string } => Boolean(member.email))
+        .map((member) => ({
+          id: member.id,
+          email: member.email,
+          contactName: member.name || "Family",
+          facilityName: null,
+          kind: "FAMILY" as const,
+          preferredLocale: normalizePreferredLocale(member.preferredLocale)
+        }))
     );
   }
 

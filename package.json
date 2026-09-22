@@ -8,7 +8,8 @@
     "postinstall": "prisma generate",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "db:seed:haaglanden": "npx tsx scripts/seed-haaglanden-directory.ts"
   },
   "dependencies": {
     "@better-auth/infra": "^0.2.14",

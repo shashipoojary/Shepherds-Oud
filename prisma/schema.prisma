@@ -31,6 +31,10 @@ model User {
   hospitalInvitesSent HospitalInvite[] @relation("HospitalInvitesSent")
   sessions            Session[]
   accounts            Account[]
+  careCaseMemberships CareCaseMember[]
+  pushSubscriptions   PushSubscription[]
+  consentRecordsActor ConsentRecord[]  @relation("ConsentActor")
+  consentRecordsSubject ConsentRecord[] @relation("ConsentSubject")
 
   @@index([linkedHospitalId])
 }
@@ -219,6 +223,7 @@ model Provider {
   matches Match[]
   calendarConnections ProviderCalendarConnection[]
   bookingSettings     ProviderBookingSettings?
+  directoryListing    DirectoryProvider?
 
   @@index([email])
 }
@@ -509,4 +514,234 @@ enum EmailOutboxStatus {
   SENDING
   SENT
   FAILED
+}
+
+// --- Crisis Triage V2 (additive; legacy Intake/Match kept until cutover soak) ---
+
+model CareCase {
+  id           String          @id @default(cuid())
+  status       CareCaseStatus  @default(ACTIVE)
+  urgencyLevel CareUrgency?
+  chosenPath   CarePath?
+  preferredLocale String       @default("nl")
+  anonymousClaimToken String?  @unique
+  claimedAt    DateTime?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  members       CareCaseMember[]
+  triage        TriageResponse?
+  tasks         ChecklistTask[]
+  consents      ConsentRecord[]
+  referrals     PlacementReferral[]
+
+  @@index([status])
+  @@index([anonymousClaimToken])
+  @@index([updatedAt])
+}
+
+model CareCaseMember {
+  id                    String               @id @default(cuid())
+  caseId                String
+  userId                String?
+  role                  CareCaseMemberRole
+  name                  String
+  email                 String?
+  phone                 String?
+  preferredLocale       String               @default("nl")
+  relationshipToPatient String?
+  consentAuthorityType  ConsentAuthorityType?
+  dateOfBirth           DateTime?
+  mobilityStatus        String?
+  cognitiveStatus       String?
+  fundingContext        String[]             @default([])
+  consentStatus         PatientConsentStatus @default(PENDING)
+  visibilityPermissions String[]             @default([])
+  inviteTokenHash       String?              @unique
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+
+  careCase CareCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  user     User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([caseId])
+  @@index([userId])
+  @@index([role])
+}
+
+model TriageResponse {
+  id        String   @id @default(cuid())
+  caseId    String   @unique
+  answers   Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  careCase CareCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+}
+
+model ChecklistTask {
+  id           String              @id @default(cuid())
+  caseId       String
+  sortOrder    Int                 @default(0)
+  label        String
+  description  String              @db.Text
+  deadline     DateTime?
+  status       ChecklistTaskStatus @default(NOT_STARTED)
+  externalLink String?
+  staleNotifiedAt DateTime?
+  deadlineNotifiedAt DateTime?
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  careCase CareCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId, sortOrder])
+  @@index([deadline])
+  @@index([status])
+}
+
+model ConsentRecord {
+  id            String               @id @default(cuid())
+  caseId        String
+  actorUserId   String?
+  subjectUserId String?
+  action        String
+  authorityType ConsentAuthorityType?
+  details       Json?
+  createdAt     DateTime             @default(now())
+
+  careCase CareCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  actor    User?    @relation("ConsentActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  subject  User?    @relation("ConsentSubject", fields: [subjectUserId], references: [id], onDelete: SetNull)
+
+  @@index([caseId, createdAt])
+}
+
+model DirectoryProvider {
+  id             String                     @id @default(cuid())
+  name           String
+  type           DirectoryProviderType
+  municipality   String
+  city           String?
+  address        String?
+  languages      String[]                   @default([])
+  fundingAccepted String[]                  @default([])
+  contactEmail   String?
+  contactPhone   String?
+  websiteUrl     String?
+  source         DirectoryProviderSource
+  verifiedStatus DirectoryVerifiedStatus    @default(UNVERIFIED)
+  notes          String?                    @db.Text
+  linkedProviderId String?                  @unique
+  createdAt      DateTime                   @default(now())
+  updatedAt      DateTime                   @updatedAt
+
+  linkedProvider Provider?            @relation(fields: [linkedProviderId], references: [id], onDelete: SetNull)
+  referrals      PlacementReferral[]
+
+  @@index([municipality])
+  @@index([type])
+  @@index([verifiedStatus])
+}
+
+model PlacementReferral {
+  id                 String            @id @default(cuid())
+  caseId             String
+  directoryProviderId String
+  referredAt         DateTime          @default(now())
+  confirmedAt        DateTime?
+  feeStatus          PlacementFeeStatus @default(PENDING)
+  notes              String?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  careCase          CareCase          @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  directoryProvider DirectoryProvider @relation(fields: [directoryProviderId], references: [id], onDelete: Restrict)
+
+  @@index([caseId])
+  @@index([directoryProviderId])
+  @@index([feeStatus])
+  @@index([referredAt])
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+enum CareCaseStatus {
+  DRAFT
+  ACTIVE
+  COMPLETED
+  ARCHIVED
+}
+
+enum CareUrgency {
+  TODAY
+  THIS_WEEK
+  THIS_MONTH
+}
+
+enum CarePath {
+  HOME_CARE
+  FACILITY
+  BOTH
+  UNDECIDED
+}
+
+enum CareCaseMemberRole {
+  FAMILY
+  PATIENT
+}
+
+enum ConsentAuthorityType {
+  SELF_ATTESTED
+  LEGAL_REPRESENTATIVE_ON_FILE
+  PATIENT_GRANTED
+}
+
+enum PatientConsentStatus {
+  PENDING
+  GRANTED
+  REVOKED
+  NOT_APPLICABLE
+}
+
+enum ChecklistTaskStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  DONE
+}
+
+enum DirectoryProviderType {
+  RESIDENTIAL
+  HOME_CARE
+}
+
+enum DirectoryProviderSource {
+  GEMEENTE_WMO
+  HAND_CURATED
+}
+
+enum DirectoryVerifiedStatus {
+  UNVERIFIED
+  VERIFIED
+  HIDDEN
+}
+
+enum PlacementFeeStatus {
+  PENDING
+  INVOICED
+  PAID
+  DECLINED
 }

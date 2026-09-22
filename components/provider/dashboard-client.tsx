@@ -1,55 +1,33 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowUpRight, Copy, Mail, Phone, Settings } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Chip } from "@/components/ui/chip";
 import { CustomSelect } from "@/components/ui/custom-select";
 import { DashboardSkeleton } from "@/components/ui/dashboard-skeleton";
-import { EmptyState } from "@/components/ui/empty-state";
-import { ListSearch } from "@/components/ui/list-search";
 import { RefreshButton } from "@/components/ui/refresh-button";
-import { UnreadDot } from "@/components/ui/unread-dot";
-import { PanelSection, DetailList, panelNoticeTone, SlidePanel, StatusPill, usePanelMessage } from "@/components/ui/slide-panel";
+import { ListPager } from "@/components/ui/list-pager";
+import { PanelSection, panelNoticeTone, SlidePanel, usePanelMessage } from "@/components/ui/slide-panel";
 import { ProviderCalendarSettings } from "@/components/provider/calendar-settings";
-import { VisitSlotPicker } from "@/components/scheduling/visit-slot-picker";
-import { postMatchSchedule } from "@/lib/client/match-request";
-import { careTypeOptions, declineReasonOptions, careLevelOptions, dementiaCapacityOptions, dutchProvinces, facilityTypes, fundingTypeOptions, visitAvailabilityOptions } from "@/lib/config/content";
 import {
-  compareMatchPriority,
-  filterProviderInquiriesByTab,
-  isProviderActionNeeded,
-  matchStatusBadgeClass,
-  providerAcceptButtonLabel,
-  providerInquiryBanner,
-  providerInquiryStatusLabel,
-  providerInquiryTabLabel,
-  providerMatchNotes,
-  type ProviderInquiryTab
-} from "@/lib/domain/match-status";
-import { buildProviderInquiryInsights } from "@/lib/domain/provider-inquiry-insights";
+  careTypeOptions,
+  careLevelOptions,
+  dementiaCapacityOptions,
+  dutchProvinces,
+  facilityTypes,
+  fundingTypeOptions,
+  visitAvailabilityOptions
+} from "@/lib/config/content";
 import { occupiedBeds, occupancyPercent } from "@/lib/domain/provider-occupancy";
 import { sanitizeClientErrorMessage } from "@/lib/providers/errors";
 import { recordAction } from "@/lib/client/actions";
-import {
-  initProviderInquirySeenFromData,
-  isProviderInquiryUnread,
-  markProviderInquirySeen
-} from "@/lib/client/provider-inquiry-seen";
-import {
-  countUnseenProviderInquiriesInTab,
-  getProviderInquiryTabSeenAt,
-  initProviderInquiryTabSeenFromData,
-  markProviderInquiryTabSeen
-} from "@/lib/client/provider-inquiry-tab-seen";
 import { TOAST_DISMISS_MS } from "@/lib/client/toast-timing";
 import { useLocale } from "@/components/i18n/locale-provider";
 import { dateLocale, optionLabel, productUi } from "@/lib/i18n/ui";
 import type { Locale } from "@/lib/i18n/config";
 import { brand } from "@/lib/config/brand";
 import { cn } from "@/lib/core/utils";
-import { formatReference, matchesListSearch, matchesReferenceQuery } from "@/lib/domain/reference";
 import { PROVIDER_AVAILABILITY_OPTIONS } from "@/lib/domain/provider-availability";
 import {
   formatWaitEstimateDays,
@@ -89,40 +67,6 @@ type ProviderRecord = {
   roomTypes: string[];
 };
 
-type Inquiry = {
-  id: string;
-  intakeId: string;
-  score: number;
-  status: string;
-  notes: string | null;
-  declineReason: string | null;
-  createdAt: string;
-  updatedAt: string;
-  proposedStartsAt?: string | null;
-  proposedEndsAt?: string | null;
-  alternateStartsAt?: string | null;
-  alternateEndsAt?: string | null;
-  confirmedStartsAt?: string | null;
-  confirmedEndsAt?: string | null;
-  schedulingStatus?: string | null;
-  schedulingMode?: string | null;
-  schedulingExpiresAt?: string | null;
-  intake: {
-    contactName: string;
-    preferredArea: string;
-    careTypes: string[];
-    urgency: string;
-    ageRange: string;
-    phone: string;
-    email: string;
-    status: string;
-    visitScheduledAt: string | null;
-    visitType: string | null;
-    visitProviderName: string | null;
-    visitNotes: string | null;
-  };
-};
-
 type FormState = {
   name: string;
   type: string;
@@ -150,11 +94,27 @@ type FormState = {
   priceMax: string;
 };
 
+type CrisisReferral = {
+  id: string;
+  feeStatus: string;
+  referredAt: string;
+  confirmedAt: string | null;
+  caseId: string;
+  path: string | null;
+  urgency: string | null;
+  familyName: string;
+  patientName: string | null;
+  relationship: string | null;
+  directoryName: string;
+  municipality: string;
+};
+
 type DashboardData = {
   provider: ProviderRecord | null;
   profileComplete: boolean;
   profileMissingRequirements: string[];
-  inquiries: Inquiry[];
+  referrals?: CrisisReferral[];
+  referralsPagination?: { page: number; pageSize: number; total: number };
 };
 
 const emptyForm: FormState = {
@@ -242,62 +202,6 @@ function parseRequiredIntField(value: string): number | undefined | "invalid" {
   return parsed;
 }
 
-function formatProviderVisit(inquiry: Inquiry, locale: Locale) {
-  const p = productUi(locale).provider;
-  if (!inquiry.intake.visitScheduledAt) return null;
-  const date = new Date(inquiry.intake.visitScheduledAt);
-  if (Number.isNaN(date.getTime())) return null;
-  const when = date.toLocaleString(dateLocale(locale), { dateStyle: "medium", timeStyle: "short" });
-  const kind = inquiry.intake.visitType === "CALLBACK" ? p.visitCallback : p.visitOnSite;
-  const providerName = inquiry.intake.visitProviderName ? p.visitWithProvider(inquiry.intake.visitProviderName) : "";
-  return `${kind}${providerName} — ${when}`;
-}
-
-function providerNextStep(inquiry: Inquiry, locale: Locale) {
-  const p = productUi(locale).provider;
-  const visit = formatProviderVisit(inquiry, locale);
-
-  switch (inquiry.status) {
-    case "ACCEPTED":
-      if (visit) {
-        return {
-          title: p.nextStepAcceptedVisitTitle,
-          description: p.nextStepAcceptedVisitDesc,
-          visitLine: visit,
-          tone: "visit" as const
-        };
-      }
-      return {
-        title: p.nextStepAcceptedWaitTitle,
-        description: p.nextStepAcceptedWaitDesc
-      };
-    case "CONTACTED":
-      return {
-        title: p.nextStepContactedTitle,
-        description: visit ? p.nextStepContactedDescWithVisit : p.nextStepContactedDescNoVisit,
-        visitLine: visit || undefined,
-        tone: visit ? ("visit" as const) : undefined
-      };
-    case "PLACED":
-      return {
-        title: p.nextStepPlacedTitle,
-        description: p.nextStepPlacedDesc
-      };
-    case "DECLINED":
-      return {
-        title: p.nextStepDeclinedTitle,
-        description: p.nextStepDeclinedDesc
-      };
-    case "CLOSED":
-      return {
-        title: p.nextStepClosedTitle,
-        description: p.nextStepClosedDesc
-      };
-    default:
-      return null;
-  }
-}
-
 async function readApiError(response: Response, locale: Locale) {
   const fallback = productUi(locale).provider.requestFailed;
   try {
@@ -316,7 +220,12 @@ async function readApiError(response: Response, locale: Locale) {
 export function ProviderDashboardClient({ initialData }: { initialData?: DashboardData }) {
   const { locale, ui } = useLocale();
   const [form, setForm] = useState<FormState>(() => toForm(initialData?.provider ?? null));
-  const [inquiries, setInquiries] = useState<Inquiry[]>(initialData?.inquiries ?? []);
+  const [referrals, setReferrals] = useState<CrisisReferral[]>(initialData?.referrals ?? []);
+  const [referralsPagination, setReferralsPagination] = useState(
+    initialData?.referralsPagination ?? { page: 1, pageSize: 25, total: initialData?.referrals?.length ?? 0 }
+  );
+  const [referralsPending, setReferralsPending] = useState(false);
+  const [confirmingReferralId, setConfirmingReferralId] = useState<string | null>(null);
   const [profileComplete, setProfileComplete] = useState(initialData?.profileComplete ?? false);
   const [profileMissingRequirements, setProfileMissingRequirements] = useState<string[]>(
     initialData?.profileMissingRequirements ?? []
@@ -325,61 +234,65 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
   const [message, setMessage] = useState("");
   const [messageTone, setMessageTone] = useState<"success" | "error">("success");
   const [saving, setSaving] = useState(false);
-  const [pendingInquiryId, setPendingInquiryId] = useState<string | null>(null);
-  const [pendingAction, setPendingAction] = useState<string | null>(null);
-  const [inquiryFeedback, setInquiryFeedback] = useState<Record<string, string>>({});
   const [providerId, setProviderId] = useState<string | null>(initialData?.provider?.id ?? null);
   const [waitEstimateUpdatedAt, setWaitEstimateUpdatedAt] = useState<string | null>(
     initialData?.provider?.waitEstimateUpdatedAt ?? null
   );
   const [refreshing, setRefreshing] = useState(false);
-  const [confirmDecline, setConfirmDecline] = useState<{ id: string } | null>(null);
-  const [declineReason, setDeclineReason] = useState(declineReasonOptions[0]);
   const [profilePanelOpen, setProfilePanelOpen] = useState(false);
-  const [inquiryTab, setInquiryTab] = useState<ProviderInquiryTab>("new");
-  const [selectedInquiry, setSelectedInquiry] = useState<Inquiry | null>(null);
-  const [inquiryTabSeenAt, setInquiryTabSeenAt] = useState(getProviderInquiryTabSeenAt);
-  const [inquirySeenVersion, setInquirySeenVersion] = useState(0);
-  const [inquirySearch, setInquirySearch] = useState("");
 
-  const providerInquiryTabs: ProviderInquiryTab[] = ["new", "ongoing", "closed", "all"];
-
-  const bumpInquirySeen = useCallback(() => {
-    setInquirySeenVersion((current) => current + 1);
-  }, []);
-
-  useEffect(() => {
-    setInquiryTabSeenAt(getProviderInquiryTabSeenAt());
-  }, []);
-
-  function openInquiry(inquiry: Inquiry) {
-    markProviderInquirySeen(inquiry.id, inquiry.updatedAt, inquiry.createdAt);
-    bumpInquirySeen();
-    setSelectedInquiry(inquiry);
+  async function confirmReferral(referralId: string) {
+    setConfirmingReferralId(referralId);
+    setMessage("");
+    try {
+      const response = await fetch("/api/v2/partner/referrals", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ referralId })
+      });
+      const data = (await response.json()) as { error?: string; feeStatus?: string; confirmedAt?: string };
+      if (!response.ok) {
+        setMessageTone("error");
+        setMessage(data.error || "Could not confirm placement.");
+        return;
+      }
+      setReferrals((current) =>
+        current.map((item) =>
+          item.id === referralId
+            ? {
+                ...item,
+                feeStatus: data.feeStatus || "INVOICED",
+                confirmedAt: data.confirmedAt || new Date().toISOString()
+              }
+            : item
+        )
+      );
+      setMessageTone("success");
+      setMessage("Placement confirmed — fee status moved to invoiced.");
+    } catch {
+      setMessageTone("error");
+      setMessage("Could not confirm placement.");
+    } finally {
+      setConfirmingReferralId(null);
+    }
   }
 
-  async function refreshDashboard() {
+  async function refreshDashboard(referralsPage = referralsPagination.page) {
     setRefreshing(true);
     setMessage("");
     try {
-      const response = await fetch("/api/provider/me");
+      const response = await fetch(`/api/provider/me?referralsPage=${referralsPage}`);
       if (response.ok) {
         const data = (await response.json()) as DashboardData;
         setForm(toForm(data.provider));
-        setInquiries(data.inquiries);
+        setReferrals(data.referrals ?? []);
+        setReferralsPagination(
+          data.referralsPagination ?? { page: 1, pageSize: 25, total: data.referrals?.length ?? 0 }
+        );
         setProfileComplete(data.profileComplete);
         setProfileMissingRequirements(data.profileMissingRequirements);
         setProviderId(data.provider?.id ?? null);
         setWaitEstimateUpdatedAt(data.provider?.waitEstimateUpdatedAt ?? null);
-        setSelectedInquiry((current) => {
-          if (!current) return null;
-          const fresh = data.inquiries.find((item) => item.id === current.id) ?? null;
-          if (fresh) {
-            markProviderInquirySeen(fresh.id, fresh.updatedAt, fresh.createdAt);
-            bumpInquirySeen();
-          }
-          return fresh;
-        });
         setMessageTone("success");
         setMessage(ui.provider.dashboardRefreshed);
       } else {
@@ -403,7 +316,10 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
         if (response.ok) {
           const data = (await response.json()) as DashboardData;
           setForm(toForm(data.provider));
-          setInquiries(data.inquiries);
+          setReferrals(data.referrals ?? []);
+          setReferralsPagination(
+            data.referralsPagination ?? { page: 1, pageSize: 25, total: data.referrals?.length ?? 0 }
+          );
           setProfileComplete(data.profileComplete);
           setProfileMissingRequirements(data.profileMissingRequirements);
           setProviderId(data.provider?.id ?? null);
@@ -424,51 +340,10 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
   }, [initialData, locale]);
 
   useEffect(() => {
-    initProviderInquirySeenFromData(
-      inquiries.map((item) => ({ id: item.id, updatedAt: item.updatedAt, createdAt: item.createdAt }))
-    );
-    initProviderInquiryTabSeenFromData(inquiries);
-  }, [inquiries]);
-
-  useEffect(() => {
-    setSelectedInquiry((current) => {
-      if (!current) return null;
-      const fresh = inquiries.find((item) => item.id === current.id) ?? null;
-      if (fresh) {
-        markProviderInquirySeen(fresh.id, fresh.updatedAt, fresh.createdAt);
-        bumpInquirySeen();
-      }
-      return fresh;
-    });
-  }, [inquiries, bumpInquirySeen]);
-
-  // Tab badge watermark: acknowledge whatever is on the active tab (including after refresh).
-  // Card pulse stays until the inquiry is opened — do not mark items seen here.
-  useEffect(() => {
-    if (!profileComplete) return;
-    setInquiryTabSeenAt(markProviderInquiryTabSeen(inquiryTab, inquiries));
-  }, [inquiryTab, profileComplete, inquiries]);
-
-  useEffect(() => {
     if (!message) return;
     const timer = window.setTimeout(() => setMessage(""), TOAST_DISMISS_MS);
     return () => window.clearTimeout(timer);
   }, [message]);
-
-  useEffect(() => {
-    const ids = Object.keys(inquiryFeedback);
-    if (!ids.length) return;
-    const timer = window.setTimeout(() => {
-      setInquiryFeedback((current) => {
-        const next = { ...current };
-        for (const id of ids) {
-          delete next[id];
-        }
-        return next;
-      });
-    }, TOAST_DISMISS_MS);
-    return () => window.clearTimeout(timer);
-  }, [inquiryFeedback]);
 
   function updateForm<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((current) => ({ ...current, [key]: value }));
@@ -593,7 +468,6 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
       setWaitEstimateUpdatedAt(provider.waitEstimateUpdatedAt ?? null);
       setProfileComplete(data.profileComplete);
       setProfileMissingRequirements(data.profileMissingRequirements);
-      // Profile PATCH does not re-fetch inquiries; keep the current queue.
       notify(
         data.profileComplete ? ui.provider.profileSavedComplete : ui.provider.profileSavedIncomplete
       );
@@ -616,89 +490,6 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
     }
   }
 
-  async function updateInquiry(id: string, status: string, reason?: string) {
-    const actionKey = `${id}:${status}`;
-    setPendingInquiryId(id);
-    setPendingAction(actionKey);
-    setInquiryFeedback((current) => {
-      const next = { ...current };
-      delete next[id];
-      return next;
-    });
-
-    try {
-      const current = inquiries.find((item) => item.id === id) || selectedInquiry;
-      let response: Response;
-
-      if (status === "ACCEPTED" && current?.proposedStartsAt) {
-        response = await fetch(`/api/matches/${id}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "confirm" })
-        });
-      } else {
-        response = await fetch(`/api/matches/${id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status, ...(reason ? { declineReason: reason } : {}) })
-        });
-      }
-
-      if (!response.ok) {
-        const errorMessage = await readApiError(response, locale);
-        setInquiryFeedback((current) => ({
-          ...current,
-          [id]: errorMessage || ui.provider.inquiryUpdateFailed
-        }));
-        return;
-      }
-
-      const updated = (await response.json()) as Inquiry;
-      setInquiries((current) => current.map((item) => (item.id === id ? { ...item, ...updated } : item)));
-      setSelectedInquiry((current) => (current?.id === id ? { ...current, ...updated } : current));
-      markProviderInquirySeen(id, updated.updatedAt, updated.createdAt);
-      bumpInquirySeen();
-      void refreshDashboard();
-    } catch {
-      setInquiryFeedback((current) => ({
-        ...current,
-        [id]: ui.provider.inquiryUpdateConnectionFailed
-      }));
-    } finally {
-      setPendingInquiryId(null);
-      setPendingAction(null);
-    }
-  }
-
-  const sortedInquiries = useMemo(
-    () => [...inquiries].sort((a, b) => compareMatchPriority(a.status, b.status)),
-    [inquiries]
-  );
-  const inquiryTabBadges = useMemo(
-    () => ({
-      new: inquiryTab === "new" ? 0 : countUnseenProviderInquiriesInTab(inquiries, "new", inquiryTabSeenAt.new),
-      ongoing: inquiryTab === "ongoing" ? 0 : countUnseenProviderInquiriesInTab(inquiries, "ongoing", inquiryTabSeenAt.ongoing),
-      closed: inquiryTab === "closed" ? 0 : countUnseenProviderInquiriesInTab(inquiries, "closed", inquiryTabSeenAt.closed),
-      all: inquiryTab === "all" ? 0 : countUnseenProviderInquiriesInTab(inquiries, "all", inquiryTabSeenAt.all)
-    }),
-    [inquiries, inquiryTab, inquiryTabSeenAt]
-  );
-  const filteredInquiries = useMemo(() => {
-    const tabbed = filterProviderInquiriesByTab(sortedInquiries, inquiryTab);
-    return tabbed.filter(
-      (inquiry) =>
-        matchesReferenceQuery(inquiry.id, inquirySearch) ||
-        matchesReferenceQuery(inquiry.intakeId, inquirySearch) ||
-        matchesListSearch(
-          inquirySearch,
-          inquiry.intake.contactName,
-          inquiry.intake.preferredArea,
-          inquiry.intake.careTypes.join(", "),
-          inquiry.intake.urgency
-        )
-    );
-  }, [sortedInquiries, inquiryTab, inquirySearch]);
-
   const bedsOpenParsed = parseOptionalInt(form.bedsOpen) ?? null;
   const bedsTotalParsed = parseOptionalInt(form.bedsTotal) ?? null;
   const occupancyPct = occupancyPercent({ bedsOpen: bedsOpenParsed, bedsTotal: bedsTotalParsed });
@@ -716,7 +507,8 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
     : null;
   const waitStale = waitHasEstimate && isWaitEstimateStale(waitEstimateUpdatedAt);
 
-  const inquiryInsights = useMemo(() => buildProviderInquiryInsights(inquiries, locale), [inquiries, locale]);
+  const pendingReferrals = referrals.filter((item) => item.feeStatus === "PENDING").length;
+  const confirmedReferrals = referrals.filter((item) => item.feeStatus !== "PENDING").length;
 
   if (loading) {
     return <DashboardSkeleton title="provider dashboard" />;
@@ -727,7 +519,10 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
       <header className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <p className="section-label">{ui.provider.dashboardTitle}</p>
-          <h1 className="mt-1 text-h2 font-semibold text-ink">{ui.provider.inquiries}</h1>
+          <h1 className="mt-1 text-h2 font-semibold text-ink">Crisis triage referrals</h1>
+          <p className="mt-1 max-w-2xl text-sm text-ink/60">
+            Confirm directory placements and keep your facility profile and bed capacity up to date.
+          </p>
         </div>
         <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
           <Button
@@ -767,19 +562,12 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
         <div className="grid grid-cols-2 sm:grid-cols-4">
           {(
             [
+              [String(pendingReferrals), "Pending referrals"],
+              [String(confirmedReferrals), "Confirmed"],
+              [bedsOpenParsed != null ? String(bedsOpenParsed) : "—", "Open beds"],
               [
-                profileComplete ? String(inquiryInsights.actionNeeded) : ui.provider.locked,
-                ui.provider.actionNeeded
-              ],
-              [profileComplete ? String(inquiryInsights.ongoing) : "—", ui.provider.insightsOngoing],
-              [profileComplete ? String(inquiryInsights.closed) : "—", ui.provider.insightsClosed],
-              [
-                profileComplete
-                  ? inquiryInsights.acceptanceRatePercent != null
-                    ? ui.provider.insightsAcceptanceApprox(inquiryInsights.acceptanceRatePercent)
-                    : "—"
-                  : ui.provider.missingCount(profileMissingRequirements.length),
-                profileComplete ? ui.provider.insightsAcceptanceRate : ui.provider.profileStatus
+                profileComplete ? "Complete" : ui.provider.missingCount(profileMissingRequirements.length),
+                ui.provider.profileStatus
               ]
             ] as Array<[string, string]>
           ).map(([value, label], index) => (
@@ -856,44 +644,6 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
         </div>
       </section>
 
-      {profileComplete && inquiryInsights.recent.length ? (
-        <section className="mb-3 rounded-xl border border-stone-200 bg-white px-3 py-3 shadow-soft sm:px-4">
-          <h2 className="text-sm font-semibold text-ink">{ui.provider.insightsRecentTitle}</h2>
-          <ul className="mt-1.5 divide-y divide-stone-100">
-            {inquiryInsights.recent.slice(0, 3).map((item) => {
-              const match = inquiries.find((inquiry) => inquiry.id === item.id);
-              return (
-                <li key={item.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-ink">{item.familyName}</p>
-                    <p className="mt-0.5 truncate text-xs text-ink/55">
-                      {item.statusLabel}
-                      {" · "}
-                      {new Date(item.updatedAt).toLocaleString(dateLocale(locale), {
-                        dateStyle: "medium",
-                        timeStyle: "short"
-                      })}
-                    </p>
-                  </div>
-                  {match ? (
-                    <Button
-                      type="button"
-                      size="xs"
-                      variant="outline"
-                      className="bg-white"
-                      onClick={() => openInquiry(match)}
-                    >
-                      {ui.provider.insightsOpenInquiry}
-                      <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
-                    </Button>
-                  ) : null}
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-      ) : null}
-
       {!profileComplete ? (
         <section className="mb-4 rounded-xl border border-brand-amber/25 bg-brand-amber/10 px-4 py-3.5 sm:px-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -915,191 +665,67 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
         </section>
       ) : null}
 
-      <div className="mb-3 flex w-full gap-1 overflow-x-auto rounded-[10px] bg-white p-1 shadow-soft sm:inline-flex sm:w-auto">
-        {providerInquiryTabs.map((item) => {
-          const badge = inquiryTabBadges[item];
-          const isActive = inquiryTab === item;
-
-          return (
-            <button
-              key={item}
-              type="button"
-              onClick={() => setInquiryTab(item)}
-              className={cn(
-                "relative min-w-fit flex-1 rounded-lg px-3 py-2 text-sm transition sm:flex-none sm:px-4",
-                isActive ? "bg-brand-amber text-white" : "text-ink/70 hover:bg-brand-cream hover:text-brand-amber"
-              )}
-            >
-              <span className="inline-flex items-center gap-2">
-                {providerInquiryTabLabel(item, locale)}
-                {badge > 0 && !isActive ? (
-                  <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-amber px-1.5 text-[10px] font-bold leading-none text-white">
-                    {badge > 9 ? "9+" : badge}
-                  </span>
-                ) : null}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-
-      <section className="overflow-hidden rounded-xl bg-white shadow-soft">
+      <section className="mb-4 overflow-hidden rounded-xl bg-white shadow-soft">
         <div className="border-b border-stone-100 px-4 py-3 sm:px-5">
-          <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <h2 className="text-base font-semibold text-ink sm:text-lg">{ui.provider.inquiryQueue}</h2>
-            {profileComplete && inquiries.length ? (
-              <span className="inline-flex max-w-full shrink-0 rounded-full bg-brand-cream px-3 py-1 text-xs font-semibold text-ink/55">
-                {ui.provider.inquiryCountInTab(
-                  filteredInquiries.length,
-                  providerInquiryTabLabel(inquiryTab, locale).toLowerCase()
-                )}
-              </span>
-            ) : null}
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-base font-semibold text-ink sm:text-lg">Directory referrals</h2>
+            <span className="rounded-full bg-brand-cream px-3 py-1 text-xs font-semibold text-ink/55">
+              {referralsPagination.total}
+            </span>
           </div>
+          <p className="mt-1 text-xs text-ink/55">
+            Families who contacted your linked directory listing from a triage case. Confirm when a placement starts.
+          </p>
         </div>
-
-        {profileComplete && inquiries.length ? (
-          <div className="border-b border-stone-100 px-4 py-3 sm:px-5">
-            <ListSearch
-              value={inquirySearch}
-              onChange={setInquirySearch}
-              placeholder={ui.provider.searchPlaceholder}
-            />
-          </div>
-        ) : null}
-
-        {!profileComplete ? (
+        {!referrals.length ? (
           <div className="px-4 py-8 text-center sm:px-5">
-            <p className="text-sm text-ink/60">{ui.provider.emptyProfileDescription}</p>
+            <p className="text-sm text-ink/60">
+              No triage referrals yet. Link your facility to a Haaglanden directory listing to receive introductions here.
+            </p>
           </div>
-        ) : !inquiries.length ? (
-          <EmptyState
-            title={ui.provider.noInquiries}
-            description={ui.provider.noInquiriesHint}
-          />
-        ) : !filteredInquiries.length ? (
-          <EmptyState
-            title={ui.provider.noInquiriesInTab(providerInquiryTabLabel(inquiryTab, locale).toLowerCase())}
-            description={ui.provider.tryAnotherTab}
-          />
         ) : (
           <>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[640px] border-collapse text-left">
-                <thead className="bg-cream text-xs uppercase tracking-wide text-neutral-500">
-                  <tr>
-                    <th className="px-3 py-2.5 sm:px-4">{ui.provider.colFamily}</th>
-                    <th className="hidden px-3 py-2.5 sm:table-cell sm:px-4">{ui.provider.colCareNeeded}</th>
-                    <th className="hidden px-3 py-2.5 md:table-cell md:px-4">{ui.provider.colLocation}</th>
-                    <th className="hidden px-3 py-2.5 lg:table-cell lg:px-4">{ui.provider.colUpdated}</th>
-                    <th className="px-3 py-2.5 sm:px-4">{ui.provider.colStatus}</th>
-                    <th className="px-3 py-2.5 sm:px-4">{ui.provider.colActions}</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-stone-200">
-                  {filteredInquiries.map((inquiry) => {
-                    const isUnread =
-                      selectedInquiry?.id !== inquiry.id &&
-                      inquirySeenVersion >= 0 &&
-                      isProviderInquiryUnread(inquiry.id, inquiry.updatedAt, inquiry.createdAt);
-                    const isPending = pendingInquiryId === inquiry.id;
-                    const careLabels = inquiry.intake.careTypes.map((item) => optionLabel(locale, item));
-                    const careSummary =
-                      careLabels.length === 0
-                        ? "—"
-                        : careLabels.length <= 2
-                          ? careLabels.join(", ")
-                          : `${careLabels.slice(0, 2).join(", ")} +${careLabels.length - 2}`;
-
-                    return (
-                      <tr
-                        key={inquiry.id}
-                        className={cn(
-                          "cursor-pointer transition-colors hover:bg-cream",
-                          isUnread ? "border-l-[3px] border-l-brand-amber bg-brand-amber/[0.07]" : "border-l-[3px] border-l-transparent"
-                        )}
-                        onClick={() => openInquiry(inquiry)}
-                      >
-                        <td className="max-w-[12rem] px-3 py-2.5 align-middle text-sm sm:max-w-[14rem] sm:px-4">
-                          <div className="flex min-w-0 items-center gap-1.5">
-                            {isUnread ? <UnreadDot /> : null}
-                            <strong className="truncate text-ink">{inquiry.intake.contactName}</strong>
-                          </div>
-                          <span className="mt-0.5 block truncate text-xs text-neutral-500">
-                            {inquiry.score}% · {optionLabel(locale, inquiry.intake.urgency)}
-                          </span>
-                          <span className="mt-0.5 block truncate font-mono text-[10px] text-neutral-400">
-                            {ui.provider.refLabel} {formatReference(inquiry.intakeId)}
-                          </span>
-                          <span className="mt-0.5 block truncate text-xs text-neutral-500 sm:hidden">
-                            {inquiry.intake.preferredArea}
-                          </span>
-                        </td>
-                        <td className="hidden max-w-[14rem] px-3 py-2.5 align-middle text-sm text-neutral-600 sm:table-cell sm:px-4">
-                          <span className="line-clamp-1" title={careLabels.join(", ") || undefined}>
-                            {careSummary}
-                          </span>
-                        </td>
-                        <td className="hidden max-w-[8rem] truncate px-3 py-2.5 align-middle text-sm text-neutral-600 md:table-cell md:px-4">
-                          {inquiry.intake.preferredArea}
-                        </td>
-                        <td className="hidden whitespace-nowrap px-3 py-2.5 align-middle text-sm text-neutral-600 lg:table-cell lg:px-4">
-                          {new Date(inquiry.updatedAt).toLocaleString(dateLocale(locale), {
-                            day: "numeric",
-                            month: "short",
-                            year: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit"
-                          })}
-                        </td>
-                        <td className="px-3 py-2.5 align-middle sm:px-4">
-                          <span
-                            className={cn(
-                              "inline-flex max-w-[7.5rem] truncate rounded-md px-2 py-0.5 text-[11px] font-semibold leading-none sm:max-w-none",
-                              matchStatusBadgeClass(inquiry.status)
-                            )}
-                            title={providerInquiryStatusLabel(inquiry.status, locale)}
-                          >
-                            {providerInquiryStatusLabel(inquiry.status, locale)}
-                          </span>
-                        </td>
-                        <td className="px-3 py-2.5 align-middle sm:px-4" onClick={(event) => event.stopPropagation()}>
-                          <Button
-                            type="button"
-                            size="xs"
-                            variant="outline"
-                            className="bg-white"
-                            disabled={isPending}
-                            onClick={() => openInquiry(inquiry)}
-                          >
-                            {ui.provider.open}
-                            <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
-                          </Button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <ul className="divide-y divide-stone-100">
+              {referrals.map((referral) => (
+                <li key={referral.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-5">
+                  <div className="min-w-0">
+                    <p className="font-medium text-ink">{referral.familyName}</p>
+                    <p className="mt-0.5 text-xs text-ink/55">
+                      {referral.patientName ? `${referral.patientName} · ` : ""}
+                      {referral.path?.replaceAll("_", " ") || "Path pending"} · {referral.feeStatus}
+                    </p>
+                    <p className="mt-0.5 text-xs text-ink/45">
+                      {new Date(referral.referredAt).toLocaleDateString(dateLocale(locale))}
+                      {referral.municipality ? ` · ${referral.municipality}` : ""}
+                    </p>
+                  </div>
+                  {referral.feeStatus === "PENDING" ? (
+                    <Button
+                      size="sm"
+                      disabled={confirmingReferralId === referral.id}
+                      onClick={() => void confirmReferral(referral.id)}
+                    >
+                      Confirm placement
+                    </Button>
+                  ) : (
+                    <span className="text-xs font-medium uppercase tracking-wide text-ink/45">{referral.feeStatus}</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+            <ListPager
+              page={referralsPagination.page}
+              pageSize={referralsPagination.pageSize}
+              total={referralsPagination.total}
+              pending={referralsPending || refreshing}
+              onPageChange={(page) => {
+                setReferralsPending(true);
+                void refreshDashboard(page).finally(() => setReferralsPending(false));
+              }}
+            />
           </>
         )}
       </section>
-
-      <ProviderInquiryDetailPanel
-        inquiry={selectedInquiry}
-        pendingInquiryId={pendingInquiryId}
-        pendingAction={pendingAction}
-        inquiryFeedback={inquiryFeedback}
-        onClose={() => setSelectedInquiry(null)}
-        onAccept={(inquiry) => void updateInquiry(inquiry.id, "ACCEPTED")}
-        onDecline={(inquiry) => setConfirmDecline({ id: inquiry.id })}
-        onMatchPatched={(updated) => {
-          setInquiries((current) => current.map((item) => (item.id === updated.id ? { ...item, ...updated } : item)));
-          setSelectedInquiry((current) => (current?.id === updated.id ? { ...current, ...updated } : current));
-        }}
-        onScheduleRefresh={() => void refreshDashboard()}
-      />
 
       <section className="mt-5 rounded-xl border border-stone-200 bg-white px-4 py-4 shadow-soft sm:px-5 sm:py-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -1125,344 +751,21 @@ export function ProviderDashboardClient({ initialData }: { initialData?: Dashboa
         profileComplete={profileComplete}
         profileMissingRequirements={profileMissingRequirements}
         onSave={(panelNotify) =>
-          void saveProfile((message, tone) => {
-            if (message) panelNotify(message);
-            if (message) {
+          void saveProfile((msg, tone) => {
+            if (msg) panelNotify(msg);
+            if (msg) {
               setMessageTone(tone ?? "success");
-              setMessage(message);
+              setMessage(msg);
             }
           })
         }
       />
-
-      <ConfirmDialog
-        open={Boolean(confirmDecline)}
-        tone="danger"
-        pending={Boolean(confirmDecline && pendingAction === `${confirmDecline.id}:DECLINED`)}
-        title={ui.provider.declineTitle}
-        description={ui.provider.declineDescription}
-        confirmLabel={ui.provider.declineConfirm}
-        onCancel={() => {
-          setConfirmDecline(null);
-          setDeclineReason(declineReasonOptions[0]);
-        }}
-        onConfirm={() => {
-          if (!confirmDecline) return;
-          void updateInquiry(confirmDecline.id, "DECLINED", declineReason);
-          setConfirmDecline(null);
-          setDeclineReason(declineReasonOptions[0]);
-        }}
-      >
-        <label className="mt-4 grid gap-2 text-left text-sm font-medium text-ink">
-          {ui.provider.declineReasonLabel}
-          <CustomSelect value={declineReason} onChange={setDeclineReason} options={declineReasonOptions} formatOption={(value) => optionLabel(locale, value)} />
-        </label>
-      </ConfirmDialog>
     </main>
   );
 }
 
 const inputClass =
   "w-full rounded-lg border border-[var(--card-border)] px-3 py-2.5 text-sm text-ink outline-none transition focus:border-brand-amber";
-
-function ProviderInquiryDetailPanel({
-  inquiry,
-  pendingInquiryId,
-  pendingAction,
-  inquiryFeedback,
-  onClose,
-  onAccept,
-  onDecline,
-  onMatchPatched,
-  onScheduleRefresh
-}: {
-  inquiry: Inquiry | null;
-  pendingInquiryId: string | null;
-  pendingAction: string | null;
-  inquiryFeedback: Record<string, string>;
-  onClose: () => void;
-  onAccept: (inquiry: Inquiry) => void;
-  onDecline: (inquiry: Inquiry) => void;
-  onMatchPatched: (inquiry: Inquiry) => void;
-  onScheduleRefresh: () => void;
-}) {
-  const { locale, ui } = useLocale();
-  const [copiedField, setCopiedField] = useState<"phone" | "email" | null>(null);
-  const isPending = inquiry ? pendingInquiryId === inquiry.id : false;
-  const needsResponse = inquiry ? isProviderActionNeeded(inquiry.status) : false;
-  const hasProposedSlot = Boolean(inquiry?.proposedStartsAt);
-  const awaitingFamilyAlternate =
-    inquiry?.schedulingStatus === "AWAITING_FAMILY" && Boolean(inquiry?.alternateStartsAt);
-  const canConfirmProposed = needsResponse && hasProposedSlot && !awaitingFamilyAlternate;
-  const banner = inquiry ? providerInquiryBanner(inquiry.status, locale) : null;
-  const nextStep = inquiry ? providerNextStep(inquiry, locale) : null;
-  const activityNotes = inquiry ? providerMatchNotes(inquiry.notes) : null;
-  const cardFeedback = inquiry ? inquiryFeedback[inquiry.id] : undefined;
-  const visitSummary = inquiry ? formatProviderVisit(inquiry, locale) : null;
-  const showVisitInBanner = Boolean(nextStep?.visitLine);
-  const p = ui.provider;
-  const phone = inquiry?.intake.phone?.trim() || "";
-  const email = inquiry?.intake.email?.trim() || "";
-  const en = locale === "en";
-
-  useEffect(() => {
-    if (!copiedField) return;
-    const timer = window.setTimeout(() => setCopiedField(null), 2000);
-    return () => window.clearTimeout(timer);
-  }, [copiedField]);
-
-  async function copyValue(field: "phone" | "email", value: string) {
-    if (!value) return;
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopiedField(field);
-    } catch {
-      // Clipboard may be unavailable; links still work.
-    }
-  }
-
-  const details = inquiry
-    ? [
-        { label: p.detailFamilyContact, value: inquiry.intake.contactName },
-        {
-          label: p.detailPhone,
-          value: phone ? (
-            <a href={`tel:${phone.replace(/\s+/g, "")}`} className="font-medium text-brand-amber hover:text-brand-amber-mid">
-              {phone}
-            </a>
-          ) : (
-            "—"
-          )
-        },
-        {
-          label: p.detailEmail,
-          value: email ? (
-            <a href={`mailto:${email}`} className="font-medium text-brand-amber hover:text-brand-amber-mid">
-              {email}
-            </a>
-          ) : (
-            "—"
-          )
-        },
-        { label: p.detailPreferredArea, value: inquiry.intake.preferredArea },
-        { label: p.detailCareNeeded, value: inquiry.intake.careTypes.map((item) => optionLabel(locale, item)).join(", ") || "—" },
-        { label: p.detailUrgency, value: optionLabel(locale, inquiry.intake.urgency) },
-        { label: p.detailAgeRange, value: optionLabel(locale, inquiry.intake.ageRange) },
-        { label: p.detailMatchScore, value: `${inquiry.score}%` },
-        { label: p.detailStatus, value: providerInquiryStatusLabel(inquiry.status, locale) },
-        ...(inquiry.status === "DECLINED" && inquiry.declineReason
-          ? [{ label: p.detailDeclineReason, value: optionLabel(locale, inquiry.declineReason) }]
-          : []),
-        {
-          label: p.detailReceived,
-          value: new Date(inquiry.createdAt).toLocaleString(dateLocale(locale), { dateStyle: "medium", timeStyle: "short" })
-        },
-        {
-          label: p.detailLastUpdated,
-          value: new Date(inquiry.updatedAt).toLocaleString(dateLocale(locale), { dateStyle: "medium", timeStyle: "short" })
-        },
-        ...(visitSummary && !showVisitInBanner ? [{ label: p.detailVisitOrPhone, value: visitSummary }] : []),
-        // Proposed time is shown in the scheduling section when action is needed.
-        ...(inquiry.proposedStartsAt && !needsResponse
-          ? [
-              {
-                label: "Family proposed time",
-                value: new Date(inquiry.proposedStartsAt).toLocaleString(dateLocale(locale), {
-                  dateStyle: "full",
-                  timeStyle: "short"
-                })
-              }
-            ]
-          : []),
-        ...(activityNotes ? [{ label: p.detailActivity, value: <span className="whitespace-pre-line">{activityNotes}</span> }] : [])
-      ]
-    : [];
-
-  return (
-    <SlidePanel
-      open={Boolean(inquiry)}
-      onClose={onClose}
-      size="wide"
-      title={inquiry?.intake.contactName || p.inquiryTitleFallback}
-      subtitle={
-        inquiry
-          ? `${providerInquiryStatusLabel(inquiry.status, locale)} · ${inquiry.score}% match · ${inquiry.intake.preferredArea}`
-          : p.inquiryDetailsSubtitle
-      }
-      footer={
-        inquiry && needsResponse ? (
-          <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap">
-            {awaitingFamilyAlternate ? (
-              <p className="w-full text-sm leading-6 text-ink/65">
-                {en
-                  ? "Waiting for the family to accept your alternate time. You can still decline this inquiry."
-                  : "Wachten tot de familie uw alternatieve tijdstip accepteert. U kunt dit verzoek nog afwijzen."}
-              </p>
-            ) : (
-              <Button type="button" className="w-full sm:w-auto" disabled={isPending} onClick={() => onAccept(inquiry)}>
-                {pendingAction === `${inquiry.id}:ACCEPTED`
-                  ? p.accepting
-                  : canConfirmProposed
-                    ? en
-                      ? "Confirm this time"
-                      : "Dit tijdstip bevestigen"
-                    : providerAcceptButtonLabel(inquiry.status, locale)}
-              </Button>
-            )}
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full bg-white sm:w-auto"
-              disabled={isPending}
-              onClick={() => onDecline(inquiry)}
-            >
-              {pendingAction === `${inquiry.id}:DECLINED` ? p.declining : ui.provider.decline}
-            </Button>
-          </div>
-        ) : inquiry ? (
-          <p className="text-sm text-ink/65">
-            {nextStep?.visitLine
-              ? nextStep.visitLine
-              : inquiry.status === "ACCEPTED"
-                ? p.footerAccepted
-                : inquiry.status === "CONTACTED"
-                  ? p.footerContacted
-                  : inquiry.status === "PLACED"
-                    ? p.footerPlaced
-                    : inquiry.status === "DECLINED"
-                      ? p.footerDeclined
-                      : inquiry.status === "CLOSED"
-                        ? p.footerClosed
-                        : p.footerNoAction}
-          </p>
-        ) : null
-      }
-    >
-      {inquiry ? (
-        <div className="grid gap-6">
-          {banner ? <StatusPill className={matchStatusBadgeClass(inquiry.status)}>{banner}</StatusPill> : null}
-
-          {nextStep ? (
-            <PanelSection title={ui.provider.whatNext}>
-              <div
-                className={cn(
-                  "rounded-xl px-4 py-4",
-                  nextStep.tone === "visit"
-                    ? "border border-brand-amber/35 bg-brand-amber/10"
-                    : "border border-brand-green-pale/70 bg-brand-green-pale/15"
-                )}
-              >
-                <p className={cn("text-sm font-semibold", nextStep.tone === "visit" ? "text-brand-amber-dark" : "text-brand-green-dark")}>
-                  {nextStep.title}
-                </p>
-                <p className="mt-1 text-sm leading-6 text-ink/70">{nextStep.description}</p>
-                {nextStep.visitLine ? (
-                  <p className="mt-3 rounded-lg bg-white/80 px-3 py-2.5 text-sm font-medium leading-6 text-ink">{nextStep.visitLine}</p>
-                ) : null}
-              </div>
-            </PanelSection>
-          ) : null}
-
-          {(phone || email) ? (
-            <PanelSection title={p.contactFamilyTitle}>
-              <div className="flex flex-wrap gap-2">
-                {phone ? (
-                  <>
-                    <Button asChild size="sm">
-                      <a href={`tel:${phone.replace(/\s+/g, "")}`}>
-                        <Phone className="h-4 w-4" aria-hidden />
-                        {p.contactCall}
-                      </a>
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="bg-white"
-                      onClick={() => void copyValue("phone", phone)}
-                    >
-                      <Copy className="h-4 w-4" aria-hidden />
-                      {copiedField === "phone" ? p.contactCopied : p.contactCopyPhone}
-                    </Button>
-                  </>
-                ) : null}
-                {email ? (
-                  <>
-                    <Button asChild size="sm" variant="outline" className="bg-white">
-                      <a href={`mailto:${email}`}>
-                        <Mail className="h-4 w-4" aria-hidden />
-                        {p.contactEmail}
-                      </a>
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="bg-white"
-                      onClick={() => void copyValue("email", email)}
-                    >
-                      <Copy className="h-4 w-4" aria-hidden />
-                      {copiedField === "email" ? p.contactCopied : p.contactCopyEmail}
-                    </Button>
-                  </>
-                ) : null}
-              </div>
-            </PanelSection>
-          ) : null}
-
-          <PanelSection title={ui.provider.familyDetails}>
-            <DetailList items={details} columns={2} />
-          </PanelSection>
-
-          {needsResponse && inquiry.proposedStartsAt ? (
-            <PanelSection
-              title={
-                awaitingFamilyAlternate
-                  ? en
-                    ? "Alternate time sent"
-                    : "Alternatief verzonden"
-                  : en
-                    ? "Proposed visit time"
-                    : "Voorgesteld bezoektijdstip"
-              }
-              description={
-                awaitingFamilyAlternate
-                  ? en
-                    ? "The family can accept this time from their dashboard."
-                    : "De familie kan dit tijdstip accepteren in hun dashboard."
-                  : en
-                    ? "Confirm below, or suggest one alternate."
-                    : "Bevestig hieronder, of stel één alternatief voor."
-              }
-            >
-              <ProviderScheduleActions
-                inquiry={inquiry}
-                locale={locale}
-                disabled={isPending}
-                onMatchPatched={onMatchPatched}
-                onRefresh={onScheduleRefresh}
-              />
-            </PanelSection>
-          ) : null}
-
-          {cardFeedback ? (
-            <p
-              className={cn(
-                "rounded-xl px-4 py-3 text-sm leading-6",
-                p.feedbackErrorPrefixes.some((prefix) => cardFeedback.startsWith(prefix))
-                  ? "border border-red-200 bg-red-50 text-red-800"
-                  : "border border-brand-green-pale bg-brand-green-pale/20 text-brand-green-dark"
-              )}
-              role="status"
-            >
-              {cardFeedback}
-            </p>
-          ) : null}
-        </div>
-      ) : null}
-    </SlidePanel>
-  );
-}
 
 function ProviderProfilePanel({
   open,
@@ -1532,7 +835,7 @@ function ProviderProfilePanel({
         className="space-y-6"
         onSubmit={(event) => {
           event.preventDefault();
-          onSave((message, tone) => {
+          onSave((message) => {
             if (message) notifyPanel(message);
           });
         }}
@@ -1674,8 +977,7 @@ function ProviderProfilePanel({
           </div>
         </PanelSection>
 
-        <ProviderCalendarSettings onNotify={setPanelMessage} />
-
+        {open ? <ProviderCalendarSettings onNotify={setPanelMessage} /> : null}
 
         {!profileComplete && profileMissingRequirements.length ? (
           <div className="rounded-xl border border-brand-amber/25 bg-brand-amber/10 px-4 py-3">
@@ -1691,138 +993,6 @@ function ProviderProfilePanel({
         ) : null}
       </form>
     </SlidePanel>
-  );
-}
-
-function ProviderScheduleActions({
-  inquiry,
-  locale,
-  disabled,
-  onMatchPatched,
-  onRefresh
-}: {
-  inquiry: Inquiry;
-  locale: "en" | "nl";
-  disabled?: boolean;
-  onMatchPatched: (inquiry: Inquiry) => void;
-  onRefresh: () => void;
-}) {
-  const en = locale === "en";
-  const [showAlternate, setShowAlternate] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState("");
-  const awaitingFamily =
-    inquiry.schedulingStatus === "AWAITING_FAMILY" && Boolean(inquiry.alternateStartsAt);
-
-  async function suggestAlternate(slot: { start: string; end: string }) {
-    setBusy(true);
-    setMessage("");
-    const result = await postMatchSchedule(inquiry.id, {
-      action: "alternate",
-      startsAt: slot.start,
-      endsAt: slot.end
-    });
-    setBusy(false);
-    if (!result.ok) {
-      setMessage(result.error);
-      return;
-    }
-    if (result.match) {
-      onMatchPatched({ ...inquiry, ...(result.match as Partial<Inquiry>) });
-    }
-    setShowAlternate(false);
-    onRefresh();
-  }
-
-  const formatCompact = (iso: string) =>
-    new Date(iso).toLocaleString(en ? "en-GB" : "nl-NL", {
-      weekday: "short",
-      day: "numeric",
-      month: "short",
-      hour: "2-digit",
-      minute: "2-digit"
-    });
-
-  return (
-    <div className="grid min-w-0 gap-3">
-      {inquiry.proposedStartsAt ? (
-        <div className="min-w-0 rounded-lg bg-brand-cream/70 px-3 py-2.5">
-          <p className="text-xs font-medium uppercase tracking-wide text-ink/55">
-            {en ? "Family asked for" : "Familie vroeg om"}
-          </p>
-          <p className="mt-1 break-words text-sm font-semibold leading-6 text-ink">
-            {formatCompact(inquiry.proposedStartsAt)}
-          </p>
-        </div>
-      ) : null}
-
-      {awaitingFamily && inquiry.alternateStartsAt ? (
-        <div className="min-w-0 rounded-lg bg-brand-amber/10 px-3 py-2.5">
-          <p className="text-xs font-medium uppercase tracking-wide text-ink/55">
-            {en ? "Your alternate offer" : "Uw alternatief"}
-          </p>
-          <p className="mt-1 break-words text-sm font-semibold leading-6 text-ink">
-            {formatCompact(inquiry.alternateStartsAt)}
-          </p>
-          <p className="mt-1 text-xs leading-5 text-ink/60">
-            {en
-              ? "Waiting for the family to accept or the Care Guide to help."
-              : "Wachten op acceptatie door de familie of hulp van de Care Guide."}
-          </p>
-        </div>
-      ) : null}
-
-      {!showAlternate ? (
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          className="w-full bg-white"
-          disabled={disabled || busy}
-          onClick={() => setShowAlternate(true)}
-        >
-          {awaitingFamily
-            ? en
-              ? "Change alternate time"
-              : "Alternatief wijzigen"
-            : en
-              ? "Suggest another time"
-              : "Ander tijdstip voorstellen"}
-        </Button>
-      ) : (
-        <div className="grid min-w-0 gap-3">
-          <div className="flex min-w-0 items-start justify-between gap-2">
-            <p className="min-w-0 flex-1 text-sm font-medium leading-5 text-ink">
-              {en ? "Offer an alternate time" : "Stel een alternatief voor"}
-            </p>
-            <Button
-              type="button"
-              size="xs"
-              variant="ghost"
-              className="shrink-0"
-              disabled={disabled || busy}
-              onClick={() => {
-                setShowAlternate(false);
-                setMessage("");
-              }}
-            >
-              {en ? "Cancel" : "Annuleren"}
-            </Button>
-          </div>
-          <VisitSlotPicker
-            matchId={inquiry.id}
-            kind={inquiry.status === "CALLBACK_REQUESTED" ? "CALLBACK" : "VISIT"}
-            locale={locale}
-            disabled={disabled || busy}
-            excludeStartIso={inquiry.proposedStartsAt}
-            helperText={en ? "Pick a different open slot for the family" : "Kies een ander vrij tijdstip voor de familie"}
-            submitLabel={en ? "Send this alternate time" : "Dit alternatief versturen"}
-            onSelect={(slot) => void suggestAlternate(slot)}
-          />
-        </div>
-      )}
-      {message ? <p className="break-words text-sm text-red-700">{message}</p> : null}
-    </div>
   );
 }
 

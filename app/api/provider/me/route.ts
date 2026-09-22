@@ -2,9 +2,10 @@ import { getServerSession, getUserRole } from "@/lib/auth/server";
 import { logError } from "@/lib/core/logger";
 import { handleApiError, jsonError, jsonOk, rateLimitResponse, readJsonBody } from "@/lib/core/api-helpers";
 import { providerSaveErrorMessage } from "@/lib/providers/errors";
-import { getProviderInquiries, getUserLinkedProvider, upsertProviderForUser } from "@/lib/providers/server";
+import { getUserLinkedProvider, upsertProviderForUser } from "@/lib/providers/server";
 import { getProviderProfileMissingRequirements } from "@/lib/providers/completeness";
-import { toSafeProvider, toSafeProviderInquiry } from "@/lib/serializers/provider";
+import { toSafeProvider } from "@/lib/serializers/provider";
+import { listCrisisReferralsForProvider } from "@/lib/data/crisis-ops";
 import { providerProfileSchemaFor } from "@/lib/validation/provider";
 import { getLocale } from "@/lib/i18n/get-locale";
 
@@ -27,16 +28,24 @@ export async function GET(request: Request) {
   try {
     const auth = await assertProviderAccess();
     if (auth.error) return auth.error;
+    const page = Number.parseInt(new URL(request.url).searchParams.get("referralsPage") || "1", 10);
     const provider = await getUserLinkedProvider(auth.session!.user.id);
     const profileMissingRequirements = getProviderProfileMissingRequirements(provider);
     const profileComplete = profileMissingRequirements.length === 0;
-    const inquiries = provider && profileComplete ? await getProviderInquiries(provider.id) : [];
+    const referralPage = provider
+      ? await listCrisisReferralsForProvider(provider.id, Number.isFinite(page) && page > 0 ? page : 1)
+      : { items: [], page: 1, pageSize: 25, total: 0 };
 
     return jsonOk({
       provider: toSafeProvider(provider),
       profileComplete,
       profileMissingRequirements,
-      inquiries: inquiries.map(toSafeProviderInquiry)
+      referrals: referralPage.items,
+      referralsPagination: {
+        page: referralPage.page,
+        pageSize: referralPage.pageSize,
+        total: referralPage.total
+      }
     });
   } catch (error) {
     return handleApiError(error, "provider_dashboard_read");
@@ -69,8 +78,7 @@ export async function PATCH(request: Request) {
     return jsonOk({
       provider: toSafeProvider(provider),
       profileComplete: profileMissingRequirements.length === 0,
-      profileMissingRequirements,
-      inquiries: []
+      profileMissingRequirements
     });
   } catch (error) {
     logError("provider_profile_save", {

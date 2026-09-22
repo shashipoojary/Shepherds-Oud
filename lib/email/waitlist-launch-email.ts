@@ -12,7 +12,7 @@ export async function buildWaitlistFamilyLaunchPayload(input: {
 }) {
   const locale = await resolveEmailLocale(input.locale);
   const copy = emailCopy(locale).waitlistLaunch.family;
-  const intakeUrl = `${appUrl}/family/intake`;
+  const intakeUrl = `${appUrl}/triage/1`;
   const paragraphs = [emailGreeting(locale, input.contactName), ...copy.body];
 
   return {
