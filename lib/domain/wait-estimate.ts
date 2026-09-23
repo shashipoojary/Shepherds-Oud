@@ -44,7 +44,7 @@ export function formatWaitEstimateDays(min: number, max: number, locale: Locale)
 
 /**
  * Family-facing wait range from structured provider fields.
- * Returns null when missing or stale — callers should show "Ask your Care Guide…", never invent days.
+ * Returns null when missing or stale — callers should show "Ask us for current wait times…", never invent days.
  */
 export function resolveFamilyWaitEstimate(provider: WaitEstimateFields, locale: Locale, now: Date = new Date()) {
   if (!hasStructuredWaitEstimate(provider)) return null;

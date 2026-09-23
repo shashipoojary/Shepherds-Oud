@@ -21,22 +21,13 @@ model User {
   linkedProviderId String?   @unique
   linkedProvider   Provider? @relation(fields: [linkedProviderId], references: [id])
 
-  linkedHospitalId String?
-  linkedHospital   Hospital? @relation(fields: [linkedHospitalId], references: [id])
-
-  intakes             Intake[]
-  guidedIntakes       Intake[]         @relation("CareGuideIntakes")
-  hospitalReferrals   Intake[]         @relation("HospitalReferrals")
   providerInvitesSent ProviderInvite[] @relation("ProviderInvitesSent")
-  hospitalInvitesSent HospitalInvite[] @relation("HospitalInvitesSent")
   sessions            Session[]
   accounts            Account[]
   careCaseMemberships CareCaseMember[]
   pushSubscriptions   PushSubscription[]
   consentRecordsActor ConsentRecord[]  @relation("ConsentActor")
   consentRecordsSubject ConsentRecord[] @relation("ConsentSubject")
-
-  @@index([linkedHospitalId])
 }
 
 model Session {
@@ -85,96 +76,6 @@ model Verification {
   @@index([identifier])
 }
 
-model Intake {
-  id                        String       @id @default(cuid())
-  contactName               String
-  email                     String
-  phone                     String
-  relationship              String
-  preferredArea             String
-  ageRange                  String
-  careTypes                 String[]
-  urgency                   String
-  budget                    String?
-  fundingTypes              String[]     @default([])
-  languages                 String[]
-  // UI locale when the family submitted (nl | en) — drives family emails
-  preferredLocale           String       @default("nl")
-  additionalNeeds           String[]
-  functionalNeeds           String[]     @default([])
-  placementPreferences      String[]     @default([])
-  livingSituation           String?
-  moveInTimeline            String?
-  mobility                  String?
-  dementiaNeeds             String?
-  hospitalDischargeDate     DateTime?
-  decisionMakerName         String?
-  decisionMakerRelationship String?
-  seniorAgreedToSearch      String?
-  decisionParticipants      String?
-  emotionalSupportNeeds     String[]
-  supportTypes              String[]
-  notes                     String?
-  preferredDistance         String?
-  medicalSupportNeeds       String?
-  personSafeTonight         String?
-  urgentMedicalHelp         String?
-  canRemainHomeTonight      String?
-  caregiverBurnoutRisk      String?
-  immediateRiskFlags        String[]     @default([])
-  emergencyStopped          Boolean      @default(false)
-  consentAcceptedAt         DateTime?
-  consentVersion            String?
-  caseOutcome               String?
-  status                    IntakeStatus @default(NEW)
-  careGuideId               String?
-  carePathway               String?
-  assessmentNotes           String?
-  carePlanSummary           String?
-  visitScheduledAt          DateTime?
-  visitType                 String?
-  visitProviderName         String?
-  visitNotes                String?
-  followUp7At               DateTime?
-  followUp30At              DateTime?
-  followUp90At              DateTime?
-  createdAt                 DateTime     @default(now())
-  updatedAt                 DateTime     @updatedAt
-
-  /// Who submitted this intake — family self-serve vs hospital referral demo.
-  referralSource        IntakeReferralSource @default(FAMILY_SELF)
-  referringHospitalId   String?
-  referredByUserId      String?
-
-  userId         String?
-  user           User?           @relation(fields: [userId], references: [id])
-  careGuide      User?           @relation("CareGuideIntakes", fields: [careGuideId], references: [id])
-  referringHospital Hospital?    @relation(fields: [referringHospitalId], references: [id])
-  referredBy     User?           @relation("HospitalReferrals", fields: [referredByUserId], references: [id])
-  matches        Match[]
-  decisionMakers DecisionMaker[]
-
-  @@index([careGuideId])
-  @@index([userId])
-  @@index([status])
-  @@index([referralSource])
-  @@index([referringHospitalId])
-}
-
-model DecisionMaker {
-  id               String   @id @default(cuid())
-  name             String
-  relationship     String
-  responsibilities String[] @default([])
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-
-  intakeId String
-  intake   Intake @relation(fields: [intakeId], references: [id], onDelete: Cascade)
-
-  @@index([intakeId])
-}
-
 model Provider {
   id                     String   @id @default(cuid())
   name                   String
@@ -220,84 +121,9 @@ model Provider {
   updatedAt              DateTime @updatedAt
 
   user    User?
-  matches Match[]
-  calendarConnections ProviderCalendarConnection[]
-  bookingSettings     ProviderBookingSettings?
   directoryListing    DirectoryProvider?
 
   @@index([email])
-}
-
-model ProviderCalendarConnection {
-  id              String                   @id @default(cuid())
-  providerId      String
-  platform        CalendarPlatform
-  accountEmail    String
-  /// AES-GCM encrypted refresh token (or opaque token blob).
-  refreshTokenEnc String
-  accessTokenEnc  String?
-  accessTokenExp  DateTime?
-  calendarId      String
-  calendarName    String?
-  syncStatus      CalendarSyncStatus       @default(ACTIVE)
-  connectedAt     DateTime                 @default(now())
-  updatedAt       DateTime                 @updatedAt
-
-  provider Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
-  bookingSettingsAsActive ProviderBookingSettings[] @relation("ActiveCalendarConnection")
-
-  @@unique([providerId, platform, accountEmail])
-  @@index([providerId])
-  @@index([syncStatus])
-}
-
-model ProviderBookingSettings {
-  id                        String   @id @default(cuid())
-  providerId                String   @unique
-  visitDurationMinutes      Int      @default(60)
-  callbackDurationMinutes   Int      @default(30)
-  bufferMinutes             Int      @default(15)
-  horizonDays               Int      @default(14)
-  timezone                  String   @default("Europe/Amsterdam")
-  activeCalendarConnectionId String?
-  createdAt                 DateTime @default(now())
-  updatedAt                 DateTime @updatedAt
-
-  provider                 Provider                    @relation(fields: [providerId], references: [id], onDelete: Cascade)
-  activeCalendarConnection ProviderCalendarConnection? @relation("ActiveCalendarConnection", fields: [activeCalendarConnectionId], references: [id], onDelete: SetNull)
-}
-
-model Match {
-  id                 String      @id @default(cuid())
-  score              Int
-  status             MatchStatus @default(SUGGESTED)
-  notes              String?
-  familyFacingReason String?
-  declineReason      String?
-  createdAt          DateTime    @default(now())
-  updatedAt          DateTime    @updatedAt
-
-  schedulingMode     SchedulingMode?
-  schedulingStatus   SchedulingStatus?
-  proposedStartsAt   DateTime?
-  proposedEndsAt     DateTime?
-  alternateStartsAt  DateTime?
-  alternateEndsAt    DateTime?
-  confirmedStartsAt  DateTime?
-  confirmedEndsAt    DateTime?
-  calendarEventId    String?
-  calendarPlatform   CalendarPlatform?
-  schedulingExpiresAt DateTime?
-
-  intakeId   String
-  providerId String
-  intake     Intake   @relation(fields: [intakeId], references: [id])
-  provider   Provider @relation(fields: [providerId], references: [id])
-
-  @@unique([intakeId, providerId])
-  @@index([providerId])
-  @@index([status])
-  @@index([schedulingStatus])
 }
 
 model ActionLog {
@@ -316,63 +142,6 @@ enum Role {
   FAMILY
   PROVIDER
   ADMIN
-  HOSPITAL
-}
-
-enum IntakeReferralSource {
-  FAMILY_SELF
-  HOSPITAL
-}
-
-enum IntakeStatus {
-  NEW
-  CARE_GUIDE_ASSIGNED
-  ASSESSMENT
-  CARE_PLAN
-  MATCHED
-  VISIT_SCHEDULED
-  PROVIDER_RESPONSE
-  PLACEMENT_IN_PROGRESS
-  PLACED
-  FOLLOW_UP_7
-  FOLLOW_UP_30
-  FOLLOW_UP_90
-  CLOSED
-}
-
-enum MatchStatus {
-  SUGGESTED
-  CONTACTED
-  VISIT_REQUESTED
-  CALLBACK_REQUESTED
-  ACCEPTED
-  DECLINED
-  PLACED
-  CLOSED
-}
-
-enum CalendarPlatform {
-  GOOGLE
-  MICROSOFT
-}
-
-enum CalendarSyncStatus {
-  ACTIVE
-  NEEDS_REAUTH
-  DISCONNECTED
-}
-
-enum SchedulingMode {
-  CALENDAR
-  MANUAL
-}
-
-enum SchedulingStatus {
-  AWAITING_FAMILY
-  AWAITING_PROVIDER
-  CONFIRMED
-  CANCELLED
-  EXPIRED
 }
 
 enum WaitlistType {
@@ -446,48 +215,6 @@ enum ProviderInviteStatus {
   REVOKED
 }
 
-model Hospital {
-  id        String   @id @default(cuid())
-  name      String
-  email     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  users     User[]
-  invites   HospitalInvite[]
-  referrals Intake[]
-
-  @@index([email])
-}
-
-model HospitalInvite {
-  id          String               @id @default(cuid())
-  email       String
-  tokenHash   String               @unique
-  status      HospitalInviteStatus @default(PENDING)
-  hospitalId  String
-  invitedById String?
-  expiresAt   DateTime
-  acceptedAt  DateTime?
-  createdAt   DateTime             @default(now())
-  updatedAt   DateTime             @updatedAt
-
-  hospital  Hospital @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
-  invitedBy User?    @relation("HospitalInvitesSent", fields: [invitedById], references: [id])
-
-  @@index([email])
-  @@index([status])
-  @@index([hospitalId])
-  @@index([invitedById])
-}
-
-enum HospitalInviteStatus {
-  PENDING
-  ACCEPTED
-  EXPIRED
-  REVOKED
-}
-
 // Durable outbound email jobs — Neon outbox + cron worker (no paid queue).
 model EmailOutbox {
   id             String            @id @default(cuid())
@@ -516,7 +243,7 @@ enum EmailOutboxStatus {
   FAILED
 }
 
-// --- Crisis Triage V2 (additive; legacy Intake/Match kept until cutover soak) ---
+// --- Crisis Triage (primary family product) ---
 
 model CareCase {
   id           String          @id @default(cuid())

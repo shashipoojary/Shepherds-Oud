@@ -1,6 +1,6 @@
 /**
  * Prelaunch mode (default): waitlist-only public site — family intake paths redirect away.
- * Production mode: set PRELAUNCH=false or NEXT_PUBLIC_PRELAUNCH=false for full guided intake.
+ * Production mode: set PRELAUNCH=false or NEXT_PUBLIC_PRELAUNCH=false for live crisis triage.
  *
  * PRELAUNCH (server) is read at request time on Vercel. NEXT_PUBLIC_PRELAUNCH is inlined at build
  * for client bundles; the root layout passes the resolved value through PrelaunchProvider.

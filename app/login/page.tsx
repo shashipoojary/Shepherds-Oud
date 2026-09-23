@@ -8,7 +8,7 @@ import { noIndexMetadata } from "@/lib/config/seo";
 
 export const metadata = {
   ...noIndexMetadata,
-  title: `Care Guide-inlog | ${brand.name}`
+  title: `Admin sign in | ${brand.name}`
 };
 
 export default async function LoginPage() {

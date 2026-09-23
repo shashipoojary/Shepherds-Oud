@@ -72,11 +72,6 @@ The app is designed to be simple, calm, mobile-first, and usable by older family
 
 - `GET /api/health` - health check for monitoring.
 - `GET /api/cron/db-ping` - Neon keep-alive ping (cron auth; use with an external 10‑minute scheduler on Vercel Hobby).
-- `POST /api/intakes` - create a family intake.
-- `GET /api/intakes/[id]` - fetch an intake.
-- `PATCH /api/intakes/[id]` - update intake status and admin fields.
-- `POST /api/matches` - create or update matches.
-- `PATCH /api/matches/[id]` - update a match workflow state.
 - `POST /api/actions` - log admin and provider actions.
 - `GET /api/admin/dashboard` - admin dashboard data.
 - `POST /api/admin/waitlist/bulk-launch-email` - send waitlist launch emails.
@@ -84,6 +79,7 @@ The app is designed to be simple, calm, mobile-first, and usable by older family
 - `POST /api/waitlist` - create a family or facility waitlist entry.
 - `PATCH /api/waitlist/[id]` - update waitlist status.
 - `/api/auth/[...all]` - Better Auth route.
+- `/api/v2/*` - crisis triage cases, directory, partner referrals, tasks, push.
 
 ## Crisis triage (primary family product)
 
@@ -95,9 +91,9 @@ Self-serve crisis triage is the main family flow:
 - Launch checklist: [`docs/CRISIS_V2_LAUNCH_CHECKLIST.md`](./docs/CRISIS_V2_LAUNCH_CHECKLIST.md)
 - PWA: `public/manifest.webmanifest` + `public/sw.js`; optional `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY`
 - Cron: `/api/cron/checklist-reminders` (daily) marks approaching/stale tasks for privacy-safe reminders
-- Legacy Care Guide paths (`/family/intake`, `/family/dashboard`, `/v2/*`) redirect to the new routes
+- Legacy Care Guide paths (`/family/intake`, `/family/dashboard`, `/v2/*`, `/hospital/*`) redirect to the new routes
 
-Old family Care Guide UI is parked (redirects only). Admin / provider / hospital tools remain.
+Care Guide intake/match/hospital APIs and DB models have been removed. Crisis triage (`CareCase`, directory, partner referrals) is the family product.
 
 ## Core Data Model
 
@@ -107,9 +103,9 @@ Main models:
 
 - `User` - family, provider, or admin account.
 - `Session`, `Account`, `Verification` - Better Auth tables.
-- `Intake` - family care request, assessment, care plan, visit schedule, and follow-up fields.
+- `CareCase` / `TriageResponse` / `ChecklistTask` - crisis triage journey.
+- `DirectoryProvider` / `PlacementReferral` - Haaglanden directory and partner fees.
 - `Provider` - care provider profile, service areas, languages, capacity, prices, and availability.
-- `Match` - scored relationship between an intake and provider.
 - `ActionLog` - audit trail for admin and provider actions.
 - `WaitlistEntry` - prelaunch family and facility registrations.
 
@@ -121,15 +117,14 @@ Main roles:
 
 ## End-To-End Flow
 
-1. A family visits the site and either joins the prelaunch waitlist or starts the care intake.
-2. The intake validates data with Zod and stores the request in Neon PostgreSQL through Prisma.
-3. The system assigns a care pathway and creates a case record for admin review.
-4. Providers are matched based on location, care needs, language, budget, urgency, and availability.
-5. The family sees matched care options and can request a visit, request a call, save options, or view provider details.
-6. Providers manage availability and respond to requests from the provider dashboard.
-7. Admins review intakes, view cases, edit profiles, trigger follow-ups, update provider data, and monitor waitlist activity.
-8. Brevo sends transactional emails for confirmations, advisor alerts, provider inquiries, magic links, and launch messages.
-9. Better Auth manages sign-in, sessions, Google OAuth, roles, and Better Auth Dash verification.
+1. A family visits the site and either joins the prelaunch waitlist or starts crisis triage (`/triage/1`).
+2. Triage answers are scored into an urgency path and checklist; optional signup claims the case.
+3. The family works through tasks, browses the Haaglanden directory, and may contact facilities.
+4. Partner referrals track success-fee status for directory contacts.
+5. Providers manage facility profiles from the provider dashboard.
+6. Admins review crisis cases, directory listings, referrals, waitlist, and announcements.
+7. Brevo sends transactional emails (magic links, waitlist, announcements) via the Neon outbox.
+8. Better Auth manages sign-in, sessions, Google OAuth, roles, and Better Auth Dash verification.
 
 ## Project Structure
 
@@ -217,7 +212,7 @@ To keep Neon warm between visits, use a free external scheduler (e.g. [cron-job.
 - URL: `GET https://<your-vercel-domain>/api/cron/db-ping`
 - Header: `Authorization: Bearer <CRON_SECRET>`
 
-That endpoint runs `SELECT 1` only — minimal cost and well within Hobby limits (~144 pings/day). Your existing daily Vercel crons (`retention`, `email-outbox`, `scheduling-expiry`) stay on once‑per‑day schedules in `vercel.json`.
+That endpoint runs `SELECT 1` only — minimal cost and well within Hobby limits (~144 pings/day). Your existing daily Vercel crons (`retention`, `email-outbox`, `checklist-reminders`) stay on once‑per‑day schedules in `vercel.json`.
 
 For faster email retries (especially after bulk announcements), also schedule an external job every **30 minutes**:
 
@@ -262,7 +257,7 @@ Also authenticate the sending domain in Brevo (Senders → Domains: Brevo code +
 
 Outbound sends go through `sendBrevoEmail` with a **Neon email outbox** (free/open): each message is recorded and **sent immediately**; if Brevo fails, `/api/cron/email-outbox` retries (daily on Vercel Hobby — once per day is the Hobby cron limit). Set `CRON_SECRET` so the cron can authenticate (`Authorization: Bearer …`).
 
-Set `ADVISOR_EMAIL` to the care guide or operations inbox that should receive intake alerts (e.g. `dominique@shepherdsoud.com`).
+Set `ADVISOR_EMAIL` to the operations inbox for waitlist/ops alerts when configured (e.g. `dominique@shepherdsoud.com`).
 
 ## Local Development
 

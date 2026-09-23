@@ -59,9 +59,8 @@ function privacyContent(locale: Locale): LegalPageContent {
           title: "Hoe we uw gegevens gebruiken",
           paragraphs: ["We gebruiken persoonsgegevens alleen voor legitieme dienstdoeleinden, waaronder:"],
           list: [
-            "Beoordelen van zorgaanvragen van families en toewijzen van een Care Guide",
-            "Matchen van families met geschikte zorgaanbieders",
-            "Coördineren van bezoeken, plaatsing en nazorg",
+            "Beoordelen van triage-dossieren van families en checkliststappen",
+            "Tonen van Haaglanden-directoryopties en verwerken van plaatsingsverwijzingen",
             "Beheren van wachtlijsten en onboarding van aanbieders",
             "Verzenden van service-e-mails zoals bevestigingen, statusupdates en veilige inloglinks",
             "Beschermen van het platform, voorkomen van misbruik en naleven van wettelijke verplichtingen"
@@ -76,7 +75,7 @@ function privacyContent(locale: Locale): LegalPageContent {
         {
           title: "Delen en verwerkers",
           paragraphs: [
-            "We verkopen geen persoonsgegevens. We delen informatie alleen wanneer dat nodig is om de dienst te leveren, bijvoorbeeld met gematchte zorgaanbieders die u wilt benaderen, geautoriseerde Care Guides en beheerders, en vertrouwde verwerkers die infrastructuur hosten, e-mail versturen of authenticatie verzorgen. Deze partijen zijn waar nodig gebonden aan verwerkersovereenkomsten."
+            "We verkopen geen persoonsgegevens. We delen informatie alleen wanneer dat nodig is om de dienst te leveren, bijvoorbeeld met directory-aanbieders die u wilt benaderen, geautoriseerde beheerders, en vertrouwde verwerkers die infrastructuur hosten, e-mail versturen of authenticatie verzorgen. Deze partijen zijn waar nodig gebonden aan verwerkersovereenkomsten."
           ]
         },
         {
@@ -146,9 +145,8 @@ function privacyContent(locale: Locale): LegalPageContent {
         title: "How we use your data",
         paragraphs: ["We use personal data only for legitimate service purposes, including:"],
         list: [
-          "Reviewing family care requests and assigning a Care Guide",
-          "Matching families with suitable care providers",
-          "Coordinating visits, placement, and follow-up support",
+          "Reviewing family triage cases and checklist steps",
+          "Showing Haaglanden directory options and processing placement referrals",
           "Operating facility waitlists and provider onboarding",
           "Sending service emails such as confirmations, status updates, and secure sign-in links",
           "Protecting the platform, preventing abuse, and meeting legal obligations"
@@ -163,7 +161,7 @@ function privacyContent(locale: Locale): LegalPageContent {
       {
         title: "Sharing and processors",
         paragraphs: [
-          "We do not sell personal data. We share information only when needed to deliver the service, such as with matched care facilities you choose to contact, authorised Care Guides and administrators, and trusted processors that host infrastructure, send email, or provide authentication. These providers are bound by data-processing agreements where required."
+          "We do not sell personal data. We share information only when needed to deliver the service, such as with directory providers you choose to contact, authorised administrators, and trusted processors that host infrastructure, send email, or provide authentication. These providers are bound by data-processing agreements where required."
         ]
       },
       {
@@ -229,13 +227,13 @@ function termsContent(locale: Locale): LegalPageContent {
         {
           title: "Geen spoed- of medisch advies",
           paragraphs: [
-            "Gebruik dit platform niet voor medische noodgevallen. Bel 112 of het lokale alarmnummer. Care Guides bieden navigatie en coördinatie; zij vervangen geen medische professionals, juridisch adviseurs of spoeddiensten."
+            "Gebruik dit platform niet voor medische noodgevallen. Bel 112 of het lokale alarmnummer. Shepherds Oud Care biedt softwaregestuurde triage, checklists en directoryhulp; dit vervangt geen medische professionals, juridisch adviseurs of spoeddiensten."
           ]
         },
         {
           title: "Accounts en toegang",
           paragraphs: [
-            "Bepaalde functies zijn alleen beschikbaar voor geautoriseerde Care Guides, beheerders en geverifieerde aanbieders. U bent verantwoordelijk voor het veilig houden van inloglinks en accounttoegang. We kunnen toegang opschorten wanneer we redelijkerwijs vermoeden dat de voorwaarden zijn geschonden of het platform wordt misbruikt."
+            "Bepaalde functies zijn alleen beschikbaar voor geautoriseerde beheerders en geverifieerde aanbieders. U bent verantwoordelijk voor het veilig houden van inloglinks en accounttoegang. We kunnen toegang opschorten wanneer we redelijkerwijs vermoeden dat de voorwaarden zijn geschonden of het platform wordt misbruikt."
           ]
         },
         {
@@ -312,13 +310,13 @@ function termsContent(locale: Locale): LegalPageContent {
       {
         title: "No emergency or medical advice",
         paragraphs: [
-          "Do not use this platform for medical emergencies. Call 112 or your local emergency number instead. Care Guides provide navigation support and coordination; they do not replace medical professionals, legal advisers, or urgent crisis services."
+          "Do not use this platform for medical emergencies. Call 112 or your local emergency number instead. Shepherds Oud Care provides software-guided triage, checklists, and directory help; it does not replace medical professionals, legal advisers, or urgent crisis services."
         ]
       },
       {
         title: "Accounts and access",
         paragraphs: [
-          "Certain features are available only to authorised Care Guides, administrators, and verified facility users. You are responsible for keeping sign-in links and account access secure. We may suspend access where we reasonably believe terms have been breached or the platform is being misused."
+          "Certain features are available only to authorised administrators and verified facility users. You are responsible for keeping sign-in links and account access secure. We may suspend access where we reasonably believe terms have been breached or the platform is being misused."
         ]
       },
       {
@@ -497,7 +495,7 @@ function complaintsContent(locale: Locale): LegalPageContent {
           title: "Hoe we klachten behandelen",
           paragraphs: [
             "We streven ernaar klachten binnen één werkdag te bevestigen en zo snel als redelijkerwijs mogelijk een inhoudelijk antwoord te geven, meestal binnen 14 dagen. Complexe zaken kunnen langer duren; we laten het weten als meer tijd nodig is.",
-            "We bekijken de feiten, spreken waar nodig met relevante Care Guides of medewerkers, en leggen onze bevindingen en eventuele vervolgstappen uit."
+            "We bekijken de feiten, spreken waar nodig met relevante medewerkers, en leggen onze bevindingen en eventuele vervolgstappen uit."
           ]
         },
         {
@@ -538,7 +536,7 @@ function complaintsContent(locale: Locale): LegalPageContent {
         title: "How we handle complaints",
         paragraphs: [
           "We aim to acknowledge complaints within one business day and to provide a substantive response as soon as reasonably possible, usually within 14 days. Complex matters may take longer; we will tell you if more time is needed.",
-          "We review the facts, speak with relevant Care Guides or staff where appropriate, and explain our findings and any steps we will take."
+          "We review the facts, speak with relevant staff where appropriate, and explain our findings and any steps we will take."
         ]
       },
       {

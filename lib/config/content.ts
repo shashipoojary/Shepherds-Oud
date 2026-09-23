@@ -266,8 +266,8 @@ function buildIntakeSteps(locale: Locale): IntakeStep[] {
         {
           type: "notice",
           text: nl
-            ? "Uw gegevens blijven privé en worden alleen gedeeld met aanbieders die u kiest. Een Care Guide beoordeelt uw dossier persoonlijk. AVG-conform."
-            : "Your information stays private and is shared only with providers you choose to contact. A Care Guide reviews your case personally. GDPR compliant."
+            ? "Uw gegevens blijven privé en worden alleen gedeeld met aanbieders die u via de directory kiest te benaderen. AVG-conform."
+            : "Your information stays private and is shared only with providers you choose to contact from the directory. GDPR compliant."
         }
       ]
     }

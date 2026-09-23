@@ -138,10 +138,6 @@ textarea {
   .home-reveal-delay-3 {
     animation-delay: 0.36s;
   }
-
-  .home-milestone {
-    animation: home-milestone-in 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
-  }
 }
 
 @keyframes home-fade-up {
@@ -152,17 +148,6 @@ textarea {
   to {
     opacity: 1;
     transform: translateY(0);
-  }
-}
-
-@keyframes home-milestone-in {
-  from {
-    opacity: 0;
-    transform: scale(0.92);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
   }
 }
 
@@ -189,10 +174,13 @@ textarea {
   .home-reveal,
   .home-reveal-delay-1,
   .home-reveal-delay-2,
-  .home-reveal-delay-3,
-  .home-milestone,
+  .home-reveal-delay-3 {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
   .db-cold-start-ring {
     animation: none;
-    opacity: 0;
   }
 }

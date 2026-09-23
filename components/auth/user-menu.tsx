@@ -20,7 +20,6 @@ type AuthUserMenuProps = {
 function localizedRoleLabel(role: AppRole | undefined, ui: ReturnType<typeof useLocale>["ui"]) {
   if (role === "ADMIN") return ui.userMenu.roleAdmin;
   if (role === "PROVIDER") return ui.userMenu.roleProvider;
-  if (role === "HOSPITAL") return ui.userMenu.roleHospital;
   return ui.userMenu.roleFamily;
 }
 

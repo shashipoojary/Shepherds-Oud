@@ -4,7 +4,6 @@ import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ComposeAnnouncementBar } from "@/components/admin/compose-announcement";
 import { CrisisCasesPanel } from "@/components/admin/crisis-cases-panel";
-import { HospitalInvitePanel } from "@/components/admin/hospital-invite-panel";
 import { EmptyState } from "@/components/ui/empty-state";
 import { RefreshButton } from "@/components/ui/refresh-button";
 import { StatGrid } from "@/components/ui/stat-grid";
@@ -308,7 +307,6 @@ export function AdminDashboardClient({
           </p>
         </div>
         <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
-          <HospitalInvitePanel onNotify={setMessage} />
           <ComposeAnnouncementBar onNotify={setMessage} />
           <RefreshButton onClick={() => void refreshDashboard()} loading={refreshing} />
         </div>

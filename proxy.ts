@@ -6,7 +6,6 @@ import { securityHeaders } from "@/lib/core/security-headers";
 import { DEFAULT_LOCALE, LOCALE_COOKIE, LOCALE_COOKIE_MAX_AGE, isLocale } from "@/lib/i18n/config";
 
 const publicProviderPaths = new Set(["/provider/login"]);
-const publicHospitalPaths = new Set(["/hospital/login"]);
 
 function isProtectedProviderPath(pathname: string) {
   if (publicProviderPaths.has(pathname)) {
@@ -14,14 +13,6 @@ function isProtectedProviderPath(pathname: string) {
   }
 
   return pathname === "/provider" || pathname.startsWith("/provider/");
-}
-
-function isProtectedHospitalPath(pathname: string) {
-  if (publicHospitalPaths.has(pathname)) {
-    return false;
-  }
-
-  return pathname === "/hospital" || pathname.startsWith("/hospital/");
 }
 
 function isProtectedAdminPath(pathname: string) {
@@ -50,6 +41,7 @@ function legacyProductRedirect(pathname: string): string | null {
   if (pathname === "/family/results" || pathname.startsWith("/family/results/")) return "/result";
   if (pathname === "/family/dashboard" || pathname.startsWith("/family/dashboard/")) return "/dashboard";
   if (pathname === "/family/success" || pathname.startsWith("/family/success/")) return "/result";
+  if (pathname === "/hospital" || pathname.startsWith("/hospital/")) return "/";
   return null;
 }
 
@@ -105,11 +97,10 @@ export function proxy(request: NextRequest) {
   }
 
   const needsProviderAuth = isProtectedProviderPath(pathname);
-  const needsHospitalAuth = isProtectedHospitalPath(pathname);
   const needsAdminAuth = isProtectedAdminPath(pathname);
   const needsCrisisAuth = isProtectedCrisisPath(pathname) && !isPublicCrisisPath(pathname);
 
-  if (!needsProviderAuth && !needsHospitalAuth && !needsAdminAuth && !needsCrisisAuth) {
+  if (!needsProviderAuth && !needsAdminAuth && !needsCrisisAuth) {
     return withLocaleCookie(
       request,
       applySecurityHeaders(
@@ -124,13 +115,7 @@ export function proxy(request: NextRequest) {
   const sessionCookie = getSessionCookie(request);
 
   if (!sessionCookie) {
-    const loginPath = needsProviderAuth
-      ? "/provider/login"
-      : needsHospitalAuth
-        ? "/hospital/login"
-        : needsCrisisAuth
-          ? "/family/login"
-          : "/login";
+    const loginPath = needsProviderAuth ? "/provider/login" : needsCrisisAuth ? "/family/login" : "/login";
     const loginUrl = new URL(loginPath, request.url);
     loginUrl.searchParams.set("callbackUrl", pathname);
     return withLocaleCookie(request, applySecurityHeaders(request, NextResponse.redirect(loginUrl)));

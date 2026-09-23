@@ -1,17 +1,16 @@
 /**
- * Mixed realistic load — family reads + optional admin/provider if cookies set.
+ * Mixed realistic load — public crisis reads + optional admin/provider if cookies set.
  *
  * Run (family only):
- *   k6 run -e BASE_URL=http://localhost:3000 -e INTAKE_ID=xxx scripts/load-test/k6-mixed.js
+ *   k6 run -e BASE_URL=http://localhost:3000 scripts/load-test/k6-mixed.js
  *
  * Run (full mix):
- *   k6 run -e BASE_URL=http://localhost:3000 -e INTAKE_ID=xxx -e ADMIN_COOKIE="..." -e PROVIDER_COOKIE="..." scripts/load-test/k6-mixed.js
+ *   k6 run -e BASE_URL=http://localhost:3000 -e ADMIN_COOKIE="..." -e PROVIDER_COOKIE="..." scripts/load-test/k6-mixed.js
  */
 import http from "k6/http";
 import { check, sleep } from "k6";
 
 const BASE = __ENV.BASE_URL || "http://localhost:3000";
-const INTAKE_ID = __ENV.INTAKE_ID;
 const ADMIN_COOKIE = __ENV.ADMIN_COOKIE;
 const PROVIDER_COOKIE = __ENV.PROVIDER_COOKIE;
 
@@ -56,10 +55,9 @@ export const options = {
 };
 
 export function familyFlow() {
-  if (!INTAKE_ID) return;
   http.batch([
-    ["GET", `${BASE}/api/intakes/${INTAKE_ID}`],
-    ["GET", `${BASE}/api/matches?intakeId=${INTAKE_ID}`]
+    ["GET", `${BASE}/triage/1`],
+    ["GET", `${BASE}/api/v2/directory`]
   ]);
   sleep(4);
 }

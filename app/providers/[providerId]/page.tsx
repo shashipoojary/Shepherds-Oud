@@ -2,21 +2,18 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SiteHeader } from "@/components/layout/site-header";
 import { FamilyWaitEstimate } from "@/components/family/wait-estimate-line";
-import { ProviderDetailActions } from "@/components/provider/detail-actions";
 import { availabilityBadgeVariant, Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { getProviderById } from "@/lib/data/providers";
 import { getLocale } from "@/lib/i18n/get-locale";
 import { optionLabel, productUi } from "@/lib/i18n/ui";
 
 export default async function ProviderDetailPage({
-  params,
-  searchParams
+  params
 }: {
   params: Promise<{ providerId: string }>;
-  searchParams?: Promise<{ intakeId?: string; from?: string }>;
 }) {
   const { providerId } = await params;
-  const query = await searchParams;
   const locale = await getLocale();
   const ui = productUi(locale);
   const detail = ui.family.providerDetail;
@@ -26,10 +23,6 @@ export default async function ProviderDetailPage({
     notFound();
   }
 
-  const intakeQuery = query?.intakeId ? `?intakeId=${encodeURIComponent(query.intakeId)}` : "";
-  const fromDashboard = query?.from === "dashboard";
-  const backHref = fromDashboard ? `/family/dashboard${intakeQuery}#provider-updates` : `/family/results${intakeQuery}`;
-  const backLabel = fromDashboard ? detail.backToDashboard : detail.backToMatches;
   const careLabels = [...new Set([...(provider.careLevels ?? []), ...(provider.services ?? [])])];
   const detailEntries = Object.entries(provider.details).filter(([label]) => label !== "Estimated wait");
   const contactLines = provider.contact.map((line) => line.trim()).filter(Boolean);
@@ -38,8 +31,8 @@ export default async function ProviderDetailPage({
     <>
       <SiteHeader />
       <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
-        <Link href={backHref} className="text-sm text-ink/60 transition hover:text-brand-amber">
-          {backLabel}
+        <Link href="/directory" className="text-sm text-ink/60 transition hover:text-brand-amber">
+          {locale === "en" ? "Back to directory" : "Terug naar directory"}
         </Link>
 
         <article className="mt-5 rounded-2xl border border-stone-200 bg-white shadow-soft">
@@ -138,8 +131,20 @@ export default async function ProviderDetailPage({
                     ))}
                   </div>
                 ) : null}
+                <p className="mt-3 text-sm leading-6 text-ink/70">
+                  {locale === "en"
+                    ? "To request an introduction, start triage and use the Haaglanden directory from your case."
+                    : "Voor een introductie: start triage en gebruik de Haaglanden-directory vanuit uw dossier."}
+                </p>
+                <div className="mt-4 flex flex-col gap-2">
+                  <Button asChild>
+                    <Link href="/triage/1">{locale === "en" ? "Start triage" : "Start triage"}</Link>
+                  </Button>
+                  <Button asChild variant="outline">
+                    <Link href="/directory">{locale === "en" ? "Browse directory" : "Bekijk directory"}</Link>
+                  </Button>
+                </div>
               </div>
-              <ProviderDetailActions providerId={providerId} providerName={provider.name} />
             </aside>
           </div>
         </article>

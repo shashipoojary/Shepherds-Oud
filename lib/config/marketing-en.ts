@@ -21,7 +21,7 @@ export function homeHeroCopyEn(prelaunch = getIsPrelaunch()) {
     supportLine:
       "When a fall, hospital discharge, or rapid decline hits, start a short triage — get a recommended path, save a checklist, and browse local providers. Free for families. No login to start.",
     intro: prelaunch
-      ? "Register now; we will contact you when guided matching opens in your area."
+      ? "Register now; we will contact you when crisis triage opens in your area."
       : "Start triage online in minutes — or call us if a form feels too heavy right now."
   };
 }
@@ -47,12 +47,25 @@ export const homeContentEn = {
     ],
     closing: "Shepherds Oud Care gives you a clear first path and next steps — without claiming to submit forms for you."
   },
-  followUp: {
-    label: "Stay on track",
-    title: "Deadlines you can actually follow",
+  valueProps: {
+    label: "What you get",
+    title: "Clarity in one sitting",
     description:
-      "After triage, your dashboard checklist tracks what to do next — with optional reminders that never include patient names or health details.",
-    daysLabel: "focus"
+      "Crisis triage is built for the moment care suddenly becomes urgent — not a long matching journey with week-by-week follow-ups.",
+    items: [
+      {
+        title: "A recommended path",
+        text: "Home care first, facility admission, both, or gather information — with plain-language reasoning."
+      },
+      {
+        title: "A checklist you can track",
+        text: "Next steps with deadlines and optional reminders that never include patient names or health details."
+      },
+      {
+        title: "Local providers",
+        text: "Browse the Haaglanden directory and request an introduction from your case when you are ready."
+      }
+    ]
   },
   ourRole: {
     title: "Our role",
@@ -76,7 +89,7 @@ export const homeContentEn = {
     },
     {
       title: "Save and plan",
-      text: "Create a family account, confirm who you act for, and unlock a track-and-remind checklist."
+      text: "Create a family account, confirm who you act for, and unlock a checklist of next steps."
     },
     {
       title: "Browse local providers",
@@ -87,7 +100,7 @@ export const homeContentEn = {
       text: "Each checklist step links to official resources. We never submit CIZ, DigiD, or gemeente forms for you."
     }
   ],
-  careGuide: {
+  humanSupport: {
     label: "Human support",
     title: `Built by ${brand.founderName}`,
     credentials:

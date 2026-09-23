@@ -13,10 +13,6 @@
       "schedule": "15 3 * * *"
     },
     {
-      "path": "/api/cron/scheduling-expiry",
-      "schedule": "30 3 * * *"
-    },
-    {
       "path": "/api/cron/checklist-reminders",
       "schedule": "0 4 * * *"
     }

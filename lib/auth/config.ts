@@ -9,12 +9,10 @@ import { extractInviteFromRedirectUrl } from "@/lib/auth/login-context";
 import { providerLoginErrorMessage } from "@/lib/auth/provider-login-errors";
 import { getLocale } from "@/lib/i18n/get-locale";
 import { productUi } from "@/lib/i18n/ui";
-import { PROVIDER_DASHBOARD_PATH, HOSPITAL_DASHBOARD_PATH } from "@/lib/auth/routes";
+import { PROVIDER_DASHBOARD_PATH } from "@/lib/auth/routes";
 import { sendFamilyMagicLinkEmail } from "@/lib/email/family-magic-link";
 import { sendProviderMagicLinkEmail } from "@/lib/email/provider-magic-link";
 import { resolveProviderLoginAccess } from "@/lib/providers/invite-access";
-import { resolveHospitalLoginAccess } from "@/lib/hospitals/invite";
-import { hospitalLoginErrorFromAccessCode, hospitalLoginErrorMessage } from "@/lib/auth/hospital-login-errors";
 import { toSafeSession } from "@/lib/serializers/session";
 import { toSafeUser } from "@/lib/serializers/user";
 import { syncSessionUser } from "@/lib/auth/sync-session-user";
@@ -52,11 +50,6 @@ function isProviderMagicLink(url: string) {
   return decoded.includes(PROVIDER_DASHBOARD_PATH) || decoded.includes("/provider/login");
 }
 
-function isHospitalMagicLink(url: string) {
-  const decoded = decodeMagicLinkUrl(url);
-  return decoded.includes(HOSPITAL_DASHBOARD_PATH) || decoded.includes("/hospital/login");
-}
-
 const authOptions = {
   secret: resolveAuthSecret(),
   baseURL: appUrl,
@@ -66,7 +59,7 @@ const authOptions = {
   user: {
     additionalFields: {
       role: {
-        type: ["FAMILY", "PROVIDER", "ADMIN", "HOSPITAL"],
+        type: ["FAMILY", "PROVIDER", "ADMIN"],
         required: false,
         defaultValue: "FAMILY",
         input: false
@@ -89,7 +82,7 @@ const authOptions = {
         after: async (session) => {
           const user = await prisma.user.findUnique({
             where: { id: session.userId },
-            select: { id: true, email: true, role: true, linkedProviderId: true, linkedHospitalId: true }
+            select: { id: true, email: true, role: true, linkedProviderId: true }
           });
 
           if (!user?.email) {
@@ -141,22 +134,6 @@ const authOptions = {
             throw new Error(
               providerLoginErrorMessage(access.code, locale) ||
                 productUi(locale).auth.providerAccountNotFound
-            );
-          }
-          await sendProviderMagicLinkEmail(email, url, locale);
-          return;
-        }
-
-        if (isHospitalMagicLink(url)) {
-          const locale = await getLocale();
-          const inviteToken = extractInviteFromRedirectUrl(url);
-          const access = await resolveHospitalLoginAccess(email, inviteToken);
-          if (!access.allowed) {
-            throw new Error(
-              hospitalLoginErrorMessage(hospitalLoginErrorFromAccessCode(access.code), locale) ||
-                (locale === "en"
-                  ? "No hospital account was found for this email."
-                  : "Geen ziekenhuisaccount gevonden voor dit e-mailadres.")
             );
           }
           await sendProviderMagicLinkEmail(email, url, locale);

@@ -9,14 +9,12 @@ type SessionUserLike = {
   role?: string | null;
   emailVerified?: boolean | null;
   linkedProviderId?: string | null;
-  linkedHospitalId?: string | null;
 };
 
 type SyncCacheEntry = {
   expiresAt: number;
   role: string;
   linkedProviderId: string | null;
-  linkedHospitalId: string | null;
 };
 
 /** Short in-process cache — cuts repeated DB role lookups on warm serverless instances. */
@@ -41,8 +39,7 @@ export async function syncSessionUser<T extends SessionUserLike>(user: T): Promi
     syncCache.set(user.id, {
       expiresAt: Date.now() + SESSION_SYNC_TTL_MS,
       role: "ADMIN",
-      linkedProviderId: user.linkedProviderId ?? null,
-      linkedHospitalId: user.linkedHospitalId ?? null
+      linkedProviderId: user.linkedProviderId ?? null
     });
     return { ...user, role: "ADMIN" };
   }
@@ -64,13 +61,12 @@ export async function syncSessionUser<T extends SessionUserLike>(user: T): Promi
       cached &&
       cached.expiresAt > Date.now() &&
       cached.role === (user.role ?? "FAMILY") &&
-      (cached.linkedProviderId ?? null) === (user.linkedProviderId ?? null) &&
-      (cached.linkedHospitalId ?? null) === (user.linkedHospitalId ?? null)
+      (cached.linkedProviderId ?? null) === (user.linkedProviderId ?? null)
     ) {
       return {
         ...user,
         role: cached.role,
-        ...(cached.linkedHospitalId ? { linkedHospitalId: cached.linkedHospitalId } : {})
+        ...(cached.linkedProviderId ? { linkedProviderId: cached.linkedProviderId } : {})
       };
     }
   }
@@ -79,46 +75,31 @@ export async function syncSessionUser<T extends SessionUserLike>(user: T): Promi
     id: user.id,
     email: user.email,
     role: user.role,
-    linkedProviderId: user.linkedProviderId,
-    linkedHospitalId: user.linkedHospitalId
+    linkedProviderId: user.linkedProviderId
   });
 
   let linkedProviderId = user.linkedProviderId ?? null;
-  let linkedHospitalId = user.linkedHospitalId ?? null;
 
-  if (resolvedRole !== "ADMIN" && user.email) {
-    if (resolvedRole === "PROVIDER") {
-      const provider = await prisma.provider.findFirst({
-        where: { email: { equals: user.email.trim().toLowerCase(), mode: "insensitive" } },
-        select: { id: true }
-      });
-      if (provider) {
-        linkedProviderId = provider.id;
-      }
-    }
-
-    if (resolvedRole === "HOSPITAL" && !linkedHospitalId) {
-      const dbUser = await prisma.user.findUnique({
-        where: { id: user.id },
-        select: { linkedHospitalId: true }
-      });
-      linkedHospitalId = dbUser?.linkedHospitalId ?? null;
+  if (resolvedRole === "PROVIDER" && user.email) {
+    const provider = await prisma.provider.findFirst({
+      where: { email: { equals: user.email.trim().toLowerCase(), mode: "insensitive" } },
+      select: { id: true }
+    });
+    if (provider) {
+      linkedProviderId = provider.id;
     }
   }
 
   const roleChanged = user.role !== resolvedRole;
   const linkedProviderChanged =
     resolvedRole === "PROVIDER" && linkedProviderId !== (user.linkedProviderId ?? null);
-  const linkedHospitalChanged =
-    resolvedRole === "HOSPITAL" && linkedHospitalId !== (user.linkedHospitalId ?? null);
 
-  if (roleChanged || linkedProviderChanged || linkedHospitalChanged) {
+  if (roleChanged || linkedProviderChanged) {
     await prisma.user.update({
       where: { id: user.id },
       data: {
         role: resolvedRole,
-        ...(linkedProviderChanged && linkedProviderId ? { linkedProviderId } : {}),
-        ...(linkedHospitalChanged && linkedHospitalId ? { linkedHospitalId } : {})
+        ...(linkedProviderChanged && linkedProviderId ? { linkedProviderId } : {})
       }
     });
   }
@@ -126,14 +107,12 @@ export async function syncSessionUser<T extends SessionUserLike>(user: T): Promi
   syncCache.set(user.id, {
     expiresAt: Date.now() + SESSION_SYNC_TTL_MS,
     role: resolvedRole,
-    linkedProviderId: resolvedRole === "PROVIDER" ? linkedProviderId : null,
-    linkedHospitalId: resolvedRole === "HOSPITAL" ? linkedHospitalId : null
+    linkedProviderId: resolvedRole === "PROVIDER" ? linkedProviderId : null
   });
 
   return {
     ...user,
     role: resolvedRole,
-    ...(resolvedRole === "PROVIDER" && linkedProviderId ? { linkedProviderId } : {}),
-    ...(resolvedRole === "HOSPITAL" && linkedHospitalId ? { linkedHospitalId } : {})
+    ...(resolvedRole === "PROVIDER" && linkedProviderId ? { linkedProviderId } : {})
   };
 }

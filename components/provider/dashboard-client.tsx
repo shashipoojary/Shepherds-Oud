@@ -9,7 +9,6 @@ import { DashboardSkeleton } from "@/components/ui/dashboard-skeleton";
 import { RefreshButton } from "@/components/ui/refresh-button";
 import { ListPager } from "@/components/ui/list-pager";
 import { PanelSection, panelNoticeTone, SlidePanel, usePanelMessage } from "@/components/ui/slide-panel";
-import { ProviderCalendarSettings } from "@/components/provider/calendar-settings";
 import {
   careTypeOptions,
   careLevelOptions,
@@ -976,8 +975,6 @@ function ProviderProfilePanel({
             <ChipField label={p.fundingAcceptedLabel} options={fundingTypeOptions} selected={form.fundingTypes} onToggle={(value) => toggleList("fundingTypes", value)} locale={locale} />
           </div>
         </PanelSection>
-
-        {open ? <ProviderCalendarSettings onNotify={setPanelMessage} /> : null}
 
         {!profileComplete && profileMissingRequirements.length ? (
           <div className="rounded-xl border border-brand-amber/25 bg-brand-amber/10 px-4 py-3">

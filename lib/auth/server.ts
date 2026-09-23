@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth/config";
 
-export type AppRole = "FAMILY" | "PROVIDER" | "ADMIN" | "HOSPITAL";
+export type AppRole = "FAMILY" | "PROVIDER" | "ADMIN";
 
 type Session = NonNullable<Awaited<ReturnType<typeof auth.api.getSession>>>;
 
@@ -18,9 +18,7 @@ export const getServerSession = cache(async () => {
 
 export function getUserRole(session: Session) {
   const role = session.user.role;
-  return role === "ADMIN" || role === "PROVIDER" || role === "FAMILY" || role === "HOSPITAL"
-    ? role
-    : "FAMILY";
+  return role === "ADMIN" || role === "PROVIDER" || role === "FAMILY" ? role : "FAMILY";
 }
 
 export async function requireSession(callbackUrl: string) {

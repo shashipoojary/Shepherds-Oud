@@ -355,7 +355,7 @@ export const productUiNl = {
     careServices: "Zorg en diensten:",
     nextStep: "Volgende stap",
     estWait: "Geschatte wachttijd:",
-    waitAskCareGuide: "Vraag uw Care Guide naar actuele wachttijden",
+    waitAskCareGuide: "Vraag ons naar actuele wachttijden",
     waitEstimateSourceLabel: "Schatting van de aanbieder",
     otherMatchedOptionsTitle: "Andere opties die uw Care Guide heeft gematcht",
     otherMatchedOptionsTip:
@@ -708,9 +708,9 @@ export const productUiNl = {
         ? "Vandaag bijgewerkt — nog actueel."
         : `${days} dag${days === 1 ? "" : "en"} geleden bijgewerkt — overweeg te vernieuwen voor nauwkeurigheid.`,
     waitEstimateStaleForFamilies:
-      "Families zien nu “Vraag uw Care Guide” omdat deze schatting ouder is dan 30 dagen.",
+      "Families zien nu “Vraag ons naar actuele wachttijden” omdat deze schatting ouder is dan 30 dagen.",
     optionalPlaceholder: "Optioneel",
-    facilityDetailsDesc: "Kerngegevens die families en Care Guides gebruiken om fit te beoordelen.",
+    facilityDetailsDesc: "Kerngegevens die families gebruiken om fit te beoordelen via de directory.",
     facilityNameLabel: "Naam locatie *",
     facilityTypeLabel: "Type locatie",
     contactPersonLabel: "Contactpersoon",
@@ -747,22 +747,22 @@ export const productUiNl = {
     linkSent: (email: string) =>
       `Inloglink verstuurd naar ${email}. Open deze binnen 15 minuten op dit apparaat.`,
     providerInviteHint: "Gebruik het uitgenodigde e-mailadres van de locatie om onboarding af te ronden.",
-    adminOnly: "Administratortoegang is beperkt tot goedgekeurde Care Guide-accounts.",
+    adminOnly: "Administratortoegang is beperkt tot goedgekeurde accounts.",
     familyLabel: "Voor zorgzoekers",
     familyTitle: "Log in op uw zorgdashboard",
-    familyIntro: "Gebruik e-mail of Google om uw aanvraag, updates van uw Care Guide en matches te bekijken.",
-    familyCta: "Intake afronden",
-    familyStarting: "Nieuwe aanvraag starten?",
+    familyIntro: "Gebruik e-mail of Google om uw triage-dossier, checklist en directory-verwijzingen te bekijken.",
+    familyCta: "Start triage",
+    familyStarting: "Triage starten?",
     loadingSignIn: "Inloggen laden...",
     providerLabel: "Voor zorglocaties",
     providerTitle: "Vermeld uw locatie op Shepherds Oud Care",
-    providerIntro: "Log in met uw werk-e-mail of Google om profiel, beschikbaarheid en familieaanvragen te beheren.",
+    providerIntro: "Log in met uw werk-e-mail of Google om profiel, beschikbaarheid en plaatsingsverwijzingen te beheren.",
     providerWaitlist: "Meld u aan op de aanbiederswachtlijst",
     providerNotReady: "Nog niet klaar om te vermelden?",
     backHome: "Terug naar home",
-    adminLabel: "Care Guide-login",
+    adminLabel: "Admin-login",
     adminTitle: "Inloggen bij Shepherds Oud Care",
-    adminIntro: "Gebruik uw goedgekeurde Google-account voor het Care Guide-dashboard.",
+    adminIntro: "Gebruik uw goedgekeurde Google-account voor het admin-dashboard.",
     providerAccountNeeded:
       "U heeft een zorglocatie-account nodig voor deze pagina. Gebruik Vermeld uw locatie om in te loggen.",
     oauthNotConfigured:
@@ -804,7 +804,6 @@ export const productUiNl = {
     getStarted: "Aan de slag",
     roleAdmin: "Beheerder",
     roleProvider: "Zorgaanbieder",
-    roleHospital: "Ziekenhuisverwijzer",
     roleFamily: "Familieaccount"
   },
   waitlist: {
@@ -888,7 +887,7 @@ export const productUiNl = {
     liveBlurb: (_regionPrimary: string) =>
       "Crisis-triage, checklists en een Haaglanden-zorgdirectory — gratis voor families in Nederland.",
     copyrightSuffix: "Zorgnavigatie in Nederland.",
-    prelaunchStatus: "Pre-launch — begeleide intake opent binnenkort",
+    prelaunchStatus: "Pre-launch — crisis-triage opent binnenkort",
     liveStatus: "Voor families en zorgaanbieders.",
     legalLabel: (href: string, fallback: string) =>
       (
@@ -1019,11 +1018,11 @@ export const productUiNl = {
     faq: {
       metaTitle: `Veelgestelde vragen | ${brand.name}`,
       metaDescription:
-        "FAQ over Shepherds Oud Care: Wlz, Wmo, CIZ, PGB, eigen bijdrage, Care Guide, kosten voor families en nazorg.",
+        "FAQ over Shepherds Oud Care: Wlz, Wmo, CIZ, PGB, eigen bijdrage, crisis-triage, kosten voor families en de Haaglanden-directory.",
       label: "FAQ",
       title: "Veelgestelde vragen",
       intro:
-        "Over begeleide zorgnavigatie, kosten, en Nederlandse begrippen zoals Wlz, Wmo, CIZ, PGB en eigen bijdrage.",
+        "Over crisis-triage, kosten, en Nederlandse begrippen zoals Wlz, Wmo, CIZ, PGB en eigen bijdrage.",
       internationalsLead: "International in the Netherlands?",
       fundingSectionTitle: "Financiering & kosten",
       fundingToolLead:
@@ -1065,32 +1064,35 @@ export const productUiNl = {
         },
         {
           q: "Kan ik een ruwe kostenindicatie krijgen?",
-          a: "Ja. Gebruik de zorgkosten-indicatie om uw budgetband te vergelijken met typische maandprijzen die aanbieders op Shepherds Oud Care vermelden. Alleen ter oriëntatie — geen officiële CAK-, Wmo- of verzekeringsberekening. Uw Care Guide bevestigt exacte kosten voor uw situatie."
+          a: "Ja. Gebruik de zorgkosten-indicatie om uw budgetband te vergelijken met typische maandprijzen die aanbieders op Shepherds Oud Care vermelden. Alleen ter oriëntatie — geen officiële CAK-, Wmo- of verzekeringsberekening. Bel of mail ons als u hulp nodig heeft bij het duiden van bedragen."
         },
         {
           q: "Wat doet het zorgkantoor?",
           a: "Het zorgkantoor contracteert Wlz-aanbieders in een regio en helpt bij het vinden van passende zorg binnen uw indicatie."
         },
-        { q: "Hoe snel nemen jullie contact op?", a: "Een Care Guide belt binnen 24 uur na uw aanvraag (op werkdagen)." },
         {
-          q: "Wie is mijn Care Guide?",
-          a: `${brand.founderName} (${brandFounderRole("nl")}) en het team begeleiden dossiers persoonlijk. Begeleiding door zorgprofessionals die het Nederlandse stelsel kennen — geen anonieme callcenter-lijn.`
+          q: "Hoe snel nemen jullie contact op?",
+          a: "U kunt direct online triage starten — geen login nodig. Als u belt of mailt, reageren wij op werkdagen. Wij dienen niets in bij CIZ, DigiD of uw gemeente."
+        },
+        {
+          q: "Krijg ik een persoonlijke Care Guide?",
+          a: `Nee, er is geen toegewezen Care Guide. ${brand.name} is softwaregestuurde triage plus checklist en directory. ${brand.founderName} en het team zijn bereikbaar per telefoon of e-mail wanneer u een mens nodig heeft.`
         }
       ]
     },
     providers: {
       metaTitle: `Voor zorgaanbieders | ${brand.name}`,
       metaDescription:
-        "Gratis vermelden bij Shepherds Oud Care. Betaal alleen bij succesvolle plaatsing. Vooraf gematchte familievraagstukken in heel Nederland.",
+        "Gratis vermelden bij Shepherds Oud Care. Betaal alleen bij succesvolle plaatsing. Introducties vanuit getriëerde families in Haaglanden.",
       label: "Zorgaanbieders",
       title: "Gratis vermelden. Betalen bij plaatsing.",
       intro: `${brand.name} is geen abonnementsgids. U bent zichtbaar zonder maandelijkse listing fee. Wij verdienen alleen mee als er een succesvolle plaatsing volgt — transparant voor families én aanbieders.`,
       whatYouGetTitle: "Wat u krijgt",
       whatYouGet: [
-        "Vooraf gematchte families (zorgtype, taal, dementiecapaciteit, beschikbaarheid)",
-        "Dashboard om leads te accepteren, af te wijzen of op te volgen",
-        "Dekking in heel Nederland",
-        "Geen eindeloze koude leads uit een open directory"
+        "Introducties van families die crisis-triage hebben gedaan",
+        "Dashboard om plaatsingen te bevestigen en fee-status bij te houden",
+        "Haaglanden-dekking met duidelijke succesfee-vermelding",
+        "Geen koude directory-spam — families komen binnen met dossiercontext"
       ],
       compensationTitle: "Vergoeding",
       compensationLead:
@@ -1110,7 +1112,7 @@ export const productUiNl = {
         `Nog niet klaar voor de volledige intake? Registreer uw interesse. ${regionNote}`,
       familiesPrelaunch:
         "Registreer wanneer thuis wonen niet meer gaat — bij dementie, na ziekenhuis, of wanneer thuiszorg niet meer volstaat.",
-      familiesWaitlist: "Meld u op de wachtlijst, of start direct de begeleide intake.",
+      familiesWaitlist: "Meld u op de wachtlijst, of start direct triage.",
       providersBlurb: "Gratis vermelden, betalen bij plaatsing. Registreer uw locatie of lees eerst de voorwaarden."
     },
     registerFamily: {

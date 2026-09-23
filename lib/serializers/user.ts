@@ -1,4 +1,4 @@
-type SafeUserRole = "FAMILY" | "PROVIDER" | "ADMIN" | "HOSPITAL";
+type SafeUserRole = "FAMILY" | "PROVIDER" | "ADMIN";
 
 export type SafeUser = {
   id: string;
@@ -8,7 +8,6 @@ export type SafeUser = {
   role: SafeUserRole;
   emailVerified: boolean;
   linkedProviderId?: string | null;
-  linkedHospitalId?: string | null;
 };
 
 type UserLike = {
@@ -19,11 +18,10 @@ type UserLike = {
   role?: string | null;
   emailVerified?: boolean | null;
   linkedProviderId?: string | null;
-  linkedHospitalId?: string | null;
 };
 
 function normalizeRole(role: string | null | undefined): SafeUserRole {
-  if (role === "ADMIN" || role === "PROVIDER" || role === "FAMILY" || role === "HOSPITAL") {
+  if (role === "ADMIN" || role === "PROVIDER" || role === "FAMILY") {
     return role;
   }
   return "FAMILY";
@@ -43,10 +41,6 @@ export function toSafeUser(user: UserLike): SafeUser {
 
   if (role === "PROVIDER" && user.linkedProviderId) {
     safe.linkedProviderId = user.linkedProviderId;
-  }
-
-  if (role === "HOSPITAL" && user.linkedHospitalId) {
-    safe.linkedHospitalId = user.linkedHospitalId;
   }
 
   return safe;

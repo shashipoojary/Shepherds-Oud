@@ -165,38 +165,22 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* 7 / 30 / 90 follow-up differentiator */}
+        {/* What you get — crisis triage outcomes */}
         <section className="bg-brand-green-dark px-4 py-14 text-white sm:px-6 sm:py-16">
-          <div className="mx-auto max-w-4xl text-center">
-            <p className="section-label text-brand-green-pale">{content.followUp.label}</p>
-            <h2 className="mt-3 font-brand text-2xl font-semibold sm:text-3xl">{content.followUp.title}</h2>
-            <p className="mx-auto mt-4 max-w-2xl text-body text-white/85">{content.followUp.description}</p>
-            <div className="relative mx-auto mt-10 max-w-md sm:max-w-lg">
-              <div
-                className="pointer-events-none absolute left-[16.666%] right-[16.666%] top-7 z-0 h-px bg-brand-green-pale/40 sm:top-8"
-                aria-hidden
-              />
-              <div className="relative z-[1] grid grid-cols-3">
-                {[
-                  { day: "7", delay: "0s" },
-                  { day: "30", delay: "0.1s" },
-                  { day: "90", delay: "0.2s" }
-                ].map((item) => (
-                  <div
-                    key={item.day}
-                    className="home-milestone flex flex-col items-center gap-2"
-                    style={{ animationDelay: item.delay }}
-                  >
-                    <span className="grid h-14 w-14 place-items-center rounded-full border border-brand-green-pale/45 bg-brand-green-dark font-brand text-lg font-semibold text-brand-green-pale sm:h-16 sm:w-16 sm:text-xl">
-                      {item.day}
-                    </span>
-                    <span className="text-[11px] uppercase tracking-[0.12em] text-white/55">
-                      {content.followUp.daysLabel}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
+          <div className="mx-auto max-w-5xl">
+            <header className="mx-auto max-w-2xl text-center">
+              <p className="section-label text-brand-green-pale">{content.valueProps.label}</p>
+              <h2 className="mt-3 font-brand text-2xl font-semibold sm:text-3xl">{content.valueProps.title}</h2>
+              <p className="mt-4 text-body text-white/85">{content.valueProps.description}</p>
+            </header>
+            <ul className="mt-10 grid gap-8 sm:mt-12 md:grid-cols-3 md:gap-8">
+              {content.valueProps.items.map((item) => (
+                <li key={item.title} className="text-center md:text-left">
+                  <h3 className="font-brand text-lg font-semibold text-brand-green-pale">{item.title}</h3>
+                  <p className="mt-2 text-body text-white/80">{item.text}</p>
+                </li>
+              ))}
+            </ul>
           </div>
         </section>
 
@@ -258,18 +242,18 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* Care Guide */}
+        {/* Human support */}
         <section className="relative overflow-hidden bg-brand-cream px-4 py-14 sm:px-6 sm:py-16">
           <div
             className="pointer-events-none absolute inset-y-0 right-0 w-1/2 bg-[radial-gradient(ellipse_at_right,_rgba(181,193,139,0.28),_transparent_70%)]"
             aria-hidden
           />
           <div className="relative mx-auto max-w-2xl">
-            <p className="section-label">{content.careGuide.label}</p>
-            <h2 className="mt-2 font-brand text-2xl font-semibold text-ink sm:text-3xl">{content.careGuide.title}</h2>
+            <p className="section-label">{content.humanSupport.label}</p>
+            <h2 className="mt-2 font-brand text-2xl font-semibold text-ink sm:text-3xl">{content.humanSupport.title}</h2>
             <p className="mt-2 text-sm font-medium text-brand-amber">{brandFounderRole(locale)}</p>
-            <p className="mt-4 text-body text-ink/80">{content.careGuide.credentials}</p>
-            <p className="mt-3 text-body text-ink/75">{content.careGuide.bio}</p>
+            <p className="mt-4 text-body text-ink/80">{content.humanSupport.credentials}</p>
+            <p className="mt-3 text-body text-ink/75">{content.humanSupport.bio}</p>
           </div>
         </section>
 

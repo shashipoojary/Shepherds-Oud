@@ -104,7 +104,7 @@ export const productUiEn: ProductUi = {
     careServices: "Care and services:",
     nextStep: "Next step",
     estWait: "Est. wait:",
-    waitAskCareGuide: "Ask your Care Guide for current wait times",
+    waitAskCareGuide: "Ask us for current wait times",
     waitEstimateSourceLabel: "Provider-reported estimate",
     otherMatchedOptionsTitle: "Other options your Care Guide matched",
     otherMatchedOptionsTip:
@@ -453,9 +453,9 @@ export const productUiEn: ProductUi = {
       days <= 0
         ? "Last updated today — still looks current."
         : `Last updated ${days} day${days === 1 ? "" : "s"} ago — consider refreshing for accuracy.`,
-    waitEstimateStaleForFamilies: "Families currently see “Ask your Care Guide” because this estimate is older than 30 days.",
+    waitEstimateStaleForFamilies: "Families currently see “Ask us for current wait times” because this estimate is older than 30 days.",
     optionalPlaceholder: "Optional",
-    facilityDetailsDesc: "Core details families and Care Guides use to assess fit.",
+    facilityDetailsDesc: "Core details families use to assess fit from the directory.",
     facilityNameLabel: "Facility name *",
     facilityTypeLabel: "Facility type",
     contactPersonLabel: "Contact person",
@@ -491,22 +491,22 @@ export const productUiEn: ProductUi = {
     sendFailed: "Could not send sign-in link.",
     linkSent: (email) => `Sign-in link sent to ${email}. Open it on this device within 15 minutes.`,
     providerInviteHint: "Use the invited facility email to finish onboarding.",
-    adminOnly: "Administrator access is limited to approved Care Guide accounts.",
+    adminOnly: "Administrator access is limited to approved accounts.",
     familyLabel: "For care seekers",
     familyTitle: "Sign in to your care dashboard",
-    familyIntro: "Use email or Google to view your care request, Care Guide updates, and provider matches.",
-    familyCta: "Complete the intake",
-    familyStarting: "Starting a new request?",
+    familyIntro: "Use email or Google to view your triage case, checklist, and directory referrals.",
+    familyCta: "Start triage",
+    familyStarting: "Starting triage?",
     loadingSignIn: "Loading sign-in...",
     providerLabel: "For care facilities",
     providerTitle: "List your facility on Shepherds Oud Care",
-    providerIntro: "Sign in with your work email or Google to manage your facility profile, availability, and family inquiries.",
+    providerIntro: "Sign in with your work email or Google to manage your facility profile, availability, and placement referrals.",
     providerWaitlist: "Join the facility waitlist",
     providerNotReady: "Not ready to list yet?",
     backHome: "Back to homepage",
-    adminLabel: "Care Guide sign in",
+    adminLabel: "Admin sign in",
     adminTitle: "Sign in to Shepherds Oud Care",
-    adminIntro: "Use your approved Google account to access the Care Guide dashboard.",
+    adminIntro: "Use your approved Google account to access the admin dashboard.",
     providerAccountNeeded:
       "You need a facility account for this page. Use List your facility to sign in.",
     oauthNotConfigured:
@@ -548,7 +548,6 @@ export const productUiEn: ProductUi = {
     getStarted: "Get started",
     roleAdmin: "Administrator",
     roleProvider: "Care provider",
-    roleHospital: "Hospital referrer",
     roleFamily: "Family account"
   },
   waitlist: {
@@ -632,7 +631,7 @@ export const productUiEn: ProductUi = {
     liveBlurb: (_regionPrimary: string) =>
       "Crisis triage, next-step checklists, and a Haaglanden care directory — free for families across the Netherlands.",
     copyrightSuffix: "Care navigation in the Netherlands.",
-    prelaunchStatus: "Pre-launch — guided intake opening soon",
+    prelaunchStatus: "Pre-launch — crisis triage opening soon",
     liveStatus: "For families and care providers.",
     legalLabel: (href: string, fallback: string) =>
       (
@@ -763,7 +762,7 @@ export const productUiEn: ProductUi = {
     faq: {
       metaTitle: `FAQ | ${brand.name}`,
       metaDescription:
-        "FAQ about Shepherds Oud Care: Wlz, Wmo, CIZ, PGB, eigen bijdrage, Care Guide, costs for families and follow-up.",
+        "FAQ about Shepherds Oud Care: Wlz, Wmo, CIZ, PGB, eigen bijdrage, crisis triage, costs for families, and the Haaglanden directory.",
       label: "FAQ",
       title: "Frequently asked questions",
       intro:
@@ -809,7 +808,7 @@ export const productUiEn: ProductUi = {
         },
         {
           q: "Can I get a rough cost estimate?",
-          a: "Yes. Use the care funding estimate tool to compare your budget band with typical monthly prices listed by providers on Shepherds Oud Care. It is educational only — not official CAK, Wmo, or insurance guidance. Your Care Guide confirms exact costs for your situation."
+          a: "Yes. Use the care funding estimate tool to compare your budget band with typical monthly prices listed by providers on Shepherds Oud Care. It is educational only — not official CAK, Wmo, or insurance guidance. Call or email us if you need help interpreting numbers for your situation."
         },
         {
           q: "What does the zorgkantoor do?",
@@ -817,27 +816,27 @@ export const productUiEn: ProductUi = {
         },
         {
           q: "How quickly will you contact me?",
-          a: "A Care Guide calls within 24 hours of your request (on business days)."
+          a: "You can start triage online immediately — no login required. If you call or email, we respond on business days. We do not submit CIZ, DigiD, or gemeente forms for you."
         },
         {
-          q: "Who is my Care Guide?",
-          a: `${brand.founderName} (${brandFounderRole("en")}) and the team personally guide cases. Guidance from care professionals who know the Dutch system — not an anonymous call centre line.`
+          q: "Do I get a personal Care Guide?",
+          a: `No dedicated Care Guide assignment. ${brand.name} is software-guided triage plus a checklist and directory. ${brand.founderName} and the team are available by phone or email when you need a person.`
         }
       ]
     },
     providers: {
       metaTitle: `For care providers | ${brand.name}`,
       metaDescription:
-        "List for free on Shepherds Oud Care. Pay only on successful placement. Pre-matched family inquiries across the Netherlands.",
+        "List for free on Shepherds Oud Care. Pay only on successful placement. Receive introductions from triaged family cases in Haaglanden.",
       label: "Care providers",
       title: "Free to list. Pay on placement.",
       intro: `${brand.name} is not a subscription directory. You are visible without a monthly listing fee. We only earn when there is a successful placement — transparent for families and providers.`,
       whatYouGetTitle: "What you get",
       whatYouGet: [
-        "Pre-matched families (care type, language, dementia capacity, availability)",
-        "Dashboard to accept, decline, or follow up on leads",
-        "Coverage across the Netherlands",
-        "No endless cold leads from an open directory"
+        "Introductions from families who completed crisis triage",
+        "Dashboard to confirm placements and keep fee status accurate",
+        "Haaglanden coverage with clear success-fee disclosure",
+        "No cold directory spam — families arrive with case context"
       ],
       compensationTitle: "Compensation",
       compensationLead:
@@ -856,7 +855,7 @@ export const productUiEn: ProductUi = {
         `Not ready for the full intake yet? Register your interest. ${regionNote}`,
       familiesPrelaunch:
         "Register when living at home is no longer possible — with dementia, after hospital, or when home care is no longer enough.",
-      familiesWaitlist: "Join the waitlist, or start the guided intake directly.",
+      familiesWaitlist: "Join the waitlist, or start triage directly.",
       providersBlurb: "Free to list, pay on placement. Register your location or read the terms first."
     },
     registerFamily: {

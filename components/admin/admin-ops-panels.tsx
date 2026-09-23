@@ -398,9 +398,9 @@ function ProviderDetailPanel({
             </div>
           ) : !isProviderMatchable(provider.verificationStatus) ? (
             <div className="rounded-lg bg-stone-50 px-4 py-3">
-              <p className="text-sm font-semibold text-ink">Not yet matchable</p>
+              <p className="text-sm font-semibold text-ink">Not yet listed as live</p>
               <p className="mt-1 text-sm leading-6 text-neutral-700">
-                Set verification to Verified, Onboarding complete, or Listing live before creating family matches.
+                Set verification to Verified, Onboarding complete, or Listing live before directory introductions.
               </p>
             </div>
           ) : null}

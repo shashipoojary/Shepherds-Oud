@@ -9,7 +9,7 @@ import { getIsPrelaunch, getPublicRoutes } from "@/lib/config/prelaunch";
 export const metadata: Metadata = {
   title: `For internationals in the Netherlands | ${brand.name}`,
   description:
-    "English-language navigation of the Dutch care system for international families across the Netherlands — CIZ, Wlz, Wmo, PGB, and eigen bijdrage explained with a dedicated Care Guide.",
+    "English-language crisis triage for urgent eldercare in the Netherlands — CIZ, Wlz, Wmo, PGB, and eigen bijdrage explained, with a Haaglanden provider directory.",
   alternates: { canonical: "/internationals" }
 };
 
@@ -17,7 +17,6 @@ export default function InternationalsPage() {
   const isPrelaunch = getIsPrelaunch();
   const publicRoutes = getPublicRoutes(isPrelaunch);
   const phoneHref = brand.phone ? `tel:${brand.phone.replace(/\s+/g, "")}` : null;
-  /** This page is English-first for international families. */
   const locale = "en" as const;
 
   return (
@@ -32,14 +31,14 @@ export default function InternationalsPage() {
             </h1>
             <p className="mt-4 text-lg text-ink/80">
               Embassy, court, and corporate families face CIZ forms, Wlz and Wmo rules, and eigen bijdrage letters in a
-              language they do not live in. {brand.name} gives you a named Care Guide who explains the system and
-              coordinates next steps — in English.
+              language they do not live in. {brand.name} helps you act fast: short triage, a clear next path, a
+              checklist, and a Haaglanden provider directory — in English.
             </p>
             <p className="mt-3 text-body text-ink/70">{brandRegionNote(locale)}</p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Button asChild>
                 <Link href={isPrelaunch ? publicRoutes.waitlistFamily : publicRoutes.intake}>
-                  {isPrelaunch ? "Register interest" : "Start intake"}
+                  {isPrelaunch ? "Register interest" : "Start triage"}
                 </Link>
               </Button>
               {phoneHref ? (
@@ -54,7 +53,7 @@ export default function InternationalsPage() {
                 </Button>
               )}
             </div>
-            <p className="mt-3 text-sm text-ink/60">A Care Guide calls you within 24 hours.</p>
+            <p className="mt-3 text-sm text-ink/60">Free for families. No login to start triage. Call or email when you need a person.</p>
           </div>
         </section>
 
@@ -64,8 +63,8 @@ export default function InternationalsPage() {
               <h2 className="font-brand text-2xl font-semibold text-ink">Why this niche matters</h2>
               <p className="mt-3 text-body text-ink/80">
                 Free government cliëntondersteuning and most directories are Dutch-first. Directories stop at listings.
-                We stay with you from first call through placement and 7 / 30 / 90-day follow-up — the human
-                accountability loop directories cannot copy.
+                We start with triage and next steps you can track — then help you contact local providers from your
+                case, with clear fee disclosure.
               </p>
             </div>
             <div>
@@ -94,10 +93,10 @@ export default function InternationalsPage() {
             <div>
               <h2 className="font-brand text-2xl font-semibold text-ink">What you get</h2>
               <ul className="mt-3 list-disc space-y-2 pl-5 text-body text-ink/80">
-                <li>Guided journey — not a directory</li>
-                <li>Free for families; paid by participating providers (disclosed openly)</li>
-                <li>One Care Guide from intake through follow-up</li>
-                <li>Coverage across the Netherlands</li>
+                <li>Short triage and a recommended path — not a long matching journey</li>
+                <li>Free for families; some providers pay a success fee on placement (disclosed openly)</li>
+                <li>Checklist steps that link to official portals you complete yourself</li>
+                <li>Haaglanden directory plus human support by phone or email when needed</li>
               </ul>
             </div>
             <p className="text-sm text-ink/60">

@@ -15,7 +15,7 @@ export function homeHeroCopy(prelaunch = getIsPrelaunch()) {
     supportLine:
       "Bij een val, ziekenhuisontslag of snelle achteruitgang: start een korte triage — krijg een aanbevolen pad, bewaar een checklist en bekijk lokale aanbieders. Gratis voor families. Geen login om te starten.",
     intro: prelaunch
-      ? "Meld u nu aan; wij nemen contact op wanneer begeleide matching in uw regio start."
+      ? "Meld u nu aan; wij nemen contact op wanneer crisis-triage in uw regio start."
       : "Start triage online in enkele minuten — of bel ons als een formulier te zwaar voelt."
   };
 }
@@ -42,12 +42,25 @@ export const homeContentNl = {
     closing:
       "Shepherds Oud Care geeft u een duidelijk eerste pad en vervolgstappen — zonder te beloven dat wij formulieren voor u indienen."
   },
-  followUp: {
-    label: "Blijf op schema",
-    title: "Deadlines die u kunt volgen",
+  valueProps: {
+    label: "Wat u krijgt",
+    title: "Duidelijkheid in één keer",
     description:
-      "Na triage houdt uw dashboard-checklist bij wat er moet gebeuren — met optionele herinneringen zonder patiëntnamen of gezondheidsdetails.",
-    daysLabel: "focus"
+      "Crisis-triage is gemaakt voor het moment dat zorg plots urgent wordt — geen lange matching-reis met week-tot-week nazorg.",
+    items: [
+      {
+        title: "Een aanbevolen pad",
+        text: "Eerst thuiszorg, opnamepad, beide, of eerst informatie verzamelen — met begrijpelijke onderbouwing."
+      },
+      {
+        title: "Een checklist die u kunt volgen",
+        text: "Vervolgstappen met deadlines en optionele herinneringen zonder patiëntnamen of gezondheidsdetails."
+      },
+      {
+        title: "Lokale aanbieders",
+        text: "Bekijk de Haaglanden-directory en vraag een introductie vanuit uw dossier wanneer u er klaar voor bent."
+      }
+    ]
   },
   ourRole: {
     title: "Onze rol",
@@ -71,7 +84,7 @@ export const homeContentNl = {
     },
     {
       title: "Bewaar en plan",
-      text: "Maak een familieaccount, bevestig voor wie u handelt, en ontgrendel een checklist met herinneringen."
+      text: "Maak een familieaccount, bevestig voor wie u handelt, en ontgrendel een checklist met vervolgstappen."
     },
     {
       title: "Bekijk lokale aanbieders",
@@ -82,7 +95,7 @@ export const homeContentNl = {
       text: "Elke checkliststap linkt naar officiële bronnen. Wij dienen niets in bij CIZ, DigiD of uw gemeente."
     }
   ],
-  careGuide: {
+  humanSupport: {
     label: "Menselijke steun",
     title: `Gebouwd door ${brand.founderName}`,
     credentials:

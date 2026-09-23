@@ -27,6 +27,6 @@ Engineering supports this checklist; client/legal owns sign-off.
 - [x] Crisis triage is the primary family product (homepage + nav CTAs)
 - [x] Old Care Guide family paths redirect to triage / dashboard
 - [x] Legacy `/v2/*` URLs redirect to primary routes
+- [x] Care Guide intake/match/hospital APIs and DB models removed
 - [ ] Haaglanden directory seed loaded beyond demo rows
 - [ ] Checklist template URLs signed off by client
-- [ ] Delete parked Care Guide family UI after soak period
