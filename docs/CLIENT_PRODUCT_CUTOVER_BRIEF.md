@@ -161,6 +161,7 @@ flowchart LR
 ### C. Provider & admin
 
 - [ ] Provider can sign in and edit facility profile
+- [ ] After provider login, navbar shows only a short suite (Home, My facility, FAQ, Contact) — not family triage/directory links
 - [ ] Admin can open crisis cases / directory / referrals / waitlist tools that still apply
 - [ ] No “invite hospital” admin panel
 
