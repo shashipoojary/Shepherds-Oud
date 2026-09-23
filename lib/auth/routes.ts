@@ -74,6 +74,17 @@ export function buildNavItems(
 ): NavItem[] {
   const publicRoutes = getPublicRoutes(prelaunch);
   const nav = productUi(locale).nav;
+
+  // Signed-in providers: facility workspace only — no family marketing suite.
+  if (signedIn && role === "PROVIDER") {
+    return [
+      { label: nav.home, href: publicRoutes.home },
+      { label: nav.myFacility, href: PROVIDER_DASHBOARD_PATH },
+      { label: nav.faq, href: "/faq" },
+      { label: nav.contact, href: "/contact" }
+    ];
+  }
+
   const items: NavItem[] = [{ label: nav.home, href: publicRoutes.home }];
 
   if (prelaunch) {
@@ -90,10 +101,6 @@ export function buildNavItems(
 
   items.push({ label: nav.forProviders, href: "/for-providers" });
   items.push({ label: nav.forInternationals, href: "/internationals" });
-
-  if (signedIn && role === "PROVIDER") {
-    items.push({ label: nav.myFacility, href: PROVIDER_DASHBOARD_PATH });
-  }
 
   return items;
 }

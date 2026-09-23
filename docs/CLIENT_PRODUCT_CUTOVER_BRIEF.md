@@ -42,23 +42,23 @@ Families start with a short **crisis triage**. They get a **recommended path**, 
 ```mermaid
 flowchart TD
   A[Homepage] --> B[Start care intake]
-  B --> C["/family/intake"]
+  B --> C[family intake page]
   C --> D[Intake saved]
-  D --> E[Care Guide / admin review]
+  D --> E[Care Guide or admin review]
   E --> F[Matched providers]
-  F --> G["/family/results + dashboard"]
-  G --> H[Request visit / callback]
+  F --> G[family results and dashboard]
+  G --> H[Request visit or callback]
   H --> I[Calendar or manual scheduling]
   I --> J[Placement]
-  J --> K[Follow-up 7 / 30 / 90]
+  J --> K[Follow-up 7 then 30 then 90]
   K --> L[Case closed]
 
   A --> M[Hospital login]
   M --> N[Hospital referral portal]
-  N --> O[Referral creates / tags intake]
+  N --> O[Referral creates or tags intake]
 
   P[Provider dashboard] --> Q[Respond to match inquiries]
-  P --> R[Connect Google/Microsoft calendar]
+  P --> R[Connect Google or Microsoft calendar]
 ```
 
 ### After — Crisis triage (current)
@@ -67,36 +67,39 @@ flowchart TD
 flowchart TD
   A[Homepage] --> B[Start crisis triage]
   A --> C[Browse care directory]
-  B --> D["/triage/1 …"]
-  D --> E["/result — path + guidance"]
-  E --> F["/signup — claim case / account"]
-  F --> G["/patient — patient + consent"]
-  G --> H["/dashboard + /tasks — checklist"]
-  H --> C2["/directory"]
-  C --> C2
-  C2 --> I[Contact facility]
-  I --> J[Placement referral / fee status]
+  B --> D[triage steps]
+  D --> E[result path and guidance]
+  E --> F[signup claim case or account]
+  F --> G[patient and consent]
+  G --> H[dashboard and tasks checklist]
+  H --> Dir[directory]
+  C --> Dir
+  Dir --> I[Contact facility]
+  I --> J[Placement referral fee status]
 
-  K["Old Care Guide URLs"] --> L[Redirect]
+  K[Old Care Guide URLs] --> L[Redirect]
   L --> D
   L --> H
 
-  M["/hospital/*"] --> N[Redirect away — portal retired]
+  M[hospital routes] --> N[Redirect away portal retired]
 
-  P[Provider dashboard] --> Q[Facility profile + availability]
-  R[Admin] --> S[Crisis cases / directory / referrals / waitlist]
+  P[Provider dashboard] --> Q[Facility profile and availability]
+  R[Admin] --> S[Crisis cases directory referrals waitlist]
 ```
 
 ### Side-by-side summary
 
 ```mermaid
 flowchart LR
-  subgraph BEFORE["Before: Care Guide"]
-    B1[Intake] --> B2[Match] --> B3[Visit schedule] --> B4[Place + follow-ups]
+  subgraph before [Before Care Guide]
+    B1[Intake] --> B2[Match]
+    B2 --> B3[Visit schedule]
+    B3 --> B4[Place and follow-ups]
   end
 
-  subgraph AFTER["After: Crisis triage"]
-    A1[Triage] --> A2[Path + checklist] --> A3[Directory / contact]
+  subgraph after [After Crisis triage]
+    A1[Triage] --> A2[Path and checklist]
+    A2 --> A3[Directory and contact]
   end
 ```
 
