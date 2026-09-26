@@ -1086,22 +1086,70 @@ export const productUiNl = {
         "Gratis vermelden bij Shepherds Oud Care. Betaal alleen bij succesvolle plaatsing. Introducties vanuit getriëerde families in Haaglanden.",
       label: "Zorgaanbieders",
       title: "Gratis vermelden. Betalen bij plaatsing.",
-      intro: `${brand.name} is geen abonnementsgids. U bent zichtbaar zonder maandelijkse listing fee. Wij verdienen alleen mee als er een succesvolle plaatsing volgt — transparant voor families én aanbieders.`,
+      headlineSupport:
+        "Bereik families die al crisis-triage hebben gedaan — met een aanbevolen pad en dossiercontext. Geen maandelijkse listing fee.",
+      primaryCta: "Registreer uw locatie",
+      primaryCtaShort: "Registreren",
+      secondaryCta: "Aanbieders-login",
+      secondaryCtaShort: "Inloggen",
+      problemLabel: "De kans",
+      problemTitle: "Families in crisis hebben de juiste introductie nodig — geen koude directory.",
+      problemPoints: [
+        "Families komen binnen na triage met urgentie, financieringscontext en een aanbevolen pad",
+        "U blijft zichtbaar zonder abonnementskosten op lege bedden",
+        "U betaalt alleen wanneer een plaatsing via verwijzing echt start",
+        "Fee-status blijft kloppen wanneer u plaatsingen in het dashboard bevestigt"
+      ],
+      howLabel: "Hoe het voor u werkt",
+      howTitle: "Van vermelding tot plaatsing — vier duidelijke stappen",
+      howSteps: [
+        {
+          title: "Registreer uw locatie",
+          text: "Meld u op de aanbiederswachtlijst of rond onboarding af met een uitnodiging. Wij verifiëren locatiegegevens voor Haaglanden."
+        },
+        {
+          title: "Vul uw profiel aan",
+          text: "Diensten, zorgniveaus, talen, wachttijdschattingen en contactgegevens — zodat families eerlijk kunnen vergelijken."
+        },
+        {
+          title: "Ontvang introducties",
+          text: "Families die triage afrondden kunnen vanuit hun dossier een introductie vragen. U ziet relevante context, geen anonieme spam."
+        },
+        {
+          title: "Bevestig plaatsingen",
+          text: "Als een plaatsing via onze verwijzing start, bevestigt u die in de partnertools zodat de succesfee-status klopt."
+        }
+      ],
       whatYouGetTitle: "Wat u krijgt",
       whatYouGet: [
         "Introducties van families die crisis-triage hebben gedaan",
-        "Dashboard om plaatsingen te bevestigen en fee-status bij te houden",
-        "Haaglanden-dekking met duidelijke succesfee-vermelding",
+        "Dashboard om locatieprofiel en wachttijdschattingen te beheren",
+        "Partnertools om verwijzingen te volgen en plaatsingen te bevestigen",
+        "Haaglanden-dekking met duidelijke succesfee-vermelding naar families",
         "Geen koude directory-spam — families komen binnen met dossiercontext"
       ],
-      compensationTitle: "Vergoeding",
+      compensationTitle: "Prijsprincipe",
       compensationLead:
         "Exacte plaatsingsvergoeding stemmen we af per zorgtype en regio tijdens onboarding. Het principe blijft:",
-      compensationBold: " gratis zichtbaar, betalen bij resultaat",
-      forFamiliesTitle: "Voor families",
+      compensationBold: "gratis zichtbaar, betalen bij resultaat",
+      compensationNotes: [
+        "Geen maandelijks abonnement nodig om in de directory te staan",
+        "Succesfee alleen wanneer een plaatsing start vanuit een Shepherds Oud Care-verwijzing",
+        "Families zien altijd transparante vermelding — hun keuzes worden nooit beperkt tot alleen betalende aanbieders"
+      ],
+      forFamiliesTitle: "Wat families ervaren",
       forFamilies:
-        "Families betalen ons niets. Hun keuzes worden nooit beperkt tot alleen betalende aanbieders.",
-      registerCta: "Registreer uw locatie"
+        "Families betalen ons niets. Zij starten met triage, krijgen een aanbevolen pad en checklist, en bekijken daarna de Haaglanden-directory. Wij dienen nooit DigiD-, CIZ- of gemeenteformulieren namens hen in.",
+      notForTitle: "Wat wij niet zijn",
+      notFor: [
+        "Geen klinische zorgverlener of spoeddienst",
+        "Geen garantie op bezetting of opname",
+        "Geen betaal-voor-ranking directory — zichtbaarheid wordt niet als sponsorship verkocht"
+      ],
+      finalTitle: "Klaar om uw locatie te vermelden?",
+      finalDesc: "Meld nu uw interesse. Wij nemen contact op voor onboarding in Haaglanden.",
+      registerCta: "Registreer uw locatie",
+      contactCta: "Mail ons"
     },
     register: {
       metaTitle: `Registreren | ${brand.name}`,

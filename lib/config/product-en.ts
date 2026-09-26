@@ -830,21 +830,70 @@ export const productUiEn: ProductUi = {
         "List for free on Shepherds Oud Care. Pay only on successful placement. Receive introductions from triaged family cases in Haaglanden.",
       label: "Care providers",
       title: "Free to list. Pay on placement.",
-      intro: `${brand.name} is not a subscription directory. You are visible without a monthly listing fee. We only earn when there is a successful placement — transparent for families and providers.`,
+      headlineSupport:
+        "Reach families who already completed crisis triage — with a recommended path and case context. No monthly listing fee.",
+      primaryCta: "Register your location",
+      primaryCtaShort: "Register",
+      secondaryCta: "Provider sign-in",
+      secondaryCtaShort: "Sign in",
+      problemLabel: "The opportunity",
+      problemTitle: "Families in crisis need the right introduction — not another cold directory.",
+      problemPoints: [
+        "Families arrive after triage with urgency, funding context, and a recommended path",
+        "You stay visible without a subscription tax on empty beds",
+        "You only pay when a referred placement actually starts",
+        "Fee status stays accurate when you confirm placements in the dashboard"
+      ],
+      howLabel: "How it works for you",
+      howTitle: "From listing to placement — four clear steps",
+      howSteps: [
+        {
+          title: "Register your location",
+          text: "Join the provider waitlist or finish onboarding with an invite. We verify facility details for Haaglanden coverage."
+        },
+        {
+          title: "Complete your profile",
+          text: "Services, care levels, languages, wait estimates, and contact details — so families can compare honestly."
+        },
+        {
+          title: "Receive introductions",
+          text: "Families who completed triage can request an introduction from their case. You see relevant context, not anonymous spam."
+        },
+        {
+          title: "Confirm placements",
+          text: "When a placement starts through our referral, confirm it in the partner tools so success-fee status stays correct."
+        }
+      ],
       whatYouGetTitle: "What you get",
       whatYouGet: [
         "Introductions from families who completed crisis triage",
-        "Dashboard to confirm placements and keep fee status accurate",
-        "Haaglanden coverage with clear success-fee disclosure",
+        "Dashboard to manage your facility profile and wait estimates",
+        "Partner tools to track referrals and confirm placements",
+        "Haaglanden coverage with clear success-fee disclosure to families",
         "No cold directory spam — families arrive with case context"
       ],
-      compensationTitle: "Compensation",
+      compensationTitle: "Pricing principle",
       compensationLead:
         "Exact placement fees are agreed per care type and region during onboarding. The principle remains:",
-      compensationBold: " free to be visible, pay on results",
-      forFamiliesTitle: "For families",
-      forFamilies: "Families pay us nothing. Their choices are never limited to only paying providers.",
-      registerCta: "Register your location"
+      compensationBold: "free to be visible, pay on results",
+      compensationNotes: [
+        "No monthly subscription required to appear in the directory",
+        "Success fee only when a placement starts from a Shepherds Oud Care referral",
+        "Families always see transparent disclosure — their options are never limited to paying providers only"
+      ],
+      forFamiliesTitle: "What families experience",
+      forFamilies:
+        "Families pay us nothing. They start with triage, receive a recommended path and checklist, then browse the Haaglanden directory. We never submit DigiD, CIZ, or gemeente forms on their behalf.",
+      notForTitle: "What we are not",
+      notFor: [
+        "Not a clinical care provider or emergency service",
+        "Not a guarantee of occupancy or admission",
+        "Not a pay-to-rank directory — visibility is not sold as sponsorship"
+      ],
+      finalTitle: "Ready to list your location?",
+      finalDesc: "Register interest now. We will contact you for onboarding in Haaglanden.",
+      registerCta: "Register your location",
+      contactCta: "Email us"
     },
     register: {
       metaTitle: `Register | ${brand.name}`,
