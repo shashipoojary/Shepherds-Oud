@@ -27,12 +27,15 @@ export const DB_HEAVY_ROUTE_PREFIXES = [
   "/signup",
   "/settings",
   "/partner",
-  "/provider",
   "/hospital",
   "/login/continue"
 ] as const;
 
 export function isDbHeavyRoute(pathname: string) {
+  if (pathname === "/provider" || (pathname.startsWith("/provider/") && pathname !== "/provider/login")) {
+    return true;
+  }
+
   if (DB_HEAVY_ROUTE_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))) {
     return true;
   }
